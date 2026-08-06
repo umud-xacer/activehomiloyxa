@@ -1,0 +1,271 @@
+/**
+ * Direct catalog client — fetches listings by category path, unlike `apiClient.properties`
+ * (which force-fits everything into the real-estate `Property` shape via `/search`). Used by
+ * category pages whose listings aren't properties (construction materials, recreation venues).
+ */
+import { http } from "@/lib/http";
+
+export interface CategorySummary {
+  id: string;
+  parentId: string | null;
+  name: Record<string, string>;
+  path: string;
+  formDefinitionId: string;
+  status: "ACTIVE" | "RETIRED";
+  /** Set only when an admin uploaded a custom icon via the owner-admin panel; most categories
+   * still fall back to the hardcoded `ICON_BY_PATH` map (`CategoryCarousel.tsx`). */
+  iconUrl?: string | null;
+}
+
+export interface CatalogListing {
+  id: string;
+  listingType: "ADVERTISEMENT" | "PRODUCT" | "SERVICE";
+  categoryId: string;
+  categoryPath?: string;
+  title: string;
+  description: string | null;
+  attributes: Record<string, unknown>;
+  price: { amount: string; currency: string } | null;
+  location: { latitude: number; longitude: number } | null;
+  images?: Array<{ id: string; mediaAssetId: string; position: number; status: string }>;
+  slug: string;
+  createdAt: string;
+  lockVersion: number;
+  lifecycleState?:
+    | "DRAFT"
+    | "PENDING_VERIFICATION"
+    | "PUBLISHED"
+    | "EDITED"
+    | "SUSPENDED"
+    | "ARCHIVED"
+    | "DELETED";
+}
+
+interface ListingsPage {
+  items: CatalogListing[];
+  page: { limit: number; nextCursor: string | null };
+}
+
+export interface FormFieldOption {
+  value: string;
+  label: Record<string, string>;
+}
+
+export interface FormField {
+  code: string;
+  label: Record<string, string>;
+  fieldType:
+    | "text"
+    | "number"
+    | "select"
+    | "multiselect"
+    | "boolean"
+    | "date"
+    | "range"
+    | "location"
+    | "file";
+  required: boolean;
+  order?: number;
+  defaultValue?: unknown;
+  options?: FormFieldOption[];
+}
+
+export interface FormSection {
+  code: string;
+  label: Record<string, string>;
+  order: number;
+  fields: FormField[];
+}
+
+export interface CategoryForm {
+  id: string;
+  versionId: string;
+  categoryId: string;
+  sections: FormSection[];
+}
+
+export interface ListingCreateInput {
+  listingType: "ADVERTISEMENT" | "PRODUCT" | "SERVICE";
+  categoryId: string;
+  title: string;
+  description?: string;
+  attributes: Record<string, unknown>;
+  price?: { amount: string; currency: string };
+  location?: { latitude: number; longitude: number };
+  imageMediaAssetIds?: string[];
+  publish?: boolean;
+}
+
+export interface ListingUpdateInput {
+  lockVersion: number;
+  title?: string;
+  description?: string;
+  attributes?: Record<string, unknown>;
+  price?: { amount: string; currency: string };
+  location?: { latitude: number; longitude: number };
+}
+
+export type ListingStatusAction =
+  "PUBLISH" | "ARCHIVE" | "SUSPEND" | "RENEW" | "RESTORE" | "DELETE";
+
+export interface MediaUploadTicket {
+  mediaAssetId: string;
+  uploadUrl: string;
+  method: string;
+  headers?: Record<string, string>;
+  expiresAt: string;
+}
+
+let categoriesCache: Promise<CategorySummary[]> | null = null;
+let categoriesCacheAt = 0;
+const CATEGORIES_CACHE_TTL_MS = 30_000;
+/** Short TTL, not permanent: this module lives for the whole dev-server/SSR process lifetime,
+ * not per-request, so a cache with no expiry would keep serving a category list from before the
+ * last admin edit (add/retire/rename) until the process restarts. 30s bounds that staleness
+ * while still deduping the several `listCategories()` calls a single page render triggers. */
+
+/** `GET /categories` is a one-level-at-a-time API ("Restrict to direct children of a node; omit
+ * for roots" -- the query param's own description in the contract): omitting `parentId` returns
+ * ONLY root categories, never the full taxonomy. Every consumer of `listCategories()` in this app
+ * (the listing-wizard category picker, category drill-down pages, admin parent selectors) assumes
+ * a flat list of every category, root or not -- so this walks the tree breadth-first, one request
+ * per node that turns out to have children, and flattens the result client-side (matching the
+ * operation description: "a flat list ... assemble the tree client-side"). */
+async function fetchAllCategoriesRecursive(): Promise<CategorySummary[]> {
+  const all: CategorySummary[] = await http.get<CategorySummary[]>("/categories");
+  let frontier = all;
+  while (frontier.length > 0) {
+    const children = (
+      await Promise.all(
+        frontier.map((c) =>
+          http.get<CategorySummary[]>("/categories", { params: { parentId: c.id } }),
+        ),
+      )
+    ).flat();
+    if (children.length === 0) break;
+    all.push(...children);
+    frontier = children;
+  }
+  return all;
+}
+
+function fetchCategories(): Promise<CategorySummary[]> {
+  const now = Date.now();
+  if (!categoriesCache || now - categoriesCacheAt > CATEGORIES_CACHE_TTL_MS) {
+    categoriesCache = fetchAllCategoriesRecursive();
+    categoriesCacheAt = now;
+  }
+  return categoriesCache;
+}
+
+export const catalogClient = {
+  /** All categories, admin-managed via the Configuration module's category-versioning workflow. */
+  async listCategories(): Promise<CategorySummary[]> {
+    return fetchCategories();
+  },
+
+  async categoryByPath(path: string): Promise<CategorySummary | null> {
+    const categories = await fetchCategories();
+    return categories.find((c) => c.path === path) ?? null;
+  },
+
+  async listingsByCategoryPath(path: string, limit = 20): Promise<CatalogListing[]> {
+    const category = await this.categoryByPath(path);
+    if (!category) return [];
+    const page = await http.get<ListingsPage>("/listings", {
+      params: { categoryId: category.id, limit },
+    });
+    return page.items;
+  },
+
+  /** GET /me/listings -- the authenticated account's own listings, any status. */
+  async myListings(limit = 20): Promise<CatalogListing[]> {
+    const page = await http.get<ListingsPage>("/me/listings", { params: { limit } });
+    return page.items;
+  },
+
+  /** GET /listings/{id} -- a single listing in its raw catalog shape (attributes, lockVersion),
+   * as opposed to `apiClient.properties.get()` which force-fits it into the real-estate `Property`
+   * shape. Used by the edit-listing flow. */
+  async getListing(listingId: string): Promise<CatalogListing> {
+    return http.get<CatalogListing>(`/listings/${listingId}`);
+  },
+
+  /** GET /categories/{id}/form -- the dynamic attribute form bound to this category
+   * (Configuration module's published FormDefinition). Public, no auth required. */
+  async getCategoryForm(categoryId: string): Promise<CategoryForm> {
+    return http.get<CategoryForm>(`/categories/${categoryId}/form`);
+  },
+
+  /** POST /listings -- server resolves the category's current published form binding and
+   * validates `attributes` against it; no formDefinitionId/versionId to pass here. */
+  async createListing(input: ListingCreateInput): Promise<CatalogListing> {
+    return http.post<CatalogListing>("/listings", input, { idempotent: true });
+  },
+
+  /** PUT /listings/{id} -- `lockVersion` is required (optimistic concurrency; a stale value
+   * throws ApiError with a 409). */
+  async updateListing(listingId: string, input: ListingUpdateInput): Promise<CatalogListing> {
+    return http.put<CatalogListing>(`/listings/${listingId}`, input);
+  },
+
+  /** DELETE /listings/{id} -- soft delete (lifecycle transition, no row removal). */
+  async deleteListing(listingId: string): Promise<void> {
+    return http.delete<void>(`/listings/${listingId}`);
+  },
+
+  /** POST /listings/{id}/status -- lifecycle transitions other than delete (publish/archive/
+   * suspend/renew/restore). */
+  async changeListingStatus(
+    listingId: string,
+    action: ListingStatusAction,
+    reason?: string,
+  ): Promise<CatalogListing> {
+    return http.post<CatalogListing>(`/listings/${listingId}/status`, { action, reason });
+  },
+
+  /** POST /listings/{id}/images -- attaches one already-uploaded media asset as an image (there
+   * is no bulk-attach on `PUT /listings/{id}`; images are managed through this separate
+   * endpoint). */
+  async attachListingImage(
+    listingId: string,
+    mediaAssetId: string,
+  ): Promise<{ id: string; mediaAssetId: string; position: number }> {
+    return http.post(`/listings/${listingId}/images`, { mediaAssetId });
+  },
+
+  /** DELETE /listings/{id}/images/{imageId} -- detaches an image (`imageId`, not `mediaAssetId`). */
+  async detachListingImage(listingId: string, imageId: string): Promise<void> {
+    return http.delete<void>(`/listings/${listingId}/images/${imageId}`);
+  },
+
+  /** POST /media/uploads -- requests a presigned upload slot; the caller must then PUT the raw
+   * file bytes to `uploadUrl` (see `uploadMediaFile` below) before using `mediaAssetId`. */
+  async initMediaUpload(file: File, ownerContextType = "LISTING"): Promise<MediaUploadTicket> {
+    return http.post<MediaUploadTicket>("/media/uploads", {
+      contentType: file.type,
+      sizeBytes: file.size,
+      ownerContextType,
+    });
+  },
+};
+
+/** Uploads raw file bytes to a presigned storage URL from `initMediaUpload`. This is
+ * intentionally NOT routed through `http` -- the target is object storage (MinIO), not an
+ * `/api/v1` backend endpoint, and the body must be the raw file, not JSON. */
+export async function uploadMediaFile(ticket: MediaUploadTicket, file: File): Promise<void> {
+  const response = await fetch(ticket.uploadUrl, {
+    method: ticket.method || "PUT",
+    headers: { "Content-Type": file.type, ...ticket.headers },
+    body: file,
+  });
+  if (!response.ok) {
+    throw new Error(`Rasm yuklashda xatolik (status ${response.status})`);
+  }
+}
+
+export function formatUzs(amount: string | undefined): string {
+  if (!amount) return "";
+  const n = Math.round(Number(amount));
+  return `${n.toLocaleString("uz-UZ")} so'm`;
+}
