@@ -41,9 +41,18 @@ if failed:
     sys.exit(1)
 "
 
+echo "==> seed data (idempotent -- skips anything already seeded)"
+PYTHONPATH="apps/backend/src:packages/shared/src:." .venv/bin/python3 -m configuration.infrastructure.seed
+
 echo "==> frontend build"
 cd apps/frontend
 export NODE_OPTIONS="--max-old-space-size=1536"
+# @lovable.dev/vite-tanstack-config's nitro/vite setup defaults to a Cloudflare Workers build
+# target (own comment in vite.config.ts) -- this deployment runs the built server as a plain
+# systemd/Node process (deployment/systemd/activehome-web.service's `node index.mjs`), so it
+# needs Nitro's node-server preset instead, or the output is a Workers fetch-handler module that
+# exits immediately when run with plain `node`.
+export NITRO_PRESET=node-server
 npm ci --legacy-peer-deps
 npm run build
 cd ../..
