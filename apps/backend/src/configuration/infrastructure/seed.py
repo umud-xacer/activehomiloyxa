@@ -9,6 +9,14 @@ yet implemented (Task P-04 excludes implementing other modules). "Super-Admin bo
 within this module's scope means: the `super-admin` role exists, Published, and ready for
 identity to assign once it exists.
 
+Also seeds one demo catalog category, "Mebel materiallari" (Furniture) at `/mebel-materiallari`,
+plus its bound `FormDefinition` -- local/dev-only demo content (not a Task P-04 deliverable) so
+that the frontend's `/furniture` route and the homepage `CategoryCarousel`'s furniture icon
+(both of which already hardcode this exact path) resolve to real data instead of an empty
+category list on a freshly seeded database. Follows the same maker/checker publish flow as
+`_seed_role`/`_seed_platform_settings` above -- see `_seed_furniture_form`/
+`_seed_furniture_category`.
+
 Invocable directly: `python -m configuration.infrastructure.seed` (needs the same
 POSTGRES_*/REDIS_* environment as every other backbone entrypoint).
 """
@@ -163,6 +171,185 @@ async def _seed_platform_settings(use_cases: ConfigurationUseCases, *, now: date
         )
 
 
+async def _seed_furniture_form(
+    use_cases: ConfigurationUseCases,
+    repo: SqlalchemyConfigHeadRepository,
+    *,
+    now: datetime,
+) -> UUID:
+    """Demo `FormDefinition` for the furniture ("Mebel materiallari") category -- gives the
+    frontend's `/furniture` page (`catalog-client.ts` `listingsByCategoryPath("/mebel-materiallari")`)
+    a real attribute form to bind to in local/dev environments, the same way `housing-form` does
+    for the tests' `_publish_form_and_category` fixture. Idempotent -- returns the existing head's
+    id (looked up by code) if this has already run against this database."""
+    code = "mebel-materiallari-form"
+    definition = {
+        "descriptor": {"name": {"uz_latn": "Mebel mahsuloti"}},
+        "sections": [
+            {"code": "asosiy", "label": {"uz_latn": "Asosiy ma'lumotlar"}, "order": 1},
+        ],
+        "fields": [
+            {
+                "code": "brand",
+                "section_code": "asosiy",
+                "label": {"uz_latn": "Brend"},
+                "field_type": "text",
+                "required": False,
+                "facet_eligible": True,
+                "order": 1,
+            },
+            {
+                "code": "material",
+                "section_code": "asosiy",
+                "label": {"uz_latn": "Material"},
+                "field_type": "select",
+                "required": True,
+                "facet_eligible": True,
+                "order": 2,
+                "options": [
+                    {"value": "wood", "label": {"uz_latn": "Yog'och"}},
+                    {"value": "metal", "label": {"uz_latn": "Metall"}},
+                    {"value": "fabric", "label": {"uz_latn": "Gazlama"}},
+                    {"value": "plastic", "label": {"uz_latn": "Plastik"}},
+                    {"value": "other", "label": {"uz_latn": "Boshqa"}},
+                ],
+            },
+            {
+                "code": "condition",
+                "section_code": "asosiy",
+                "label": {"uz_latn": "Holati"},
+                "field_type": "select",
+                "required": True,
+                "facet_eligible": True,
+                "order": 3,
+                "options": [
+                    {"value": "new", "label": {"uz_latn": "Yangi"}},
+                    {"value": "used", "label": {"uz_latn": "Ishlatilgan"}},
+                ],
+            },
+            {
+                "code": "color",
+                "section_code": "asosiy",
+                "label": {"uz_latn": "Rang"},
+                "field_type": "text",
+                "required": False,
+                "facet_eligible": False,
+                "order": 4,
+            },
+            {
+                "code": "warranty_months",
+                "section_code": "asosiy",
+                "label": {"uz_latn": "Kafolat (oy)"},
+                "field_type": "number",
+                "required": False,
+                "facet_eligible": False,
+                "order": 5,
+            },
+            {
+                "code": "delivery_available",
+                "section_code": "asosiy",
+                "label": {"uz_latn": "Yetkazib berish mavjud"},
+                "field_type": "boolean",
+                "required": False,
+                "facet_eligible": True,
+                "order": 6,
+                "default_value": False,
+            },
+        ],
+    }
+    try:
+        head, version = await use_cases.create_draft(
+            ConfigEntityType.FORM_DEFINITION,
+            code=code,
+            business_owner="Catalog Owner",
+            definition=definition,
+            actor_id=SEED_MAKER_ID,
+            now=now,
+        )
+    except DuplicateCodeError:
+        existing = await repo.get_head_by_code(ConfigEntityType.FORM_DEFINITION, code)
+        assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
+        return existing.id
+
+    manage_key = _registry.manage_permission_key(ConfigEntityType.FORM_DEFINITION.value)
+    approve_key = _registry.approve_permission_key(ConfigEntityType.FORM_DEFINITION.value)
+    step1 = await use_cases.publish(
+        ConfigEntityType.FORM_DEFINITION,
+        head.id,
+        version.id,
+        actor_id=SEED_MAKER_ID,
+        actor_permission_keys=frozenset({manage_key}),
+        approval_note="seed: bootstrap furniture form",
+        now=now,
+    )
+    if step1.status.value == "APPROVAL":
+        await use_cases.publish(
+            ConfigEntityType.FORM_DEFINITION,
+            head.id,
+            step1.id,
+            actor_id=SEED_CHECKER_ID,
+            actor_permission_keys=frozenset({manage_key, approve_key}),
+            approval_note="seed: bootstrap furniture form approval",
+            now=now,
+        )
+    return head.id
+
+
+async def _seed_furniture_category(
+    use_cases: ConfigurationUseCases,
+    *,
+    form_definition_id: UUID,
+    now: datetime,
+) -> None:
+    """The "Mebel materiallari" (Furniture) top-level category, bound to the form above -- the
+    exact path the frontend already hardcodes (`CategoryCarousel.tsx`'s `ICON_BY_PATH["/mebel-
+    materiallari"]` and the `/furniture` route's `CATEGORY_PATH`), so both the homepage category
+    rail and the dedicated furniture page resolve to real data once this has run."""
+    code = "mebel-materiallari"
+    definition = {
+        "descriptor": {
+            "name": {"uz_latn": "Mebel materiallari", "ru": "Мебель", "en": "Furniture"},
+        },
+        "parent_category_id": None,
+        "path": "/mebel-materiallari",
+        "form_definition_id": str(form_definition_id),
+        "tree_status": "ACTIVE",
+    }
+    try:
+        head, version = await use_cases.create_draft(
+            ConfigEntityType.CATEGORY,
+            code=code,
+            business_owner="Catalog Owner",
+            definition=definition,
+            actor_id=SEED_MAKER_ID,
+            now=now,
+        )
+    except DuplicateCodeError:
+        return
+
+    manage_key = _registry.manage_permission_key(ConfigEntityType.CATEGORY.value)
+    approve_key = _registry.approve_permission_key(ConfigEntityType.CATEGORY.value)
+    step1 = await use_cases.publish(
+        ConfigEntityType.CATEGORY,
+        head.id,
+        version.id,
+        actor_id=SEED_MAKER_ID,
+        actor_permission_keys=frozenset({manage_key}),
+        approval_note="seed: bootstrap furniture category",
+        now=now,
+    )
+    if step1.status.value == "APPROVAL":
+        await use_cases.publish(
+            ConfigEntityType.CATEGORY,
+            head.id,
+            step1.id,
+            actor_id=SEED_CHECKER_ID,
+            actor_permission_keys=frozenset({manage_key, approve_key}),
+            approval_note="seed: bootstrap furniture category approval",
+            now=now,
+        )
+
+
 async def run_seed() -> None:
     engine = make_engine()
     session_factory = make_session_factory(engine)
@@ -192,6 +379,11 @@ async def run_seed() -> None:
                     now=now,
                 )
                 await _seed_platform_settings(use_cases, now=now)
+
+                furniture_form_id = await _seed_furniture_form(use_cases, repo, now=now)
+                await _seed_furniture_category(
+                    use_cases, form_definition_id=furniture_form_id, now=now
+                )
             except GateFailedError as exc:
                 raise RuntimeError(
                     f"seed data failed the validation gate: {exc.result.errors}"

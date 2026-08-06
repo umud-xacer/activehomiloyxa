@@ -1,0 +1,53 @@
+name: Deploy
+
+# Push-to-deploy for the single-host production topology (DEC-16): rsyncs the repo to the EC2
+# box over SSH, then runs scripts/server-deploy.sh there (deps, migrations, frontend build,
+# systemd restarts). Deliberately not gated on the (slow, still-stabilizing) CI workflow --
+# runs directly on push to main so a deploy is never blocked by an unrelated flaky/long-running
+# quality gate. ci.yml keeps running independently as the quality signal.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to production (EC2)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Rsync repo to server
+        run: |
+          rsync -az --delete \
+            --exclude='.git/' \
+            --exclude='.venv/' \
+            --exclude='node_modules/' \
+            --exclude='apps/frontend/node_modules/' \
+            --exclude='apps/frontend/.output/' \
+            --exclude='deployment/env/.env.production' \
+            --exclude='deployment/env/.env.local' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes" \
+            ./ "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/home/ubuntu/app/"
+
+      - name: Run remote deploy script
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+            "bash /home/ubuntu/app/scripts/server-deploy.sh"
+
+      - name: Smoke check
+        run: |
+          curl -sf "https://activehome.uz/healthz" || curl -sf "http://${{ secrets.DEPLOY_HOST }}/healthz"
