@@ -1,0 +1,46 @@
+{
+  "nfr": "NFR-PERF-002",
+  "target_p95_ms": 300,
+  "operations": [
+    {
+      "name": "listing_detail",
+      "count": 0,
+      "errors": 100,
+      "p50_ms": NaN,
+      "p95_ms": NaN,
+      "p99_ms": NaN
+    },
+    {
+      "name": "authenticated_me",
+      "count": 100,
+      "errors": 0,
+      "p50_ms": 134.06,
+      "p95_ms": 443.85,
+      "p99_ms": 456.94
+    },
+    {
+      "name": "conversation_history",
+      "count": 0,
+      "errors": 100,
+      "p50_ms": NaN,
+      "p95_ms": NaN,
+      "p99_ms": NaN
+    },
+    {
+      "name": "banner_serve",
+      "count": 100,
+      "errors": 0,
+      "p50_ms": 176.45,
+      "p95_ms": 478.72,
+      "p99_ms": 536.65
+    },
+    {
+      "name": "listing_create_and_publish",
+      "count": 0,
+      "errors": 20,
+      "p50_ms": NaN,
+      "p95_ms": NaN,
+      "p99_ms": NaN
+    }
+  ]
+}

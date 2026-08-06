@@ -1,0 +1,236 @@
+[
+ {
+  "id": "AUTH-002-register",
+  "doc": "FR-AUTH-002",
+  "expected": "202/201 account created, confirmation pending",
+  "status": 202,
+  "passed": true,
+  "observed": "null",
+  "note": ""
+ },
+ {
+  "id": "AUTH-002-duplicate",
+  "doc": "FR-AUTH-002",
+  "expected": "duplicate email rejected (4xx CONFLICT)",
+  "status": 500,
+  "passed": false,
+  "observed": "{\"type\":\"https://errors.activehome.uz/dependency-degraded\",\"title\":\"Internal server error\",\"status\":500,\"code\":\"DEPENDENCY_DEGRADED\",\"traceId\":\"3dbc04b4-bce9-436d-9a30-214cba8ede63\"}",
+  "note": "acceptance (2)"
+ },
+ {
+  "id": "AUTH-002-inactive-until-confirmed",
+  "doc": "FR-AUTH-002",
+  "expected": "account NOT usable until confirmation redeemed",
+  "status": null,
+  "passed": false,
+  "observed": "ACTIVE",
+  "note": "db status='ACTIVE'"
+ },
+ {
+  "id": "AUTH-002-login-blocked-unconfirmed",
+  "doc": "FR-AUTH-002",
+  "expected": "login refused before email confirmation",
+  "status": 200,
+  "passed": false,
+  "observed": "{\"account\":{\"id\":\"b4eb44ed-8758-46af-af32-192677490eb4\",\"phoneNumber\":null,\"email\":\"bob-152455.verify@example.invalid\",\"displayName\":\"Bob\",\"status\":\"ACTIVE\",\"privacySettings\":{\"phoneRevealMode\":\"ON_REQUEST\"},\"notificationPreferences\":{\"email\":true,\"webPush\":false,\"sms\":true},\"ownedProfileIds\":null,\"roles\":null,\"createdAt\":\"2026-07-27T11:40:55.734037Z\"},\"session\":{\"id\":\"a543bf0d-dde2-4079-b62d-74c9f175fd05\",\"actingProfileId\":null,\"ipAddress\":\"127.0.0.1\",\"userAgent\":\"python-httpx/0.28.1\",\"current\":true,\"createdAt\":\"2026-07-27T11:40:57.495697Z\",\"expiresAt\":\"2026-08-26T11:40:57.495697Z\"},\"sessionT",
+  "note": ""
+ },
+ {
+  "id": "AUTH-004-bad-credential",
+  "doc": "FR-AUTH-004",
+  "expected": "invalid credentials refused",
+  "status": 401,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/authentication-invalid\",\"title\":\"Invalid credentials\",\"status\":401,\"code\":\"AUTHENTICATION_INVALID\",\"traceId\":\"20623596-955a-402c-b9a7-cec1950a6aa9\"}",
+  "note": ""
+ },
+ {
+  "id": "AUTH-004-unknown-user",
+  "doc": "FR-AUTH-004",
+  "expected": "unknown account refused",
+  "status": 401,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/authentication-invalid\",\"title\":\"Invalid credentials\",\"status\":401,\"code\":\"AUTHENTICATION_INVALID\",\"traceId\":\"32ba31ac-7b6c-4e4e-958d-aaefe84d9d19\"}",
+  "note": ""
+ },
+ {
+  "id": "AUTH-005-session-works",
+  "doc": "FR-AUTH-005",
+  "expected": "authenticated session grants access",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"c923598c-d39c-44a7-b7fe-f2151a4ecab2\",\"phoneNumber\":null,\"email\":\"alice2-152455.verify@example.invalid\",\"displayName\":\"Alice Two\",\"status\":\"ACTIVE\",\"privacySettings\":{\"phoneRevealMode\":\"ON_REQUEST\"},\"notificationPreferences\":{\"email\":true,\"webPush\":false,\"sms\":true},\"ownedProfileIds\":null,\"roles\":null,\"createdAt\":\"2026-07-27T11:40:57.625802Z\"}",
+  "note": ""
+ },
+ {
+  "id": "AUTH-005-list-sessions",
+  "doc": "FR-AUTH-005",
+  "expected": "sessions listable",
+  "status": 200,
+  "passed": true,
+  "observed": "[{\"id\":\"6bc8cc9e-2d3a-4952-8567-7f74f9e9cd07\",\"actingProfileId\":null,\"ipAddress\":\"127.0.0.1\",\"userAgent\":\"python-httpx/0.28.1\",\"current\":true,\"createdAt\":\"2026-07-27T11:40:58.055858Z\",\"expiresAt\":\"2026-08-26T11:40:58.055858Z\"}]",
+  "note": ""
+ },
+ {
+  "id": "AUTH-005-logout",
+  "doc": "FR-AUTH-005",
+  "expected": "logout ends the session",
+  "status": 204,
+  "passed": true,
+  "observed": "",
+  "note": ""
+ },
+ {
+  "id": "AUTH-005-session-dead-after-logout",
+  "doc": "FR-AUTH-005",
+  "expected": "session no longer usable after logout",
+  "status": 401,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/authentication-required\",\"title\":\"No valid session\",\"status\":401,\"code\":\"AUTHENTICATION_REQUIRED\",\"traceId\":\"130556b0-c780-49f2-a887-7de5b7038407\"}",
+  "note": ""
+ },
+ {
+  "id": "SEC-anon-me-denied",
+  "doc": "NFR-SEC-002",
+  "expected": "unauthenticated access denied 401",
+  "status": 401,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/authentication-required\",\"title\":\"No valid session\",\"status\":401,\"code\":\"AUTHENTICATION_REQUIRED\",\"traceId\":\"504ea7b2-af2b-48aa-8694-5bebb2170c50\"}",
+  "note": ""
+ },
+ {
+  "id": "SEC-anon-admin-denied",
+  "doc": "NFR-SEC-002",
+  "expected": "unauthenticated admin access denied",
+  "status": 401,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/authentication-required\",\"title\":\"No valid session\",\"status\":401,\"code\":\"AUTHENTICATION_REQUIRED\",\"traceId\":\"0503a790-289a-40b1-ad8f-32f17fb5d000\"}",
+  "note": ""
+ },
+ {
+  "id": "SEC-nonadmin-admin-denied",
+  "doc": "FR-ADMIN-001",
+  "expected": "ordinary user without permission denied on /admin (default deny)",
+  "status": 403,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller lacks the required permission\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\"9efcc6d6-037b-41aa-914e-a26297b50887\"}",
+  "note": ""
+ },
+ {
+  "id": "SEC-nonadmin-config-denied",
+  "doc": "FR-CFG-001",
+  "expected": "ordinary user denied config authoring",
+  "status": 403,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller lacks the required permission\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\"7b8e6792-2f8f-4638-9804-6fe63d74a309\"}",
+  "note": ""
+ },
+ {
+  "id": "SEC-nonadmin-audit-denied",
+  "doc": "FR-AUDIT-002",
+  "expected": "ordinary user denied audit log",
+  "status": 403,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller lacks the required permission\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\"e7b4924a-cd9b-479c-9b39-0bdf71ea173e\"}",
+  "note": ""
+ },
+ {
+  "id": "SEC-not-a-jwt",
+  "doc": "Baseline DEC (session auth, not JWT)",
+  "expected": "session token is an opaque server-side handle, not a JWT",
+  "status": null,
+  "passed": true,
+  "observed": "4g4cOW3hnPaKaOD9Fbekj0yNcuSFpDkPpQ9Vp4U_udU",
+  "note": "token prefix='4g4cOW3h'"
+ },
+ {
+  "id": "AUTH-001-otp-request",
+  "doc": "FR-AUTH-001",
+  "expected": "OTP request accepted and dispatched via Eskiz",
+  "status": 500,
+  "passed": false,
+  "observed": "{\"type\":\"https://errors.activehome.uz/dependency-degraded\",\"title\":\"Internal server error\",\"status\":500,\"code\":\"DEPENDENCY_DEGRADED\",\"traceId\":\"2f8cfcf0-5afa-49c2-a1fc-1f5e727b1c74\"}",
+  "note": "provider boundary only (no real Eskiz creds)"
+ },
+ {
+  "id": "AUTH-001-otp-bad-code",
+  "doc": "FR-AUTH-001",
+  "expected": "invalid/expired code rejected with clear message",
+  "status": 422,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/validation-failed\",\"title\":\"OTP code does not match\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"traceId\":\"238d5b30-4bab-4e52-ae42-08cafc20fb6f\"}",
+  "note": ""
+ },
+ {
+  "id": "AUTH-006-recovery-known",
+  "doc": "FR-AUTH-006",
+  "expected": "verified recovery flow restores access",
+  "status": 202,
+  "passed": true,
+  "observed": "null",
+  "note": ""
+ },
+ {
+  "id": "AUTH-006-recovery-unknown",
+  "doc": "FR-AUTH-006",
+  "expected": "unverified/unknown request refused (or neutral)",
+  "status": 202,
+  "passed": true,
+  "observed": "null",
+  "note": "enumeration-safe neutral response is acceptable"
+ },
+ {
+  "id": "AUTH-003-google-bad-token",
+  "doc": "FR-AUTH-003",
+  "expected": "invalid federated token refused",
+  "status": 422,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more fields failed validation.\",\"traceId\":\"682f2a70-1e13-4761-a996-e6409ef8eec1\",\"errors\":[{\"path\":\"/body/authorizationCode\",\"rule\":\"missing\",\"message\":\"Field required\"},{\"path\":\"/body/redirectUri\",\"rule\":\"missing\",\"message\":\"Field required\"},{\"path\":\"/body/idToken\",\"rule\":\"extra_forbidden\",\"message\":\"Extra inputs are not permitted\"}]}",
+  "note": "NEEDS-HUMAN for the success path"
+ },
+ {
+  "id": "USER-001-edit-profile",
+  "doc": "FR-USER-001",
+  "expected": "edits persist and reflect immediately",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"c923598c-d39c-44a7-b7fe-f2151a4ecab2\",\"phoneNumber\":null,\"email\":\"alice2-152455.verify@example.invalid\",\"displayName\":\"Alice Renamed\",\"status\":\"ACTIVE\",\"privacySettings\":{\"phoneRevealMode\":\"ON_REQUEST\"},\"notificationPreferences\":{\"email\":true,\"webPush\":false,\"sms\":true},\"ownedProfileIds\":null,\"roles\":null,\"createdAt\":\"2026-07-27T11:40:57.625802Z\"}",
+  "note": ""
+ },
+ {
+  "id": "USER-001-edit-visible",
+  "doc": "FR-USER-001",
+  "expected": "edited name reflected immediately",
+  "status": 200,
+  "passed": false,
+  "observed": "{\"id\":\"c923598c-d39c-44a7-b7fe-f2151a4ecab2\",\"phoneNumber\":null,\"email\":\"alice2-152455.verify@example.invalid\",\"displayName\":\"Alice Two\",\"status\":\"ACTIVE\",\"privacySettings\":{\"phoneRevealMode\":\"ON_REQUEST\"},\"notificationPreferences\":{\"email\":true,\"webPush\":false,\"sms\":true},\"ownedProfileIds\":null,\"roles\":null,\"createdAt\":\"2026-07-27T11:40:57.625802Z\"}",
+  "note": ""
+ },
+ {
+  "id": "USER-003-privacy",
+  "doc": "FR-USER-003",
+  "expected": "user controls phone reveal setting",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"c923598c-d39c-44a7-b7fe-f2151a4ecab2\",\"phoneNumber\":null,\"email\":\"alice2-152455.verify@example.invalid\",\"displayName\":\"Alice Renamed\",\"status\":\"ACTIVE\",\"privacySettings\":{\"phoneRevealMode\":\"NEVER\"},\"notificationPreferences\":{\"email\":true,\"webPush\":false,\"sms\":true},\"ownedProfileIds\":null,\"roles\":null,\"createdAt\":\"2026-07-27T11:40:57.625802Z\"}",
+  "note": ""
+ },
+ {
+  "id": "USER-005-closure",
+  "doc": "FR-USER-005",
+  "expected": "closure request deactivates the account",
+  "status": 204,
+  "passed": true,
+  "observed": "",
+  "note": ""
+ },
+ {
+  "id": "USER-005-closed-no-access",
+  "doc": "FR-USER-005",
+  "expected": "closed account cannot act",
+  "status": 401,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/authentication-required\",\"title\":\"No valid session\",\"status\":401,\"code\":\"AUTHENTICATION_REQUIRED\",\"traceId\":\"887b36c1-c131-41e3-b6fe-f7c84257ffdb\"}",
+  "note": ""
+ }
+]

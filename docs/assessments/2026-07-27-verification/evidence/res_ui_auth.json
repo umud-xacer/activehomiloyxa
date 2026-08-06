@@ -1,0 +1,184 @@
+[
+ {
+  "id": "UI-register-form",
+  "doc": "UI/UX Spec Sec 1 (registration)",
+  "expected": "the email registration form exposes email + password fields",
+  "passed": true,
+  "note": "search||Search listings… , text|reg-name| , email|reg-email| , password|reg-password|"
+ },
+ {
+  "id": "UI-AUTH-002-register",
+  "doc": "FR-AUTH-002",
+  "expected": "registration through the UI succeeds and gives the user feedback",
+  "passed": true,
+  "note": "url=http://127.0.0.1:3100/en/register :: ActiveHome Categories Search Search English Log in Register Create your account Post listings, message sellers, and save your favourites. Phone Email Check your email We've sent a confirmation link to"
+ },
+ {
+  "id": "UI-AUTH-004-login",
+  "doc": "FR-AUTH-004",
+  "expected": "a registered user logs in through the UI and leaves the login page",
+  "passed": true,
+  "note": "url=http://127.0.0.1:3100/en"
+ },
+ {
+  "id": "UI-AUTH-005-session-cookie",
+  "doc": "Baseline (session auth via HttpOnly ah_session, not JWT)",
+  "expected": "the browser holds an HttpOnly ah_session cookie",
+  "passed": true,
+  "note": "NEXT_LOCALE(httpOnly=false,sameSite=Lax), ah_session(httpOnly=true,sameSite=Lax)"
+ },
+ {
+  "id": "UI-page-dashboard",
+  "doc": "UI/UX Spec Sec 3",
+  "expected": "dashboard renders its own authenticated content",
+  "passed": true,
+  "note": "status=200 bouncedToLogin=false len=551 "
+ },
+ {
+  "id": "UI-page-my-listings",
+  "doc": "UI/UX Spec Sec 3 / FR-ADV-005",
+  "expected": "my-listings renders its own authenticated content",
+  "passed": true,
+  "note": "status=200 bouncedToLogin=false len=521 "
+ },
+ {
+  "id": "UI-page-favorites",
+  "doc": "FR-USER-004",
+  "expected": "favorites renders its own authenticated content",
+  "passed": true,
+  "note": "status=200 bouncedToLogin=false len=500 "
+ },
+ {
+  "id": "UI-page-messages",
+  "doc": "FR-MSG-002",
+  "expected": "messages renders its own authenticated content",
+  "passed": true,
+  "note": "status=200 bouncedToLogin=false len=498 "
+ },
+ {
+  "id": "UI-page-notifications",
+  "doc": "FR-NOTIF-004",
+  "expected": "notifications renders its own authenticated content",
+  "passed": true,
+  "note": "status=200 bouncedToLogin=false len=468 "
+ },
+ {
+  "id": "UI-page-profile",
+  "doc": "FR-USER-001",
+  "expected": "profile renders its own authenticated content",
+  "passed": true,
+  "note": "status=200 bouncedToLogin=false len=567 "
+ },
+ {
+  "id": "UI-page-settings",
+  "doc": "FR-USER-003",
+  "expected": "settings renders its own authenticated content",
+  "passed": true,
+  "note": "status=200 bouncedToLogin=false len=1292 "
+ },
+ {
+  "id": "UI-page-business",
+  "doc": "FR-PROF-001",
+  "expected": "business renders its own authenticated content",
+  "passed": true,
+  "note": "status=200 bouncedToLogin=false len=486 "
+ },
+ {
+  "id": "UI-page-listing-wizard",
+  "doc": "FR-ADV-001 / FR-FORM-001",
+  "expected": "listing-wizard renders its own authenticated content",
+  "passed": true,
+  "note": "status=200 bouncedToLogin=false len=608 "
+ },
+ {
+  "id": "UI-ADV-001-wizard",
+  "doc": "FR-ADV-001 / UI/UX Spec Sec 12",
+  "expected": "the advertisement creation wizard opens for an authenticated user",
+  "passed": true,
+  "note": "url=http://127.0.0.1:3100/en/listings/new :: ActiveHome Categories Search English uiauth-341604@example.invalid Post a listing Dashboard My ads Messages Favorites Notifications Profile Business Settings Post a listing Five sh"
+ },
+ {
+  "id": "UI-FORM-001-dynamic-fields",
+  "doc": "FR-FORM-001 / FR-CAT-002 / UI/UX Spec Sec 12",
+  "expected": "the wizard renders the fields defined by the category's bound form (Rooms / Area / Balcony)",
+  "passed": true,
+  "note": "ActiveHome Categories Search English uiauth-341604@example.invalid Post a listing Dashboard My ads Messages Favorites Notifications Profile Business Settings Post a listing Five short steps. You can go back at any point. Category / Details / Photos / Preview / Publish Title Up to 200 characters. Des"
+ },
+ {
+  "id": "A11Y-dashboard",
+  "doc": "NFR-ACC-001 (WCAG 2.2 AA)",
+  "expected": "no serious/critical violations on dashboard",
+  "passed": true,
+  "note": "0 minor/moderate"
+ },
+ {
+  "id": "A11Y-wizard",
+  "doc": "NFR-ACC-001 (WCAG 2.2 AA)",
+  "expected": "no serious/critical violations on wizard",
+  "passed": true,
+  "note": "0 minor/moderate"
+ },
+ {
+  "id": "UI-op-admin-home",
+  "doc": "UI/UX Spec Sec 6",
+  "expected": "admin-home renders for a super-admin",
+  "passed": true,
+  "note": "status=200 bounced=false len=239 "
+ },
+ {
+  "id": "UI-op-admin-users",
+  "doc": "FR-ADMIN-001",
+  "expected": "admin-users renders for a super-admin",
+  "passed": true,
+  "note": "status=200 bounced=false len=8194 "
+ },
+ {
+  "id": "UI-op-admin-moderation",
+  "doc": "FR-MOD-005",
+  "expected": "admin-moderation renders for a super-admin",
+  "passed": true,
+  "note": "status=200 bounced=false len=1708 "
+ },
+ {
+  "id": "UI-op-admin-verification",
+  "doc": "FR-ADMIN-002",
+  "expected": "admin-verification renders for a super-admin",
+  "passed": true,
+  "note": "status=200 bounced=false len=285 "
+ },
+ {
+  "id": "UI-op-admin-invoices",
+  "doc": "FR-ADMIN-003",
+  "expected": "admin-invoices renders for a super-admin",
+  "passed": true,
+  "note": "status=200 bounced=false len=407 "
+ },
+ {
+  "id": "UI-op-admin-audit",
+  "doc": "FR-AUDIT-002",
+  "expected": "admin-audit renders for a super-admin",
+  "passed": true,
+  "note": "status=200 bounced=false len=5036 "
+ },
+ {
+  "id": "UI-op-admin-reports",
+  "doc": "FR-ADMIN-005",
+  "expected": "admin-reports renders for a super-admin",
+  "passed": true,
+  "note": "status=200 bounced=false len=493 "
+ },
+ {
+  "id": "UI-op-config-portal",
+  "doc": "UI/UX Spec Sec 5 (Product-Owner config portal)",
+  "expected": "config-portal renders for a super-admin",
+  "passed": true,
+  "note": "status=200 bounced=false len=763 "
+ },
+ {
+  "id": "UI-op-config-category",
+  "doc": "FR-CFG-001",
+  "expected": "config-category renders for a super-admin",
+  "passed": true,
+  "note": "status=200 bounced=false len=386 "
+ }
+]

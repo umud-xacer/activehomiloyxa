@@ -1,0 +1,36 @@
+# ActiveHome
+
+> ActiveHome is a global AI-powered super app for everything related to homes and buildings — buy, rent, build, furnish and book across one ecosystem.
+
+ActiveHome combines a property marketplace, hotel and hostel bookings, construction services, materials and furniture shops, interior and landscape design, and an AI valuation assistant for a worldwide audience.
+
+## Pages
+
+- [Home](/): The home & building super app overview.
+- [Properties](/properties): Browse verified properties for sale, rent and short stay.
+- [Map search](/map): Interactive Google Maps discovery with satellite, traffic and drawing tools.
+- [Categories](/categories): Every vertical in the ActiveHome ecosystem.
+- [Agents](/agents): Top-rated verified agents across the network.
+- [Construction](/construction): Vetted construction crews and architects.
+- [Materials](/materials): Construction materials at wholesale prices.
+- [Furniture](/furniture): Designer furniture collections.
+- [Appliances](/appliances): Premium home appliances.
+- [Interior design](/interior): Interior design services on demand.
+- [Landscape](/landscape): Gardens, terraces and outdoor design.
+- [Maintenance](/maintenance): Home maintenance and repair services.
+- [Hotels](/hotels): 5-star and boutique hotel bookings.
+- [Hostels](/hostels): Affordable stays worldwide.
+- [Jobs](/jobs): Construction and skilled-trade jobs.
+- [Services](/services): Verified professionals for every home need.
+- [AI assistant](/ai): AI-powered search, valuation and negotiation.
+- [Pricing](/pricing): Subscription plans for professionals.
+- [Blog](/blog): Market insights and product updates.
+- [News](/news): Announcements and releases.
+- [About](/about): The team and vision behind ActiveHome.
+- [Contact](/contact): Get in touch with the team.
+- [FAQ](/faq): Answers to the most common questions.
+- [Support](/support): Help center and customer support.
+
+## Optional
+
+- [Privacy](/privacy): Data handling and privacy policy.

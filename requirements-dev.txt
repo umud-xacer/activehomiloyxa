@@ -1,0 +1,15 @@
+# Shared quality-gate tooling (Playbook Sec 16), installed once at the repo root and run
+# against both apps/backend and packages/shared. Pinned for reproducible CI runs (Sec 12).
+# Install: pip install -r requirements-dev.txt
+ruff==0.15.20
+mypy==2.2.0
+pydantic==2.13.4
+pytest==9.1.1
+pytest-asyncio==1.4.0
+pytest-cov==7.1.0
+httpx==0.28.1
+import-linter==2.13
+pre-commit==4.6.0
+bandit==1.9.4
+pip-audit==2.10.1
+piexif==1.1.3  # test-only: writes real GPS/EXIF into fixture JPEGs for media's BRULE-12 stripping test

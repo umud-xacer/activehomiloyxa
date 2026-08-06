@@ -1,0 +1,46 @@
+{
+  "nfr": "NFR-PERF-001",
+  "target_p95_ms": 500,
+  "operations": [
+    {
+      "name": "search_full_text",
+      "count": 0,
+      "errors": 100,
+      "p50_ms": NaN,
+      "p95_ms": NaN,
+      "p99_ms": NaN
+    },
+    {
+      "name": "search_faceted",
+      "count": 0,
+      "errors": 100,
+      "p50_ms": NaN,
+      "p95_ms": NaN,
+      "p99_ms": NaN
+    },
+    {
+      "name": "search_geo",
+      "count": 0,
+      "errors": 100,
+      "p50_ms": NaN,
+      "p95_ms": NaN,
+      "p99_ms": NaN
+    },
+    {
+      "name": "search_cross_script",
+      "count": 0,
+      "errors": 100,
+      "p50_ms": NaN,
+      "p95_ms": NaN,
+      "p99_ms": NaN
+    },
+    {
+      "name": "search_suggest",
+      "count": 100,
+      "errors": 0,
+      "p50_ms": 85.59,
+      "p95_ms": 261.79,
+      "p99_ms": 356.45
+    }
+  ]
+}

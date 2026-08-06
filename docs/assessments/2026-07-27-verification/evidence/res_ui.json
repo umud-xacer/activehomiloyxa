@@ -1,0 +1,303 @@
+[
+ {
+  "id": "UI-render-home-uz-Latn",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "home renders in uz-Latn",
+  "passed": true,
+  "note": "status=200 textLen=1222"
+ },
+ {
+  "id": "UI-render-search-uz-Latn",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "search renders in uz-Latn",
+  "passed": true,
+  "note": "status=200 textLen=1347"
+ },
+ {
+  "id": "UI-render-login-uz-Latn",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "login renders in uz-Latn",
+  "passed": true,
+  "note": "status=200 textLen=469"
+ },
+ {
+  "id": "UI-render-register-uz-Latn",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "register renders in uz-Latn",
+  "passed": true,
+  "note": "status=200 textLen=475"
+ },
+ {
+  "id": "UI-render-home-uz-Cyrl",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "home renders in uz-Cyrl",
+  "passed": true,
+  "note": "status=200 textLen=1179"
+ },
+ {
+  "id": "UI-render-search-uz-Cyrl",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "search renders in uz-Cyrl",
+  "passed": true,
+  "note": "status=200 textLen=1320"
+ },
+ {
+  "id": "UI-render-login-uz-Cyrl",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "login renders in uz-Cyrl",
+  "passed": true,
+  "note": "status=200 textLen=440"
+ },
+ {
+  "id": "UI-render-register-uz-Cyrl",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "register renders in uz-Cyrl",
+  "passed": true,
+  "note": "status=200 textLen=449"
+ },
+ {
+  "id": "UI-render-home-ru",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "home renders in ru",
+  "passed": true,
+  "note": "status=200 textLen=1174"
+ },
+ {
+  "id": "UI-render-search-ru",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "search renders in ru",
+  "passed": true,
+  "note": "status=200 textLen=1298"
+ },
+ {
+  "id": "UI-render-login-ru",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "login renders in ru",
+  "passed": true,
+  "note": "status=200 textLen=437"
+ },
+ {
+  "id": "UI-render-register-ru",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "register renders in ru",
+  "passed": true,
+  "note": "status=200 textLen=441"
+ },
+ {
+  "id": "UI-render-home-en",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "home renders in en",
+  "passed": true,
+  "note": "status=200 textLen=1195"
+ },
+ {
+  "id": "UI-render-search-en",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "search renders in en",
+  "passed": true,
+  "note": "status=200 textLen=1280"
+ },
+ {
+  "id": "UI-render-login-en",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "login renders in en",
+  "passed": true,
+  "note": "status=200 textLen=424"
+ },
+ {
+  "id": "UI-render-register-en",
+  "doc": "UI/UX Spec Sec 2 / FR-LOC-001",
+  "expected": "register renders in en",
+  "passed": true,
+  "note": "status=200 textLen=444"
+ },
+ {
+  "id": "UI-LOC-001-distinct",
+  "doc": "FR-LOC-001 / DEC-19",
+  "expected": "each of the four locales renders its own translated text",
+  "passed": true,
+  "note": "distinct renderings=4/4"
+ },
+ {
+  "id": "UI-LOC-001-uz-cyrl-script",
+  "doc": "DEC-19 (dual-script Uzbek)",
+  "expected": "uz-Cyrl actually renders Cyrillic characters",
+  "passed": true,
+  "note": "ActiveHome Категориялар Қидирув Қидирув Ўзбекча Кириш Рўйхатдан ўтиш Уй-жой ва қурилиш — бир жойда Уй, материал ёки мута"
+ },
+ {
+  "id": "UI-LOC-001-uz-latn-script",
+  "doc": "DEC-19",
+  "expected": "uz-Latn renders Latin (no Cyrillic)",
+  "passed": true,
+  "note": "ActiveHome Kategoriyalar Qidiruv Qidiruv O‘zbekcha Kirish Ro'yxatdan o'tish Uy-joy va qurilish — bir joyda Uy, material "
+ },
+ {
+  "id": "UI-LOC-001-ru-script",
+  "doc": "FR-LOC-001",
+  "expected": "ru renders Cyrillic",
+  "passed": true,
+  "note": "ActiveHome Категории Поиск Поиск Русский Войти Регистрация Жильё и строительство — в одном месте Найдите жильё, материал"
+ },
+ {
+  "id": "UI-CAT-001-from-config",
+  "doc": "FR-CAT-001 / DEC-21",
+  "expected": "the home page shows the configured category taxonomy",
+  "passed": true,
+  "note": "5/5 configured categories visible on the home page"
+ },
+ {
+  "id": "UI-SRCH-001",
+  "doc": "FR-SRCH-001",
+  "expected": "searching from the UI returns results",
+  "passed": true,
+  "note": "ActiveHome Kategoriyalar Qidiruv Qidiruv O‘zbekcha Kirish Ro'yxatdan o'tish “kvartira” boʻyicha natijalar 5 ta natija Saralash Mosligi boʻyicha Filtrlar Hammasini tozalash Narx (dan) / Narx (gacha) — "
+ },
+ {
+  "id": "UI-SRCH-004-crossscript",
+  "doc": "FR-SRCH-004 / DEC-19",
+  "expected": "a Cyrillic query from the UI finds Latin-authored content",
+  "passed": true,
+  "note": "ActiveHome Категориялар Қидирув Қидирув Ўзбекча Кириш Рўйхатдан ўтиш “квартира” бўйича натижалар 5 та натижа Саралаш Мослиги бўйича Фильтрлар Ҳаммасини тозалаш Нарх (дан) / Нарх (гача) — Фақат тасдиқл"
+ },
+ {
+  "id": "UI-AUTH-002-register",
+  "doc": "FR-AUTH-002 / UI/UX Spec Sec 1",
+  "expected": "a user can register through the UI",
+  "passed": false,
+  "note": "locator.fill: Timeout 8000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel(/e-?mail/i).first()\u001b[22m\n\u001b[2m    - locator resolved to <div hidden=\"\" tabindex=\"0\" role=\"tabpanel\" data-state=\"inactive\" data-orientation=\"horizontal\" id=\"radix-_R_b5fiv9fivb_-content-email\" aria-labelledby=\"radix-_R_b5fiv9fivb_-trigger-email\" class=\"ring-offset-background focus-visible:outline-none focus-visible:ring-"
+ },
+ {
+  "id": "UI-AUTH-004-login",
+  "doc": "FR-AUTH-004 / UI/UX Spec Sec 1",
+  "expected": "a registered user can log in through the UI and reach an authenticated area",
+  "passed": false,
+  "note": "url after submit=http://127.0.0.1:3100/en/login"
+ },
+ {
+  "id": "UI-page-dashboard",
+  "doc": "UI/UX Spec Sec 3",
+  "expected": "dashboard renders for an authenticated user",
+  "passed": true,
+  "note": "status=200 len=424 "
+ },
+ {
+  "id": "UI-page-my-listings",
+  "doc": "UI/UX Spec Sec 3",
+  "expected": "my-listings renders for an authenticated user",
+  "passed": true,
+  "note": "status=200 len=424 "
+ },
+ {
+  "id": "UI-page-favorites",
+  "doc": "FR-USER-004",
+  "expected": "favorites renders for an authenticated user",
+  "passed": true,
+  "note": "status=200 len=424 "
+ },
+ {
+  "id": "UI-page-messages",
+  "doc": "FR-MSG-002",
+  "expected": "messages renders for an authenticated user",
+  "passed": true,
+  "note": "status=200 len=424 "
+ },
+ {
+  "id": "UI-page-notifications",
+  "doc": "FR-NOTIF-004",
+  "expected": "notifications renders for an authenticated user",
+  "passed": true,
+  "note": "status=200 len=424 "
+ },
+ {
+  "id": "UI-page-settings",
+  "doc": "FR-USER-003",
+  "expected": "settings renders for an authenticated user",
+  "passed": true,
+  "note": "status=200 len=424 "
+ },
+ {
+  "id": "UI-page-listing-wizard",
+  "doc": "FR-ADV-001 / FR-FORM-001",
+  "expected": "listing-wizard renders for an authenticated user",
+  "passed": true,
+  "note": "status=200 len=424 "
+ },
+ {
+  "id": "UI-FORM-001-dynamic",
+  "doc": "FR-FORM-001 / UI/UX Spec Sec 12 (dynamic form engine)",
+  "expected": "the wizard renders fields from the bound form definition (Rooms/Area/Balcony)",
+  "passed": false,
+  "note": "ActiveHome Categories Search Search English Log in Register Welcome back Log in to manage your listings and messages. Phone Email Phone number Send code Don't have an account? Register ActiveHome The housing and construction marketplace for Uzbekista"
+ },
+ {
+  "id": "UI-SEC-admin-denied",
+  "doc": "Security Arch (frontend enforces NO authorization; server does)",
+  "expected": "a non-operator hitting /admin is refused/redirected, never shown operator data",
+  "passed": true,
+  "note": "status=200 url=http://127.0.0.1:3100/en/login body=ActiveHome Categories Search Search English Log in Register Welcome back Log in to manage your listings and messages. Phone Email Phone number Send code Don't have an account? Register ActiveHome The "
+ },
+ {
+  "id": "UI-uses-real-api",
+  "doc": "Frontend Arch Handbook (UI consumes the real API)",
+  "expected": "browser/server traffic hits the real backend",
+  "passed": true,
+  "note": "36 direct browser->API calls observed (server-side RSC fetches are not visible to the browser)"
+ },
+ {
+  "id": "A11Y-home",
+  "doc": "NFR-ACC-001 (WCAG 2.2 AA)",
+  "expected": "no serious/critical WCAG 2.2 AA violations on home",
+  "passed": true,
+  "note": "0 minor/moderate issues"
+ },
+ {
+  "id": "A11Y-search",
+  "doc": "NFR-ACC-001 (WCAG 2.2 AA)",
+  "expected": "no serious/critical WCAG 2.2 AA violations on search",
+  "passed": true,
+  "note": "0 minor/moderate issues"
+ },
+ {
+  "id": "A11Y-login",
+  "doc": "NFR-ACC-001 (WCAG 2.2 AA)",
+  "expected": "no serious/critical WCAG 2.2 AA violations on login",
+  "passed": true,
+  "note": "0 minor/moderate issues"
+ },
+ {
+  "id": "A11Y-register",
+  "doc": "NFR-ACC-001 (WCAG 2.2 AA)",
+  "expected": "no serious/critical WCAG 2.2 AA violations on register",
+  "passed": true,
+  "note": "0 minor/moderate issues"
+ },
+ {
+  "id": "A11Y-home-uz",
+  "doc": "NFR-ACC-001 (WCAG 2.2 AA)",
+  "expected": "no serious/critical WCAG 2.2 AA violations on home-uz",
+  "passed": true,
+  "note": "0 minor/moderate issues"
+ },
+ {
+  "id": "UI-responsive-375",
+  "doc": "UI/UX Spec (mobile-first responsiveness)",
+  "expected": "no horizontal overflow at 375px width",
+  "passed": true,
+  "note": "scrollWidth=375 clientWidth=375"
+ },
+ {
+  "id": "UI-console-errors",
+  "doc": "Frontend Arch Handbook (clean runtime)",
+  "expected": "no uncaught console errors while driving the UI",
+  "passed": true,
+  "note": "none"
+ },
+ {
+  "id": "UI-failed-requests",
+  "doc": "Frontend/backend contract",
+  "expected": "no failed network requests while driving the UI",
+  "passed": false,
+  "note": "GET http://127.0.0.1:3100/uz-Latn/register?_rsc=Sf5ussTFr3AtHdon net::ERR_ABORTED | GET http://127.0.0.1:3100/uz-Latn/login?_rsc=Sf5ussTFr3AtHdon net::ERR_ABORTED | GET http://127.0.0.1:3100/uz-Latn/search?_rsc=Sf5ussTFr3AtHdon net::ERR_ABORTED | GET http://127.0.0.1:3100/uz-Latn?_rsc=LBhzfiUVVrOic_BB net::ERR_ABORTED | GET http://127.0.0.1:3100/uz-Latn/register?_rsc=LBhzfiUVVrOic_BB net::ERR_ABOR"
+ }
+]

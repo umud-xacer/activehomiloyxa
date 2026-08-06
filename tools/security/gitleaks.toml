@@ -1,0 +1,38 @@
+# tools/security/gitleaks.toml -- QG-07 secret scan (Playbook Sec 16, AIR-16, DevSecOps Sec 8).
+# Run: gitleaks detect --config tools/security/gitleaks.toml --source . --no-git=false
+
+title = "active-home gitleaks config"
+
+[extend]
+useDefault = true
+
+# gitleaks' global allowlist is a single table (`[allowlist]`, not an array) -- both known
+# false-positive categories below live in this one block. Each `regexes` entry is an exact,
+# specific literal (not a broad pattern), so combining them here doesn't broaden either beyond
+# its own intent.
+[allowlist]
+regexes = [
+  # Placeholder values in committed .env.*.example templates are not secrets; they exist so
+  # the real secret is obviously missing until injected at runtime (DevSecOps Sec 8, Infra
+  # Sec 11).
+  '''CHANGE_ME_IN_SECRETS_STORE''',
+  # contracts/openapi.yaml's `SessionEstablishedExample` (§ "Session issued after OTP
+  # verification") is a documentation fixture -- fabricated UUID, fabricated 2026-07-07 dates,
+  # and this literal opaque-token placeholder, none of it ever a live credential. Frozen by
+  # DEC-21 (P-02: "you are conforming code TO it, not changing it"), so the fix here is
+  # allowlisting the exact fixture string, not editing the contract.
+  # apps/frontend/openapi/openapi.yaml is this same literal content, vendored (P-05) -- same
+  # fixture, same allowance.
+  '''sess_opaque_Yp9x2Lm7Qa1Kd8Rf''',
+]
+paths = [
+  # docs/assessments/ holds the dated assessment artifacts: the reports plus captured
+  # request/response evidence and the harness that produced it. Everything under it was
+  # generated against a throwaway local stack seeded with synthetic data (`*.example.invalid`
+  # addresses, fabricated provider keys), so opaque-looking literals quoted there -- an OTP
+  # confirmation token in a defect's evidence, a placeholder VAPID pair in the harness env
+  # template -- are documentation fixtures, never live credentials. Same rationale as the
+  # OpenAPI fixture above: the value is evidence of observed behaviour, so it is allowlisted
+  # rather than edited out of the record.
+  '''docs/assessments/.*''',
+]

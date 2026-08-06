@@ -1,0 +1,7 @@
+{
+  "operation": "listing_create_draft_write_path",
+  "count": 50,
+  "p50_ms": 29.89,
+  "p95_ms": 32.67,
+  "p99_ms": 48.64
+}

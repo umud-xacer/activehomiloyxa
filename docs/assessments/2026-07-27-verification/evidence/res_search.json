@@ -1,0 +1,209 @@
+[
+ {
+  "id": "SRCH-corpus",
+  "doc": "test setup",
+  "expected": "a multi-script corpus is published",
+  "status": null,
+  "passed": true,
+  "observed": "['aeb78aa5-ac91-4c7e-ae7f-efdae293ee5d', '31153b8d-f956-4ed4-94ba-b1aa2f52a1e0', '2099d6d7-4db8-4870-ba19-9ee119dc5e93', '1e606668-15dd-43ba-acf9-aaf498c52de3']",
+  "note": "published 4/4 (quota may cap this)"
+ },
+ {
+  "id": "SRCH-indexing",
+  "doc": "SAD (OpenSearch read model populated only by the indexing worker)",
+  "expected": "published listings reach the search index via the outbox",
+  "status": null,
+  "passed": true,
+  "observed": "36",
+  "note": "36 docs indexed for 4 published"
+ },
+ {
+  "id": "SRCH-001-fulltext",
+  "doc": "FR-SRCH-001",
+  "expected": "relevant listings are returned for a query term",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"listingId\":\"298e208b-55f1-48f6-8ed3-39f3edb166f2\",\"title\":\"Toshkentda arzon kvartira\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311,\"longitude\":69.24},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"toshkentda-arzon-kvartira-298e208b\"},{\"listingId\":\"aeb78aa5-ac91-4c7e-ae7f-efdae293ee5d\",\"title\":\"Toshkentda arzon kvartira\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311,\"longitude\":69.24},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"",
+  "note": "4 hits for 'kvartira'"
+ },
+ {
+  "id": "SRCH-004-latin-finds-cyrillic",
+  "doc": "FR-SRCH-004 / DEC-19",
+  "expected": "a Latin query returns matching Cyrillic content",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"listingId\":\"298e208b-55f1-48f6-8ed3-39f3edb166f2\",\"title\":\"Toshkentda arzon kvartira\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311,\"longitude\":69.24},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"toshkentda-arzon-kvartira-298e208b\"},{\"listingId\":\"aeb78aa5-ac91-4c7e-ae7f-efdae293ee5d\",\"title\":\"Toshkentda arzon kvartira\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311,\"longitude\":69.24},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"",
+  "note": "latin hits=1 cyrillic hits=1 overlap=1"
+ },
+ {
+  "id": "SRCH-004-same-result-set",
+  "doc": "FR-SRCH-004 / DEC-19",
+  "expected": "a query in either script returns content in either",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"listingId\":\"a12e33ca-692f-43dc-97e9-1c766427db34\",\"title\":\"\u0422\u043e\u0448\u043a\u0435\u043d\u0442\u0434\u0430 \u0430\u0440\u0437\u043e\u043d \u043a\u0432\u0430\u0440\u0442\u0438\u0440\u0430\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.312,\"longitude\":69.241},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"listing-a12e33ca\"},{\"listingId\":\"31153b8d-f956-4ed4-94ba-b1aa2f52a1e0\",\"title\":\"\u0422\u043e\u0448\u043a\u0435\u043d\u0442\u0434\u0430 \u0430\u0440\u0437\u043e\u043d \u043a\u0432\u0430\u0440\u0442\u0438\u0440\u0430\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.312,\"longitude\":69.241},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"listing-311",
+  "note": "latin=1 cyrillic=1 equal=True"
+ },
+ {
+  "id": "SRCH-004-apostrophe-gh",
+  "doc": "FR-SRCH-004 / DEC-19",
+  "expected": "cross-script match for 'g\u02bbishtli' (o\u02bb/g\u02bb handling)",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"listingId\":\"aa83f67c-f45e-45e1-ae71-d718831cec24\",\"title\":\"Samarqandda g\u02bbishtli uy\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.654,\"longitude\":66.959},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"samarqandda-g-ishtli-uy-aa83f67c\"},{\"listingId\":\"2099d6d7-4db8-4870-ba19-9ee119dc5e93\",\"title\":\"Samarqandda g\u02bbishtli uy\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.654,\"longitude\":66.959},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug",
+  "note": "4 hits"
+ },
+ {
+  "id": "SRCH-004-cyrillic-gh",
+  "doc": "FR-SRCH-004 / DEC-19",
+  "expected": "cross-script match for '\u0493\u0438\u0448\u0442\u043b\u0438' (o\u02bb/g\u02bb handling)",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"listingId\":\"29f24b6b-538e-4aef-80e4-3666b04cb1b5\",\"title\":\"\u0421\u0430\u043c\u0430\u0440\u049b\u0430\u043d\u0434\u0434\u0430 \u0493\u0438\u0448\u0442\u043b\u0438 \u0443\u0439\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.655,\"longitude\":66.96},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"listing-29f24b6b\"},{\"listingId\":\"1e606668-15dd-43ba-acf9-aaf498c52de3\",\"title\":\"\u0421\u0430\u043c\u0430\u0440\u049b\u0430\u043d\u0434\u0434\u0430 \u0493\u0438\u0448\u0442\u043b\u0438 \u0443\u0439\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.655,\"longitude\":66.96},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"listing-1e606668\"},",
+  "note": "4 hits"
+ },
+ {
+  "id": "SRCH-004-apostrophe-o",
+  "doc": "FR-SRCH-004 / DEC-19",
+  "expected": "cross-script match for 'o\u02bbzbekiston' (o\u02bb/g\u02bb handling)",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"listingId\":\"aa83f67c-f45e-45e1-ae71-d718831cec24\",\"title\":\"Samarqandda g\u02bbishtli uy\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.654,\"longitude\":66.959},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"samarqandda-g-ishtli-uy-aa83f67c\"},{\"listingId\":\"2099d6d7-4db8-4870-ba19-9ee119dc5e93\",\"title\":\"Samarqandda g\u02bbishtli uy\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.654,\"longitude\":66.959},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug",
+  "note": "2 hits"
+ },
+ {
+  "id": "SRCH-004-cyrillic-o",
+  "doc": "FR-SRCH-004 / DEC-19",
+  "expected": "cross-script match for '\u045e\u0437\u0431\u0435\u043a\u0438\u0441\u0442\u043e\u043d' (o\u02bb/g\u02bb handling)",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"listingId\":\"29f24b6b-538e-4aef-80e4-3666b04cb1b5\",\"title\":\"\u0421\u0430\u043c\u0430\u0440\u049b\u0430\u043d\u0434\u0434\u0430 \u0493\u0438\u0448\u0442\u043b\u0438 \u0443\u0439\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.655,\"longitude\":66.96},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"listing-29f24b6b\"},{\"listingId\":\"1e606668-15dd-43ba-acf9-aaf498c52de3\",\"title\":\"\u0421\u0430\u043c\u0430\u0440\u049b\u0430\u043d\u0434\u0434\u0430 \u0493\u0438\u0448\u0442\u043b\u0438 \u0443\u0439\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.655,\"longitude\":66.96},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"listing-1e606668\"}]",
+  "note": "2 hits"
+ },
+ {
+  "id": "SRCH-002-facets-endpoint",
+  "doc": "FR-SRCH-002 / FR-CFG-003",
+  "expected": "facets are served from the published search configuration",
+  "status": 200,
+  "passed": true,
+  "observed": "[{\"fieldCode\":\"rooms\",\"label\":{\"uz_latn\":\"rooms\",\"uz_cyrl\":null,\"ru\":null,\"en\":null},\"buckets\":[{\"value\":\"3\",\"count\":28},{\"value\":\"4\",\"count\":4},{\"value\":\"2\",\"count\":2},{\"value\":\"5\",\"count\":2}]},{\"fieldCode\":\"condition\",\"label\":{\"uz_latn\":\"condition\",\"uz_cyrl\":null,\"ru\":null,\"en\":null},\"buckets\":[]}]",
+  "note": "[{\"fieldCode\":\"rooms\",\"label\":{\"uz_latn\":\"rooms\",\"uz_cyrl\":null,\"ru\":null,\"en\":null},\"buckets\":[{\"value\":\"3\",\"count\":28},{\"value\":\"4\",\"count\":4},{\"value\":\"2\",\"count\":2},{\"value\":\"5\",\"count\":2}]},{\"fie"
+ },
+ {
+  "id": "SRCH-002-facets-configured",
+  "doc": "FR-SRCH-002",
+  "expected": "the configured facets (rooms, condition) are the ones offered",
+  "status": null,
+  "passed": true,
+  "observed": "{'condition', 'rooms'}",
+  "note": "facets=['condition', 'rooms']"
+ },
+ {
+  "id": "SRCH-002-facet-filter",
+  "doc": "FR-SRCH-002",
+  "expected": "applying a facet narrows results accordingly",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"listingId\":\"aa83f67c-f45e-45e1-ae71-d718831cec24\",\"title\":\"Samarqandda g\u02bbishtli uy\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.654,\"longitude\":66.959},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"samarqandda-g-ishtli-uy-aa83f67c\"},{\"listingId\":\"2099d6d7-4db8-4870-ba19-9ee119dc5e93\",\"title\":\"Samarqandda g\u02bbishtli uy\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.654,\"longitude\":66.959},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug",
+  "note": "6 hits with rooms=4"
+ },
+ {
+  "id": "SRCH-003-sort-RELEVANCE",
+  "doc": "FR-SRCH-003",
+  "expected": "results reorder per the selected configured sort option",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"listingId\":\"aa83f67c-f45e-45e1-ae71-d718831cec24\",\"title\":\"Samarqandda g\u02bbishtli uy\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.654,\"longitude\":66.959},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"samarqandda-g-ishtli-uy-aa83f67c\"},{\"listingId\":\"2099d6d7-4db8-4870-ba19-9ee119dc5e93\",\"title\":\"Samarqandda g\u02bbishtli uy\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.654,\"longitude\":66.959},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug",
+  "note": "6 hits"
+ },
+ {
+  "id": "SRCH-003-sort-NEWEST",
+  "doc": "FR-SRCH-003",
+  "expected": "results reorder per the selected configured sort option",
+  "status": 422,
+  "passed": false,
+  "observed": "{\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more fields failed validation.\",\"traceId\":\"c085b037-74af-4b0f-9ef8-75eeb4ba3d21\",\"errors\":[{\"path\":\"/query/sort\",\"rule\":\"literal_error\",\"message\":\"Input should be 'RELEVANCE', 'RECENCY', 'PRICE_ASC' or 'PRICE_DESC'\"}]}",
+  "note": "0 hits"
+ },
+ {
+  "id": "SRCH-003-sort-PRICE_ASC",
+  "doc": "FR-SRCH-003",
+  "expected": "results reorder per the selected configured sort option",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"listingId\":\"298e208b-55f1-48f6-8ed3-39f3edb166f2\",\"title\":\"Toshkentda arzon kvartira\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311,\"longitude\":69.24},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"toshkentda-arzon-kvartira-298e208b\"},{\"listingId\":\"aa83f67c-f45e-45e1-ae71-d718831cec24\",\"title\":\"Samarqandda g\u02bbishtli uy\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.654,\"longitude\":66.959},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"s",
+  "note": "6 hits"
+ },
+ {
+  "id": "SRCH-003-sort-PRICE_DESC",
+  "doc": "FR-SRCH-003",
+  "expected": "results reorder per the selected configured sort option",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"listingId\":\"298e208b-55f1-48f6-8ed3-39f3edb166f2\",\"title\":\"Toshkentda arzon kvartira\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311,\"longitude\":69.24},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"toshkentda-arzon-kvartira-298e208b\"},{\"listingId\":\"aa83f67c-f45e-45e1-ae71-d718831cec24\",\"title\":\"Samarqandda g\u02bbishtli uy\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.654,\"longitude\":66.959},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"s",
+  "note": "6 hits"
+ },
+ {
+  "id": "MAP-003-radius",
+  "doc": "FR-MAP-003",
+  "expected": "only listings within the chosen radius are returned",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"listingId\":\"d3cdd2b3-3cf2-49a6-8c47-bb82b0be6967\",\"title\":\"Yangilangan e\u02bclon\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"600000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311081,\"longitude\":69.240562},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"yaxshi-kvartira-d3cdd2b3\"},{\"listingId\":\"3114dfd4-0bbe-4f90-914b-8244153a94e8\",\"title\":\"Yangilangan e\u02bclon\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"600000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311081,\"longitude\":69.240562},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"yaxsh",
+  "note": "5km=20 hits, 1km=20 hits (Samarqand ~270km away must be excluded)"
+ },
+ {
+  "id": "SRCH-005-promoted-field",
+  "doc": "FR-SRCH-005 / BRULE-10",
+  "expected": "results carry a promotion label field so promoted results can be marked",
+  "status": 200,
+  "passed": false,
+  "observed": "{\"items\":[{\"listingId\":\"aa83f67c-f45e-45e1-ae71-d718831cec24\",\"title\":\"Samarqandda g\u02bbishtli uy\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.654,\"longitude\":66.959},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"samarqandda-g-ishtli-uy-aa83f67c\"},{\"listingId\":\"2099d6d7-4db8-4870-ba19-9ee119dc5e93\",\"title\":\"Samarqandda g\u02bbishtli uy\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":39.654,\"longitude\":66.959},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug",
+  "note": "0/6 hits expose a promotion field"
+ },
+ {
+  "id": "SRCH-005-cap",
+  "doc": "FR-SRCH-005 / BRULE-10 (promotion_page_cap=3)",
+  "expected": "promoted results do not exceed the configured per-page cap",
+  "status": null,
+  "passed": true,
+  "observed": "[]",
+  "note": "0 promoted on page (cap 3)"
+ },
+ {
+  "id": "SRCH-suggest",
+  "doc": "contracts/openapi.yaml operationId suggest",
+  "expected": "suggestions are returned for a prefix",
+  "status": 200,
+  "passed": true,
+  "observed": "[{\"text\":\"Toshkentda arzon kvartira\",\"type\":\"LISTING\",\"refId\":\"298e208b-55f1-48f6-8ed3-39f3edb166f2\"},{\"text\":\"Toshkentda arzon kvartira\",\"type\":\"LISTING\",\"refId\":\"aeb78aa5-ac91-4c7e-ae7f-efdae293ee5d\"},{\"text\":\"\u0422\u043e\u0448\u043a\u0435\u043d\u0442\u0434\u0430 \u0430\u0440\u0437\u043e\u043d \u043a\u0432\u0430\u0440\u0442\u0438\u0440\u0430\",\"type\":\"LISTING\",\"refId\":\"a12e33ca-692f-43dc-97e9-1c766427db34\"},{\"text\":\"\u0422\u043e\u0448\u043a\u0435\u043d\u0442\u0434\u0430 \u0430\u0440\u0437\u043e\u043d \u043a\u0432\u0430\u0440\u0442\u0438\u0440\u0430\",\"type\":\"LISTING\",\"refId\":\"31153b8d-f956-4ed4-94ba-b1aa2f52a1e0\"}]",
+  "note": "4 suggestions"
+ },
+ {
+  "id": "DEGRADE-search-fallback",
+  "doc": "Infra/DevSecOps degradation path; SAD (PostgreSQL fallback)",
+  "expected": "with OpenSearch stopped, search still returns results via the fallback",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"listingId\":\"aeb78aa5-ac91-4c7e-ae7f-efdae293ee5d\",\"title\":\"Toshkentda arzon kvartira\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.00\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311,\"longitude\":69.24},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"toshkentda-arzon-kvartira-aeb78aa5\"},{\"listingId\":\"298e208b-55f1-48f6-8ed3-39f3edb166f2\",\"title\":\"Toshkentda arzon kvartira\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.00\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311,\"longitude\":69.24},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null",
+  "note": "status=200 hits=16"
+ },
+ {
+  "id": "DEGRADE-listings-unaffected",
+  "doc": "degradation path",
+  "expected": "browsing listings is unaffected while OpenSearch is down",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"id\":\"d3cdd2b3-3cf2-49a6-8c47-bb82b0be6967\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"305bab85-d6df-4bae-bbcd-5a45abb1baa7\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5\",\"categoryPath\":\"/kvartira\",\"formDefinitionVersionId\":\"0da3a697-52d7-4d7c-bbe2-1eb2d68aead9\",\"title\":\"Yangilangan e\u02bclon\",\"description\":\"Yangi tavsif matni\",\"attributes\":{\"rooms\":4,\"area_m2\":80.0,\"has_balcony\":false},\"price\":{\"amount\":\"600000000.00\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311081,\"longitude\":69.240562},\"lifecycleState\":\"EDITED\",\"isFlagged\":false,\"expiresAt\":\"2026-08-2",
+  "note": "status=200"
+ },
+ {
+  "id": "DEGRADE-recovery",
+  "doc": "degradation path",
+  "expected": "search recovers once OpenSearch is back",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"listingId\":\"aeb78aa5-ac91-4c7e-ae7f-efdae293ee5d\",\"title\":\"Toshkentda arzon kvartira\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311,\"longitude\":69.24},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"slug\":\"toshkentda-arzon-kvartira-aeb78aa5\"},{\"listingId\":\"298e208b-55f1-48f6-8ed3-39f3edb166f2\",\"title\":\"Toshkentda arzon kvartira\",\"categoryPath\":\"/kvartira\",\"price\":{\"amount\":\"100000000.0\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311,\"longitude\":69.24},\"thumbnailUrl\":null,\"verifiedBadge\":false,\"promoted\":null,\"",
+  "note": "hits=4"
+ }
+]

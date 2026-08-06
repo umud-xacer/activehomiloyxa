@@ -1,0 +1,413 @@
+name: CI
+
+# One job per quality gate (Playbook Sec 16, QG-01..QG-10) so branch protection can require each
+# individually (DevSecOps Sec 3/Sec 6). Chained with `needs:` to match the fail-fast execution
+# order in DevSecOps Sec 4 (cheapest/most-likely-to-fail checks first); independent gates
+# (QG-06..QG-10) fan out in parallel once the cheap checks pass.
+#
+# STATUS (Task P-06): QG-01..QG-10 all have a real surface to check now (configuration +
+# identity modules, a real FastAPI app, real migrations, identity's AuthorizationService and its
+# allow/deny matrix suite, and -- as of Task P-05 -- a real Next.js app under apps/frontend/).
+# QG-10's former guard clause (no-op while apps/frontend/package.json was absent) is gone; it now
+# runs the real build/lint/test/codegen-drift steps below.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # P-20 / DevSecOps Sec "End-to-end" row: "On merge to main, against staging (post-deploy);
+    # nightly." No CD pipeline / staging deploy exists yet in this repo (only ci.yml), so
+    # qg03b-full-stack-e2e below approximates this with ephemeral service containers inside CI
+    # instead of a real staging environment -- the nightly trigger is the one half of that
+    # cadence achievable today; re-point this at a real staging smoke run once CD exists.
+    - cron: "0 2 * * *"
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  qg01-lint:
+    name: "QG-01 lint (ruff)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: ruff format --config tools/ruff.toml --check apps/backend/src apps/backend/tests packages/shared/src packages/shared/tests contracts tools
+      - run: ruff check --config tools/ruff.toml apps/backend/src apps/backend/tests packages/shared/src packages/shared/tests contracts tools
+
+  qg02-typecheck:
+    name: "QG-02 type check (mypy --strict)"
+    needs: qg01-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -r requirements-dev.txt -e packages/shared -e contracts -e apps/backend
+      - run: mypy --config-file tools/mypy.ini apps/backend/src apps/backend/tests packages/shared/src packages/shared/tests contracts
+
+  qg05-architecture:
+    name: "QG-05 architecture boundaries (import-linter)"
+    needs: qg02-typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: PYTHONPATH="apps/backend/src" lint-imports --config tools/importlinter.cfg
+
+  qg03-tests:
+    name: "QG-03 unit + integration tests (pytest)"
+    needs: qg05-architecture
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: active_home_test
+          POSTGRES_USER: active_home
+          POSTGRES_PASSWORD: active_home_ci_only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U active_home -d active_home_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: active_home_test
+      POSTGRES_USER: active_home
+      POSTGRES_PASSWORD: active_home_ci_only
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -r requirements-dev.txt -e packages/shared -e contracts -e apps/backend
+      - run: PYTHONPATH="apps/backend/src:packages/shared/src:." pytest -c tools/pytest.ini --rootdir=.
+
+  qg03b-full-stack-e2e:
+    name: "QG-03b full-stack E2E (OpenSearch/MinIO) -- merge to main + nightly"
+    needs: qg05-architecture
+    # DevSecOps' own End-to-end row cadence ("on merge to main ... ; nightly") -- not run on
+    # every PR (unlike qg03-tests) since it stands up a heavier four-service stack. See the
+    # top-level `schedule:` trigger's own comment for why this substitutes ephemeral CI service
+    # containers for the doc's literal "against staging" model (no CD/staging deploy exists yet).
+    if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: active_home_test
+          POSTGRES_USER: active_home
+          POSTGRES_PASSWORD: active_home_ci_only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U active_home -d active_home_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+      opensearch:
+        image: opensearchproject/opensearch:2.19.0
+        env:
+          discovery.type: single-node
+          DISABLE_SECURITY_PLUGIN: "true"
+          OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+        ports: ["9200:9200"]
+        options: >-
+          --health-cmd "curl -sf http://localhost:9200/_cluster/health"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: active_home_test
+      POSTGRES_USER: active_home
+      POSTGRES_PASSWORD: active_home_ci_only
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      OPENSEARCH_HOST: localhost
+      OPENSEARCH_PORT: 9200
+      MINIO_ENDPOINT: localhost:9000
+      MINIO_ROOT_USER: active_home
+      MINIO_ROOT_PASSWORD: active_home_ci_only
+      MINIO_MEDIA_BUCKET: active-home-media
+      MINIO_USE_TLS: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -r requirements-dev.txt -e packages/shared -e contracts -e apps/backend
+      # GitHub Actions `services:` entries cannot override a container's command (only
+      # image/env/ports/options) -- minio/minio's image needs `server /data --console-address
+      # ":9001"` (see deployment/compose/docker-compose.yml's own `command:`), so it is started
+      # directly here instead of as a `services:` entry.
+      - name: start MinIO
+        run: |
+          docker run -d --name minio -p 9000:9000 -p 9001:9001 \
+            -e MINIO_ROOT_USER="$MINIO_ROOT_USER" -e MINIO_ROOT_PASSWORD="$MINIO_ROOT_PASSWORD" \
+            minio/minio:RELEASE.2025-04-22T22-12-26Z server /data --console-address ":9001"
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:9000/minio/health/ready && break
+            sleep 2
+          done
+      - run: PYTHONPATH="apps/backend/src:packages/shared/src:." pytest -c tools/pytest.ini --rootdir=.
+
+  qg04-coverage:
+    name: "QG-04 coverage floor (COV-01)"
+    needs: qg03-tests
+    runs-on: ubuntu-latest
+    # Every *_live integration test's own conftest.py says "runs for real in CI" -- this job
+    # measures coverage over the exact same full suite qg03-tests runs, so it needs the same
+    # real Postgres/Redis, not just qg03-tests' pass/fail result. Without this, every *_live
+    # test errors on MissingInfraConfigError instead of skipping, and `coverage run`'s wrapped
+    # pytest invocation exits 1 before a coverage percentage is even computed.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: active_home_test
+          POSTGRES_USER: active_home
+          POSTGRES_PASSWORD: active_home_ci_only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U active_home -d active_home_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: active_home_test
+      POSTGRES_USER: active_home
+      POSTGRES_PASSWORD: active_home_ci_only
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -r requirements-dev.txt -e packages/shared -e contracts -e apps/backend
+      - id: has-source
+        run: |
+          if find apps/backend/src packages/shared/src contracts -name '*.py' ! -name '__init__.py' | grep -q .; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::QG-04 has no coverable source beyond __init__.py yet."
+          fi
+      - if: steps.has-source.outputs.found == 'true'
+        run: |
+          export PYTHONPATH="apps/backend/src:packages/shared/src:."
+          coverage run --rcfile=tools/coverage.ini -m pytest -c tools/pytest.ini --rootdir=.
+          coverage report --rcfile=tools/coverage.ini
+          coverage json --rcfile=tools/coverage.ini -o coverage.json
+      - if: steps.has-source.outputs.found == 'true'
+        run: python3 tools/check_domain_coverage.py coverage.json
+
+  qg06-api-contract:
+    name: "QG-06 API contract conformance"
+    needs: qg01-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install openapi-spec-validator==0.7.* pyyaml
+      - name: well-formed OpenAPI 3.1, $ref resolution, no legacy nullable
+        run: python3 tools/validate_openapi.py contracts/openapi.yaml
+      # The drift check imports `main.app` (Task P-04+: a real FastAPI app with real module
+      # routers), so it needs the full backend dependency set installed, not just the two
+      # spec-validation packages above.
+      - run: pip install -r requirements-dev.txt -e packages/shared -e contracts -e apps/backend
+      - name: contract-drift check (implemented routes vs contracts/openapi.yaml)
+        run: python3 tools/check_contract_drift.py contracts/openapi.yaml
+
+  qg07-security:
+    name: "QG-07 security (secret scan + SAST + SCA)"
+    needs: qg01-lint
+    runs-on: ubuntu-latest
+    # gitleaks-action's PR-diff scan mode calls GET /pulls/{n}/commits with GITHUB_TOKEN --
+    # this repo's default token permissions don't include pull-requests, so it 403s without
+    # this explicit grant (job-scoped, least-privilege: only this job needs it).
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: tools/security/gitleaks.toml
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: SAST (bandit)
+        run: bandit -c tools/security/bandit.yaml -r apps/backend/src packages/shared/src contracts
+      - name: SCA (pip-audit)
+        run: |
+          pip-audit -r requirements-dev.txt
+          python3 -c "
+          import tomllib
+          d = tomllib.load(open('apps/backend/pyproject.toml', 'rb'))
+          for dep in d['project']['dependencies']:
+              if not dep.startswith('active-home-'):
+                  print(dep)
+          " > /tmp/backend-deps.txt
+          pip-audit -r /tmp/backend-deps.txt
+
+  qg08-authorization-matrix:
+    name: "QG-08 authorization matrix"
+    needs: qg01-lint
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: active_home_test
+          POSTGRES_USER: active_home
+          POSTGRES_PASSWORD: active_home_ci_only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U active_home -d active_home_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: active_home_test
+      POSTGRES_USER: active_home
+      POSTGRES_PASSWORD: active_home_ci_only
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -r requirements-dev.txt -e packages/shared -e contracts -e apps/backend
+      # P-20: consolidated into tests/authorization/ (was tests/test_authorization_matrix.py,
+      # a single-module harness from Task P-05). Real Postgres/Redis services added above --
+      # test_no_route_grants_access.py drives the REAL main.create_app() and would otherwise
+      # silently skip in CI via its own _skip_without_datastores guard rather than actually
+      # proving default-deny (the exact "guard clause should fire -> needs updating" case
+      # CLAUDE.md calls out, not a reason to leave the gate no-op'd).
+      - name: consolidated authorization allow/deny matrix (all 8 modules) + default-deny proofs
+        run: |
+          PYTHONPATH="apps/backend/src:packages/shared/src:." pytest -c tools/pytest.ini --rootdir=. \
+            tests/authorization/ \
+            apps/backend/tests/identity/test_authorization.py
+
+  qg09-migration-safety:
+    name: "QG-09 migration safety"
+    needs: qg01-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: determine base ref
+        id: base-ref
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "ref=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: no edited-applied migrations, no unmarked destructive operations (AIR-14, DevSecOps Sec 7)
+        run: python3 tools/check_migration_safety.py --base-ref "${{ steps.base-ref.outputs.ref }}"
+
+  qg10-frontend:
+    name: "QG-10 frontend build/lint/test"
+    needs: qg01-lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/frontend/package-lock.json
+      - run: npm ci --legacy-peer-deps
+      # Handbook Sec9/FAIR-05: codegen is the only source of API types, and it must run in CI
+      # and match what's committed -- without this, the frontend can silently drift from the
+      # frozen contract (contracts/openapi.yaml) with no gate catching it.
+      - name: codegen-drift check (generated API client vs contracts/openapi.yaml)
+        run: |
+          npm run generate:api
+          git diff --exit-code -- openapi/openapi.yaml openapi/schema.d.ts
+      - run: npm run typecheck
+      - run: npm run lint
+      - name: unit + component tests (Vitest/RTL, incl. jest-axe accessibility assertions)
+        run: npm test
+      - run: npm run build
+
+  qg10b-frontend-e2e:
+    name: "QG-10b frontend E2E (Playwright) -- merge to main + nightly"
+    needs: qg10-frontend
+    # Handbook Sec19: E2E runs on merge to main / nightly, not on every PR -- same cadence as
+    # qg03b-full-stack-e2e above, not part of the PR-blocking QG-10 gate itself.
+    if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/frontend/package-lock.json
+      - run: npm ci --legacy-peer-deps
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

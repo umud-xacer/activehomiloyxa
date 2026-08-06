@@ -1,0 +1,102 @@
+"""identity/domain -- UserAccount, Session, OtpChallenge aggregates, the AuthorizationService
+policy, value objects, and typed exceptions (Task P-05). Imports `shared_kernel` only (Clean
+Architecture rule 1); never imported by another module (`domain/` is never part of a module's
+public surface, AIR-02)."""
+
+from __future__ import annotations
+
+from identity.domain.authorization import ActingContext, AuthorizationService
+from identity.domain.exceptions import (
+    AccountNotActiveError,
+    DuplicateContactError,
+    IdentityDomainError,
+    IllegalAccountStateTransitionError,
+    InvalidCredentialsError,
+    OtpAlreadyConsumedError,
+    OtpAttemptsExceededError,
+    OtpCodeMismatchError,
+    OtpExpiredError,
+    OtpPurposeMismatchError,
+    OtpThrottledError,
+    PermissionDeniedError,
+    ProfileNotOwnedError,
+    RegistrationAlreadyDecidedError,
+    RoleNotAssignedError,
+    SessionExpiredError,
+    SessionRevokedError,
+    UnknownAuthenticationMethodError,
+    WrongActingProfileError,
+)
+from identity.domain.otp_challenge import OtpChallenge, OtpVerificationOutcome
+from identity.domain.policies import (
+    OTP_MAX_REQUESTS_PER_WINDOW,
+    OTP_MAX_VERIFY_ATTEMPTS,
+    OTP_THROTTLE_WINDOW_MINUTES,
+    OtpThrottlePolicy,
+    SessionExpiryPolicy,
+)
+from identity.domain.session import Session
+from identity.domain.user_account import AuthenticationMethod, RoleAssignment, UserAccount
+from identity.domain.value_objects import (
+    AccountKind,
+    AccountStatus,
+    AuthMethodType,
+    EmailAddress,
+    InvalidEmailAddressError,
+    InvalidPhoneNumberError,
+    NotificationPreferences,
+    OtpPurpose,
+    PhoneNumber,
+    PhoneRevealMode,
+    PrivacySettings,
+    RegistrationDecision,
+    RegistrationReviewStatus,
+)
+
+__all__ = [
+    "OTP_MAX_REQUESTS_PER_WINDOW",
+    "OTP_MAX_VERIFY_ATTEMPTS",
+    "OTP_THROTTLE_WINDOW_MINUTES",
+    "AccountKind",
+    "AccountNotActiveError",
+    "AccountStatus",
+    "ActingContext",
+    "AuthMethodType",
+    "AuthenticationMethod",
+    "AuthorizationService",
+    "DuplicateContactError",
+    "EmailAddress",
+    "IdentityDomainError",
+    "IllegalAccountStateTransitionError",
+    "InvalidCredentialsError",
+    "InvalidEmailAddressError",
+    "InvalidPhoneNumberError",
+    "NotificationPreferences",
+    "OtpAlreadyConsumedError",
+    "OtpAttemptsExceededError",
+    "OtpChallenge",
+    "OtpCodeMismatchError",
+    "OtpExpiredError",
+    "OtpPurpose",
+    "OtpPurposeMismatchError",
+    "OtpThrottlePolicy",
+    "OtpThrottledError",
+    "OtpVerificationOutcome",
+    "PermissionDeniedError",
+    "PhoneNumber",
+    "PhoneRevealMode",
+    "PrivacySettings",
+    "ProfileNotOwnedError",
+    "RegistrationAlreadyDecidedError",
+    "RegistrationDecision",
+    "RegistrationReviewStatus",
+    "RoleAssignment",
+    "RoleNotAssignedError",
+    "Session",
+    "SessionExpiredError",
+    "SessionExpiryPolicy",
+    "SessionRevokedError",
+    "UnknownAuthenticationMethodError",
+    "UserAccount",
+    "WrongActingProfileError",
+]

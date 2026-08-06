@@ -1,0 +1,263 @@
+[
+ {
+  "id": "MOD-001-report",
+  "doc": "FR-MOD-001",
+  "expected": "any user can report a listing; it enters the queue",
+  "status": 202,
+  "passed": true,
+  "observed": "null",
+  "note": "null"
+ },
+ {
+  "id": "MOD-005-queue",
+  "doc": "FR-MOD-005",
+  "expected": "the moderation queue lists reports and flagged content",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"id\":\"bb263eb5-6112-4f9f-a2d7-ab66acdfbfa3\",\"subjectType\":\"LISTING\",\"subjectId\":\"ebe362b6-ee4e-4b1b-9170-d0f8dcd41397\",\"originType\":\"AUTOMATED_FLAG\",\"reportReason\":null,\"ruleKey\":\"duplicate-detection\",\"status\":\"OPEN\",\"resolutionAction\":null,\"createdAt\":\"2026-07-27T11:53:19.390728Z\"},{\"id\":\"99bc7f61-1f1e-4a00-bde7-17c09f9220dc\",\"subjectType\":\"LISTING\",\"subjectId\":\"ee57437b-6db0-4bfc-b791-29650b4a269f\",\"originType\":\"AUTOMATED_FLAG\",\"reportReason\":null,\"ruleKey\":\"duplicate-detection\",\"status\":\"OPEN\",\"resolutionAction\":null,\"createdAt\":\"2026-07-27T11:53:19.404156Z\"},{\"id\":\"98c6df66-22b7",
+  "note": "14 queued items"
+ },
+ {
+  "id": "MOD-005-queue-denied",
+  "doc": "FR-MOD-005 / NFR-SEC-002",
+  "expected": "an ordinary user cannot see the moderation queue",
+  "status": 403,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller lacks the required permission\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\"e7736a5d-f16c-46d2-adc9-27cb4674d354\"}",
+  "note": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller lacks the required permission\",\"status\":403,\"co"
+ },
+ {
+  "id": "MOD-003-verb-closed",
+  "doc": "FR-MOD-003 / BR-MOD-02 (closed verb set)",
+  "expected": "an action verb outside the fixed set is rejected",
+  "status": 422,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more fields failed validation.\",\"traceId\":\"20f23b67-5d53-4558-af75-5a1456f7f5ca\",\"errors\":[{\"path\":\"/body/action\",\"rule\":\"literal_error\",\"message\":\"Input should be 'HIDE', 'REJECT', 'SUSPEND', 'REQUEST_CORRECTION', 'REMOVE', 'SUSPEND_ACCOUNT', 'DISMISS', 'REVOKE_BADGE' or 'ARCHIVE_PROFILE'\"}]}",
+  "note": "{\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more fields failed valida"
+ },
+ {
+  "id": "MOD-003-action",
+  "doc": "FR-MOD-003",
+  "expected": "a moderator action changes content state and is auditable",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"651ad8cb-c374-4768-a3b9-ebfa56662db9\",\"subjectType\":\"LISTING\",\"subjectId\":\"ba4ce001-cb74-4bb1-a405-7afe20a55e76\",\"originType\":\"USER_REPORT\",\"reportReason\":\"Spam va aldov\",\"ruleKey\":null,\"status\":\"RESOLVED\",\"resolutionAction\":\"SUSPEND\",\"createdAt\":\"2026-07-27T12:19:30.998674Z\"}",
+  "note": "{\"id\":\"651ad8cb-c374-4768-a3b9-ebfa56662db9\",\"subjectType\":\"LISTING\",\"subjectId\":\"ba4ce001-cb74-4bb1-a405-7afe20a55e76\",\"originType\":\"USER_REPORT\",\"reportReason\":\"Spam va aldov\",\"ruleKey\":null,\"status"
+ },
+ {
+  "id": "I-24-owning-context",
+  "doc": "I-24 / DEC-22",
+  "expected": "moderation drives the target module, which records its own transition",
+  "status": null,
+  "passed": true,
+  "observed": "SUSPENDED",
+  "note": "listing state=SUSPENDED, transitions 2 -> 3"
+ },
+ {
+  "id": "I-06-suspended-hidden",
+  "doc": "I-06 / FR-MOD-003",
+  "expected": "a suspended listing is no longer publicly visible",
+  "status": 404,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/resource-not-found\",\"title\":\"Listing not found\",\"status\":404,\"code\":\"RESOURCE_NOT_FOUND\",\"traceId\":\"60c6c3ea-6c00-4012-9edf-41c193821a5d\"}",
+  "note": "anon GET -> 404"
+ },
+ {
+  "id": "MOD-004-suspend-account",
+  "doc": "FR-MOD-004",
+  "expected": "an authorised operator can suspend an account",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"84377ac8-ed94-44e5-babb-d78d60e31ac0\",\"phoneNumber\":null,\"email\":\"ops-s-154769@example.invalid\",\"status\":\"SUSPENDED\",\"createdAt\":\"2026-07-27T12:19:29.979032Z\"}",
+  "note": "{\"id\":\"84377ac8-ed94-44e5-babb-d78d60e31ac0\",\"phoneNumber\":null,\"email\":\"ops-s-154769@example.invalid\",\"status\":\"SUSPENDED\",\"createdAt\":\"2026-07-27T12:19:29.979032Z\"}"
+ },
+ {
+  "id": "MOD-004-suspended-cannot-act",
+  "doc": "FR-MOD-004",
+  "expected": "a suspended account cannot perform restricted actions",
+  "status": 401,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/authentication-required\",\"title\":\"No valid session\",\"status\":401,\"code\":\"AUTHENTICATION_REQUIRED\",\"traceId\":\"7623b8bb-3eea-4aa6-961c-04e043fd552b\"}",
+  "note": "suspended account /me -> 401"
+ },
+ {
+  "id": "MOD-004-listings-hidden",
+  "doc": "FR-MOD-004 (compensation)",
+  "expected": "a suspended account's listings are hidden",
+  "status": 404,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/resource-not-found\",\"title\":\"Listing not found\",\"status\":404,\"code\":\"RESOURCE_NOT_FOUND\",\"traceId\":\"bd7e6e17-2a9e-46d1-9c22-72d5503caebe\"}",
+  "note": "anon GET -> 404"
+ },
+ {
+  "id": "ADMIN-dashboard",
+  "doc": "FR-ADMIN-001 / M-12 (admin composes operator interfaces)",
+  "expected": "the admin dashboard composes other modules' operator data",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"activeListings\":null,\"pendingModeration\":null,\"pendingVerification\":null,\"pendingInvoices\":null,\"newUsers7d\":null}",
+  "note": "{\"activeListings\":null,\"pendingModeration\":null,\"pendingVerification\":null,\"pendingInvoices\":null,\"newUsers7d\":null}"
+ },
+ {
+  "id": "ADMIN-not-bypass",
+  "doc": "M-12 (/admin is not a privilege bypass)",
+  "expected": "/admin is not reachable without the permission key",
+  "status": 401,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/authentication-required\",\"title\":\"No valid session\",\"status\":401,\"code\":\"AUTHENTICATION_REQUIRED\",\"traceId\":\"1e702ca1-dc35-42be-a52f-6837dd235b66\"}",
+  "note": "401"
+ },
+ {
+  "id": "ADMIN-001-users",
+  "doc": "FR-ADMIN-001",
+  "expected": "administrators can view/manage user records",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"id\":\"db6ae6f3-488a-47b5-95ba-84f649dc380e\",\"phoneNumber\":null,\"email\":\"maker.admin@example.invalid\",\"status\":\"ACTIVE\",\"createdAt\":\"2026-07-27T11:50:54.649813Z\"},{\"id\":\"a91ff535-dc5b-48f9-a830-deeb61e2e38d\",\"phoneNumber\":null,\"email\":\"checker.admin@example.invalid\",\"status\":\"ACTIVE\",\"createdAt\":\"2026-07-27T11:50:55.111115Z\"},{\"id\":\"2826fcdc-0973-4a18-acdc-ce7e18f6904a\",\"phoneNumber\":null,\"email\":\"seller-153149@example.invalid\",\"status\":\"ACTIVE\",\"createdAt\":\"2026-07-27T11:52:29.664055Z\"},{\"id\":\"ca56bfd5-891c-4f78-a8ea-c85ff66bc04e\",\"phoneNumber\":null,\"email\":\"buyer-153149@example.inv",
+  "note": "20 users"
+ },
+ {
+  "id": "ADMIN-005-reports",
+  "doc": "FR-ADMIN-005",
+  "expected": "operational reports reflect captured metrics",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"report\":\"LISTINGS_OVERVIEW\",\"from\":null,\"to\":null,\"counts\":{\"LISTING_VIEWED\":0,\"CONTACT_BUTTON_CLICKED\":0,\"PHONE_REVEALED\":1,\"CHAT_INITIATED\":2,\"FAVORITE_ADDED\":3,\"PREMIUM_LISTING_STAT\":0},\"total\":6}",
+  "note": "{\"report\":\"LISTINGS_OVERVIEW\",\"from\":null,\"to\":null,\"counts\":{\"LISTING_VIEWED\":0,\"CONTACT_BUTTON_CLICKED\":0,\"PHONE_REVEALED\":1,\"CHAT_INITIATED\":2,\"FAVORITE_ADDED\":3,\"PREMIUM_LISTING_STAT\":0},\"total\":6"
+ },
+ {
+  "id": "ADMIN-006-assign-role",
+  "doc": "FR-ADMIN-006 / BRULE-02",
+  "expected": "a Super Administrator can assign a role; assignments take effect",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"4357d972-f115-4835-9124-fee204a19ce3\",\"phoneNumber\":null,\"email\":\"ops-t-154769@example.invalid\",\"status\":\"ACTIVE\",\"createdAt\":\"2026-07-27T12:19:45.269127Z\"}",
+  "note": "{\"id\":\"4357d972-f115-4835-9124-fee204a19ce3\",\"phoneNumber\":null,\"email\":\"ops-t-154769@example.invalid\",\"status\":\"ACTIVE\",\"createdAt\":\"2026-07-27T12:19:45.269127Z\"}"
+ },
+ {
+  "id": "ADMIN-006-role-effective",
+  "doc": "FR-ADMIN-006",
+  "expected": "the assigned role grants exactly its configured permissions",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"id\":\"bb263eb5-6112-4f9f-a2d7-ab66acdfbfa3\",\"subjectType\":\"LISTING\",\"subjectId\":\"ebe362b6-ee4e-4b1b-9170-d0f8dcd41397\",\"originType\":\"AUTOMATED_FLAG\",\"reportReason\":null,\"ruleKey\":\"duplicate-detection\",\"status\":\"OPEN\",\"resolutionAction\":null,\"createdAt\":\"2026-07-27T11:53:19.390728Z\"},{\"id\":\"99bc7f61-1f1e-4a00-bde7-17c09f9220dc\",\"subjectType\":\"LISTING\",\"subjectId\":\"ee57437b-6db0-4bfc-b791-29650b4a269f\",\"originType\":\"AUTOMATED_FLAG\",\"reportReason\":null,\"ruleKey\":\"duplicate-detection\",\"status\":\"OPEN\",\"resolutionAction\":null,\"createdAt\":\"2026-07-27T11:53:19.404156Z\"},{\"id\":\"98c6df66-22b7",
+  "note": "moderator queue -> 200"
+ },
+ {
+  "id": "I-16-no-widening",
+  "doc": "I-16 / BRULE-02",
+  "expected": "a role grants only its own permissions; it cannot widen access",
+  "status": 403,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller lacks the required permission\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\"b091014d-820e-483e-b989-2c83e40485ef\"}",
+  "note": "billing invoices as moderator -> 403"
+ },
+ {
+  "id": "AUDIT-002-viewable",
+  "doc": "FR-AUDIT-002",
+  "expected": "audit logs are viewable by an authorised admin",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"id\":\"24d43103-da06-4852-9423-7e2f8f407dae\",\"actorUserId\":\"00000000-0000-0000-0000-000000000002\",\"action\":\"RoleDefinitionChanged\",\"targetType\":\"role-definition\",\"targetId\":\"d4d14758-21c6-42d9-84fe-f5e453df071d\",\"payload\":{\"code\":\"administrator\",\"action\":\"PUBLISH\",\"entityType\":\"role-definition\",\"approvalNote\":\"seed: bootstrap approval\",\"afterVersionId\":\"f59de0a8-7cda-4b99-be00-8f0545482ddd\",\"beforeVersionId\":null},\"occurredAt\":\"2026-07-27T11:50:51.519457Z\"},{\"id\":\"2ede90fd-acef-42e0-9973-b9de1b4276bb\",\"actorUserId\":\"00000000-0000-0000-0000-000000000002\",\"action\":\"RoleDefinitionChange",
+  "note": "20 entries"
+ },
+ {
+  "id": "AUDIT-002-filterable",
+  "doc": "FR-AUDIT-002",
+  "expected": "audit logs are filterable",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"id\":\"24d43103-da06-4852-9423-7e2f8f407dae\",\"actorUserId\":\"00000000-0000-0000-0000-000000000002\",\"action\":\"RoleDefinitionChanged\",\"targetType\":\"role-definition\",\"targetId\":\"d4d14758-21c6-42d9-84fe-f5e453df071d\",\"payload\":{\"code\":\"administrator\",\"action\":\"PUBLISH\",\"entityType\":\"role-definition\",\"approvalNote\":\"seed: bootstrap approval\",\"afterVersionId\":\"f59de0a8-7cda-4b99-be00-8f0545482ddd\",\"beforeVersionId\":null},\"occurredAt\":\"2026-07-27T11:50:51.519457Z\"},{\"id\":\"2ede90fd-acef-42e0-9973-b9de1b4276bb\",\"actorUserId\":\"00000000-0000-0000-0000-000000000002\",\"action\":\"RoleDefinitionChange",
+  "note": "20 filtered entries"
+ },
+ {
+  "id": "AUDIT-append-only",
+  "doc": "DDD BC-13 (append-only immutable facts)",
+  "expected": "audit entries cannot be updated",
+  "status": null,
+  "passed": true,
+  "observed": "",
+  "note": "update result=''"
+ },
+ {
+  "id": "ANALYTICS-closed-vocabulary",
+  "doc": "BRULE-20 / DDD BC-13 (closed v1 metric vocabulary)",
+  "expected": "only metrics from the closed v1 set are captured",
+  "status": null,
+  "passed": true,
+  "observed": "{'PHONE_REVEALED', 'CHAT_INITIATED', 'FAVORITE_ADDED'}",
+  "note": "observed=['CHAT_INITIATED', 'FAVORITE_ADDED', 'PHONE_REVEALED']; outside the closed set=[]"
+ },
+ {
+  "id": "ANALYTICS-001-coverage",
+  "doc": "FR-ANALYTICS-001",
+  "expected": "the documented metric set is actually captured",
+  "status": null,
+  "passed": false,
+  "observed": "{'PHONE_REVEALED', 'CHAT_INITIATED', 'FAVORITE_ADDED'}",
+  "note": "captured 3/8: missing=['BANNER_CLICK_RECORDED', 'BANNER_IMPRESSION_RECORDED', 'CONTACT_BUTTON_CLICKED', 'LISTING_VIEWED', 'PREMIUM_LISTING_STAT']"
+ },
+ {
+  "id": "ANALYTICS-002-owner-stats",
+  "doc": "FR-ANALYTICS-002",
+  "expected": "owners see basic performance statistics for their listings",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"listingId\":\"c43b0900-ac23-4f19-834f-7ab9aa72a388\",\"views\":null,\"contactClicks\":null,\"phoneReveals\":null,\"chatsInitiated\":null,\"favorites\":0}",
+  "note": "{\"listingId\":\"c43b0900-ac23-4f19-834f-7ab9aa72a388\",\"views\":null,\"contactClicks\":null,\"phoneReveals\":null,\"chatsInitiated\":null,\"favorites\":0}"
+ },
+ {
+  "id": "BANNER-admin-list",
+  "doc": "FR-ADMIN-004 / FR-BANNER-001",
+  "expected": "administrators can manage banner campaigns",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[],\"page\":{\"limit\":20,\"nextCursor\":null,\"total\":null}}",
+  "note": "0 campaigns"
+ },
+ {
+  "id": "BANNER-004-serve",
+  "doc": "FR-BANNER-004",
+  "expected": "the banner serve endpoint answers for a configured slot",
+  "status": 204,
+  "passed": true,
+  "observed": "",
+  "note": "204 "
+ },
+ {
+  "id": "NOTIF-list",
+  "doc": "FR-NOTIF-001 / FR-NOTIF-004",
+  "expected": "a user can list their notifications",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[],\"page\":{\"limit\":20,\"nextCursor\":null,\"total\":null}}",
+  "note": "0 notifications"
+ },
+ {
+  "id": "NOTIF-004-preferences",
+  "doc": "FR-NOTIF-004",
+  "expected": "notification preferences are manageable",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"ed42e0a5-0709-4ff6-9bbf-802a322e63b2\",\"phoneNumber\":null,\"email\":\"ops-r-154769@example.invalid\",\"displayName\":\"Ops Reporter\",\"status\":\"ACTIVE\",\"privacySettings\":{\"phoneRevealMode\":\"ON_REQUEST\"},\"notificationPreferences\":{\"email\":false,\"webPush\":false,\"sms\":false},\"ownedProfileIds\":null,\"roles\":null,\"createdAt\":\"2026-07-27T12:19:30.487143Z\"}",
+  "note": "{\"id\":\"ed42e0a5-0709-4ff6-9bbf-802a322e63b2\",\"phoneNumber\":null,\"email\":\"ops-r-154769@example.invalid\",\"displayName\":\"Ops Reporter\",\"status\":\"ACTIVE\",\"privacySe"
+ },
+ {
+  "id": "NOTIF-001-dispatched",
+  "doc": "FR-NOTIF-001",
+  "expected": "documented events produce templated notifications",
+  "status": null,
+  "passed": true,
+  "observed": "53",
+  "note": "53 notification rows"
+ },
+ {
+  "id": "CFG-001-no-redeploy",
+  "doc": "FR-CFG-001 / NFR-MAINT-001",
+  "expected": "a newly published category is served with no redeploy",
+  "status": null,
+  "passed": true,
+  "observed": "[{'id': 'bd45a34d-cb23-45da-a6f7-f96710de9285', 'parentId': None, 'name': {'uz_latn': 'G\u02bbisht', 'uz_cyrl': '\u0492\u0438\u0448\u0442', 'ru': '\u041a\u0438\u0440\u043f\u0438\u0447', 'en': 'Brick'}, 'path': '/gisht', 'slug': None, 'displayOrder': 2, 'formDefinitionId': '932fe028-1b2d-47e6-9d9d-b17f7c6dab51', 'status': 'ACTIVE'}, {'id': 'c873217f-6bee-4c5e-a1e5-c6c43c5dcc50', 'parentId': None, 'name': {'uz_latn': 'Qurilish xizmatlari', 'uz_cyrl': '\u049a\u0443\u0440\u0438\u043b\u0438\u0448 \u0445\u0438\u0437\u043c\u0430\u0442\u043b\u0430\u0440\u0438', 'ru': '\u0421\u0442\u0440\u043e\u0438\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0443\u0441\u043b\u0443\u0433\u0438', 'en': 'Construction services'}, 'path': '/qurilish-xizmatlari', 'slug': None, 'displayOrder': 1, 'formDefinitionId': 'de5c8b7c-2746-4d30-9dbf-afb4a82cf",
+  "note": "categories 4 -> 5 (same running process)"
+ }
+]

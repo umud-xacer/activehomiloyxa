@@ -1,0 +1,19 @@
+# Fast subset only (ruff, mypy on changed files) -- Playbook Sec 2. The full gate set (QG-01..
+# QG-10) runs in CI (.github/workflows/ci.yml); pre-commit is a fast local pre-flight, not a
+# substitute for it, and is never a bypass path.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.20
+    hooks:
+      - id: ruff-format
+        args: ["--config", "tools/ruff.toml"]
+      - id: ruff
+        args: ["--config", "tools/ruff.toml", "--fix"]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v2.2.0
+    hooks:
+      - id: mypy
+        args: ["--config-file", "tools/mypy.ini"]
+        additional_dependencies: ["pydantic==2.13.4"]
+        files: ^(apps/backend|packages/shared)/

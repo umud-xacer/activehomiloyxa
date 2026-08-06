@@ -1,0 +1,109 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { Building2, Loader2, ShieldCheck } from "lucide-react";
+import { AppShell } from "@/components/layout/AppShell";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/dashboard/EmptyState";
+import {
+  businessProfilesApi,
+  PROFILE_TYPE_LABEL,
+  type BusinessProfile,
+} from "@/lib/business-profiles-client";
+
+export const Route = createFileRoute("/companies/")({
+  head: () => ({
+    meta: [
+      { title: "Xizmatlar va kompaniyalar — ActiveHome" },
+      {
+        name: "description",
+        content: "Qurilish, ta'mirlash va uy-joy sohasidagi tasdiqlangan kompaniyalar katalogi.",
+      },
+    ],
+  }),
+  component: Page,
+});
+
+function companyName(profile: BusinessProfile): string {
+  return profile.name.uz_latn || profile.name.ru || profile.name.en || "Kompaniya";
+}
+
+function CompanyCard({ profile, index }: { profile: BusinessProfile; index: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.4), ease: [0.22, 1, 0.36, 1] }}
+    >
+      <Link
+        to="/companies/$profileId"
+        params={{ profileId: profile.id }}
+        className="group flex h-full flex-col rounded-3xl border border-border bg-card p-6 shadow-soft transition hover:border-primary/40 hover:shadow-elevated"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Building2 className="size-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate font-display text-base font-semibold text-foreground">
+              {companyName(profile)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {PROFILE_TYPE_LABEL[profile.profileType]}
+            </p>
+          </div>
+        </div>
+        {profile.description && (
+          <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
+            {profile.description.uz_latn || profile.description.ru || profile.description.en}
+          </p>
+        )}
+        {profile.badge?.status === "VALID" && (
+          <span className="mt-4 inline-flex w-fit items-center gap-1 rounded-full bg-success/10 px-2.5 py-1 text-[11px] font-semibold text-success">
+            <ShieldCheck className="size-3.5" /> Tasdiqlangan
+          </span>
+        )}
+      </Link>
+    </motion.div>
+  );
+}
+
+function Page() {
+  const { data: profiles, isLoading } = useQuery({
+    queryKey: ["business-profiles", "public-directory"],
+    queryFn: () => businessProfilesApi.listPublic(),
+  });
+
+  const active = (profiles ?? []).filter((p) => p.subscriptionStatus === "ACTIVE");
+
+  return (
+    <AppShell>
+      <PageHeader
+        eyebrow="Yuridik shaxslar uchun"
+        title="Xizmatlar va kompaniyalar"
+        description="Qurilish materiallari, pudratchilar, dizaynerlar va xizmat ko'rsatuvchilarning tasdiqlangan katalogi."
+      />
+      <div className="mx-auto max-w-6xl px-6 py-16">
+        {isLoading && (
+          <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
+            <Loader2 className="size-5 animate-spin" /> Yuklanmoqda…
+          </div>
+        )}
+        {!isLoading && active.length === 0 && (
+          <EmptyState
+            icon={Building2}
+            title="Hozircha kompaniya yo'q"
+            description="Yaqinda faol obunaga ega kompaniyalar shu yerda ko'rinadi."
+          />
+        )}
+        {active.length > 0 && (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {active.map((profile, i) => (
+              <CompanyCard key={profile.id} profile={profile} index={i} />
+            ))}
+          </div>
+        )}
+      </div>
+    </AppShell>
+  );
+}

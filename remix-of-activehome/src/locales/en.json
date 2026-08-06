@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "buy": "Buy",
+    "rent": "Rent",
+    "map": "Map",
+    "stays": "Stays",
+    "build": "Build",
+    "shop": "Shop",
+    "services": "Services",
+    "signin": "Sign in",
+    "list": "List property"
+  },
+  "hero": {
+    "eyebrow": "The home & building super app",
+    "title": "Everything for the place you live.",
+    "subtitle": "Buy, rent, build, furnish and book — one AI-powered ecosystem across borders.",
+    "search_placeholder": "Try \u201c3-bedroom apartment near a metro under $1,200\u201d",
+    "search_button": "Search",
+    "ai_hint": "AI search"
+  },
+  "stats": {
+    "listings": "Live listings",
+    "cities": "Cities",
+    "partners": "Verified partners",
+    "satisfaction": "User satisfaction"
+  },
+  "categories": {
+    "eyebrow": "Explore the ecosystem",
+    "title": "One platform. Every category.",
+    "subtitle": "From the keys to a new apartment to the bricks that built it.",
+    "listings": "listings",
+    "default_desc": "Curated, AI-ranked inventory worldwide.",
+    "apartments": "Apartments", "apartments_desc": "City living, panoramic views.",
+    "buildings": "Multi-story", "buildings_desc": "Whole-building investments.",
+    "cottages": "Cottages", "cottages_desc": "Quiet retreats outside the city.",
+    "houses": "Houses", "houses_desc": "Family homes with gardens.",
+    "commercial": "Commercial", "commercial_desc": "Offices, retail, warehouses.",
+    "country": "Country houses", "country_desc": "Estates and ranches.",
+    "land": "Land", "land_desc": "Buildable plots, verified deeds.",
+    "services": "Services", "services_desc": "Trusted home service pros.",
+    "jobs": "Jobs", "jobs_desc": "Construction and trade roles.",
+    "materials": "Materials", "materials_desc": "Raw materials at trade prices.",
+    "furniture_mat": "Furniture materials", "furniture_mat_desc": "Wood, fabric, hardware.",
+    "appliances": "Appliances", "appliances_desc": "Premium home appliances.",
+    "decoration": "Home decor", "decoration_desc": "Make every room yours.",
+    "landscape": "Landscape", "landscape_desc": "Gardens, terraces, exteriors.",
+    "safety": "Safety gear", "safety_desc": "On-site safety equipment.",
+    "furniture": "Furniture", "furniture_desc": "Designer-led collections.",
+    "hostels": "Hostels", "hostels_desc": "Affordable global stays.",
+    "hotels": "Hotels", "hotels_desc": "5-star and boutique stays."
+  },
+  "organizations": {
+    "eyebrow": "Verified partners",
+    "title": "Organizations & companies",
+    "subtitle": "Construction firms, agencies, banks and service brands — all in one ecosystem."
+  },
+  "featured": {
+    "title": "Featured properties",
+    "subtitle": "Hand-picked by our AI valuation engine.",
+    "view_all": "View all"
+  },
+  "ecosystem": {
+    "title": "A complete ecosystem for home",
+    "subtitle": "Twelve workflows that used to live in twelve apps.",
+    "buy_title": "Buy & Sell",
+    "buy_desc": "Verified listings with AI valuation and instant offers.",
+    "rent_title": "Rent",
+    "rent_desc": "Long-term and short-term, fully digital contracts.",
+    "stays_title": "Hotels & Hostels",
+    "stays_desc": "Book stays worldwide with instant confirmation.",
+    "build_title": "Build",
+    "build_desc": "Hire vetted construction crews and architects.",
+    "shop_title": "Shop",
+    "shop_desc": "Materials, furniture and appliances at one checkout.",
+    "design_title": "Design",
+    "design_desc": "Interior and landscape designers on demand."
+  },
+  "map": {
+    "title": "Explore the world from the map",
+    "subtitle": "Heatmaps, nearby schools, traffic, satellite \u2014 all live.",
+    "cta": "Open map"
+  },
+  "cta": {
+    "title": "Built for a billion homes.",
+    "subtitle": "Join the waitlist for the global launch.",
+    "button": "Get early access"
+  },
+  "footer": {
+    "tagline": "The home & building super app.",
+    "product": "Product",
+    "company": "Company",
+    "legal": "Legal",
+    "rights": "All rights reserved."
+  }
+}

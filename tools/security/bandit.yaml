@@ -1,0 +1,11 @@
+# tools/security/bandit.yaml -- QG-07 SAST (Playbook Sec 16, DevSecOps Sec 12).
+# Run: bandit -c tools/security/bandit.yaml -r apps/backend/src packages/shared/src
+
+exclude_dirs:
+  - tests
+  - .venv
+
+# B101 (assert_used) is intentionally not skipped here: asserts must never gate production
+# control flow (Security Architecture I-5); ruff's per-file-ignores already scopes assert
+# tolerance to test files only, so a bare assert surviving into src/ is a real finding.
+skips: []

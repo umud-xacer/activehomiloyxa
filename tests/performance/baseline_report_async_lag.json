@@ -1,0 +1,8 @@
+{
+  "measurement": "catalog_outbox_to_search_index_lag",
+  "note": "SAD Sec 19: an accepted eventual-consistency window, not a hard SLO -- reported for visibility, never asserted PASS/FAIL against an invented target",
+  "count": 20,
+  "p50_ms": 32.09,
+  "p95_ms": 48.18,
+  "p99_ms": 48.18
+}

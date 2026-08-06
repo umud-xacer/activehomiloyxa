@@ -1,0 +1,119 @@
+[
+ {
+  "id": "PROF-001-eight-types",
+  "doc": "FR-PROF-001",
+  "expected": "a profile of each of the eight supported types can be created",
+  "status": null,
+  "passed": true,
+  "observed": "{'CONSTRUCTION_COMPANY': 'c976ffef-e1c0-4e4f-a4d5-6a73fb556d92', 'MANUFACTURER': '96e903be-b0f4-4208-b2d3-8dd8c7fcba92', 'BUILDER': '97ccf21c-9f48-4b7c-8e26-8e40f387418b', 'SUPPLIER': '3f52a09f-6473-49a0-a635-b61df6ed537f', 'CONTRACTOR': 'fe6fc68d-7372-4e59-854b-0d10402467ce', 'ARCHITECT': '68c2a23e-bce9-417c-be39-a85a0ec22d52', 'INTERIOR_DESIGNER': '29fd0bf6-fc77-4ce7-8a85-606f35826d04', 'SERVICE_PROVIDER': 'ba3b3085-8239-484e-8a95-a24842efb840'}",
+  "note": "created 8/8: [] failed"
+ },
+ {
+  "id": "USER-002-multiple-profiles",
+  "doc": "FR-USER-002",
+  "expected": "one account holds multiple profiles",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"22f5f9e5-cbb7-45da-978a-dd35fc68e21e\",\"phoneNumber\":null,\"email\":\"owner-153482@example.invalid\",\"displayName\":\"Profile Owner\",\"status\":\"ACTIVE\",\"privacySettings\":{\"phoneRevealMode\":\"ON_REQUEST\"},\"notificationPreferences\":{\"email\":true,\"webPush\":false,\"sms\":true},\"ownedProfileIds\":[\"c976ffef-e1c0-4e4f-a4d5-6a73fb556d92\",\"96e903be-b0f4-4208-b2d3-8dd8c7fcba92\",\"97ccf21c-9f48-4b7c-8e26-8e40f387418b\",\"3f52a09f-6473-49a0-a635-b61df6ed537f\",\"fe6fc68d-7372-4e59-854b-0d10402467ce\",\"68c2a23e-bce9-417c-be39-a85a0ec22d52\",\"29fd0bf6-fc77-4ce7-8a85-606f35826d04\",\"ba3b3085-8239-484e-8a95-a24842efb840\"",
+  "note": "ownedProfileIds=8"
+ },
+ {
+  "id": "USER-002-switch",
+  "doc": "FR-USER-002",
+  "expected": "acting profile context can be selected",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"b852279c-fb33-41d6-93b1-6b7b2a0d0351\",\"actingProfileId\":\"c976ffef-e1c0-4e4f-a4d5-6a73fb556d92\",\"ipAddress\":\"127.0.0.1\",\"userAgent\":\"python-httpx/0.28.1\",\"current\":true,\"createdAt\":\"2026-07-27T11:58:02.907537Z\",\"expiresAt\":\"2026-08-26T11:58:02.907537Z\"}",
+  "note": "{\"id\":\"b852279c-fb33-41d6-93b1-6b7b2a0d0351\",\"actingProfileId\":\"c976ffef-e1c0-4e4f-a4d5-6a73fb556d92\",\"ipAddress\":\"127.0.0.1\",\"userAgent\":\"python-httpx/0.28.1\","
+ },
+ {
+  "id": "USER-002-switch-reflected",
+  "doc": "FR-USER-002",
+  "expected": "actions apply to the selected profile only (context is reflected)",
+  "status": 200,
+  "passed": true,
+  "observed": "[{\"id\":\"b852279c-fb33-41d6-93b1-6b7b2a0d0351\",\"actingProfileId\":\"c976ffef-e1c0-4e4f-a4d5-6a73fb556d92\",\"ipAddress\":\"127.0.0.1\",\"userAgent\":\"python-httpx/0.28.1\",\"current\":true,\"createdAt\":\"2026-07-27T11:58:02.907537Z\",\"expiresAt\":\"2026-08-26T11:58:02.907537Z\"}]",
+  "note": "actingProfileId=c976ffef-e1c0-4e4f-a4d5-6a73fb556d92"
+ },
+ {
+  "id": "PROF-002-public-page",
+  "doc": "FR-PROF-002",
+  "expected": "company page is publicly displayed",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"c976ffef-e1c0-4e4f-a4d5-6a73fb556d92\",\"ownerUserId\":\"22f5f9e5-cbb7-45da-978a-dd35fc68e21e\",\"profileType\":\"CONSTRUCTION_COMPANY\",\"name\":{\"uz_latn\":\"CONSTRUCTION_COMPANY 153482\",\"uz_cyrl\":\"CONSTRUCTION_COMPANY 153482\",\"ru\":\"CONSTRUCTION_COMPANY 153482\",\"en\":\"CONSTRUCTION_COMPANY 153482\"},\"description\":{\"uz_latn\":\"Sinov tavsifi\",\"uz_cyrl\":\"Sinov tavsifi\",\"ru\":\"Sinov tavsifi\",\"en\":\"Sinov tavsifi\"},\"contacts\":{},\"address\":\"Toshkent\",\"slug\":\"construction_company-153482-c976ffef\",\"status\":\"ACTIVE\",\"badge\":null,\"createdAt\":\"2026-07-27T11:58:03.492305Z\"}",
+  "note": ""
+ },
+ {
+  "id": "PROF-002-edit",
+  "doc": "FR-PROF-002",
+  "expected": "company details can be maintained",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"c976ffef-e1c0-4e4f-a4d5-6a73fb556d92\",\"ownerUserId\":\"22f5f9e5-cbb7-45da-978a-dd35fc68e21e\",\"profileType\":\"CONSTRUCTION_COMPANY\",\"name\":{\"uz_latn\":\"CONSTRUCTION_COMPANY 153482\",\"uz_cyrl\":\"CONSTRUCTION_COMPANY 153482\",\"ru\":\"CONSTRUCTION_COMPANY 153482\",\"en\":\"CONSTRUCTION_COMPANY 153482\"},\"description\":{\"uz_latn\":\"Yangilangan tavsif\",\"uz_cyrl\":\"Yangilangan tavsif\",\"ru\":\"Yangilangan tavsif\",\"en\":\"Yangilangan tavsif\"},\"contacts\":{},\"address\":\"Toshkent\",\"slug\":\"construction_company-153482-c976ffef\",\"status\":\"ACTIVE\",\"badge\":null,\"createdAt\":\"2026-07-27T11:58:03.492305Z\"}",
+  "note": "{\"id\":\"c976ffef-e1c0-4e4f-a4d5-6a73fb556d92\",\"ownerUserId\":\"22f5f9e5-cbb7-45da-978a-dd35fc68e21e\",\"profileType\":\"CONSTRUCTION_COMPANY\",\"name\":{\"uz_latn\":\"CONSTR"
+ },
+ {
+  "id": "PROF-002-portfolio-list",
+  "doc": "FR-PROF-002",
+  "expected": "portfolio is retrievable",
+  "status": 200,
+  "passed": true,
+  "observed": "[]",
+  "note": ""
+ },
+ {
+  "id": "SEC-nonowner-profile-edit",
+  "doc": "FR-PROF-002 / NFR-SEC-002",
+  "expected": "a non-owner cannot edit another's company profile",
+  "status": 403,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller does not own this business profile\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\"50873244-947f-47db-937a-2a12732e8f54\"}",
+  "note": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller does not own this business profile\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\""
+ },
+ {
+  "id": "PROF-team-endpoint",
+  "doc": "contracts/openapi.yaml operationId listTeamMembers",
+  "expected": "the team roster endpoint defined in the frozen contract is served",
+  "status": 404,
+  "passed": false,
+  "observed": "{\"detail\":\"Not Found\"}",
+  "note": "404 (404 => route absent)"
+ },
+ {
+  "id": "PROF-004-request-verification",
+  "doc": "FR-PROF-004",
+  "expected": "verification request creates a case in the reviewer queue (pre: verification purchased, FR-SUBS-002)",
+  "status": 422,
+  "passed": false,
+  "observed": "{\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more fields failed validation.\",\"traceId\":\"9971b909-4add-4695-b1d9-34eac532ed53\",\"errors\":[{\"path\":\"/body/entitlementId\",\"rule\":\"missing\",\"message\":\"Field required\"},{\"path\":\"/body/documents\",\"rule\":\"missing\",\"message\":\"Field required\"},{\"path\":\"/body/documentMediaAssetIds\",\"rule\":\"extra_forbidden\",\"message\":\"Extra inputs are not permitted\"}]}",
+  "note": "422 {\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more fields failed validation.\",\"traceId\":\"99"
+ },
+ {
+  "id": "ADMIN-002-verification-queue",
+  "doc": "FR-ADMIN-002 / FR-PROF-004",
+  "expected": "the verification queue lists cases for processing",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[],\"page\":{\"limit\":20,\"nextCursor\":null,\"total\":null}}",
+  "note": "0 cases"
+ },
+ {
+  "id": "I-13-no-badge-without-approval",
+  "doc": "I-13 / FR-PROF-006",
+  "expected": "no verified badge exists before an approved case",
+  "status": null,
+  "passed": true,
+  "observed": "",
+  "note": "badge rows="
+ },
+ {
+  "id": "AUDIT-001-entries",
+  "doc": "FR-AUDIT-001",
+  "expected": "every administrative/moderation action is auditable",
+  "status": null,
+  "passed": true,
+  "observed": "21",
+  "note": "21 audit entries"
+ }
+]

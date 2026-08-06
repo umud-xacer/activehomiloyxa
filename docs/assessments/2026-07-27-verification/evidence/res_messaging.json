@@ -1,0 +1,155 @@
+[
+ {
+  "id": "MSG-setup",
+  "doc": "test setup",
+  "expected": "a published listing to chat about",
+  "status": 201,
+  "passed": true,
+  "observed": "{\"id\":\"8ffb6651-ae6f-4b06-bb05-3ef35df04029\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"334aabf2-1384-4aae-904a-c84430e4692d\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5\",\"categoryPath\":\"/kvartira\",\"formDefinitionVersionId\":\"0da3a697-52d7-4d7c-bbe2-1eb2d68aead9\",\"title\":\"Chat uchun e\u02bclon 154623\",\"description\":\"Suhbat sinovi\",\"attributes\":{\"rooms\":2,\"area_m2\":45},\"price\":{\"amount\":\"5000.00\",\"currency\":\"UZS\"},\"location\":null,\"lifecycleState\":\"PUBLISHED\",\"isFlagged\":false,\"expiresAt\":\"2026-08-26T12:17:04.790610Z\",\"publishedAt\":\"2026-07-27T12:17:04.790610Z\",\"promotio",
+  "note": "{\"id\":\"8ffb6651-ae6f-4b06-bb05-3ef35df04029\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"334aabf2-1384-4aae-904a-c84430e4692d\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5"
+ },
+ {
+  "id": "MSG-001-initiate",
+  "doc": "FR-MSG-001",
+  "expected": "a conversation is created for the listing",
+  "status": 201,
+  "passed": true,
+  "observed": "{\"id\":\"c3d0dd5b-6de8-4f84-ba42-a661feff1ef3\",\"listingId\":\"8ffb6651-ae6f-4b06-bb05-3ef35df04029\",\"initiatorUserId\":\"d16acb02-b22f-4aa1-9bd4-50ed8c584900\",\"recipientUserId\":\"334aabf2-1384-4aae-904a-c84430e4692d\",\"status\":\"ACTIVE\",\"lastMessageAt\":\"2026-07-27T12:17:06.817811Z\",\"createdAt\":\"2026-07-27T12:17:06.817811Z\"}",
+  "note": "{\"id\":\"c3d0dd5b-6de8-4f84-ba42-a661feff1ef3\",\"listingId\":\"8ffb6651-ae6f-4b06-bb05-3ef35df04029\",\"initiatorUserId\":\"d16acb02-b22f-4aa1-9bd4-50ed8c584900\",\"recipientUserId\":\"334aabf2-1384-4aae-904a-c84430e4692d\",\"status\":\"ACTIVE\",\"lastMessageAt\":\"2026-"
+ },
+ {
+  "id": "MSG-001-metric",
+  "doc": "FR-MSG-001 / FR-ANALYTICS-001 (ChatInitiated)",
+  "expected": "a chat-initiation metric is recorded (DEC-06)",
+  "status": null,
+  "passed": true,
+  "observed": "2",
+  "note": "2 chat metric rows"
+ },
+ {
+  "id": "MSG-002-send",
+  "doc": "FR-MSG-002",
+  "expected": "a message is accepted",
+  "status": 201,
+  "passed": true,
+  "observed": "{\"id\":\"e90d07a4-e4fd-4001-9984-93c348e6e5f5\",\"conversationId\":\"c3d0dd5b-6de8-4f84-ba42-a661feff1ef3\",\"authorUserId\":\"d16acb02-b22f-4aa1-9bd4-50ed8c584900\",\"body\":\"Assalomu alaykum, narxi kelishiladimi?\",\"sentAt\":\"2026-07-27T12:17:09.864339Z\",\"deliveredAt\":null,\"readAt\":null}",
+  "note": "{\"id\":\"e90d07a4-e4fd-4001-9984-93c348e6e5f5\",\"conversationId\":\"c3d0dd5b-6de8-4f84-ba42-a661feff1ef3\",\"authorUserId\":\"d16acb02-b22f-4aa1-9bd4-50ed8c584900\",\"body\":\"Assalomu alaykum, narxi kelishiladimi"
+ },
+ {
+  "id": "MSG-002-persist",
+  "doc": "FR-MSG-002",
+  "expected": "conversation history persists and is readable by the other participant",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"id\":\"37d004d3-00d8-4707-829b-7fd80696d436\",\"conversationId\":\"c3d0dd5b-6de8-4f84-ba42-a661feff1ef3\",\"authorUserId\":\"d16acb02-b22f-4aa1-9bd4-50ed8c584900\",\"body\":\"Salom! E\u02bclon hali dolzarbmi?\",\"sentAt\":\"2026-07-27T12:17:06.817811Z\",\"deliveredAt\":null,\"readAt\":null},{\"id\":\"e90d07a4-e4fd-4001-9984-93c348e6e5f5\",\"conversationId\":\"c3d0dd5b-6de8-4f84-ba42-a661feff1ef3\",\"authorUserId\":\"d16acb02-b22f-4aa1-9bd4-50ed8c584900\",\"body\":\"Assalomu alaykum, narxi kelishiladimi?\",\"sentAt\":\"2026-07-27T12:17:09.864339Z\",\"deliveredAt\":null,\"readAt\":null}],\"page\":{\"limit\":20,\"nextCursor\":null,\"total\":nu",
+  "note": "2 messages"
+ },
+ {
+  "id": "I-19-third-party-read",
+  "doc": "I-19 / FR-MSG-002",
+  "expected": "a third party cannot read a two-party conversation",
+  "status": 403,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller is not a participant of this conversation\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\"311e9336-ca64-444b-984b-24ed309a9e33\"}",
+  "note": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller is not a participant of this conversation\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"tra"
+ },
+ {
+  "id": "I-19-third-party-write",
+  "doc": "I-19",
+  "expected": "a third party cannot post into a two-party conversation",
+  "status": 403,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller is not a participant of this conversation\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\"3c1e3da2-1722-48d2-aa80-10b632d1bb27\"}",
+  "note": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller is not a participant of this conversation\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"tra"
+ },
+ {
+  "id": "MSG-002-realtime-wss",
+  "doc": "FR-MSG-002 / DEC-11",
+  "expected": "messages are delivered to the other participant in real time over WSS",
+  "status": null,
+  "passed": true,
+  "observed": "{\"conversationId\": \"c3d0dd5b-6de8-4f84-ba42-a661feff1ef3\", \"messageId\": \"4d86d6c1-1273-40cf-9c3c-39af655052ca\", \"authorUserId\": \"d16acb02-b22f-4aa1-9bd4-50ed8c584900\", \"body\": \"Realtime sinov 154623\", \"sentAt\": \"2026-07-27T12:17:11.417664+00:00\"}",
+  "note": "{\"conversationId\": \"c3d0dd5b-6de8-4f84-ba42-a661feff1ef3\", \"messageId\": \"4d86d6c1-1273-40cf-9c3c-39af655052ca\", \"authorUserId\": \"d16acb02-b22f-4aa1-9bd4-50ed8c584900\", \"body\": \"Realtime sinov 154623\", \"sentAt\": \"2026-07-27T12:17:11.417664+00:00\"}"
+ },
+ {
+  "id": "MSG-002-wss-auth",
+  "doc": "Security Arch (session auth on the realtime gateway)",
+  "expected": "an unauthenticated WSS upgrade is refused",
+  "status": null,
+  "passed": true,
+  "observed": "InvalidStatus",
+  "note": "InvalidStatus"
+ },
+ {
+  "id": "I-18-reveal-refused",
+  "doc": "FR-MSG-003 / I-18 / BRULE-13",
+  "expected": "phone is NOT revealed when the owner's setting forbids it",
+  "status": 200,
+  "passed": false,
+  "observed": "{\"allowed\":false,\"phoneNumber\":null}",
+  "note": "200 {\"allowed\":false,\"phoneNumber\":null}"
+ },
+ {
+  "id": "I-18-reveal-permitted",
+  "doc": "FR-MSG-003 / I-18",
+  "expected": "phone IS revealed when the owner's setting permits it",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"allowed\":true,\"phoneNumber\":\"+998901112233\"}",
+  "note": "200 {\"allowed\":true,\"phoneNumber\":\"+998901112233\"}"
+ },
+ {
+  "id": "MSG-003-metric",
+  "doc": "FR-MSG-003 / FR-ANALYTICS-001 (PhoneRevealed)",
+  "expected": "a phone-reveal metric is recorded",
+  "status": null,
+  "passed": true,
+  "observed": "1",
+  "note": "1 phone-reveal metrics"
+ },
+ {
+  "id": "MSG-004-block",
+  "doc": "FR-MSG-004",
+  "expected": "a user can block another user",
+  "status": 201,
+  "passed": true,
+  "observed": "{\"blockedUserId\":\"d16acb02-b22f-4aa1-9bd4-50ed8c584900\",\"createdAt\":\"2026-07-27T12:17:18.547435Z\"}",
+  "note": "{\"blockedUserId\":\"d16acb02-b22f-4aa1-9bd4-50ed8c584900\",\"createdAt\":\"2026-07-27T12:17:18.547435Z\"}"
+ },
+ {
+  "id": "I-19-block-enforced",
+  "doc": "FR-MSG-004 / I-19",
+  "expected": "a blocked user can neither initiate nor continue contact with the blocker",
+  "status": 403,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"The recipient has blocked the sender\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\"0329fc17-9279-445a-b5cf-3fc09f621a2e\"}",
+  "note": "403 {\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"The recipient has blocked the sender\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\"0329f"
+ },
+ {
+  "id": "MSG-004-list-blocks",
+  "doc": "FR-MSG-004",
+  "expected": "blocks are listable",
+  "status": 200,
+  "passed": true,
+  "observed": "[{\"blockedUserId\":\"d16acb02-b22f-4aa1-9bd4-50ed8c584900\",\"createdAt\":\"2026-07-27T12:17:18.547435Z\"}]",
+  "note": "1 blocks"
+ },
+ {
+  "id": "MSG-004-unblock",
+  "doc": "FR-MSG-004",
+  "expected": "a block can be removed",
+  "status": 204,
+  "passed": true,
+  "observed": "",
+  "note": ""
+ },
+ {
+  "id": "MSG-005-report",
+  "doc": "FR-MSG-005 / FR-MOD-001",
+  "expected": "a report is created and enters the moderation queue",
+  "status": 202,
+  "passed": true,
+  "observed": "null",
+  "note": "null"
+ }
+]

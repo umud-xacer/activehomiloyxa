@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "buy": "Sotib olish",
+    "rent": "Ijara",
+    "map": "Xarita",
+    "stays": "Mehmonxonalar",
+    "build": "Qurilish",
+    "shop": "Do'kon",
+    "services": "Xizmatlar",
+    "signin": "Kirish",
+    "list": "E'lon joylash"
+  },
+  "hero": {
+    "eyebrow": "Uy va bino super-ilovasi",
+    "title": "Yashash joyingiz uchun barchasi.",
+    "subtitle": "Sotib oling, ijaraga oling, quring, jihozlang va bron qiling — bitta AI ekotizimda.",
+    "search_placeholder": "\"Metroga yaqin 3 xonali kvartira, $1,200 gacha\"",
+    "search_button": "Qidirish",
+    "ai_hint": "AI qidiruv"
+  },
+  "stats": {
+    "listings": "Faol e'lonlar",
+    "cities": "Shaharlar",
+    "partners": "Tasdiqlangan hamkorlar",
+    "satisfaction": "Foydalanuvchi mamnuniyati"
+  },
+  "categories": {
+    "eyebrow": "Ekotizimni kashf eting",
+    "title": "Bitta platforma. Barcha kategoriyalar.",
+    "subtitle": "Yangi kvartira kalitidan tortib, uni qurgan g'ishtgacha.",
+    "listings": "e'lon",
+    "default_desc": "AI tomonidan saralangan global taklif.",
+    "apartments": "Kvartiralar", "apartments_desc": "Shahar hayoti, panorama manzara.",
+    "buildings": "Ko'p qavatli", "buildings_desc": "Butun bino investitsiyalari.",
+    "cottages": "Kottejlar", "cottages_desc": "Shahar tashqarisidagi tinch makonlar.",
+    "houses": "Hovlilar", "houses_desc": "Bog'li oilaviy uylar.",
+    "commercial": "Tijorat", "commercial_desc": "Ofis, do'kon, ombor.",
+    "country": "Dala hovlilar", "country_desc": "Mulk va rancholar.",
+    "land": "Yer uchastkalari", "land_desc": "Qurilishga yaroqli tasdiqlangan yerlar.",
+    "services": "Xizmatlar", "services_desc": "Ishonchli uy xizmatlari.",
+    "jobs": "Ish o'rinlari", "jobs_desc": "Qurilish va hunar sohalari.",
+    "materials": "Qurilish mollari", "materials_desc": "Ulgurji narxlarda xomashyo.",
+    "furniture_mat": "Mebel materiallari", "furniture_mat_desc": "Yog'och, mato, furnitura.",
+    "appliances": "Maishiy texnika", "appliances_desc": "Premium maishiy texnika.",
+    "decoration": "Uy bezagi", "decoration_desc": "Har bir xonani o'zingizniki qiling.",
+    "landscape": "Landshaft", "landscape_desc": "Bog', ayvon, tashqi dizayn.",
+    "safety": "Himoya vositalari", "safety_desc": "Ob'ektdagi xavfsizlik jihozlari.",
+    "furniture": "Mebel", "furniture_desc": "Dizayner kolleksiyalari.",
+    "hostels": "Hosteller", "hostels_desc": "Arzon global yashash joylari.",
+    "hotels": "Mehmonxonalar", "hotels_desc": "5-yulduzli va butik mehmonxonalar."
+  },
+  "organizations": {
+    "eyebrow": "Tasdiqlangan hamkorlar",
+    "title": "Tashkilotlar va kompaniyalar",
+    "subtitle": "Qurilish kompaniyalari, agentliklar, banklar va xizmat brendlari — bitta ekotizimda."
+  },
+  "featured": {
+    "title": "Tanlangan obyektlar",
+    "subtitle": "AI baholash tizimi tomonidan tanlandi.",
+    "view_all": "Hammasini ko'rish"
+  },
+  "ecosystem": {
+    "title": "Uy uchun to'liq ekotizim",
+    "subtitle": "Avval 12 ta alohida ilovada bo'lgan 12 ta jarayon.",
+    "buy_title": "Sotib olish va sotish",
+    "buy_desc": "Tasdiqlangan e'lonlar va AI baholash.",
+    "rent_title": "Ijara",
+    "rent_desc": "Uzoq va qisqa muddatli — to'liq raqamli shartnoma.",
+    "stays_title": "Mehmonxona va hostel",
+    "stays_desc": "Butun dunyo bo'ylab bir zumda bron.",
+    "build_title": "Qurilish",
+    "build_desc": "Tekshirilgan quruvchilar va me'morlar.",
+    "shop_title": "Xarid",
+    "shop_desc": "Materiallar, mebel va texnika bitta savatda.",
+    "design_title": "Dizayn",
+    "design_desc": "Interior va landshaft dizaynerlari."
+  },
+  "map": {
+    "title": "Dunyoni xaritadan kashf eting",
+    "subtitle": "Heatmap, yaqin maktablar, tirbandlik, sun'iy yo'ldosh — jonli.",
+    "cta": "Xaritani ochish"
+  },
+  "cta": {
+    "title": "Milliard uy uchun qurilgan.",
+    "subtitle": "Global ishga tushish navbatiga qo'shiling.",
+    "button": "Erta kirish olish"
+  },
+  "footer": {
+    "tagline": "Uy va bino super-ilovasi.",
+    "product": "Mahsulot",
+    "company": "Kompaniya",
+    "legal": "Huquqiy",
+    "rights": "Barcha huquqlar himoyalangan."
+  }
+}

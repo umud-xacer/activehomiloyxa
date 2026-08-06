@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "active-home-shared"
+version = "0.0.0"
+description = "Cross-cutting, business-logic-free utilities shared across active-home apps (Playbook Sec 2)."
+requires-python = ">=3.13"
+# STATUS: skeleton only (Task P-00). No dependencies yet -- this package holds no code beyond
+# an empty placeholder until the error-envelope/logging/typed-id work is scoped as its own task.
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]

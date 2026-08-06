@@ -1,0 +1,65 @@
+[
+ {
+  "id": "PROMO-listing",
+  "doc": "test setup",
+  "expected": "a listing to promote is published",
+  "status": 201,
+  "passed": true,
+  "observed": "{\"id\":\"a80d41b0-f02f-4b20-a5f3-a4851609451b\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"c2e36a99-83b7-4157-a52d-6c08dedce9e7\",\"ownerProfileId\":\"9155ed96-d316-48e5-86c2-27a5e233b1ec\",\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5\",\"categoryPath\":\"/kvartira\",\"formDefinitionVersionId\":\"0da3a697-52d7-4d7c-bbe2-1eb2d68aead9\",\"title\":\"Reklama kvartira 154132\",\"description\":\"Promotsiya sinovi uchun e\u02bclon\",\"attributes\":{\"rooms\":3,\"area_m2\":60},\"price\":{\"amount\":\"1000.00\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311,\"longitude\":69.24},\"lifecycleState\":\"PUBLISHED\",\"isFlagged\":false,\"expiresAt\":",
+  "note": "{\"id\":\"a80d41b0-f02f-4b20-a5f3-a4851609451b\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"c2e36a99-83b7-4157-a52d-6c08dedce9e7\",\"ownerProfileId\":\"9155ed96-d316-48e5-86c2-27a5e233b1ec\",\"categoryId\":\"6b"
+ },
+ {
+  "id": "SRCH-005-promotion-purchase",
+  "doc": "FR-SUBS-002 / FR-SRCH-005",
+  "expected": "a PREMIUM promotion can be purchased for a listing and confirmed",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"102570e1-10b9-4c29-bfd0-3a0bcb175e3a\",\"orderId\":\"e0420dc2-4cf4-4564-b40e-24cbd2218929\",\"invoiceNumber\":\"INV-000012\",\"amount\":{\"amount\":\"50000.00\",\"currency\":\"UZS\"},\"status\":\"PAID\",\"issuedAt\":\"2026-07-27T12:09:01.268459Z\",\"paymentConfirmedAt\":\"2026-07-27T12:09:01.289836Z\"}",
+  "note": "{\"id\":\"102570e1-10b9-4c29-bfd0-3a0bcb175e3a\",\"orderId\":\"e0420dc2-4cf4-4564-b40e-24cbd2218929\",\"invoiceNumber\":\"INV-000012\",\"amount\":{\"amount\":\"50000.00\",\"currency\":\"UZS\"},\"status\":\"PAID\",\"issuedAt\":\"2"
+ },
+ {
+  "id": "SRCH-005-promotion-marker",
+  "doc": "DDD BC-03 PromotionApplicationPolicy",
+  "expected": "EntitlementActivated applies a PromotionMarker to the listing",
+  "status": null,
+  "passed": true,
+  "observed": "PREMIUM",
+  "note": "promotion_kind='PREMIUM'"
+ },
+ {
+  "id": "SRCH-005-labelled",
+  "doc": "FR-SRCH-005 / BRULE-10",
+  "expected": "a promoted result is clearly labelled in the search response",
+  "status": null,
+  "passed": false,
+  "observed": "None",
+  "note": "promoted=hit not found"
+ },
+ {
+  "id": "SRCH-005-cap",
+  "doc": "FR-SRCH-005 / BRULE-10 (promotion_page_cap = 3)",
+  "expected": "promoted results do not exceed the configured per-page cap",
+  "status": null,
+  "passed": true,
+  "observed": "[]",
+  "note": "0 promoted of 20 on the page"
+ },
+ {
+  "id": "DEGRADE-flag",
+  "doc": "contracts SearchResult.degraded ('True when served from the DB fallback')",
+  "expected": "the response marks itself degraded while OpenSearch is down",
+  "status": null,
+  "passed": true,
+  "observed": "{'items': [{'listingId': 'aeb78aa5-ac91-4c7e-ae7f-efdae293ee5d', 'title': 'Toshkentda arzon kvartira', 'categoryPath': '/kvartira', 'price': {'amount': '100000000.00', 'currency': 'UZS'}, 'location': {'latitude': 41.311, 'longitude': 69.24}, 'thumbnailUrl': None, 'verifiedBadge': False, 'promoted': None, 'slug': 'toshkentda-arzon-kvartira-aeb78aa5'}, {'listingId': '298e208b-55f1-48f6-8ed3-39f3edb166f2', 'title': 'Toshkentda arzon kvartira', 'categoryPath': '/kvartira', 'price': {'amount': '100000000.00', 'currency': 'UZS'}, 'location': {'latitude': 41.311, 'longitude': 69.24}, 'thumbnailUrl': ",
+  "note": "degraded=True, hits=16"
+ },
+ {
+  "id": "DEGRADE-flag-clear",
+  "doc": "contracts SearchResult.degraded",
+  "expected": "degraded returns to false once OpenSearch recovers",
+  "status": null,
+  "passed": true,
+  "observed": "{'items': [{'listingId': 'aeb78aa5-ac91-4c7e-ae7f-efdae293ee5d', 'title': 'Toshkentda arzon kvartira', 'categoryPath': '/kvartira', 'price': {'amount': '100000000.0', 'currency': 'UZS'}, 'location': {'latitude': 41.311, 'longitude': 69.24}, 'thumbnailUrl': None, 'verifiedBadge': False, 'promoted': None, 'slug': 'toshkentda-arzon-kvartira-aeb78aa5'}, {'listingId': '298e208b-55f1-48f6-8ed3-39f3edb166f2', 'title': 'Toshkentda arzon kvartira', 'categoryPath': '/kvartira', 'price': {'amount': '100000000.0', 'currency': 'UZS'}, 'location': {'latitude': 41.311, 'longitude': 69.24}, 'thumbnailUrl': No",
+  "note": "degraded=False hits=4"
+ }
+]

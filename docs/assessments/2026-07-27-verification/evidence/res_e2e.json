@@ -1,0 +1,272 @@
+[
+ {
+  "id": "I-14-none-before-payment",
+  "doc": "I-14 / FR-SUBS-003",
+  "expected": "no entitlement is active before confirmed payment",
+  "status": 200,
+  "passed": true,
+  "observed": "[]",
+  "note": "0 entitlements"
+ },
+ {
+  "id": "SUBS-002-order-plan",
+  "doc": "FR-SUBS-002",
+  "expected": "a pending order is created",
+  "status": 201,
+  "passed": true,
+  "observed": "{\"id\":\"9b520d9c-b178-48e8-8090-fb66a5f847c1\",\"purchaserProfileId\":\"502e17a3-de6d-4d27-be7e-0a0aa746cdee\",\"productId\":\"4e2b6a7e-c8ce-4106-abc5-24b931aea711\",\"targetType\":\"PROFILE\",\"targetId\":null,\"amount\":{\"amount\":\"100000\",\"currency\":\"UZS\"},\"status\":\"INVOICED\",\"invoiceId\":\"86f6c332-e061-4005-82a3-06de7e4749fe\",\"createdAt\":\"2026-07-27T12:02:07.103170Z\"}",
+  "note": "{\"id\":\"9b520d9c-b178-48e8-8090-fb66a5f847c1\",\"purchaserProfileId\":\"502e17a3-de6d-4d27-be7e-0a0aa746cdee\",\"productId\":\"4e2b6a7e-c8ce-4106-abc5-24b931aea711\",\"targetType\":\"PROFILE\",\"targetId\":null,\"amou"
+ },
+ {
+  "id": "SUBS-002-pending-plan",
+  "doc": "FR-SUBS-002",
+  "expected": "order starts unpaid/pending",
+  "status": null,
+  "passed": true,
+  "observed": "INVOICED",
+  "note": "status=INVOICED"
+ },
+ {
+  "id": "SUBS-002-snapshot-plan",
+  "doc": "DDD BC-08 ProductSnapshot",
+  "expected": "the order freezes a ProductSnapshot",
+  "status": null,
+  "passed": true,
+  "observed": "t",
+  "note": "snapshot=t"
+ },
+ {
+  "id": "BILL-001-invoice-plan",
+  "doc": "FR-BILL-001",
+  "expected": "an invoice is produced",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"86f6c332-e061-4005-82a3-06de7e4749fe\",\"orderId\":\"9b520d9c-b178-48e8-8090-fb66a5f847c1\",\"invoiceNumber\":\"INV-000009\",\"amount\":{\"amount\":\"100000.00\",\"currency\":\"UZS\"},\"status\":\"ISSUED\",\"issuedAt\":\"2026-07-27T12:02:07.103170Z\",\"paymentConfirmedAt\":null}",
+  "note": "{\"id\":\"86f6c332-e061-4005-82a3-06de7e4749fe\",\"orderId\":\"9b520d9c-b178-48e8-8090-fb66a5f847c1\",\"invoiceNumber\":\"INV-000009\",\"amount\":{\"amount\":\"100000.00\",\"currency\":\"UZS\"},\"status\":\"ISSUED\",\"issuedAt\""
+ },
+ {
+  "id": "I-14-self-confirm-denied-plan",
+  "doc": "I-14 / NFR-SEC-002",
+  "expected": "the buyer cannot confirm their own offline payment",
+  "status": 403,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller lacks the required permission\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\"574fe6fd-b0be-442c-a9a8-5709bdf513ac\"}",
+  "note": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller lacks the required permission\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"trace"
+ },
+ {
+  "id": "BILL-002-confirm-plan",
+  "doc": "FR-BILL-002",
+  "expected": "operator records the offline payment confirmation",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"86f6c332-e061-4005-82a3-06de7e4749fe\",\"orderId\":\"9b520d9c-b178-48e8-8090-fb66a5f847c1\",\"invoiceNumber\":\"INV-000009\",\"amount\":{\"amount\":\"100000.00\",\"currency\":\"UZS\"},\"status\":\"PAID\",\"issuedAt\":\"2026-07-27T12:02:07.103170Z\",\"paymentConfirmedAt\":\"2026-07-27T12:02:07.163200Z\"}",
+  "note": "{\"id\":\"86f6c332-e061-4005-82a3-06de7e4749fe\",\"orderId\":\"9b520d9c-b178-48e8-8090-fb66a5f847c1\",\"invoiceNumber\":\"INV-000009\",\"amount\":{\"amount\":\"100000.00\",\"currency\":\"UZS\"},\"status\":\"PAID\",\"issuedAt\":\"2026-07-27T12:02:07.103170Z\",\"paymentConfirmedAt\":"
+ },
+ {
+  "id": "SUBS-003-activated",
+  "doc": "FR-SUBS-003 / I-14",
+  "expected": "the entitlement activates on administrator payment confirmation",
+  "status": 200,
+  "passed": true,
+  "observed": "[{\"id\":\"1bf5c82a-9fb5-405a-a5ae-385781a77a8f\",\"orderId\":\"9b520d9c-b178-48e8-8090-fb66a5f847c1\",\"entitlementType\":\"ACTIVE_SUBSCRIPTION\",\"promotionKind\":null,\"targetId\":\"502e17a3-de6d-4d27-be7e-0a0aa746cdee\",\"validFrom\":\"2026-07-27T12:02:07.163200Z\",\"validUntil\":\"2026-08-26T12:02:07.163200Z\",\"activationState\":\"ACTIVE\"}]",
+  "note": "1 entitlements after confirmation"
+ },
+ {
+  "id": "BILL-003-reconcile",
+  "doc": "FR-BILL-003",
+  "expected": "invoice/payment status is visible and reconcilable in the back office",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"id\":\"a7cd41ec-a708-4653-bdda-3bb3fdfcbd98\",\"orderId\":\"60f1fbe8-e6e8-43a1-945f-0b16c615039c\",\"invoiceNumber\":\"INV-000001\",\"amount\":{\"amount\":\"100000.00\",\"currency\":\"UZS\"},\"status\":\"ISSUED\",\"issuedAt\":\"2026-07-27T11:59:41.793473Z\",\"paymentConfirmedAt\":null},{\"id\":\"fd71bf3d-cd3e-43e8-abd7-3a2028f214f2\",\"orderId\":\"c2a93c70-1c35-42b5-9a65-4b76a1a57fdf\",\"invoiceNumber\":\"INV-000002\",\"amount\":{\"amount\":\"200000.00\",\"currency\":\"UZS\"},\"status\":\"ISSUED\",\"issuedAt\":\"2026-07-27T11:59:47.664925Z\",\"paymentConfirmedAt\":null},{\"id\":\"27ad0aec-b815-478e-a430-f1fada12ccb1\",\"orderId\":\"3158c0cf-7e99-43c1",
+  "note": "9 invoices"
+ },
+ {
+  "id": "I-08-quota",
+  "doc": "I-08 / FR-ADV-008 / BRULE-07",
+  "expected": "creation beyond the plan quota (max_active_listings=2) is refused",
+  "status": 409,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/quota-exceeded\",\"title\":\"Listing quota exceeded\",\"status\":409,\"code\":\"QUOTA_EXCEEDED\",\"traceId\":\"ae558889-693c-426f-9033-e3cb1710163e\"}",
+  "note": "created 2 under a 2-listing plan; stopped at 409"
+ },
+ {
+  "id": "MEDIA-001-jpeg",
+  "doc": "FR-MEDIA-001",
+  "expected": "valid image upload target is issued",
+  "status": 201,
+  "passed": true,
+  "observed": "{\"mediaAssetId\":\"c20a35ad-0eb7-4fe0-b6cd-a42cf3e13781\",\"uploadUrl\":\"http://localhost:9000/active-home-media-verify/media/c20a35ad-0eb7-4fe0-b6cd-a42cf3e13781/original.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=active_home%2F20260727%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260727T120212Z&X-Amz-Expires=900&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=cf189ad68f98ecf91e99d8e9051a19395eda38495234b4ed2c1c72f0e5c6bcd3\",\"method\":\"PUT\",\"headers\":{\"Content-Type\":\"image/jpeg\"},\"expiresAt\":\"2026-07-27T12:17:12.267274Z\"}",
+  "note": "{\"mediaAssetId\":\"c20a35ad-0eb7-4fe0-b6cd-a42cf3e13781\",\"uploadUrl\":\"http://localhost:9000/active-home-media-verify/media/c20a35ad-0eb7-4fe0-b6cd-a42cf3e13781/or"
+ },
+ {
+  "id": "MEDIA-001-png",
+  "doc": "FR-MEDIA-001",
+  "expected": "valid image upload target is issued",
+  "status": 201,
+  "passed": true,
+  "observed": "{\"mediaAssetId\":\"9aa49434-90fb-42f4-8f9c-48a75e668dd8\",\"uploadUrl\":\"http://localhost:9000/active-home-media-verify/media/9aa49434-90fb-42f4-8f9c-48a75e668dd8/original.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=active_home%2F20260727%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260727T120212Z&X-Amz-Expires=900&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Signature=927eee7a4d1d62ed4e71ad3fb25057a9f57ebd64a6cce9458297cb984af3fbbd\",\"method\":\"PUT\",\"headers\":{\"Content-Type\":\"image/png\"},\"expiresAt\":\"2026-07-27T12:17:12.273559Z\"}",
+  "note": "{\"mediaAssetId\":\"9aa49434-90fb-42f4-8f9c-48a75e668dd8\",\"uploadUrl\":\"http://localhost:9000/active-home-media-verify/media/9aa49434-90fb-42f4-8f9c-48a75e668dd8/or"
+ },
+ {
+  "id": "MEDIA-002-video",
+  "doc": "FR-MEDIA-002 / DEC-10 / BRULE-11",
+  "expected": "video/PDF upload is refused with a clear message",
+  "status": 422,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more fields failed validation.\",\"traceId\":\"82a939b5-3acf-4da1-80b2-39cb04814787\",\"errors\":[{\"path\":\"/body/contentType\",\"rule\":\"literal_error\",\"message\":\"Input should be 'image/jpeg', 'image/png' or 'image/webp'\"}]}",
+  "note": "{\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more fields failed valida"
+ },
+ {
+  "id": "MEDIA-002-pdf",
+  "doc": "FR-MEDIA-002 / DEC-10 / BRULE-11",
+  "expected": "video/PDF upload is refused with a clear message",
+  "status": 422,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more fields failed validation.\",\"traceId\":\"49b3f409-f25c-4f98-8ae4-6461e611a59c\",\"errors\":[{\"path\":\"/body/contentType\",\"rule\":\"literal_error\",\"message\":\"Input should be 'image/jpeg', 'image/png' or 'image/webp'\"}]}",
+  "note": "{\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more fields failed valida"
+ },
+ {
+  "id": "MEDIA-001-oversize",
+  "doc": "FR-MEDIA-001",
+  "expected": "oversized image (>10MB) is rejected",
+  "status": 422,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/unsupported-media-type\",\"title\":\"Image exceeds the maximum upload size\",\"status\":422,\"code\":\"UNSUPPORTED_MEDIA_TYPE\",\"traceId\":\"ff48887d-2b67-4342-b137-224515a1f029\"}",
+  "note": "{\"type\":\"https://errors.activehome.uz/unsupported-media-type\",\"title\":\"Image exceeds the maximum upload size\",\"status\":422,\"code\":\"UNSUPPORTED_MEDIA_TYPE\",\"trac"
+ },
+ {
+  "id": "MEDIA-001-presigned-put",
+  "doc": "FR-MEDIA-001 / Security Arch (presigned direct upload)",
+  "expected": "the client can PUT bytes directly to the presigned MinIO URL",
+  "status": 200,
+  "passed": true,
+  "observed": "",
+  "note": "PUT 200"
+ },
+ {
+  "id": "ADV-002-image-limit",
+  "doc": "FR-ADV-002 / I-04 / BRULE-06",
+  "expected": "up to 10 images accepted; the 11th refused",
+  "status": 422,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/image-count-exceeded\",\"title\":\"A listing may carry at most ten image attachments\",\"status\":422,\"code\":\"IMAGE_COUNT_EXCEEDED\",\"traceId\":\"ba4c1451-b5b7-4082-b655-bcb10abe2f8f\"}",
+  "note": "attached 10; 11th -> 422"
+ },
+ {
+  "id": "SUBS-002-order-verification",
+  "doc": "FR-SUBS-002",
+  "expected": "a pending order is created",
+  "status": 201,
+  "passed": true,
+  "observed": "{\"id\":\"3f43fafd-d070-4a14-80ea-5acf1db19994\",\"purchaserProfileId\":\"502e17a3-de6d-4d27-be7e-0a0aa746cdee\",\"productId\":\"e8ab4806-124a-4f22-aab2-c74c12486cc1\",\"targetType\":\"PROFILE\",\"targetId\":null,\"amount\":{\"amount\":\"200000\",\"currency\":\"UZS\"},\"status\":\"INVOICED\",\"invoiceId\":\"47a3fa20-6bb0-45ce-bf54-d7bbf2661822\",\"createdAt\":\"2026-07-27T12:02:16.133979Z\"}",
+  "note": "{\"id\":\"3f43fafd-d070-4a14-80ea-5acf1db19994\",\"purchaserProfileId\":\"502e17a3-de6d-4d27-be7e-0a0aa746cdee\",\"productId\":\"e8ab4806-124a-4f22-aab2-c74c12486cc1\",\"targetType\":\"PROFILE\",\"targetId\":null,\"amou"
+ },
+ {
+  "id": "SUBS-002-pending-verification",
+  "doc": "FR-SUBS-002",
+  "expected": "order starts unpaid/pending",
+  "status": null,
+  "passed": true,
+  "observed": "INVOICED",
+  "note": "status=INVOICED"
+ },
+ {
+  "id": "SUBS-002-snapshot-verification",
+  "doc": "DDD BC-08 ProductSnapshot",
+  "expected": "the order freezes a ProductSnapshot",
+  "status": null,
+  "passed": true,
+  "observed": "t",
+  "note": "snapshot=t"
+ },
+ {
+  "id": "BILL-001-invoice-verification",
+  "doc": "FR-BILL-001",
+  "expected": "an invoice is produced",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"47a3fa20-6bb0-45ce-bf54-d7bbf2661822\",\"orderId\":\"3f43fafd-d070-4a14-80ea-5acf1db19994\",\"invoiceNumber\":\"INV-000010\",\"amount\":{\"amount\":\"200000.00\",\"currency\":\"UZS\"},\"status\":\"ISSUED\",\"issuedAt\":\"2026-07-27T12:02:16.133979Z\",\"paymentConfirmedAt\":null}",
+  "note": "{\"id\":\"47a3fa20-6bb0-45ce-bf54-d7bbf2661822\",\"orderId\":\"3f43fafd-d070-4a14-80ea-5acf1db19994\",\"invoiceNumber\":\"INV-000010\",\"amount\":{\"amount\":\"200000.00\",\"currency\":\"UZS\"},\"status\":\"ISSUED\",\"issuedAt\""
+ },
+ {
+  "id": "I-14-self-confirm-denied-verification",
+  "doc": "I-14 / NFR-SEC-002",
+  "expected": "the buyer cannot confirm their own offline payment",
+  "status": 403,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller lacks the required permission\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\"b9c763c1-d819-4ec3-acfa-2fa9a4b6a742\"}",
+  "note": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller lacks the required permission\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"trace"
+ },
+ {
+  "id": "BILL-002-confirm-verification",
+  "doc": "FR-BILL-002",
+  "expected": "operator records the offline payment confirmation",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"47a3fa20-6bb0-45ce-bf54-d7bbf2661822\",\"orderId\":\"3f43fafd-d070-4a14-80ea-5acf1db19994\",\"invoiceNumber\":\"INV-000010\",\"amount\":{\"amount\":\"200000.00\",\"currency\":\"UZS\"},\"status\":\"PAID\",\"issuedAt\":\"2026-07-27T12:02:16.133979Z\",\"paymentConfirmedAt\":\"2026-07-27T12:02:16.208846Z\"}",
+  "note": "{\"id\":\"47a3fa20-6bb0-45ce-bf54-d7bbf2661822\",\"orderId\":\"3f43fafd-d070-4a14-80ea-5acf1db19994\",\"invoiceNumber\":\"INV-000010\",\"amount\":{\"amount\":\"200000.00\",\"currency\":\"UZS\"},\"status\":\"PAID\",\"issuedAt\":\"2026-07-27T12:02:16.133979Z\",\"paymentConfirmedAt\":"
+ },
+ {
+  "id": "PROF-004-verification-entitlement",
+  "doc": "FR-PROF-004 (pre: verification purchased)",
+  "expected": "a VERIFICATION entitlement is active after payment confirmation",
+  "status": null,
+  "passed": true,
+  "observed": "{'id': 'e929bcbf-bee9-4220-b872-f8491e1e24fe', 'orderId': '3f43fafd-d070-4a14-80ea-5acf1db19994', 'entitlementType': 'VERIFICATION_ELIGIBILITY', 'promotionKind': None, 'targetId': '502e17a3-de6d-4d27-be7e-0a0aa746cdee', 'validFrom': '2026-07-27T12:02:16.208846Z', 'validUntil': '2026-08-26T12:02:16.208846Z', 'activationState': 'ACTIVE'}",
+  "note": "entitlements=[{\"id\": \"1bf5c82a-9fb5-405a-a5ae-385781a77a8f\", \"orderId\": \"9b520d9c-b178-48e8-8090-fb66a5f847c1\", \"entitlementType\": \"ACTIVE_SUBSCRIPTION\", \"promotionKind\": null, \"targetId\": \"502e17a3-de6d-4d27-be7e-0a0aa746cdee\", \"validFrom\": \"2026-07-27T12:02:07.163200Z\", \"validUntil\": \"2026-08-26T12:02:07.16320"
+ },
+ {
+  "id": "PROF-004-request",
+  "doc": "FR-PROF-004",
+  "expected": "verification request creates a case in the reviewer queue",
+  "status": 201,
+  "passed": true,
+  "observed": "{\"id\":\"6b2e9ca5-1d3f-44e6-a238-aa41b4107a0d\",\"businessProfileId\":\"502e17a3-de6d-4d27-be7e-0a0aa746cdee\",\"entitlementId\":\"e929bcbf-bee9-4220-b872-f8491e1e24fe\",\"status\":\"REQUESTED\",\"slaDueAt\":\"2026-07-30T12:02:21.256794Z\",\"documents\":[{\"id\":\"8a1eee5a-678d-4e69-aed5-23e5289aef3f\",\"mediaAssetId\":\"e8d4bc63-0b4d-4e30-b891-564df1b6b736\",\"documentKind\":\"REGISTRATION_CERTIFICATE\",\"position\":1}],\"decision\":null,\"createdAt\":\"2026-07-27T12:02:21.256794Z\"}",
+  "note": "{\"id\":\"6b2e9ca5-1d3f-44e6-a238-aa41b4107a0d\",\"businessProfileId\":\"502e17a3-de6d-4d27-be7e-0a0aa746cdee\",\"entitlementId\":\"e929bcbf-bee9-4220-b872-f8491e1e24fe\",\"status\":\"REQUESTED\",\"slaDueAt\":\"2026-07-30T12:02:21.256794Z\",\"documents\":[{\"id\":\"8a1eee5a-"
+ },
+ {
+  "id": "ADMIN-002-case-queued",
+  "doc": "FR-ADMIN-002 / FR-PROF-004",
+  "expected": "the request appears in the verification queue",
+  "status": null,
+  "passed": true,
+  "observed": "{'id': '6b2e9ca5-1d3f-44e6-a238-aa41b4107a0d', 'businessProfileId': '502e17a3-de6d-4d27-be7e-0a0aa746cdee', 'entitlementId': 'e929bcbf-bee9-4220-b872-f8491e1e24fe', 'status': 'REQUESTED', 'slaDueAt': '2026-07-30T12:02:21.256794Z', 'documents': [{'id': '8a1eee5a-678d-4e69-aed5-23e5289aef3f', 'mediaAssetId': 'e8d4bc63-0b4d-4e30-b891-564df1b6b736', 'documentKind': 'REGISTRATION_CERTIFICATE', 'position': 1}], 'decision': None, 'createdAt': '2026-07-27T12:02:21.256794Z'}",
+  "note": "2 cases in queue"
+ },
+ {
+  "id": "I-13-no-badge-yet",
+  "doc": "I-13",
+  "expected": "no badge before the case is approved",
+  "status": null,
+  "passed": true,
+  "observed": "",
+  "note": "badge=''"
+ },
+ {
+  "id": "PROF-005-approve",
+  "doc": "FR-PROF-005",
+  "expected": "reviewer approves, recording the outcome",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"6b2e9ca5-1d3f-44e6-a238-aa41b4107a0d\",\"businessProfileId\":\"502e17a3-de6d-4d27-be7e-0a0aa746cdee\",\"entitlementId\":\"e929bcbf-bee9-4220-b872-f8491e1e24fe\",\"status\":\"APPROVED\",\"slaDueAt\":\"2026-07-30T12:02:21.256794Z\",\"documents\":[{\"id\":\"8a1eee5a-678d-4e69-aed5-23e5289aef3f\",\"mediaAssetId\":\"e8d4bc63-0b4d-4e30-b891-564df1b6b736\",\"documentKind\":\"REGISTRATION_CERTIFICATE\",\"position\":1}],\"decision\":{\"outcome\":\"APPROVED\",\"reason\":\"documents verified\",\"decidedAt\":\"2026-07-27T12:02:24.311867Z\"},\"createdAt\":\"2026-07-27T12:02:21.256794Z\"}",
+  "note": "{\"id\":\"6b2e9ca5-1d3f-44e6-a238-aa41b4107a0d\",\"businessProfileId\":\"502e17a3-de6d-4d27-be7e-0a0aa746cdee\",\"entitlementId\":\"e929bcbf-bee9-4220-b872-f8491e1e24fe\",\"status\":\"APPROVED\",\"slaDueAt\":\"2026-07-3"
+ },
+ {
+  "id": "PROF-006-badge",
+  "doc": "FR-PROF-005 / FR-PROF-006 / I-13",
+  "expected": "approval issues a verified badge with a validity period",
+  "status": null,
+  "passed": true,
+  "observed": "VALID",
+  "note": "badge='VALID' validUntil='2026-08-26 12:02:16.208846+00'"
+ },
+ {
+  "id": "PROF-005-terminal",
+  "doc": "FR-PROF-005 / Config: terminal cases immutable",
+  "expected": "a terminal verification case cannot be re-decided",
+  "status": 409,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/illegal-state-transition\",\"title\":\"Verification case is terminal and cannot be modified\",\"status\":409,\"code\":\"ILLEGAL_STATE_TRANSITION\",\"traceId\":\"b0858b02-5619-43c1-b6a2-89f68ccb4938\"}",
+  "note": "{\"type\":\"https://errors.activehome.uz/illegal-state-transition\",\"title\":\"Verification case is terminal and cannot be modified\",\"status\":409,\"code\":\"ILLEGAL_STAT"
+ }
+]

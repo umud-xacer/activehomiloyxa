@@ -1,0 +1,63 @@
+# tools/ruff.toml -- QG-01 (Playbook Sec 16). Run: ruff check --config tools/ruff.toml .
+# Python 3.13+ per the Baseline's fixed technology stack (Sec 7).
+
+target-version = "py313"
+line-length = 100
+src = ["apps/backend/src", "packages/shared/src", "contracts"]
+extend-exclude = [
+    "docs",
+    ".venv",
+    # AIR-14 / QG-09: once a migration is applied, editing it (even a pure whitespace
+    # reformat) is forbidden -- append a new migration instead. Excluding versions/ from the
+    # formatter's scope stops a repo-wide `ruff format` from silently reformatting an applied
+    # migration and tripping check_migration_safety.py.
+    "**/infrastructure/migrations/versions/*.py",
+]
+
+[lint]
+# Playbook Sec 6: "Follow PEP 8 as enforced by ruff; no manual style debates."
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade (modern Python 3.13 idiom)
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "ASYNC", # flake8-async -- catches blocking I/O on the event loop (Playbook Sec 6)
+    "RUF",  # ruff-native rules
+]
+ignore = [
+    "E501", # line length is enforced by the formatter, not the linter
+    "B008", # `Depends(...)` as an argument default is FastAPI's own required DI pattern
+            # (Playbook Sec 6 "use cases receive their ports ... via FastAPI Depends"), not the
+            # mutable-default-argument mistake this rule exists to catch -- will recur in every
+            # module's interfaces/ routers, not just backbone.di's wiring proof.
+]
+
+[lint.per-file-ignores]
+"__init__.py" = ["F401"]  # re-exports in interfaces/ packages are intentional
+"apps/backend/src/search/domain/cross_script.py" = ["RUF001", "RUF002", "RUF003"]
+    # Task P-08: this file's entire purpose is an Uzbek Latin<->Cyrillic transliteration table
+    # (DEC-19, FR-SRCH-004) -- every Cyrillic letter and apostrophe-lookalike RUF001-003 flags as
+    # "ambiguous" (a confusable-identifier check meant to catch homoglyph attacks in normal code)
+    # is the literal, intentional subject matter here, not a mistake to rename away.
+"apps/backend/tests/search/test_cross_script.py" = ["RUF001", "RUF002", "RUF003"]
+    # Same reasoning as cross_script.py above -- this is the thorough, both-directions test suite
+    # for that same transliteration table (SAD/SRS risk R-2), so it necessarily contains the same
+    # Cyrillic literals and apostrophe-variant characters under test, not a mistake to rename away.
+"apps/backend/tests/profiles/test_business_profile.py" = ["RUF001"]
+"apps/backend/tests/profiles/test_profile_use_cases.py" = ["RUF001"]
+"apps/backend/tests/profiles/integration/test_repository_live.py" = ["RUF001"]
+    # Task P-11: `LocalizedText(uz_latn=..., ru=...)` fixtures deliberately carry real Cyrillic
+    # `ru` text (DEC-19's four-locale model) to prove round-tripping through JSONB/the API layer,
+    # the same "intentional subject matter, not a mistake to rename away" reasoning as
+    # cross_script.py above.
+
+[lint.isort]
+known-first-party = ["shared_kernel", "active_home_shared", "contracts", "backbone", "tests"]
+
+[format]
+quote-style = "double"
+indent-style = "space"

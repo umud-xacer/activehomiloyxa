@@ -1,0 +1,247 @@
+"""profiles -- the `BusinessProfile` aggregate (DDD Sec 5.2 `AR: BusinessProfile [P]`). The
+platform's company presence and the trust-badge holder (I-13). Persistence-ignorant, mirrors
+`catalog.domain.listing.Listing`'s style: frozen dataclass, every transition returns a new
+instance via `dataclasses.replace`, guarded by a typed exception raised before the replace.
+
+I-13 ("A VerifiedBadge exists only from an approved case, displays only within validity, and is
+withdrawn on expiry") is realised entirely by this class's own three badge methods: `issue_badge`
+is the ONLY method that can set `badge.status` to `VALID`, and it REQUIRES a
+`verification_case.ApprovedVerificationProof` -- a type that can itself only be constructed from
+an approved `VerificationCase` (see that module). There is no setter, no alternate constructor
+path, and no way to reach `VALID` by any other call on this class.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, replace
+from datetime import datetime
+from typing import Any
+from uuid import UUID
+
+from profiles.domain.exceptions import (
+    IllegalBadgeTransitionError,
+    IllegalProfileStatusTransitionError,
+    PortfolioItemLimitExceededError,
+    PortfolioItemNotFoundError,
+)
+from profiles.domain.portfolio_item import PortfolioItem
+from profiles.domain.value_objects import BadgeStatus, ProfileStatus, ProfileType, VerifiedBadge
+from profiles.domain.verification_case import ApprovedVerificationProof
+from shared_kernel import BusinessProfileId, LocalizedText, UserId
+
+MAX_PORTFOLIO_ITEMS = 50
+"""Physical DB `ck (position BETWEEN 1 AND 50)` -- the literal spec number."""
+
+
+@dataclass(frozen=True)
+class BusinessProfile:
+    id: BusinessProfileId
+    owner_user_id: UserId
+    profile_type: ProfileType
+    """Fixed for life -- set once by `create`, appears as a parameter on no other method (I-01's
+    "fixed for life" discipline, applied here the same way `catalog.domain.listing.Listing`
+    documents for its own `category_id`/`owner_user_id`)."""
+    name: LocalizedText
+    description: LocalizedText | None
+    contacts: dict[str, Any]
+    """CompanyDetails VO (phones/emails/site) -- Physical DB `contacts jsonb NOT NULL DEFAULT
+    '{}'`, no further shape mandated by any approved document."""
+    address: str | None
+    slug: str
+    status: ProfileStatus
+    badge: VerifiedBadge | None
+    """`None` = never verified (Physical DB `ck_badge_shape`'s own reading)."""
+    portfolio: tuple[PortfolioItem, ...]
+    logo_media_asset_id: UUID | None
+    """The B2B landing-page identity fields (Monetization/Landing-Page task): a single opaque
+    media reference each, mirroring `PortfolioItem.media_asset_id`'s own convention (a reference,
+    never a resolved URL -- `interfaces/` resolves the CDN URL at read time via `media`, the same
+    indirection `catalog.domain.image_attachment.ImageAttachment` already uses). `None` = not set,
+    the landing page falls back to a placeholder."""
+    banner_media_asset_id: UUID | None
+    created_at: datetime
+    updated_at: datetime
+    lock_version: int = 0
+
+    # --- factory (FR-PROF-001) ------------------------------------------------------------------
+
+    @staticmethod
+    def create(
+        *,
+        profile_id: BusinessProfileId,
+        owner_user_id: UserId,
+        profile_type: ProfileType,
+        name: LocalizedText,
+        description: LocalizedText | None,
+        contacts: dict[str, Any] | None,
+        address: str | None,
+        slug: str,
+        now: datetime,
+    ) -> BusinessProfile:
+        """Always produces `CREATED` (see `value_objects.ProfileStatus`'s own docstring for why
+        `application.ProfileUseCases.create_profile` immediately composes `.activate()`)."""
+        return BusinessProfile(
+            id=profile_id,
+            owner_user_id=owner_user_id,
+            profile_type=profile_type,
+            name=name,
+            description=description,
+            contacts=contacts or {},
+            address=address,
+            slug=slug,
+            status=ProfileStatus.CREATED,
+            badge=None,
+            portfolio=(),
+            logo_media_asset_id=None,
+            banner_media_asset_id=None,
+            created_at=now,
+            updated_at=now,
+        )
+
+    # --- lifecycle (Created -> Active -> Archived) ------------------------------------------------
+
+    def activate(self, *, now: datetime) -> BusinessProfile:
+        if self.status is not ProfileStatus.CREATED:
+            raise IllegalProfileStatusTransitionError("activate", self.status.value)
+        return replace(self, status=ProfileStatus.ACTIVE, updated_at=now)
+
+    def archive(self, *, now: datetime) -> BusinessProfile:
+        """FR-PROF (moderation-invoked or owner-invoked archival). Legal from `ACTIVE` only --
+        `ARCHIVED` is terminal (Database Architecture: "owner closure/suspension follow-through");
+        an already-`ARCHIVED` profile archiving again, or archiving a still-`CREATED` one (should
+        never happen given `create`+`activate` are always composed together), both raise."""
+        if self.status is not ProfileStatus.ACTIVE:
+            raise IllegalProfileStatusTransitionError("archive", self.status.value)
+        return replace(self, status=ProfileStatus.ARCHIVED, updated_at=now)
+
+    def update_details(
+        self,
+        *,
+        name: LocalizedText | None = None,
+        description: LocalizedText | None = None,
+        contacts: dict[str, Any] | None = None,
+        address: str | None = None,
+        now: datetime,
+    ) -> BusinessProfile:
+        """`updateBusinessProfile`: "profileType is immutable" (OpenAPI's own docstring) -- no
+        parameter here can touch it. Refused once `ARCHIVED` (nothing to maintain on a closed
+        profile); legal in `CREATED` or `ACTIVE`."""
+        if self.status is ProfileStatus.ARCHIVED:
+            raise IllegalProfileStatusTransitionError("update_details", self.status.value)
+        return replace(
+            self,
+            name=name if name is not None else self.name,
+            description=description if description is not None else self.description,
+            contacts=contacts if contacts is not None else self.contacts,
+            address=address if address is not None else self.address,
+            updated_at=now,
+        )
+
+    def update_branding(
+        self,
+        *,
+        logo_media_asset_id: UUID | None,
+        banner_media_asset_id: UUID | None,
+        now: datetime,
+    ) -> BusinessProfile:
+        """Sets the landing page's logo/banner. Unlike `update_details`, both parameters are
+        plain optional values applied verbatim (not "unchanged if omitted") -- the owner clears
+        one by sending `null`, mirroring `remove_portfolio_item`'s explicit-removal shape rather
+        than `update_details`'s partial-patch one, since there is exactly one of each here (no
+        list to add/remove from)."""
+        if self.status is ProfileStatus.ARCHIVED:
+            raise IllegalProfileStatusTransitionError("update_branding", self.status.value)
+        return replace(
+            self,
+            logo_media_asset_id=logo_media_asset_id,
+            banner_media_asset_id=banner_media_asset_id,
+            updated_at=now,
+        )
+
+    # --- badge lifecycle (I-13; FR-PROF-006/007) --------------------------------------------------
+
+    def issue_badge(
+        self, *, proof: ApprovedVerificationProof, valid_until: datetime, now: datetime
+    ) -> BusinessProfile:
+        """I-13's structural guard: `proof` can only exist if it was built from an `APPROVED`
+        `VerificationCase` (`verification_case.ApprovedVerificationProof.from_case`) for THIS
+        profile -- `NotProfileOwnerError`-shaped defence-in-depth against a caller passing a
+        mismatched proof is `application.VerificationUseCases.decide_verification`'s job (it
+        already only ever builds `proof` from the one case it just loaded for this exact
+        profile); this method still checks the id match as a second, cheap guard. `valid_until`
+        is supplied by the caller, computed from the entitlement's own validity window (DDD Sec
+        5.2 `BadgeIssuanceService`: "computes validity period from the configured verification
+        product terms" -- transitively, via the entitlement's `valid_until`, since profiles
+        cannot import `configuration` directly, SAD Sec 8.1). Legal from ANY current badge
+        state (`None`/`EXPIRED`/`REVOKED`/even `VALID`, re-verification while still valid) --
+        re-verification's own constraint (never editing a terminal *case*) is enforced on
+        `VerificationCase`, not here."""
+        if proof.business_profile_id != self.id:
+            raise IllegalBadgeTransitionError("issue_badge", "mismatched profile")
+        badge = VerifiedBadge(status=BadgeStatus.VALID, issued_at=now, valid_until=valid_until)
+        return replace(self, badge=badge, updated_at=now)
+
+    def expire_badge(self, *, now: datetime) -> BusinessProfile:
+        """FR-PROF-006/007: the expiry sweep worker's own transition. Legal only from `VALID`."""
+        if self.badge is None or self.badge.status is not BadgeStatus.VALID:
+            raise IllegalBadgeTransitionError(
+                "expire_badge", self.badge.status.value if self.badge else None
+            )
+        badge = replace(self.badge, status=BadgeStatus.EXPIRED)
+        return replace(self, badge=badge, updated_at=now)
+
+    def revoke_badge(self, *, now: datetime) -> BusinessProfile:
+        """The moderation-invoked command (P-11 scope: "e.g. following a moderation action");
+        exposed via `interfaces/moderation_port.py`, mirroring `catalog.domain.listing.Listing.
+        unflag`'s own "moderation command port's method" precedent. Legal only from `VALID` --
+        an already-`EXPIRED`/`REVOKED`/never-issued badge cannot be revoked again."""
+        if self.badge is None or self.badge.status is not BadgeStatus.VALID:
+            raise IllegalBadgeTransitionError(
+                "revoke_badge", self.badge.status.value if self.badge else None
+            )
+        badge = replace(self.badge, status=BadgeStatus.REVOKED)
+        return replace(self, badge=badge, updated_at=now)
+
+    # --- portfolio (FR-PROF-002; ordered, <=50) ---------------------------------------------------
+
+    def add_portfolio_item(
+        self,
+        *,
+        item_id: UUID,
+        media_asset_id: UUID,
+        caption: LocalizedText | None,
+        now: datetime,
+    ) -> BusinessProfile:
+        if len(self.portfolio) >= MAX_PORTFOLIO_ITEMS:
+            raise PortfolioItemLimitExceededError(MAX_PORTFOLIO_ITEMS)
+        item = PortfolioItem(
+            id=item_id,
+            media_asset_id=media_asset_id,
+            position=len(self.portfolio) + 1,
+            caption=caption,
+            created_at=now,
+        )
+        return replace(self, portfolio=(*self.portfolio, item), updated_at=now)
+
+    def remove_portfolio_item(self, item_id: UUID, *, now: datetime) -> BusinessProfile:
+        if not any(item.id == item_id for item in self.portfolio):
+            raise PortfolioItemNotFoundError(item_id)
+        remaining = tuple(item for item in self.portfolio if item.id != item_id)
+        renumbered = tuple(
+            replace(item, position=index + 1) for index, item in enumerate(remaining)
+        )
+        return replace(self, portfolio=renumbered, updated_at=now)
+
+    def remove_portfolio_item_for_media_asset(
+        self, media_asset_id: UUID, *, now: datetime
+    ) -> BusinessProfile:
+        """Applies media's `MediaAssetRejected` projection (X-06) -- a no-op if no portfolio item
+        currently references this asset (redelivery-safe, mirrors `verification_case.
+        VerificationCase.remove_document_for_media_asset`)."""
+        if not any(item.media_asset_id == media_asset_id for item in self.portfolio):
+            return self
+        remaining = tuple(item for item in self.portfolio if item.media_asset_id != media_asset_id)
+        renumbered = tuple(
+            replace(item, position=index + 1) for index, item in enumerate(remaining)
+        )
+        return replace(self, portfolio=renumbered, updated_at=now)

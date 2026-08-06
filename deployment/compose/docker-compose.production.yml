@@ -1,0 +1,149 @@
+# deployment/compose/docker-compose.production.yml
+#
+# Production topology for a single-host deploy (c7i-flex.large, 4GB RAM): datastores +
+# the realtime gateway container. `api` (FastAPI/uvicorn) and `web` (TanStack Start Node
+# server) run as host-level systemd services, not containers -- no production Dockerfile
+# exists for them yet (deployment/README.md's own note), and running them directly on the
+# host with systemd gives restart-on-crash/restart-on-boot without writing one under time
+# pressure. `nginx` runs as a host package (not this compose's skeleton nginx image, which
+# only serves /healthz) so it can reverse-proxy to the host-level api/web processes.
+#
+# Datastore ports bind to 127.0.0.1 only (never exposed to the internet) except MinIO, which
+# the browser uploads to directly via presigned URLs (media/README.md) and therefore must be
+# reachable from the public internet on this single-host topology.
+#
+# Run: docker compose -f deployment/compose/docker-compose.production.yml --env-file deployment/env/.env.production up -d
+
+name: active-home
+
+networks:
+  active-home:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redis-data:
+  opensearch-data:
+  minio-data:
+  clamav-data:
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-active_home}
+      POSTGRES_USER: ${POSTGRES_USER:-active_home}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks: [active-home]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-active_home} -d ${POSTGRES_DB:-active_home}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks: [active-home]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  opensearch:
+    image: opensearchproject/opensearch:2.19.0
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "127.0.0.1:9200:9200"
+    networks: [active-home]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: unless-stopped
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-active_home}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set}
+    volumes:
+      - minio-data:/data
+    ports:
+      - "0.0.0.0:9000:9000"
+      - "127.0.0.1:9001:9001"
+    networks: [active-home]
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9000/minio/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  clamav:
+    image: clamav/clamav:1.4.5
+    restart: unless-stopped
+    volumes:
+      - clamav-data:/var/lib/clamav
+    ports:
+      - "127.0.0.1:3310:3310"
+    networks: [active-home]
+    healthcheck:
+      test: ["CMD-SHELL", "echo PING | nc -w 3 localhost 3310 | grep -q PONG"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          memory: 2000m
+
+  realtime:
+    build:
+      context: ../..
+      dockerfile: deployment/docker/realtime.Dockerfile
+    restart: unless-stopped
+    environment:
+      ENV_NAME: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-active_home}
+      POSTGRES_USER: ${POSTGRES_USER:-active_home}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-ah_session}
+      SESSION_SIGNING_KEY: ${SESSION_SIGNING_KEY:?SESSION_SIGNING_KEY must be set}
+    ports:
+      - "127.0.0.1:8100:8000"
+    networks: [active-home]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

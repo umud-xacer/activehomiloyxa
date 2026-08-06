@@ -1,0 +1,65 @@
+[
+ {
+  "id": "SUBS-001-six-types",
+  "doc": "FR-SUBS-001",
+  "expected": "all six monetisation product types presented with configured pricing",
+  "status": 200,
+  "passed": true,
+  "observed": "[{\"id\":\"4e2b6a7e-c8ce-4106-abc5-24b931aea711\",\"code\":\"plan-basic\",\"productType\":\"SUBSCRIPTION\",\"name\":{\"uz_latn\":\"plan-basic\",\"uz_cyrl\":\"plan-basic\",\"ru\":\"plan-basic\",\"en\":\"plan-basic\"},\"description\":null,\"price\":{\"amount\":\"100000\",\"currency\":\"UZS\"},\"termDays\":30,\"quota\":{\"promotion_credits\":0,\"max_active_listings\":2}},{\"id\":\"9a886c5b-fe2b-42e6-8171-4ee137f1b507\",\"code\":\"promo-premium\",\"productType\":\"PREMIUM\",\"name\":{\"uz_latn\":\"promo-premium\",\"uz_cyrl\":\"promo-premium\",\"ru\":\"promo-premium\",\"en\":\"promo-premium\"},\"description\":null,\"price\":{\"amount\":\"50000\",\"currency\":\"UZS\"},\"termDays\":30,\"quota\"",
+  "note": "types=['BANNER_PLACEMENT', 'FEATURED', 'PREMIUM', 'SUBSCRIPTION', 'TOP_PLACEMENT', 'VERIFICATION']"
+ },
+ {
+  "id": "SUBS-001-priced",
+  "doc": "FR-SUBS-001",
+  "expected": "products carry configured pricing",
+  "status": 200,
+  "passed": true,
+  "observed": "[{\"id\":\"4e2b6a7e-c8ce-4106-abc5-24b931aea711\",\"code\":\"plan-basic\",\"productType\":\"SUBSCRIPTION\",\"name\":{\"uz_latn\":\"plan-basic\",\"uz_cyrl\":\"plan-basic\",\"ru\":\"plan-basic\",\"en\":\"plan-basic\"},\"description\":null,\"price\":{\"amount\":\"100000\",\"currency\":\"UZS\"},\"termDays\":30,\"quota\":{\"promotion_credits\":0,\"max_active_listings\":2}},{\"id\":\"9a886c5b-fe2b-42e6-8171-4ee137f1b507\",\"code\":\"promo-premium\",\"productType\":\"PREMIUM\",\"name\":{\"uz_latn\":\"promo-premium\",\"uz_cyrl\":\"promo-premium\",\"ru\":\"promo-premium\",\"en\":\"promo-premium\"},\"description\":null,\"price\":{\"amount\":\"50000\",\"currency\":\"UZS\"},\"termDays\":30,\"quota\"",
+  "note": "6 products"
+ },
+ {
+  "id": "BILL-004-no-online-gateway",
+  "doc": "FR-BILL-004 / I-14 / DEC-02",
+  "expected": "no online payment path exists in v1",
+  "status": null,
+  "passed": true,
+  "observed": "[]",
+  "note": "suspect paths=[]"
+ },
+ {
+  "id": "SUBS-002-create-order",
+  "doc": "FR-SUBS-002",
+  "expected": "a pending order is created",
+  "status": 422,
+  "passed": false,
+  "observed": "{\"type\":\"https://errors.activehome.uz/validation-failed\",\"title\":\"An acting business profile is required\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"traceId\":\"a5dba098-1d6f-4a2d-a923-03fc679bd3bf\"}",
+  "note": "{\"type\":\"https://errors.activehome.uz/validation-failed\",\"title\":\"An acting business profile is required\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"traceId\":\"a5dba098-1d6f-4a2d-a923-03fc679bd3bf\"}"
+ },
+ {
+  "id": "I-14-no-entitlement-before-payment",
+  "doc": "I-14 / FR-SUBS-003",
+  "expected": "no entitlement is active before payment is confirmed",
+  "status": 422,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/validation-failed\",\"title\":\"An acting business profile is required\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"traceId\":\"694fa6a8-ea26-4335-9640-2ee1954f6b76\"}",
+  "note": "0 entitlements before confirmation"
+ },
+ {
+  "id": "BILL-003-admin-invoices",
+  "doc": "FR-BILL-003",
+  "expected": "invoice/payment status is visible and reconcilable in the back office",
+  "status": 200,
+  "passed": false,
+  "observed": "{\"items\":[],\"page\":{\"limit\":20,\"nextCursor\":null,\"total\":null}}",
+  "note": "0 invoices"
+ },
+ {
+  "id": "I-08-quota-enforced",
+  "doc": "I-08 / FR-ADV-008 / BRULE-07",
+  "expected": "listing creation beyond the plan quota (max_active_listings=2) is refused",
+  "status": 201,
+  "passed": false,
+  "observed": "{\"id\":\"f412797c-9f85-48ac-ab63-a5727d9a71ed\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"df477dde-a96e-4989-9630-fda0d5d9a85c\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5\",\"categoryPath\":\"/kvartira\",\"formDefinitionVersionId\":\"0da3a697-52d7-4d7c-bbe2-1eb2d68aead9\",\"title\":\"Quota 5\",\"description\":\"Kvota tekshiruvi\",\"attributes\":{\"rooms\":3,\"area_m2\":50},\"price\":null,\"location\":null,\"lifecycleState\":\"PUBLISHED\",\"isFlagged\":false,\"expiresAt\":\"2026-08-26T11:56:33.014122Z\",\"publishedAt\":\"2026-07-27T11:56:33.014122Z\",\"promotion\":null,\"images\":[],\"slug\":\"quota-5-f412797c\",",
+  "note": "created 6 with a 2-listing plan; stopped at 201"
+ }
+]

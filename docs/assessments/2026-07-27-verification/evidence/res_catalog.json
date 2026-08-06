@@ -1,0 +1,218 @@
+[
+ {
+  "id": "ADV-001-create",
+  "doc": "FR-ADV-001",
+  "expected": "listing created under the selected category",
+  "status": 201,
+  "passed": true,
+  "observed": "{\"id\":\"3114dfd4-0bbe-4f90-914b-8244153a94e8\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"212649ad-eff7-49f8-82a5-27cd9722f85f\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5\",\"categoryPath\":\"/kvartira\",\"formDefinitionVersionId\":\"0da3a697-52d7-4d7c-bbe2-1eb2d68aead9\",\"title\":\"Yaxshi kvartira\",\"description\":\"Toshkent shahrida yaxshi kvartira sotiladi.\",\"attributes\":{\"rooms\":3,\"area_m2\":72.5,\"has_balcony\":true},\"price\":{\"amount\":\"500000000\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311081,\"longitude\":69.240562},\"lifecycleState\":\"DRAFT\",\"isFlagged\":false,\"expiresAt\":nu",
+  "note": ""
+ },
+ {
+  "id": "ADV-001-owned-by-actor",
+  "doc": "FR-ADV-001",
+  "expected": "listing owned by the acting profile",
+  "status": 201,
+  "passed": true,
+  "observed": "{\"id\":\"3114dfd4-0bbe-4f90-914b-8244153a94e8\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"212649ad-eff7-49f8-82a5-27cd9722f85f\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5\",\"categoryPath\":\"/kvartira\",\"formDefinitionVersionId\":\"0da3a697-52d7-4d7c-bbe2-1eb2d68aead9\",\"title\":\"Yaxshi kvartira\",\"description\":\"Toshkent shahrida yaxshi kvartira sotiladi.\",\"attributes\":{\"rooms\":3,\"area_m2\":72.5,\"has_balcony\":true},\"price\":{\"amount\":\"500000000\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311081,\"longitude\":69.240562},\"lifecycleState\":\"DRAFT\",\"isFlagged\":false,\"expiresAt\":nu",
+  "note": "state=DRAFT"
+ },
+ {
+  "id": "FORM-002-required-missing",
+  "doc": "FR-FORM-002",
+  "expected": "missing required dynamic field rejected with field-level message",
+  "status": 422,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Attribute validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more attributes failed validation against the bound form.\",\"traceId\":\"22ab4724-31a8-4aac-b251-3221957f150b\",\"errors\":[{\"path\":\"/attributes/rooms\",\"rule\":\"attribute_validation\",\"message\":\"field is required\"},{\"path\":\"/attributes/rooms\",\"rule\":\"attribute_validation\",\"message\":\"required\"}]}",
+  "note": "{\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Attribute validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more attributes failed validation against the bound for"
+ },
+ {
+  "id": "FORM-002-numeric-range",
+  "doc": "FR-FORM-002",
+  "expected": "numeric_range validator enforced (max 20)",
+  "status": 422,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Attribute validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more attributes failed validation against the bound form.\",\"traceId\":\"9cc1bbd3-9c82-4efc-856a-ead59544eb40\",\"errors\":[{\"path\":\"/attributes/rooms\",\"rule\":\"attribute_validation\",\"message\":\"above maximum 20\"}]}",
+  "note": "{\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Attribute validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more attributes failed validation against the bound for"
+ },
+ {
+  "id": "FORM-002-option-membership",
+  "doc": "FR-FORM-002",
+  "expected": "option_membership validator enforced",
+  "status": 422,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Attribute validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more attributes failed validation against the bound form.\",\"traceId\":\"b3345298-2258-4154-a550-8b39fb8c69c1\",\"errors\":[{\"path\":\"/attributes/condition\",\"rule\":\"attribute_validation\",\"message\":\"'not-an-option' is not an allowed option\"}]}",
+  "note": "{\"type\":\"https://errors.activehome.uz/validation\",\"title\":\"Attribute validation failed\",\"status\":422,\"code\":\"VALIDATION_FAILED\",\"detail\":\"One or more attributes failed validation against the bound for"
+ },
+ {
+  "id": "FORM-002-unknown-field",
+  "doc": "FR-FORM-002",
+  "expected": "field not in the bound form rejected",
+  "status": 201,
+  "passed": false,
+  "observed": "{\"id\":\"cdca1426-8abb-440c-a442-dbdbe2709bb9\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"212649ad-eff7-49f8-82a5-27cd9722f85f\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5\",\"categoryPath\":\"/kvartira\",\"formDefinitionVersionId\":\"0da3a697-52d7-4d7c-bbe2-1eb2d68aead9\",\"title\":\"Yaxshi kvartira\",\"description\":\"Toshkent shahrida yaxshi kvartira sotiladi.\",\"attributes\":{\"rooms\":3,\"area_m2\":50,\"unknown_field\":\"x\"},\"price\":{\"amount\":\"500000000\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311081,\"longitude\":69.240562},\"lifecycleState\":\"DRAFT\",\"isFlagged\":true,\"expiresAt\":null",
+  "note": "{\"id\":\"cdca1426-8abb-440c-a442-dbdbe2709bb9\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"212649ad-eff7-49f8-82a5-27cd9722f85f\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5"
+ },
+ {
+  "id": "I-07-form-version-bound",
+  "doc": "I-07 (DDD Sec 10.3)",
+  "expected": "listing binds the immutable form version it was validated against",
+  "status": null,
+  "passed": true,
+  "observed": "0da3a697-52d7-4d7c-bbe2-1eb2d68aead9",
+  "note": "form_version=0da3a697"
+ },
+ {
+  "id": "ADV-003-draft-not-public",
+  "doc": "FR-ADV-003 / I-06",
+  "expected": "a draft is not publicly visible",
+  "status": 404,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/resource-not-found\",\"title\":\"Listing not found\",\"status\":404,\"code\":\"RESOURCE_NOT_FOUND\",\"traceId\":\"bf53b562-052d-48f8-b6ee-08889a1ef3d9\"}",
+  "note": "db state=DRAFT, anon=404"
+ },
+ {
+  "id": "ADV-003-draft-owner-visible",
+  "doc": "FR-ADV-003",
+  "expected": "the owner can retrieve their draft",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"3114dfd4-0bbe-4f90-914b-8244153a94e8\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"212649ad-eff7-49f8-82a5-27cd9722f85f\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5\",\"categoryPath\":\"/kvartira\",\"formDefinitionVersionId\":\"0da3a697-52d7-4d7c-bbe2-1eb2d68aead9\",\"title\":\"Yaxshi kvartira\",\"description\":\"Toshkent shahrida yaxshi kvartira sotiladi.\",\"attributes\":{\"rooms\":3,\"area_m2\":72.5,\"has_balcony\":true},\"price\":{\"amount\":\"500000000.00\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311081,\"longitude\":69.240562},\"lifecycleState\":\"DRAFT\",\"isFlagged\":false,\"expiresAt\"",
+  "note": ""
+ },
+ {
+  "id": "ADV-004-publish",
+  "doc": "FR-ADV-004",
+  "expected": "unflagged listing becomes visible immediately",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"3114dfd4-0bbe-4f90-914b-8244153a94e8\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"212649ad-eff7-49f8-82a5-27cd9722f85f\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5\",\"categoryPath\":\"/kvartira\",\"formDefinitionVersionId\":\"0da3a697-52d7-4d7c-bbe2-1eb2d68aead9\",\"title\":\"Yaxshi kvartira\",\"description\":\"Toshkent shahrida yaxshi kvartira sotiladi.\",\"attributes\":{\"rooms\":3,\"area_m2\":72.5,\"has_balcony\":true},\"price\":{\"amount\":\"500000000.00\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311081,\"longitude\":69.240562},\"lifecycleState\":\"PUBLISHED\",\"isFlagged\":false,\"expire",
+  "note": "{\"id\":\"3114dfd4-0bbe-4f90-914b-8244153a94e8\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"212649ad-eff7-49f8-82a5-27cd9722f85f\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5"
+ },
+ {
+  "id": "ADV-004-public-after-publish",
+  "doc": "FR-ADV-004 / I-06",
+  "expected": "published listing is publicly retrievable",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"3114dfd4-0bbe-4f90-914b-8244153a94e8\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"212649ad-eff7-49f8-82a5-27cd9722f85f\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5\",\"categoryPath\":\"/kvartira\",\"formDefinitionVersionId\":\"0da3a697-52d7-4d7c-bbe2-1eb2d68aead9\",\"title\":\"Yaxshi kvartira\",\"description\":\"Toshkent shahrida yaxshi kvartira sotiladi.\",\"attributes\":{\"rooms\":3,\"area_m2\":72.5,\"has_balcony\":true},\"price\":{\"amount\":\"500000000.00\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311081,\"longitude\":69.240562},\"lifecycleState\":\"PUBLISHED\",\"isFlagged\":false,\"expire",
+  "note": ""
+ },
+ {
+  "id": "ADV-010-view-metric",
+  "doc": "FR-ADV-010 / FR-ANALYTICS-001",
+  "expected": "a view metric is recorded on listing detail",
+  "status": null,
+  "passed": false,
+  "observed": "",
+  "note": "metric_event  -> "
+ },
+ {
+  "id": "ADV-005-edit",
+  "doc": "FR-ADV-005",
+  "expected": "owner can edit; listing transitions to Edited",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"id\":\"3114dfd4-0bbe-4f90-914b-8244153a94e8\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"212649ad-eff7-49f8-82a5-27cd9722f85f\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5\",\"categoryPath\":\"/kvartira\",\"formDefinitionVersionId\":\"0da3a697-52d7-4d7c-bbe2-1eb2d68aead9\",\"title\":\"Yangilangan e\u02bclon\",\"description\":\"Yangi tavsif matni\",\"attributes\":{\"rooms\":4,\"area_m2\":80.0,\"has_balcony\":false},\"price\":{\"amount\":\"600000000.00\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311081,\"longitude\":69.240562},\"lifecycleState\":\"EDITED\",\"isFlagged\":false,\"expiresAt\":\"2026-08-26T11:54:55",
+  "note": "{\"id\":\"3114dfd4-0bbe-4f90-914b-8244153a94e8\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"212649ad-eff7-49f8-82a5-27cd9722f85f\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5"
+ },
+ {
+  "id": "ADV-005-edited-state",
+  "doc": "FR-ADV-005",
+  "expected": "edit transitions the listing to the Edited state",
+  "status": null,
+  "passed": true,
+  "observed": "EDITED",
+  "note": "state=EDITED"
+ },
+ {
+  "id": "I-05-illegal-transition",
+  "doc": "FR-ADV-006 / I-05",
+  "expected": "an illegal lifecycle transition is refused with 409",
+  "status": 409,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/illegal-state-transition\",\"title\":\"Listing cannot make that transition\",\"status\":409,\"code\":\"ILLEGAL_STATE_TRANSITION\",\"traceId\":\"108d9b33-f69d-4ff8-b5d6-613c8c8746ea\"}",
+  "note": "{\"type\":\"https://errors.activehome.uz/illegal-state-transition\",\"title\":\"Listing cannot make that transition\",\"status\":409,\"code\":\"ILLEGAL_STATE_TRANSITION\",\"tr"
+ },
+ {
+  "id": "ADV-006-transitions-recorded",
+  "doc": "FR-ADV-006",
+  "expected": "each transition is recorded",
+  "status": null,
+  "passed": true,
+  "observed": "3",
+  "note": "3 transition rows"
+ },
+ {
+  "id": "SEC-nonowner-edit",
+  "doc": "FR-ADV-005",
+  "expected": "a non-owner cannot edit someone else's listing",
+  "status": 403,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller does not own this listing\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\"3a156f34-fc13-41bc-ad42-6d4df2969648\"}",
+  "note": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller does not own this listing\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\"3a156f34-"
+ },
+ {
+  "id": "SEC-nonowner-transition",
+  "doc": "FR-ADV-006",
+  "expected": "a non-owner cannot drive another's lifecycle",
+  "status": 403,
+  "passed": true,
+  "observed": "{\"type\":\"https://errors.activehome.uz/permission-denied\",\"title\":\"Caller does not own this listing\",\"status\":403,\"code\":\"PERMISSION_DENIED\",\"traceId\":\"090ef12a-d0bf-4613-a007-496da42cd0d9\"}",
+  "note": ""
+ },
+ {
+  "id": "USER-004-add-favorite",
+  "doc": "FR-USER-004",
+  "expected": "favorite saved",
+  "status": 201,
+  "passed": true,
+  "observed": "{\"listingId\":\"3114dfd4-0bbe-4f90-914b-8244153a94e8\",\"createdAt\":\"2026-07-27T11:55:01.582241Z\"}",
+  "note": ""
+ },
+ {
+  "id": "USER-004-list-favorites",
+  "doc": "FR-USER-004",
+  "expected": "saved favorites are retrievable",
+  "status": 200,
+  "passed": true,
+  "observed": "{\"items\":[{\"listingId\":\"3114dfd4-0bbe-4f90-914b-8244153a94e8\",\"createdAt\":\"2026-07-27T11:55:01.582241Z\"}],\"page\":{\"limit\":20,\"nextCursor\":null,\"total\":null}}",
+  "note": "1 favorites"
+ },
+ {
+  "id": "USER-004-remove-favorite",
+  "doc": "FR-USER-004",
+  "expected": "removal is immediate",
+  "status": 204,
+  "passed": true,
+  "observed": "",
+  "note": ""
+ },
+ {
+  "id": "ADV-008-quota",
+  "doc": "FR-ADV-008",
+  "expected": "creation beyond the plan limit is refused with a clear message",
+  "status": 201,
+  "passed": false,
+  "observed": "{\"id\":\"1738af36-1bae-4a28-84de-636d3b910238\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"212649ad-eff7-49f8-82a5-27cd9722f85f\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5\",\"categoryPath\":\"/kvartira\",\"formDefinitionVersionId\":\"0da3a697-52d7-4d7c-bbe2-1eb2d68aead9\",\"title\":\"Quota probe 5\",\"description\":\"Toshkent shahrida yaxshi kvartira sotiladi.\",\"attributes\":{\"rooms\":3,\"area_m2\":72.5,\"has_balcony\":true},\"price\":{\"amount\":\"500000000\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311081,\"longitude\":69.240562},\"lifecycleState\":\"DRAFT\",\"isFlagged\":false,\"expiresAt\":null",
+  "note": "created 6 extra before 201; plan-basic max_active_listings=2"
+ },
+ {
+  "id": "ADV-009-duplicate",
+  "doc": "FR-ADV-009",
+  "expected": "suspected duplicates are flagged for moderation",
+  "status": 201,
+  "passed": true,
+  "observed": "{\"id\":\"f9841187-5b14-40a4-8859-236d0ccd8895\",\"listingType\":\"ADVERTISEMENT\",\"ownerUserId\":\"212649ad-eff7-49f8-82a5-27cd9722f85f\",\"ownerProfileId\":null,\"categoryId\":\"6b60576f-afaa-4e4a-812b-2f8e38e261d5\",\"categoryPath\":\"/kvartira\",\"formDefinitionVersionId\":\"0da3a697-52d7-4d7c-bbe2-1eb2d68aead9\",\"title\":\"Aynan bir xil e\u02bclon matni\",\"description\":\"Toshkent shahrida yaxshi kvartira sotiladi.\",\"attributes\":{\"rooms\":3,\"area_m2\":72.5,\"has_balcony\":true},\"price\":{\"amount\":\"500000000\",\"currency\":\"UZS\"},\"location\":{\"latitude\":41.311081,\"longitude\":69.240562},\"lifecycleState\":\"DRAFT\",\"isFlagged\":true,\"expi",
+  "note": "first=201 second=201"
+ },
+ {
+  "id": "ADV-009-duplicate-case",
+  "doc": "FR-ADV-009",
+  "expected": "a duplicate raises a moderation case",
+  "status": null,
+  "passed": true,
+  "observed": "9",
+  "note": "9 duplicate cases"
+ }
+]

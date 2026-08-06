@@ -1,0 +1,6342 @@
+openapi: 3.1.0
+info:
+  title: Active Home Platform API
+  version: 1.0.0
+  summary: Configuration-driven housing & construction advertising marketplace (Uzbekistan) — v1 contract.
+  description: "Enterprise OpenAPI 3.1 contract for **Active Home v1**, the implementation contract between\
+    \ the\nweb frontend, backend (FastAPI modular monolith), AI coding agents, QA automation, future mobile\n\
+    apps, and external integrations.\n\nThis document is generated from and fully aligned with the immutable\
+    \ approved architecture:\nSRS v1.0, DDD Domain Model v1.0, Configuration & Metadata Framework v1.0,\
+    \ SAD v1.0,\nDatabase Architecture & Logical Data Model v1.0, Physical Database Design v1.0, and the\n\
+    API Architecture & Integration Specification v1.0.\n\n## Cross-cutting contract rules (see the API\
+    \ Architecture Specification)\n- **Versioning:** URI major versioning under `/api/v1`. Within a major\
+    \ version only additive,\n  backward-compatible change is allowed. Configuration changes (new categories,\
+    \ forms, fields,\n  plans, roles, templates) are **never** contract changes — dynamic data flows through\
+    \ stable\n  envelopes (`AttributeMap`, `LocalizedText`, `FormDefinition`), so the endpoint surface\
+    \ is\n  invariant under the platform's normal mode of change.\n- **Authentication:** server-side sessions\
+    \ backed by Redis (SAD §13). A session is established by an\n  auth flow and carried by a secure,\
+    \ HttpOnly cookie (`ah_session`) for browsers, or the same\n  session token as a Bearer credential\
+    \ for native/mobile clients. There is **no JWT and no\n  OAuth2 password/refresh-token grant** — that\
+    \ would contradict the approved session model\n  (reconciliation, see Validation section of the API\
+    \ Architecture Spec). Google is used only as a\n  federated **sign-in** provider (authorization-code),\
+    \ after which a first-party session is issued.\n- **Authorization:** default-deny, evaluated against\
+    \ a fixed `PermissionKey` catalogue `[P]`;\n  roles are configured compositions `[C]`. Every operation\
+    \ is scoped to the acting context\n  (personal or a specific business profile); cross-profile access\
+    \ is denied by default.\n- **Errors:** one Problem-style envelope (`Error`) with a stable machine\
+    \ `code`, `traceId`, and\n  optional field-level `details` (`ValidationError`).\n- **Pagination:**\
+    \ cursor-based (`CursorPage`) for large/ordered collections; opaque `cursor`.\n- **Idempotency:**\
+    \ side-effecting POSTs accept an `Idempotency-Key` header.\n- **Localization:** user-visible text\
+    \ uses the `LocalizedText` envelope (`uz_latn` canonical,\n  `uz_cyrl`, `ru`, `en`).\n- **Media:**\
+    \ **images and video** (DEC-10, widened by ADR-0008). PDF and any other type are out of scope\n  for v1; the media endpoints\
+    \ reject non-image/non-video content by contract.\n"
+  contact:
+    name: Active Home Architecture Team
+  license:
+    name: Proprietary
+servers:
+- url: https://api.activehome.uz/api/v1
+  description: Production
+- url: https://staging-api.activehome.uz/api/v1
+  description: Staging
+security:
+- sessionCookie: []
+tags:
+- name: Authentication
+  description: Phone-OTP, email, and Google federated sign-in flows; session issuance and recovery.
+- name: Users
+  description: The authenticated account, personal profile, preferences, and sessions.
+- name: Business Profiles
+  description: Company pages (eight profile types), portfolios, team members, and verification requests.
+- name: Listings
+  description: Advertisements / products / services — CRUD, drafts, lifecycle, promotion projection.
+- name: Favorites
+  description: A user's saved listings.
+- name: Categories
+  description: The configured taxonomy (read) and the dynamic form bound to a category.
+- name: Search
+  description: Full-text, faceted, geo/radius discovery, suggestions, and autocomplete.
+- name: Media
+  description: Image/video upload (presigned), association, ordering, metadata, and deletion — images and video only.
+- name: Messaging
+  description: Conversations, messages, phone reveal, blocks, and reporting.
+- name: Notifications
+  description: User notifications, read status, and preferences.
+- name: Billing
+  description: Products/plans, purchase orders, invoices, and entitlements — offline billing only.
+- name: Ads
+  description: Banner campaign scheduling/targeting (operator) and banner serving/engagement
+    capture (public) — the descope-safe module (DEC-23). Added by ADR-0004.
+- name: Configuration (Admin)
+  description: Authoring of the eight configuration entities with the Head+Version lifecycle.
+- name: Administration
+  description: Moderation, verification queue, user management, audit log, dashboard, and reports.
+paths:
+  /auth/otp:
+    post:
+      tags:
+      - Authentication
+      operationId: requestOtp
+      summary: Request a phone OTP
+      description: 'Issues a single-use, expiring OTP via SMS (Eskiz) for registration, login, or recovery.
+
+        **Rate limiting:** strict per-phone and per-IP throttle (`OtpThrottlePolicy`, NFR-SEC-004);
+
+        repeated requests return 429 `OTP_THROTTLED`.
+
+        '
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpRequest'
+      responses:
+        '202':
+          description: OTP dispatched (no content reveals whether the phone is registered).
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/otp/verify:
+    post:
+      tags:
+      - Authentication
+      operationId: verifyOtp
+      summary: Verify a phone OTP and establish a session
+      description: 'Verifies the OTP and, on success, creates/authenticates the account and issues a first-party
+
+        session (cookie + optional Bearer token). For REGISTRATION a new account is created; an existing
+
+        verified phone is authenticated (FR-AUTH-001/004).
+
+        '
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerifyRequest'
+      responses:
+        '200':
+          description: Session established.
+          headers:
+            Set-Cookie:
+              description: Sets the `ah_session` cookie for browser clients.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionEstablished'
+              examples:
+                established:
+                  $ref: '#/components/examples/SessionEstablishedExample'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/register/email:
+    post:
+      tags:
+      - Authentication
+      operationId: registerEmail
+      summary: Register with email and password
+      description: Creates an account pending email confirmation (FR-AUTH-002). Duplicate email is rejected
+        409.
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterEmailRequest'
+      responses:
+        '202':
+          description: Account created; confirmation email sent.
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/login/email:
+    post:
+      tags:
+      - Authentication
+      operationId: loginEmail
+      summary: Log in with email and password
+      description: Authenticates an email-credential account and establishes a session (FR-AUTH-004).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginEmailRequest'
+      responses:
+        '200':
+          description: Session established.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionEstablished'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /auth/login/google:
+    post:
+      tags:
+      - Authentication
+      operationId: loginGoogle
+      summary: Federated sign-in with Google
+      description: 'Exchanges a Google authorization code, then links (by verified email) or creates the
+        account and
+
+        issues a first-party session (FR-AUTH-003). Google is a sign-in provider only; no Google token
+        is
+
+        exposed to the client afterwards.
+
+        '
+      security:
+      - googleOAuth:
+        - openid
+        - email
+        - profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleSignInRequest'
+      responses:
+        '200':
+          description: Session established (account linked or created).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionEstablished'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /auth/logout:
+    post:
+      tags:
+      - Authentication
+      operationId: logout
+      summary: Log out (terminate the current session)
+      description: Revokes the current session immediately (FR-AUTH-005). The cookie is cleared.
+      responses:
+        '204':
+          description: Session terminated.
+          headers:
+            Set-Cookie:
+              description: Clears the `ah_session` cookie.
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/recovery:
+    post:
+      tags:
+      - Authentication
+      operationId: startRecovery
+      summary: Start credential recovery
+      description: Initiates recovery via a verified phone or email (FR-AUTH-006). Response does not reveal
+        account existence.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecoveryStartRequest'
+      responses:
+        '202':
+          description: Recovery instructions dispatched if the identifier matches an account.
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /me:
+    get:
+      tags:
+      - Users
+      operationId: getMe
+      summary: Get the authenticated account
+      description: Returns the current account, privacy settings, preferences, owned profiles, and roles.
+      parameters:
+      - $ref: '#/components/parameters/Fields'
+      responses:
+        '200':
+          description: The account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags:
+      - Users
+      operationId: updateMe
+      summary: Update personal profile
+      description: Updates display name and personal profile fields (FR-USER-001).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                  maxLength: 120
+                email:
+                  type: string
+                  format: email
+              additionalProperties: false
+      responses:
+        '200':
+          description: Updated account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /me/password:
+    put:
+      tags:
+      - Users
+      operationId: changePassword
+      summary: Change password
+      description: Changes the password for an email-credential account. Other sessions may be revoked
+        server-side.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+      responses:
+        '204':
+          description: Password changed.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /me/preferences:
+    put:
+      tags:
+      - Users
+      operationId: updatePreferences
+      summary: Update notification & privacy preferences
+      description: Updates notification channel opt-ins and phone-reveal privacy (FR-USER-003; OTP always
+        via SMS regardless).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                privacySettings:
+                  $ref: '#/components/schemas/PrivacySettings'
+                notificationPreferences:
+                  $ref: '#/components/schemas/NotificationPreferences'
+              additionalProperties: false
+      responses:
+        '200':
+          description: Updated account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/account:
+    delete:
+      tags:
+      - Users
+      operationId: closeAccount
+      summary: Close (anonymise) the account
+      description: 'Closes the account. Modelled as **anonymisation, not deletion** (FR-USER-005, DM-06):
+        personal
+
+        identifiers are irreversibly replaced; the account id survives so listings, orders, and audit
+
+        references remain valid.
+
+        '
+      responses:
+        '204':
+          description: Account closed and anonymised.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/sessions:
+    get:
+      tags:
+      - Users
+      operationId: listSessions
+      summary: List active sessions
+      description: Returns the account's active sessions (login history / device list).
+      responses:
+        '200':
+          description: Sessions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Session'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/sessions/{sessionId}:
+    delete:
+      tags:
+      - Users
+      operationId: revokeSession
+      summary: Revoke a session
+      description: Revokes a specific session (remote logout).
+      parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Session revoked.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /me/sessions/switch-profile:
+    post:
+      tags:
+      - Users
+      operationId: switchActingProfile
+      summary: Switch the acting profile for the current session
+      description: 'Sets the acting context (personal or a specific owned business profile) on the current
+        session
+
+        (FR-USER-002). A session-level operation, not a re-authentication.
+
+        '
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                actingProfileId:
+                  type:
+                  - string
+                  - 'null'
+                  format: uuid
+                  description: null = personal context.
+              additionalProperties: false
+      responses:
+        '200':
+          description: Updated session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /business-profiles:
+    get:
+      tags:
+      - Business Profiles
+      operationId: listBusinessProfiles
+      summary: List business profiles
+      description: Public directory of active business profiles; supports cursor pagination and filtering
+        by type.
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      - name: profileType
+        in: query
+        schema:
+          type: string
+          enum:
+          - CONSTRUCTION_COMPANY
+          - MANUFACTURER
+          - BUILDER
+          - SUPPLIER
+          - CONTRACTOR
+          - ARCHITECT
+          - INTERIOR_DESIGNER
+          - SERVICE_PROVIDER
+      - name: verifiedOnly
+        in: query
+        schema:
+          type: boolean
+      responses:
+        '200':
+          description: A page of business profiles.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/BusinessProfile'
+    post:
+      tags:
+      - Business Profiles
+      operationId: createBusinessProfile
+      summary: Create a company profile
+      description: Creates a business profile owned by the authenticated account (FR-PROF-001). One account
+        may own many.
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessProfileCreateRequest'
+      responses:
+        '201':
+          description: Created profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /business-profiles/{profileId}:
+    get:
+      tags:
+      - Business Profiles
+      operationId: getBusinessProfile
+      summary: Get a business profile
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      responses:
+        '200':
+          description: The profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessProfile'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+      - Business Profiles
+      operationId: updateBusinessProfile
+      summary: Manage a business profile
+      description: Updates a profile the caller owns (FR-PROF-002). `profileType` is immutable. Ownership
+        is validated.
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessProfileUpdateRequest'
+      responses:
+        '200':
+          description: Updated profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+      - Business Profiles
+      operationId: archiveBusinessProfile
+      summary: Archive a business profile
+      description: Archives the profile (state, not deletion — DM-06). Referenced listings/orders remain
+        valid.
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      responses:
+        '204':
+          description: Archived.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /business-profiles/{profileId}/portfolio:
+    get:
+      tags:
+      - Business Profiles
+      operationId: listPortfolio
+      summary: List portfolio items
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      responses:
+        '200':
+          description: Ordered portfolio.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PortfolioItem'
+    post:
+      tags:
+      - Business Profiles
+      operationId: addPortfolioItem
+      summary: Add a portfolio item
+      description: Attaches an image (MediaAssetRef) to the profile portfolio.
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PortfolioItem'
+      responses:
+        '201':
+          description: Added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortfolioItem'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /business-profiles/{profileId}/portfolio/{itemId}:
+    delete:
+      tags:
+      - Business Profiles
+      operationId: removePortfolioItem
+      summary: Remove a portfolio item
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Removed.
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /business-profiles/{profileId}/team:
+    get:
+      tags:
+      - Business Profiles
+      operationId: listTeamMembers
+      summary: List team members
+      description: 'Lists users granted a role on this profile. Realised as identity role-assignments
+        scoped to the
+
+        profile — no new aggregate (see Validation note). Requires manage-team permission.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      responses:
+        '200':
+          description: Team members.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TeamMember'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+      - Business Profiles
+      operationId: addTeamMember
+      summary: Add a team member
+      description: Grants a configured role to a user on this profile (ownership + permission validated).
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamMember'
+      responses:
+        '201':
+          description: Added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMember'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /business-profiles/{profileId}/team/{userId}:
+    delete:
+      tags:
+      - Business Profiles
+      operationId: removeTeamMember
+      summary: Remove a team member
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Removed.
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /business-profiles/{profileId}/verification:
+    get:
+      tags:
+      - Business Profiles
+      operationId: getVerificationCase
+      summary: Get the current verification case
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      responses:
+        '200':
+          description: Verification case.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationCase'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags:
+      - Business Profiles
+      operationId: requestVerification
+      summary: Request business verification
+      description: 'Submits a verification request with documents. Requires an active VerificationEligibility
+
+        entitlement (I-12, eventually consistent — a brief window may exist after payment confirmation).
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationRequestCreate'
+      responses:
+        '201':
+          description: Verification case created and queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationCase'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /listings:
+    get:
+      tags:
+      - Listings
+      operationId: listListings
+      summary: Browse listings
+      description: 'Public browse of visible listings (Published/Edited, unflagged, unexpired — I-06).
+        For rich
+
+        discovery use `/search`. Supports cursor pagination and basic category/type filters.
+
+        '
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Fields'
+      - name: categoryId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: listingType
+        in: query
+        schema:
+          type: string
+          enum:
+          - ADVERTISEMENT
+          - PRODUCT
+          - SERVICE
+      responses:
+        '200':
+          description: A page of listings.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Listing'
+    post:
+      tags:
+      - Listings
+      operationId: createListing
+      summary: Create a listing (draft or published)
+      description: 'Creates a listing owned by the acting context. `attributes` are validated against
+        the form
+
+        version bound to the category (I-07); quota is enforced (I-08). With `publish:true` the listing
+
+        is published immediately unless flagged by automated validation (post-publication moderation,
+
+        BRULE-17); otherwise it is saved as a draft (FR-ADV-001/003/004).
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/ActingProfile'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListingCreateRequest'
+            examples:
+              create:
+                $ref: '#/components/examples/ListingCreateExample'
+      responses:
+        '201':
+          description: Listing created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+              examples:
+                listing:
+                  $ref: '#/components/examples/ListingExample'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /listings/{listingId}:
+    get:
+      tags:
+      - Listings
+      operationId: getListing
+      summary: Get listing detail
+      description: Returns full listing detail and records a view metric (FR-ADV-010, DEC-06). Non-owners
+        see only visible listings.
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/ListingIdPath'
+      - $ref: '#/components/parameters/Fields'
+      responses:
+        '200':
+          description: The listing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+              examples:
+                listing:
+                  $ref: '#/components/examples/ListingExample'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+      - Listings
+      operationId: updateListing
+      summary: Edit a listing
+      description: 'Owner edit; transitions to EDITED and re-validates attributes against the current
+        form version
+
+        (FR-ADV-005). Optimistic locking: `lockVersion` must match or 409. Ownership validated.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/ListingIdPath'
+      - $ref: '#/components/parameters/ActingProfile'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListingUpdateRequest'
+      responses:
+        '200':
+          description: Updated listing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    delete:
+      tags:
+      - Listings
+      operationId: deleteListing
+      summary: Delete a listing
+      description: Transitions to DELETED (terminal state, record retained — DM-06). Ownership validated.
+      parameters:
+      - $ref: '#/components/parameters/ListingIdPath'
+      - $ref: '#/components/parameters/ActingProfile'
+      responses:
+        '204':
+          description: Listing deleted (state).
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /listings/{listingId}/status:
+    post:
+      tags:
+      - Listings
+      operationId: changeListingStatus
+      summary: Change listing lifecycle state
+      description: 'Applies an owner-permitted lifecycle transition — publish, archive, suspend, renew,
+        restore,
+
+        delete (FR-ADV-006/007). Only transitions legal in the fixed graph are accepted; others 409
+
+        `ILLEGAL_STATE_TRANSITION`. Every transition is recorded (I-05).
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/ListingIdPath'
+      - $ref: '#/components/parameters/ActingProfile'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListingStatusChangeRequest'
+      responses:
+        '200':
+          description: Updated listing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /listings/{listingId}/images:
+    get:
+      tags:
+      - Listings
+      operationId: listListingImages
+      summary: List listing images
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/ListingIdPath'
+      responses:
+        '200':
+          description: Ordered images.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ListingImage'
+    post:
+      tags:
+      - Listings
+      operationId: attachListingImage
+      summary: Attach an image to a listing
+      description: Attaches a CLEAN image MediaAssetRef. Max 10 (BRULE-06/I-04); the 11th is rejected
+        422.
+      parameters:
+      - $ref: '#/components/parameters/ListingIdPath'
+      - $ref: '#/components/parameters/ActingProfile'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListingImage'
+      responses:
+        '201':
+          description: Attached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingImage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    put:
+      tags:
+      - Listings
+      operationId: reorderListingImages
+      summary: Reorder listing images
+      description: Reorders images (index 0 becomes the primary). Batch operation over one aggregate.
+      parameters:
+      - $ref: '#/components/parameters/ListingIdPath'
+      - $ref: '#/components/parameters/ActingProfile'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageReorderRequest'
+      responses:
+        '200':
+          description: Reordered images.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ListingImage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /listings/{listingId}/images/{imageId}:
+    delete:
+      tags:
+      - Listings
+      operationId: detachListingImage
+      summary: Remove a listing image
+      parameters:
+      - $ref: '#/components/parameters/ListingIdPath'
+      - name: imageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Removed.
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /listings/{listingId}/statistics:
+    get:
+      tags:
+      - Listings
+      operationId: getListingStatistics
+      summary: Get listing statistics (owner)
+      description: Per-listing engagement counters from the closed metric vocabulary (FR-ANALYTICS-002).
+        Owner only.
+      parameters:
+      - $ref: '#/components/parameters/ListingIdPath'
+      responses:
+        '200':
+          description: Statistics.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListingStatistics'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /me/listings:
+    get:
+      tags:
+      - Listings
+      operationId: listMyListings
+      summary: List my listings
+      description: Lists listings owned by the acting context in any lifecycle state (including drafts).
+      parameters:
+      - $ref: '#/components/parameters/ActingProfile'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      - name: state
+        in: query
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - PENDING_VERIFICATION
+          - PUBLISHED
+          - EDITED
+          - SUSPENDED
+          - ARCHIVED
+          - DELETED
+      responses:
+        '200':
+          description: A page of the caller's listings.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Listing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/favorites:
+    get:
+      tags:
+      - Favorites
+      operationId: listFavorites
+      summary: List favorites
+      parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of favorites.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Favorite'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+      - Favorites
+      operationId: addFavorite
+      summary: Add a favorite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - listingId
+              properties:
+                listingId:
+                  type: string
+                  format: uuid
+              additionalProperties: false
+      responses:
+        '201':
+          description: Added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Favorite'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /me/favorites/{listingId}:
+    delete:
+      tags:
+      - Favorites
+      operationId: removeFavorite
+      summary: Remove a favorite
+      parameters:
+      - $ref: '#/components/parameters/ListingIdPath'
+      responses:
+        '204':
+          description: Removed.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /categories:
+    get:
+      tags:
+      - Categories
+      operationId: listCategories
+      summary: List categories (taxonomy)
+      description: 'Returns the configured taxonomy as a flat list with parent references and materialised
+        paths
+
+        (assemble the tree client-side). Read projection of the published Category configuration; served
+
+        from a cached snapshot and refreshed on ConfigurationChanged.
+
+        '
+      security: []
+      parameters:
+      - name: parentId
+        in: query
+        description: Restrict to direct children of a node; omit for roots.
+        schema:
+          type: string
+          format: uuid
+      - name: includeRetired
+        in: query
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: Categories.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '503':
+          $ref: '#/components/responses/ServiceDegraded'
+  /categories/{categoryId}:
+    get:
+      tags:
+      - Categories
+      operationId: getCategory
+      summary: Get a category
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/CategoryIdPath'
+      responses:
+        '200':
+          description: The category.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /categories/{categoryId}/form:
+    get:
+      tags:
+      - Categories
+      operationId: getCategoryForm
+      summary: Get the dynamic form for a category
+      description: 'Returns the resolved FormDefinition (sections → fields → validators, with conditional
+        visibility)
+
+        bound to the category (I-02), delivered as data. This is the contract the frontend renders and
+
+        the `attributes` map on a listing must satisfy. The returned `versionId` is the version a new
+
+        listing binds to (I-07).
+
+        '
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/CategoryIdPath'
+      - $ref: '#/components/parameters/AcceptLanguage'
+      responses:
+        '200':
+          description: The form definition.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormDefinition'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceDegraded'
+  /search:
+    get:
+      tags:
+      - Search
+      operationId: searchListingsGet
+      summary: Search listings (query parameters)
+      description: 'Full-text, faceted, geo/radius discovery over visible listings. Free text is matched
+        cross-script
+
+        (Latin↔Cyrillic, FR-SRCH-004). Facets are the facet-eligible fields selected in the
+
+        SearchConfiguration snapshot. Promoted results are labelled and capped per page (BRULE-10, I-17).
+
+        **Degradation:** if the index is unavailable, results are served from the DB fallback with
+
+        `degraded:true` (QR-05). **Rate limiting:** public anti-scraping limits apply (NFR-SEC-005).
+
+        **Performance:** target < 500 ms p95 (NFR-PERF-001).
+
+        '
+      security: []
+      parameters:
+      - name: q
+        in: query
+        schema:
+          type: string
+      - name: categoryId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: listingType
+        in: query
+        schema:
+          type: string
+          enum:
+          - ADVERTISEMENT
+          - PRODUCT
+          - SERVICE
+      - name: filters
+        in: query
+        description: Facet filters as repeated `filters[fieldCode]=value` pairs (facet-eligible fields
+          only).
+        style: deepObject
+        explode: true
+        schema:
+          type: object
+          additionalProperties: true
+      - name: priceMin
+        in: query
+        schema:
+          type: string
+      - name: priceMax
+        in: query
+        schema:
+          type: string
+      - name: verifiedOnly
+        in: query
+        schema:
+          type: boolean
+      - name: lat
+        in: query
+        schema:
+          type: number
+          format: double
+      - name: lng
+        in: query
+        schema:
+          type: number
+          format: double
+      - name: radiusKm
+        in: query
+        schema:
+          type: number
+          minimum: 0.1
+          maximum: 200
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - RELEVANCE
+          - RECENCY
+          - PRICE_ASC
+          - PRICE_DESC
+          default: RELEVANCE
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Search results with facets.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResult'
+              examples:
+                results:
+                  $ref: '#/components/examples/SearchResultExample'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceDegraded'
+    post:
+      tags:
+      - Search
+      operationId: searchListingsPost
+      summary: Search listings (structured body)
+      description: Structured equivalent of GET /search for complex filter payloads. Same semantics and
+        degradation behaviour.
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '200':
+          description: Search results with facets.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResult'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceDegraded'
+  /search/facets:
+    get:
+      tags:
+      - Search
+      operationId: getFacets
+      summary: Get available facets for a scope
+      description: Returns the facet dimensions (with localized labels) available for a category scope,
+        from the SearchConfiguration snapshot.
+      security: []
+      parameters:
+      - name: categoryId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Facet metadata.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Facet'
+  /search/suggest:
+    get:
+      tags:
+      - Search
+      operationId: suggest
+      summary: Autocomplete / suggestions
+      description: Query completions and suggestions from the normalized index (cross-script). For type-ahead
+        UIs.
+      security: []
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 5
+      responses:
+        '200':
+          description: Suggestions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Suggestion'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /media/uploads:
+    post:
+      tags:
+      - Media
+      operationId: initMediaUpload
+      summary: Initiate an image or video upload (presigned)
+      description: 'Validates the intended type/size/context and returns a **presigned MinIO URL**;
+        the client
+
+        then PUTs the bytes directly. **Images and video only** — `image/jpeg|png|webp`,
+        `video/mp4|webm` (DEC-10, widened by ADR-0008); PDF and any other type are rejected 422
+        `UNSUPPORTED_MEDIA_TYPE`. Images are capped at 1.2 MB, video at 30 MB (ADR-0008). After
+        upload the asset is scanned for malware; images are additionally EXIF/GPS-stripped and
+        get THUMBNAIL/OPTIMIZED variants before delivery (I-20) — video has no server-side
+        transcoding pipeline, so a clean video asset becomes deliverable with no variants, and
+        processing is non-blocking either way (QR-05).
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MediaUploadInitRequest'
+      responses:
+        '201':
+          description: Presigned upload target.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaUploadInitResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: Unsupported media type or oversize (images and video only).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /media/{mediaId}:
+    get:
+      tags:
+      - Media
+      operationId: getMedia
+      summary: Get media metadata & preview URLs
+      description: Returns asset metadata, scan/processing status, and CDN delivery URLs (original + variants)
+        when CLEAN.
+      parameters:
+      - $ref: '#/components/parameters/MediaIdPath'
+      responses:
+        '200':
+          description: Media asset.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaAsset'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+      - Media
+      operationId: deleteMedia
+      summary: Delete a media asset
+      description: Removes the asset and its association; bytes are cleaned up by the media lifecycle
+        job. Ownership validated.
+      parameters:
+      - $ref: '#/components/parameters/MediaIdPath'
+      responses:
+        '204':
+          description: Deleted.
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /conversations:
+    get:
+      tags:
+      - Messaging
+      operationId: listConversations
+      summary: List my conversations
+      description: Returns the caller's conversations (inbox), most-recent first.
+      parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of conversations.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Conversation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+      - Messaging
+      operationId: startConversation
+      summary: Start a conversation
+      description: 'Initiates a two-party conversation about a listing with a first message (FR-MSG-001;
+        I-19 exactly
+
+        two participants). Blocked pairs are refused. Realtime delivery is over WebSocket; this REST
+
+        surface persists and returns history. **Rate limiting:** per-user messaging rate limit (BR-MSG-03).
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationCreateRequest'
+      responses:
+        '201':
+          description: Conversation created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /conversations/{conversationId}:
+    get:
+      tags:
+      - Messaging
+      operationId: getConversation
+      summary: Get a conversation
+      parameters:
+      - $ref: '#/components/parameters/ConversationIdPath'
+      responses:
+        '200':
+          description: The conversation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /conversations/{conversationId}/messages:
+    get:
+      tags:
+      - Messaging
+      operationId: listMessages
+      summary: List messages in a conversation
+      description: Returns the message history (FR-MSG-002), oldest-first with cursor paging.
+      parameters:
+      - $ref: '#/components/parameters/ConversationIdPath'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of messages.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Message'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+      - Messaging
+      operationId: sendMessage
+      summary: Send a message
+      description: 'Appends a message. Note on **attachments:** v1 messaging is text-only per the approved
+        domain
+
+        (Message VO carries body/timestamp/status; no attachment entity exists). This operation therefore
+
+        accepts text; image sharing is not a v1 capability (reconciliation vs the brief''s "Attachments").
+
+        Blocked pairs are refused. Rate-limited (BR-MSG-03).
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/ConversationIdPath'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageCreateRequest'
+      responses:
+        '201':
+          description: Message sent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /conversations/{conversationId}/phone-reveal:
+    post:
+      tags:
+      - Messaging
+      operationId: revealPhone
+      summary: Reveal the counterpart's phone number
+      description: 'Returns the counterpart phone number if the owner''s privacy settings permit (click-to-call,
+
+        BRULE-13); otherwise `allowed:false`. Emits a PhoneRevealed metric.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/ConversationIdPath'
+      responses:
+        '200':
+          description: Reveal outcome.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneRevealResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /me/blocks:
+    get:
+      tags:
+      - Messaging
+      operationId: listBlocks
+      summary: List blocked users
+      responses:
+        '200':
+          description: Blocks.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Block'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+      - Messaging
+      operationId: blockUser
+      summary: Block a user
+      description: Creates a directed block, consulted on every send/initiate (FR-MSG-004).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - blockedUserId
+              properties:
+                blockedUserId:
+                  type: string
+                  format: uuid
+              additionalProperties: false
+      responses:
+        '201':
+          description: Blocked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Block'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /me/blocks/{userId}:
+    delete:
+      tags:
+      - Messaging
+      operationId: unblockUser
+      summary: Unblock a user
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Unblocked.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /reports:
+    post:
+      tags:
+      - Messaging
+      operationId: createReport
+      summary: Report content
+      description: Raises a report against a listing, conversation, or user (FR-MOD-003); routed to a
+        moderation case.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportCreateRequest'
+      responses:
+        '202':
+          description: Report received and queued for moderation.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /me/notifications:
+    get:
+      tags:
+      - Notifications
+      operationId: listNotifications
+      summary: List my notifications
+      parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      - name: unreadOnly
+        in: query
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: A page of notifications.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Notification'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me/notifications/{notificationId}/read:
+    put:
+      tags:
+      - Notifications
+      operationId: setNotificationRead
+      summary: Set notification read status
+      parameters:
+      - $ref: '#/components/parameters/NotificationIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationReadRequest'
+      responses:
+        '200':
+          description: Updated notification.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /me/notifications/read-all:
+    post:
+      tags:
+      - Notifications
+      operationId: markAllNotificationsRead
+      summary: Mark all notifications read
+      responses:
+        '204':
+          description: All marked read.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /products:
+    get:
+      tags:
+      - Billing
+      operationId: listProducts
+      summary: List products & subscription plans
+      description: 'Public catalogue of purchasable products (six types: SUBSCRIPTION, PREMIUM, FEATURED,
+
+        TOP_PLACEMENT, VERIFICATION, BANNER_PLACEMENT) with plan features and limits. Read projection
+        of
+
+        the configured ProductDefinitions.
+
+        '
+      security: []
+      parameters:
+      - name: productType
+        in: query
+        schema:
+          type: string
+          enum:
+          - SUBSCRIPTION
+          - PREMIUM
+          - FEATURED
+          - TOP_PLACEMENT
+          - VERIFICATION
+          - BANNER_PLACEMENT
+      responses:
+        '200':
+          description: Products.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+  /orders:
+    get:
+      tags:
+      - Billing
+      operationId: listMyOrders
+      summary: List my orders
+      parameters:
+      - $ref: '#/components/parameters/ActingProfile'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of orders.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+      - Billing
+      operationId: createOrder
+      summary: Place a purchase order
+      description: 'Creates an order for a product; the order freezes a ProductSnapshot (I-07). Billing
+        is **offline**
+
+        (DEC-02): an invoice is issued and settled by operator confirmation — there is no payment gateway
+
+        and no online payment step in v1.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/ActingProfile'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+      responses:
+        '201':
+          description: Order placed (Pending).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /orders/{orderId}:
+    get:
+      tags:
+      - Billing
+      operationId: getOrder
+      summary: Get an order
+      parameters:
+      - $ref: '#/components/parameters/OrderIdPath'
+      responses:
+        '200':
+          description: The order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /orders/{orderId}/invoice:
+    get:
+      tags:
+      - Billing
+      operationId: getOrderInvoice
+      summary: Get the invoice for an order
+      parameters:
+      - $ref: '#/components/parameters/OrderIdPath'
+      responses:
+        '200':
+          description: The invoice.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /me/entitlements:
+    get:
+      tags:
+      - Billing
+      operationId: listMyEntitlements
+      summary: List my active entitlements
+      description: Returns the caller's entitlements (active subscription, promotions, verification eligibility,
+        slot bookings).
+      parameters:
+      - $ref: '#/components/parameters/ActingProfile'
+      - name: activeOnly
+        in: query
+        schema:
+          type: boolean
+          default: true
+      responses:
+        '200':
+          description: Entitlements.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Entitlement'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /admin/campaigns:
+    get:
+      tags:
+      - Ads
+      operationId: listCampaigns
+      summary: List banner campaigns (operator)
+      description: Operator campaign queue (FR-BANNER-002). Requires the ads campaign-management
+        permission key.
+      parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - SCHEDULED
+          - RUNNING
+          - PAUSED
+          - ENDED
+      - name: slotKey
+        in: query
+        schema:
+          type: string
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of campaigns.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/BannerCampaign'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+      - Ads
+      operationId: createCampaign
+      summary: Create a banner campaign (operator)
+      description: Creates a campaign in DRAFT (FR-BANNER-002/003). Slot, creative, targeting,
+        and entitlement are references by identifier only — resolved from configuration/media/billing
+        via their own events/interfaces, never duplicated here.
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BannerCampaignCreateRequest'
+      responses:
+        '201':
+          description: Campaign created (DRAFT).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BannerCampaign'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /admin/campaigns/{campaignId}:
+    get:
+      tags:
+      - Ads
+      operationId: getCampaign
+      summary: Get a banner campaign (operator)
+      parameters:
+      - $ref: '#/components/parameters/CampaignIdPath'
+      responses:
+        '200':
+          description: Campaign.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BannerCampaign'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+      - Ads
+      operationId: updateCampaign
+      summary: Update a banner campaign (operator)
+      description: Mutates schedule/targeting/creative/priority while the campaign is still DRAFT
+        (FR-BANNER-002/003). Illegal once scheduled.
+      parameters:
+      - $ref: '#/components/parameters/CampaignIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BannerCampaignUpdateRequest'
+      responses:
+        '200':
+          description: Updated campaign.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BannerCampaign'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /admin/campaigns/{campaignId}/schedule:
+    post:
+      tags:
+      - Ads
+      operationId: scheduleCampaign
+      summary: Schedule a banner campaign (operator)
+      description: DRAFT -> SCHEDULED. Validates slot, targeting, and entitlement-active (I-21,
+        deferring only the "currently within schedule" clause to serve time). Emits BannerCampaignScheduled.
+      parameters:
+      - $ref: '#/components/parameters/CampaignIdPath'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Campaign scheduled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BannerCampaign'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /admin/campaigns/{campaignId}/pause:
+    post:
+      tags:
+      - Ads
+      operationId: pauseCampaign
+      summary: Pause a banner campaign (operator)
+      description: SCHEDULED/RUNNING -> PAUSED. No domain event — the frozen event catalogue names
+        only Scheduled/Started/Ended.
+      parameters:
+      - $ref: '#/components/parameters/CampaignIdPath'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Campaign paused.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BannerCampaign'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/campaigns/{campaignId}/resume:
+    post:
+      tags:
+      - Ads
+      operationId: resumeCampaign
+      summary: Resume a paused banner campaign (operator)
+      description: PAUSED -> SCHEDULED or RUNNING depending on the current time vs. the schedule
+        window. No domain event, same reason as pause.
+      parameters:
+      - $ref: '#/components/parameters/CampaignIdPath'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Campaign resumed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BannerCampaign'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/campaigns/{campaignId}/end:
+    post:
+      tags:
+      - Ads
+      operationId: endCampaign
+      summary: End a banner campaign early (operator)
+      description: SCHEDULED/RUNNING/PAUSED -> ENDED. Emits BannerCampaignEnded (same event a natural
+        schedule-end sweep emits).
+      parameters:
+      - $ref: '#/components/parameters/CampaignIdPath'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Campaign ended.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BannerCampaign'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /banners/serve:
+    get:
+      tags:
+      - Ads
+      operationId: serveBanner
+      summary: Select and serve an eligible banner (public)
+      description: 'Selects the single highest-priority campaign eligible under I-21 (within schedule,
+        matching targeting, in the requested slot, entitlement active) and I-20 (creative not quarantined)
+        for the given slot/context. Fast, read-only, never blocks on another bounded context —
+        entitlement/creative status are read from this module''s own local projections, never a
+        live cross-module call. No session required.
+
+        '
+      security: []
+      parameters:
+      - name: slotKey
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: categoryId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: geo
+        in: query
+        schema:
+          type: string
+      - name: language
+        in: query
+        schema:
+          type: string
+          enum:
+          - uz_latn
+          - uz_cyrl
+          - ru
+          - en
+      responses:
+        '200':
+          description: An eligible banner was found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BannerServeView'
+        '204':
+          description: No eligible campaign for this slot/context right now.
+  /banners/{campaignId}/impressions:
+    post:
+      tags:
+      - Ads
+      operationId: recordBannerImpression
+      summary: Record a banner impression (public)
+      description: Fired by the client when a served banner actually renders (FR-BANNER-005). Emits
+        BannerImpressionRecorded as a metric event only — no counter is stored on the campaign
+        (Database Architecture's counters-correction note).
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/CampaignIdPath'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Impression recorded.
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /banners/{campaignId}/clicks:
+    post:
+      tags:
+      - Ads
+      operationId: recordBannerClick
+      summary: Record a banner click (public)
+      description: Fired by the client on click-through (FR-BANNER-005). Emits BannerClickRecorded
+        as a metric event only — no counter is stored on the campaign.
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/CampaignIdPath'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Click recorded.
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/config/{entityType}:
+    get:
+      tags:
+      - Configuration (Admin)
+      operationId: listConfigHeads
+      summary: List configuration heads of a type
+      description: 'Lists configuration heads for an entity family (categories, forms, products, placement-slots,
+
+        roles, search-config, notification-templates, platform-settings). One uniform surface serves all
+
+        eight (Head+Version pattern, DM-03). Requires the relevant manage-configuration permission key.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/ConfigEntityTypePath'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of configuration heads.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/ConfigurationHead'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+      - Configuration (Admin)
+      operationId: createConfigDraft
+      summary: Create a configuration entity (draft)
+      description: 'Creates a new head with an initial draft version. The draft is not consumer-visible
+        until
+
+        published. Whitelist and dependency validation are enforced at publish, not here.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/ConfigEntityTypePath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigurationDraftRequest'
+      responses:
+        '201':
+          description: Draft created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationVersion'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /admin/config/{entityType}/{headId}:
+    get:
+      tags:
+      - Configuration (Admin)
+      operationId: getConfigHead
+      summary: Get a configuration head with its versions
+      parameters:
+      - $ref: '#/components/parameters/ConfigEntityTypePath'
+      - $ref: '#/components/parameters/ConfigHeadIdPath'
+      responses:
+        '200':
+          description: The head (with version summaries).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationHead'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/config/{entityType}/{headId}/versions:
+    get:
+      tags:
+      - Configuration (Admin)
+      operationId: listConfigVersions
+      summary: List versions of a configuration entity
+      parameters:
+      - $ref: '#/components/parameters/ConfigEntityTypePath'
+      - $ref: '#/components/parameters/ConfigHeadIdPath'
+      responses:
+        '200':
+          description: Versions (immutable history).
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConfigurationVersion'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+      - Configuration (Admin)
+      operationId: createConfigVersionDraft
+      summary: Create a new draft version
+      description: Creates a new draft version on an existing head (edit cycle). Published versions are
+        immutable.
+      parameters:
+      - $ref: '#/components/parameters/ConfigEntityTypePath'
+      - $ref: '#/components/parameters/ConfigHeadIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigurationDraftRequest'
+      responses:
+        '201':
+          description: Draft version created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationVersion'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /admin/config/{entityType}/{headId}/versions/{versionId}:
+    get:
+      tags:
+      - Configuration (Admin)
+      operationId: getConfigVersion
+      summary: Get a configuration version
+      parameters:
+      - $ref: '#/components/parameters/ConfigEntityTypePath'
+      - $ref: '#/components/parameters/ConfigHeadIdPath'
+      - $ref: '#/components/parameters/ConfigVersionIdPath'
+      responses:
+        '200':
+          description: The version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationVersion'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+      - Configuration (Admin)
+      operationId: updateConfigDraft
+      summary: Edit a draft version
+      description: Edits a DRAFT version's definition document. Rejected 409 if the version is already
+        PUBLISHED (immutable).
+      parameters:
+      - $ref: '#/components/parameters/ConfigEntityTypePath'
+      - $ref: '#/components/parameters/ConfigHeadIdPath'
+      - $ref: '#/components/parameters/ConfigVersionIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigurationDraftRequest'
+      responses:
+        '200':
+          description: Updated draft.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationVersion'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /admin/config/{entityType}/{headId}/versions/{versionId}/validate:
+    post:
+      tags:
+      - Configuration (Admin)
+      operationId: validateConfigVersion
+      summary: Validate a version (dry run)
+      description: 'Runs the full pre-activation validation gate (whitelist membership, dependencies,
+        cycles,
+
+        translation completeness, dates, duplicate codes, safety) without publishing. Returns a structured
+
+        pass/fail (Config Framework §9).
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/ConfigEntityTypePath'
+      - $ref: '#/components/parameters/ConfigHeadIdPath'
+      - $ref: '#/components/parameters/ConfigVersionIdPath'
+      responses:
+        '200':
+          description: Validation result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigValidationResult'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/config/{entityType}/{headId}/versions/{versionId}/publish:
+    post:
+      tags:
+      - Configuration (Admin)
+      operationId: publishConfigVersion
+      summary: Publish a version
+      description: 'Freezes the draft into an immutable version, moves the Current pointer, writes the
+        snapshot, emits
+
+        ConfigurationChanged, and records an audit entry — one transaction + outbox (Config Framework
+
+        §2.4). Controlled-track entities (roles, settings) require prior maker–checker approval
+
+        (Super-Admin). Re-enters the validation gate; publish is refused if validation fails.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/ConfigEntityTypePath'
+      - $ref: '#/components/parameters/ConfigHeadIdPath'
+      - $ref: '#/components/parameters/ConfigVersionIdPath'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigPublishRequest'
+      responses:
+        '200':
+          description: Published (now Current).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationVersion'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Validation gate failed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/config/{entityType}/{headId}/rollback:
+    post:
+      tags:
+      - Configuration (Admin)
+      operationId: rollbackConfig
+      summary: Roll back to a prior version
+      description: 'Re-publishes a prior version''s content as a **new** version (history is never rewritten),
+
+        re-entering the validation gate (Config Framework §2.6). Refused if the target content fails
+
+        validation against current dependencies.
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/ConfigEntityTypePath'
+      - $ref: '#/components/parameters/ConfigHeadIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigRollbackRequest'
+      responses:
+        '200':
+          description: Rolled back (new Current version created).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationVersion'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /admin/config/{entityType}/{headId}/versions/compare:
+    get:
+      tags:
+      - Configuration (Admin)
+      operationId: compareConfigVersions
+      summary: Compare two versions
+      description: Returns a structured diff between two versions (or draft vs current) for impact review.
+      parameters:
+      - $ref: '#/components/parameters/ConfigEntityTypePath'
+      - $ref: '#/components/parameters/ConfigHeadIdPath'
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Structured diff.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/config/{entityType}/{headId}/export:
+    get:
+      tags:
+      - Configuration (Admin)
+      operationId: exportConfig
+      summary: Export a configuration definition
+      description: Exports a version's definition document as portable data (e.g. to move between environments).
+        Read of the definition document.
+      parameters:
+      - $ref: '#/components/parameters/ConfigEntityTypePath'
+      - $ref: '#/components/parameters/ConfigHeadIdPath'
+      - name: versionId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Exported definition document.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/config/{entityType}/import:
+    post:
+      tags:
+      - Configuration (Admin)
+      operationId: importConfig
+      summary: Import a configuration definition
+      description: 'Imports a definition document as a new draft. Import **always re-enters the validation
+        gate**;
+
+        nothing bypasses the whitelist/dependency checks (I-16, Config Framework §8.3).
+
+        '
+      parameters:
+      - $ref: '#/components/parameters/ConfigEntityTypePath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - definition
+              properties:
+                definition:
+                  type: object
+                  additionalProperties: true
+              additionalProperties: false
+      responses:
+        '201':
+          description: Imported as a new draft.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationVersion'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /admin/dashboard:
+    get:
+      tags:
+      - Administration
+      operationId: getAdminDashboard
+      summary: Admin dashboard summary
+      description: Operational KPIs composed over modules (rebuildable projections). Requires an operator
+        role.
+      responses:
+        '200':
+          description: Dashboard summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummary'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/moderation-queue:
+    get:
+      tags:
+      - Administration
+      operationId: listModerationQueue
+      summary: List moderation cases
+      description: The moderation work queue (FR-MOD-005). Filterable by status and subject type.
+      parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - OPEN
+          - IN_REVIEW
+          - RESOLVED
+      - name: subjectType
+        in: query
+        schema:
+          type: string
+          enum:
+          - LISTING
+          - CONVERSATION
+          - USER
+          - PROFILE
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of moderation cases.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/ModerationCase'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/moderation-queue/{caseId}:
+    get:
+      tags:
+      - Administration
+      operationId: getModerationCase
+      summary: Get a moderation case
+      parameters:
+      - name: caseId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: The case.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModerationCase'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/moderation-queue/{caseId}/action:
+    post:
+      tags:
+      - Administration
+      operationId: applyModerationAction
+      summary: Resolve a moderation case
+      description: 'Applies one verb from the closed set (BR-MOD-02). The action is issued as a command
+        to the target
+
+        module (the target owns its state change) and recorded as an immutable audit entry (I-22).
+
+        '
+      parameters:
+      - name: caseId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModerationActionRequest'
+      responses:
+        '200':
+          description: Case resolved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModerationCase'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/verification-queue:
+    get:
+      tags:
+      - Administration
+      operationId: listVerificationQueue
+      summary: List verification cases
+      description: The manual verification reviewer queue with SLA (DEC-13).
+      parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - REQUESTED
+          - IN_REVIEW
+          - APPROVED
+          - REJECTED
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of verification cases.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/VerificationCase'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/verification-queue/{caseId}/decision:
+    post:
+      tags:
+      - Administration
+      operationId: decideVerification
+      summary: Decide a verification case
+      description: Approves or rejects a verification case (FR-PROF-005). Approval issues the badge with
+        validity terms (I-13).
+      parameters:
+      - name: caseId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationDecisionRequest'
+      responses:
+        '200':
+          description: Decision recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationCase'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/users:
+    get:
+      tags:
+      - Administration
+      operationId: adminListUsers
+      summary: List users (admin)
+      description: Administrative user search/listing. Requires user-management permission.
+      parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - SUSPENDED
+          - CLOSED
+      - name: query
+        in: query
+        schema:
+          type: string
+          description: Phone/email/name partial.
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of users.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/UserAdminView'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/users/{userId}/status:
+    post:
+      tags:
+      - Administration
+      operationId: adminChangeUserStatus
+      summary: Suspend or reactivate a user
+      description: Suspends or reactivates an account (emits AccountSuspended; catalog hides listings
+        via events). Audited.
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserStatusChangeRequest'
+      responses:
+        '200':
+          description: Updated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAdminView'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/users/{userId}/roles:
+    post:
+      tags:
+      - Administration
+      operationId: assignRole
+      summary: Assign a role to a user
+      description: Assigns a published RoleDefinition to a user account, pinning the identity +
+        the exact published version at assignment time (Config Framework Sec 7.2). Audited
+        (ADR-0006).
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleAssignmentRequest'
+      responses:
+        '200':
+          description: Updated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAdminView'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/users/{userId}/roles/{roleDefinitionHeadId}:
+    delete:
+      tags:
+      - Administration
+      operationId: revokeRole
+      summary: Revoke a role from a user
+      description: Revokes a previously-assigned RoleDefinition from a user account (ADR-0006).
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: roleDefinitionHeadId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: actingProfileId
+        in: query
+        schema:
+          type:
+          - string
+          - 'null'
+          format: uuid
+      responses:
+        '200':
+          description: Updated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAdminView'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/registration-queue:
+    get:
+      tags:
+      - Administration
+      operationId: listRegistrationQueue
+      summary: List accounts pending registration review
+      description: ADR-0007. PENDING accounts, oldest-first, with their full signup anketa.
+        Gated by identity:registration:review.
+      parameters:
+      - name: cursor
+        in: query
+        schema:
+          type:
+          - string
+          - 'null'
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 20
+      responses:
+        '200':
+          description: A page of pending registrations.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/RegistrationQueueItem'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/registration-queue/{accountId}/decision:
+    post:
+      tags:
+      - Administration
+      operationId: decideRegistration
+      summary: Approve or reject a pending registration
+      description: ADR-0007. Terminal -- an account's registration review can only be decided
+        once. Gated by identity:registration:review.
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationDecisionRequest'
+      responses:
+        '200':
+          description: Updated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAdminView'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/billing/invoices:
+    get:
+      tags:
+      - Administration
+      operationId: adminListInvoices
+      summary: List invoices (admin)
+      description: Billing operator queue — invoices awaiting offline payment confirmation.
+      parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - ISSUED
+          - PAID
+          - VOID
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of invoices.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Invoice'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/billing/invoices/{invoiceId}/confirm-payment:
+    post:
+      tags:
+      - Administration
+      operationId: confirmInvoicePayment
+      summary: Confirm offline payment
+      description: 'Records operator confirmation of an offline payment (FR-BILL-002). Marks the invoice
+        PAID and
+
+        activates the order''s entitlements (I-14) — the sanctioned synchronous payment→entitlement step.
+
+        Audited.
+
+        '
+      parameters:
+      - name: invoiceId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentConfirmationRequest'
+      responses:
+        '200':
+          description: Payment confirmed; entitlements activated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/audit-log:
+    get:
+      tags:
+      - Administration
+      operationId: queryAuditLog
+      summary: Query the audit log
+      description: 'Filterable, append-only administrative/moderation/configuration action trail (FR-AUDIT-002,
+        I-22).
+
+        Read-only — audit entries are never mutated or deleted.
+
+        '
+      parameters:
+      - name: actorUserId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: targetType
+        in: query
+        schema:
+          type: string
+      - name: action
+        in: query
+        schema:
+          type: string
+      - name: from
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of audit entries.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/AuditEntry'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/reports:
+    get:
+      tags:
+      - Administration
+      operationId: getAdminReports
+      summary: Operational reports
+      description: Returns a report dataset from the fixed v1 report set (FR-ADMIN-005). Rebuildable projections.
+      parameters:
+      - name: report
+        in: query
+        required: true
+        schema:
+          type: string
+          enum:
+          - LISTINGS_OVERVIEW
+          - USER_GROWTH
+          - REVENUE
+          - VERIFICATION_SLA
+          - MODERATION_THROUGHPUT
+      - name: from
+        in: query
+        schema:
+          type: string
+          format: date
+      - name: to
+        in: query
+        schema:
+          type: string
+          format: date
+      responses:
+        '200':
+          description: Report dataset.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: ah_session
+      description: 'First-party, server-side session (Redis-backed, SAD §13). Issued by any auth flow
+        and sent as a
+
+        secure, HttpOnly, SameSite=Lax cookie. This is the default scheme for browser clients.
+
+        '
+    sessionBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+      description: 'The same first-party session token presented as `Authorization: Bearer <token>` for
+        native and
+
+        mobile clients that cannot use cookies. The token is an **opaque server-side session reference**,
+
+        not a JWT. Revoking the session (logout) invalidates it immediately.
+
+        '
+    googleOAuth:
+      type: oauth2
+      description: 'Google is a federated **sign-in** identity provider only (authorization-code flow).
+        After Google
+
+        authenticates the user, Active Home links or creates the account and issues its own first-party
+
+        session (`sessionCookie`/`sessionBearer`). Active Home does not expose an OAuth2 authorization
+
+        server of its own.
+
+        '
+      flows:
+        authorizationCode:
+          authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
+          tokenUrl: https://oauth2.googleapis.com/token
+          scopes:
+            openid: OpenID Connect sign-in
+            email: Verified email (used to link, never duplicate, an existing account)
+            profile: Basic profile
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Opaque forward cursor from a previous page's `nextCursor`. Omit for the first page.
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Page size. Values above the maximum are clamped, not rejected.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Fields:
+      name: fields
+      in: query
+      required: false
+      description: 'Comma-separated sparse-fieldset projection. Field selection never widens authorization.
+
+        '
+      schema:
+        type: string
+    AcceptLanguage:
+      name: Accept-Language
+      in: header
+      required: false
+      description: Preferred display locale for resolved `LocalizedText` where a resolved form is returned.
+      schema:
+        type: string
+        enum:
+        - uz-Latn
+        - uz-Cyrl
+        - ru
+        - en
+        default: uz-Latn
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: 'Client-generated key (UUID recommended) making a side-effecting POST safe to retry.
+        The first
+
+        successful result is replayed for subsequent identical requests.
+
+        '
+      schema:
+        type: string
+        format: uuid
+    ActingProfile:
+      name: X-Acting-Profile
+      in: header
+      required: false
+      description: 'The business profile id to act as for this request (multi-profile ownership, FR-USER-002).
+        Omit
+
+        to act in personal context. Must be a profile the session''s account owns, or the request is 403.
+
+        '
+      schema:
+        type: string
+        format: uuid
+    ListingIdPath:
+      name: listingId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CampaignIdPath:
+      name: campaignId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ProfileIdPath:
+      name: profileId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ConversationIdPath:
+      name: conversationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CategoryIdPath:
+      name: categoryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MediaIdPath:
+      name: mediaId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    OrderIdPath:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    NotificationIdPath:
+      name: notificationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ConfigEntityTypePath:
+      name: entityType
+      in: path
+      required: true
+      description: The configuration entity family being authored.
+      schema:
+        type: string
+        enum:
+        - category
+        - form-definition
+        - product-definition
+        - placement-slot
+        - role-definition
+        - search-configuration
+        - notification-template
+        - platform-settings
+    ConfigHeadIdPath:
+      name: headId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ConfigVersionIdPath:
+      name: versionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  headers:
+    RateLimitLimit:
+      description: Request quota for the current window.
+      schema:
+        type: integer
+    RateLimitRemaining:
+      description: Remaining requests in the current window.
+      schema:
+        type: integer
+    RateLimitReset:
+      description: Unix epoch seconds when the window resets.
+      schema:
+        type: integer
+    RetryAfter:
+      description: Seconds to wait before retrying (rate limit or temporary degradation).
+      schema:
+        type: integer
+    Deprecation:
+      description: RFC-8594 deprecation signal for a deprecated operation or field.
+      schema:
+        type: string
+    Sunset:
+      description: RFC-8594 date after which a deprecated element may be removed (only in a new major
+        version).
+      schema:
+        type: string
+        format: date-time
+  responses:
+    BadRequest:
+      description: Malformed request or failed transport-schema validation.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            malformed:
+              $ref: '#/components/examples/ErrValidation'
+    Unauthorized:
+      description: No valid session, or session expired/revoked.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            noSession:
+              $ref: '#/components/examples/ErrUnauthorized'
+    Forbidden:
+      description: Authenticated but not permitted (default-deny; wrong acting profile; insufficient permission
+        key).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            denied:
+              $ref: '#/components/examples/ErrForbidden'
+    NotFound:
+      description: Resource does not exist or is not visible to the caller (opaque).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            notFound:
+              $ref: '#/components/examples/ErrNotFound'
+    Conflict:
+      description: Optimistic-concurrency conflict, duplicate unique key, or illegal state transition.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            conflict:
+              $ref: '#/components/examples/ErrConflict'
+    UnprocessableEntity:
+      description: Business-rule violation or field-level validation failure.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            validation:
+              $ref: '#/components/examples/ErrValidation'
+            businessRule:
+              $ref: '#/components/examples/ErrBusinessRule'
+    TooManyRequests:
+      description: Rate limit exceeded (edge, OTP throttle, or messaging rate limit).
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+        X-RateLimit-Limit:
+          $ref: '#/components/headers/RateLimitLimit'
+        X-RateLimit-Remaining:
+          $ref: '#/components/headers/RateLimitRemaining'
+        X-RateLimit-Reset:
+          $ref: '#/components/headers/RateLimitReset'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            rateLimited:
+              $ref: '#/components/examples/ErrRateLimited'
+    ServiceDegraded:
+      description: A downstream dependency is degraded; a reduced result or retry hint is returned (search→DB,
+        chat→click-to-call, config→last-good snapshot).
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            degraded:
+              $ref: '#/components/examples/ErrDegraded'
+  schemas:
+    LocalizedText:
+      type: object
+      description: 'User-visible text across the four locales (DB PD-03). `uz_latn` is the canonical Uzbek;
+        the
+
+        others are optional depending on what was authored. Cross-script Uzbek matching is handled by
+
+        the search engine, not by stored transliteration.
+
+        '
+      properties:
+        uz_latn:
+          type: string
+        uz_cyrl:
+          type: string
+        ru:
+          type: string
+        en:
+          type: string
+      additionalProperties: false
+      examples:
+      - uz_latn: Kvartira
+        ru: Квартира
+        en: Apartment
+    Money:
+      type: object
+      required:
+      - amount
+      - currency
+      properties:
+        amount:
+          type: string
+          description: Decimal string, 2 dp (avoids float error).
+          examples:
+          - '1500000.00'
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          default: UZS
+          examples:
+          - UZS
+      additionalProperties: false
+    GeoPoint:
+      type: object
+      required:
+      - latitude
+      - longitude
+      properties:
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+      additionalProperties: false
+    AttributeMap:
+      type: object
+      description: 'The dynamic listing attributes (the AttributeSet, DM-02) — typed values keyed by the
+        field
+
+        `code` of the bound FormDefinition version. This stable envelope is why adding form fields is
+        a
+
+        configuration change, never an API change.
+
+        '
+      additionalProperties: true
+      examples:
+      - rooms: 3
+        area_m2: 72.5
+        floor: 5
+        has_balcony: true
+    CursorPage:
+      type: object
+      description: Cursor pagination envelope (opaque forward cursor).
+      required:
+      - items
+      - page
+      properties:
+        items:
+          type: array
+          items: {}
+        page:
+          type: object
+          required:
+          - limit
+          properties:
+            limit:
+              type: integer
+            nextCursor:
+              type:
+              - string
+              - 'null'
+              description: Pass as `cursor` to fetch the next page; null when exhausted.
+            total:
+              type:
+              - integer
+              - 'null'
+              description: Present only where cheap to compute; may be null.
+      additionalProperties: false
+    Error:
+      type: object
+      description: 'Single Problem-style error envelope (RFC-9457 shaped). `code` is a stable, machine-readable
+
+        member of a closed vocabulary and refines the HTTP status.
+
+        '
+      required:
+      - type
+      - title
+      - status
+      - code
+      - traceId
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference identifying the problem type.
+          examples:
+          - https://errors.activehome.uz/validation
+        title:
+          type: string
+          description: Short, human-readable summary.
+        status:
+          type: integer
+          description: HTTP status code.
+        code:
+          type: string
+          description: Stable application-level error code.
+          enum:
+          - VALIDATION_FAILED
+          - BUSINESS_RULE_VIOLATION
+          - AUTHENTICATION_REQUIRED
+          - AUTHENTICATION_INVALID
+          - SESSION_EXPIRED
+          - PERMISSION_DENIED
+          - WRONG_ACTING_PROFILE
+          - RESOURCE_NOT_FOUND
+          - CONFLICT
+          - DUPLICATE_KEY
+          - ILLEGAL_STATE_TRANSITION
+          - QUOTA_EXCEEDED
+          - IMAGE_COUNT_EXCEEDED
+          - UNSUPPORTED_MEDIA_TYPE
+          - IDEMPOTENCY_KEY_REUSED
+          - RATE_LIMITED
+          - OTP_THROTTLED
+          - DEPENDENCY_DEGRADED
+        detail:
+          type: string
+          description: Human-readable explanation for this occurrence.
+        instance:
+          type: string
+          format: uri
+          description: URI reference for this specific occurrence.
+        traceId:
+          type: string
+          description: Correlation id for support and logs.
+        details:
+          type: array
+          description: Field-level errors (validation and business-rule cases).
+          items:
+            $ref: '#/components/schemas/ValidationError'
+      additionalProperties: false
+    ValidationError:
+      type: object
+      required:
+      - path
+      - rule
+      - message
+      properties:
+        path:
+          type: string
+          description: JSON pointer / field path.
+          examples:
+          - /attributes/area_m2
+        rule:
+          type: string
+          description: The whitelisted validator or schema rule that failed.
+          examples:
+          - numeric_range
+        message:
+          type: string
+      additionalProperties: false
+    Account:
+      type: object
+      description: The authenticated user's own account (BC-01 UserAccount).
+      required:
+      - id
+      - status
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        phoneNumber:
+          type:
+          - string
+          - 'null'
+          description: E.164; null after anonymisation.
+        email:
+          type:
+          - string
+          - 'null'
+          format: email
+        displayName:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - SUSPENDED
+          - CLOSED
+          readOnly: true
+        privacySettings:
+          $ref: '#/components/schemas/PrivacySettings'
+        notificationPreferences:
+          $ref: '#/components/schemas/NotificationPreferences'
+        ownedProfileIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          readOnly: true
+        roles:
+          type: array
+          readOnly: true
+          items:
+            type: string
+            description: Role codes assigned to the account.
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        accountKind:
+          type:
+          - string
+          - 'null'
+          enum:
+          - INDIVIDUAL
+          - LEGAL_ENTITY
+          - INVESTOR
+          - null
+          readOnly: true
+          description: ADR-0007. The role chosen at signup.
+        reviewStatus:
+          type:
+          - string
+          - 'null'
+          enum:
+          - PENDING
+          - APPROVED
+          - REJECTED
+          - null
+          readOnly: true
+          description: ADR-0007. Gates the role-specific workspace only -- login itself is
+            governed by status, unchanged.
+        reviewReason:
+          type:
+          - string
+          - 'null'
+          readOnly: true
+          description: The reviewer's note, once reviewStatus is APPROVED/REJECTED.
+      additionalProperties: false
+    PrivacySettings:
+      type: object
+      properties:
+        phoneRevealMode:
+          type: string
+          enum:
+          - ALWAYS
+          - ON_REQUEST
+          - NEVER
+          default: ON_REQUEST
+          description: BRULE-13 phone-reveal gating.
+      additionalProperties: false
+    NotificationPreferences:
+      type: object
+      description: 'Channel opt-ins by category. OTP is always delivered via SMS (Eskiz) regardless of
+        preference.
+
+        '
+      properties:
+        email:
+          type: boolean
+          default: true
+        webPush:
+          type: boolean
+          default: false
+        sms:
+          type: boolean
+          default: true
+      additionalProperties: false
+    Session:
+      type: object
+      description: An authenticated session (BC-01 Session).
+      required:
+      - id
+      - createdAt
+      - expiresAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        actingProfileId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: null = personal context.
+        ipAddress:
+          type:
+          - string
+          - 'null'
+        userAgent:
+          type:
+          - string
+          - 'null'
+        current:
+          type: boolean
+          description: True for the session making this request.
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        expiresAt:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    RegisterPhoneRequest:
+      type: object
+      required:
+      - phoneNumber
+      properties:
+        phoneNumber:
+          type: string
+          pattern: ^\+[1-9][0-9]{7,14}$
+          examples:
+          - '+998901234567'
+      additionalProperties: false
+    RegisterEmailRequest:
+      type: object
+      required:
+      - email
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+        displayName:
+          type: string
+          maxLength: 120
+        accountKind:
+          type: string
+          enum:
+          - INDIVIDUAL
+          - LEGAL_ENTITY
+          - INVESTOR
+          default: INDIVIDUAL
+          description: ADR-0007. The role chosen in the sign-up wizard's first step.
+        anketa:
+          type: object
+          additionalProperties: true
+          description: ADR-0007. Role-specific questionnaire answers from the wizard's second
+            step. Freeform -- shape depends on accountKind.
+      additionalProperties: false
+    OtpRequest:
+      type: object
+      required:
+      - phoneNumber
+      - purpose
+      properties:
+        phoneNumber:
+          type: string
+          pattern: ^\+[1-9][0-9]{7,14}$
+        purpose:
+          type: string
+          enum:
+          - REGISTRATION
+          - LOGIN
+          - RECOVERY
+      additionalProperties: false
+    OtpVerifyRequest:
+      type: object
+      required:
+      - phoneNumber
+      - code
+      - purpose
+      properties:
+        phoneNumber:
+          type: string
+          pattern: ^\+[1-9][0-9]{7,14}$
+        code:
+          type: string
+          pattern: ^[0-9]{4,8}$
+          writeOnly: true
+        purpose:
+          type: string
+          enum:
+          - REGISTRATION
+          - LOGIN
+          - RECOVERY
+        accountKind:
+          type: string
+          enum:
+          - INDIVIDUAL
+          - LEGAL_ENTITY
+          - INVESTOR
+          default: INDIVIDUAL
+          description: ADR-0007. Only consulted when purpose=REGISTRATION and no account exists
+            yet for this phone.
+        anketa:
+          type: object
+          additionalProperties: true
+          description: ADR-0007. See RegisterEmailRequest.anketa.
+      additionalProperties: false
+    LoginEmailRequest:
+      type: object
+      required:
+      - email
+      - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+      additionalProperties: false
+    GoogleSignInRequest:
+      type: object
+      required:
+      - authorizationCode
+      - redirectUri
+      properties:
+        authorizationCode:
+          type: string
+          writeOnly: true
+          description: Google authorization-code from the client flow.
+        redirectUri:
+          type: string
+          format: uri
+      additionalProperties: false
+    SessionEstablished:
+      type: object
+      description: 'Returned by any successful auth flow. For browsers the session is also set as the
+        `ah_session`
+
+        cookie; `sessionToken` is returned for native/mobile clients using the Bearer scheme.
+
+        '
+      required:
+      - account
+      - session
+      properties:
+        account:
+          $ref: '#/components/schemas/Account'
+        session:
+          $ref: '#/components/schemas/Session'
+        sessionToken:
+          type:
+          - string
+          - 'null'
+          description: Opaque session reference for Bearer clients. Null/omitted when only the cookie
+            is issued.
+      additionalProperties: false
+    PasswordChangeRequest:
+      type: object
+      required:
+      - currentPassword
+      - newPassword
+      properties:
+        currentPassword:
+          type: string
+          writeOnly: true
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+      additionalProperties: false
+    RecoveryStartRequest:
+      type: object
+      description: Start account recovery via a verified phone or email.
+      properties:
+        phoneNumber:
+          type: string
+          pattern: ^\+[1-9][0-9]{7,14}$
+        email:
+          type: string
+          format: email
+      additionalProperties: false
+    BusinessProfile:
+      type: object
+      description: A company presence of one of the eight closed profile types (BC-02).
+      required:
+      - id
+      - ownerUserId
+      - profileType
+      - name
+      - status
+      - slug
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        ownerUserId:
+          type: string
+          format: uuid
+          readOnly: true
+        profileType:
+          type: string
+          description: Closed platform vocabulary (eight types).
+          enum:
+          - CONSTRUCTION_COMPANY
+          - MANUFACTURER
+          - BUILDER
+          - SUPPLIER
+          - CONTRACTOR
+          - ARCHITECT
+          - INTERIOR_DESIGNER
+          - SERVICE_PROVIDER
+        name:
+          $ref: '#/components/schemas/LocalizedText'
+        description:
+          $ref: '#/components/schemas/LocalizedText'
+        contacts:
+          type: object
+          additionalProperties: true
+          description: Phones/emails/site (CompanyDetails).
+        address:
+          type:
+          - string
+          - 'null'
+        slug:
+          type: string
+          readOnly: true
+          description: Display-only routing; not an identity.
+        status:
+          type: string
+          enum:
+          - CREATED
+          - ACTIVE
+          - ARCHIVED
+          readOnly: true
+        badge:
+          type:
+          - object
+          - 'null'
+          readOnly: true
+          description: Trust badge sub-state (null = never verified).
+          properties:
+            status:
+              type: string
+              enum:
+              - VALID
+              - EXPIRED
+              - REVOKED
+            issuedAt:
+              type: string
+              format: date-time
+            validUntil:
+              type: string
+              format: date-time
+          additionalProperties: false
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    BusinessProfileCreateRequest:
+      type: object
+      required:
+      - profileType
+      - name
+      properties:
+        profileType:
+          type: string
+          enum:
+          - CONSTRUCTION_COMPANY
+          - MANUFACTURER
+          - BUILDER
+          - SUPPLIER
+          - CONTRACTOR
+          - ARCHITECT
+          - INTERIOR_DESIGNER
+          - SERVICE_PROVIDER
+        name:
+          $ref: '#/components/schemas/LocalizedText'
+        description:
+          $ref: '#/components/schemas/LocalizedText'
+        contacts:
+          type: object
+          additionalProperties: true
+        address:
+          type: string
+      additionalProperties: false
+    BusinessProfileUpdateRequest:
+      type: object
+      description: Partial update; profileType is immutable and cannot be changed.
+      properties:
+        name:
+          $ref: '#/components/schemas/LocalizedText'
+        description:
+          $ref: '#/components/schemas/LocalizedText'
+        contacts:
+          type: object
+          additionalProperties: true
+        address:
+          type: string
+      additionalProperties: false
+    PortfolioItem:
+      type: object
+      required:
+      - id
+      - mediaAssetId
+      - position
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        mediaAssetId:
+          type: string
+          format: uuid
+        position:
+          type: integer
+          minimum: 1
+          maximum: 50
+        caption:
+          $ref: '#/components/schemas/LocalizedText'
+      additionalProperties: false
+    TeamMember:
+      type: object
+      description: 'A user granted a role on a business profile (realised as an identity RoleAssignment
+        scoped to the
+
+        profile; the profile owner manages membership). No new aggregate is introduced.
+
+        '
+      required:
+      - userId
+      - roleCode
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type:
+          - string
+          - 'null'
+          readOnly: true
+        roleCode:
+          type: string
+          description: A configured role code.
+        invitedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    VerificationCase:
+      type: object
+      description: A paid, manual verification work item (BC-02).
+      required:
+      - id
+      - businessProfileId
+      - status
+      - slaDueAt
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        businessProfileId:
+          type: string
+          format: uuid
+          readOnly: true
+        entitlementId:
+          type: string
+          format: uuid
+          description: VerificationEligibility precondition (I-12).
+        status:
+          type: string
+          enum:
+          - REQUESTED
+          - IN_REVIEW
+          - APPROVED
+          - REJECTED
+          readOnly: true
+        slaDueAt:
+          type: string
+          format: date-time
+          readOnly: true
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubmittedDocument'
+        decision:
+          type:
+          - object
+          - 'null'
+          readOnly: true
+          properties:
+            outcome:
+              type: string
+              enum:
+              - APPROVED
+              - REJECTED
+            reason:
+              type: string
+            decidedAt:
+              type: string
+              format: date-time
+          additionalProperties: false
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    SubmittedDocument:
+      type: object
+      required:
+      - mediaAssetId
+      - documentKind
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        mediaAssetId:
+          type: string
+          format: uuid
+          description: Image asset (images only, FR-PROF-003).
+        documentKind:
+          type: string
+        position:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+    VerificationRequestCreate:
+      type: object
+      required:
+      - entitlementId
+      - documents
+      properties:
+        entitlementId:
+          type: string
+          format: uuid
+        documents:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/SubmittedDocument'
+      additionalProperties: false
+    Listing:
+      type: object
+      description: An advertisement / product / service (BC-03 Listing). Promotion is a projection from
+        entitlements.
+      required:
+      - id
+      - listingType
+      - ownerUserId
+      - categoryId
+      - formDefinitionVersionId
+      - title
+      - lifecycleState
+      - slug
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        listingType:
+          type: string
+          enum:
+          - ADVERTISEMENT
+          - PRODUCT
+          - SERVICE
+        ownerUserId:
+          type: string
+          format: uuid
+          readOnly: true
+        ownerProfileId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          readOnly: true
+        categoryId:
+          type: string
+          format: uuid
+        categoryPath:
+          type: string
+          readOnly: true
+        formDefinitionVersionId:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Bound form version (I-07); immutable per edit-cycle.
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type:
+          - string
+          - 'null'
+          maxLength: 8000
+        attributes:
+          $ref: '#/components/schemas/AttributeMap'
+        price:
+          $ref: '#/components/schemas/Money'
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+        lifecycleState:
+          type: string
+          enum:
+          - DRAFT
+          - PENDING_VERIFICATION
+          - PUBLISHED
+          - EDITED
+          - SUSPENDED
+          - ARCHIVED
+          - DELETED
+          readOnly: true
+        isFlagged:
+          type: boolean
+          readOnly: true
+        expiresAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          readOnly: true
+        publishedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          readOnly: true
+        promotion:
+          type:
+          - object
+          - 'null'
+          readOnly: true
+          description: Projected from entitlement events (X-03); labelled and capped in search.
+          properties:
+            kind:
+              type: string
+              enum:
+              - PREMIUM
+              - FEATURED
+              - TOP_PLACEMENT
+            validUntil:
+              type: string
+              format: date-time
+          additionalProperties: false
+        images:
+          type: array
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/ListingImage'
+        slug:
+          type: string
+          readOnly: true
+        lockVersion:
+          type: integer
+          description: Optimistic-lock token; echo it on update (If-Match style).
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    ListingImage:
+      type: object
+      required:
+      - mediaAssetId
+      - position
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        mediaAssetId:
+          type: string
+          format: uuid
+        position:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: Position 1 is the primary image.
+        status:
+          type: string
+          enum:
+          - PENDING
+          - CLEAN
+          - QUARANTINED
+          readOnly: true
+      additionalProperties: false
+    ListingCreateRequest:
+      type: object
+      required:
+      - listingType
+      - categoryId
+      - title
+      - attributes
+      properties:
+        listingType:
+          type: string
+          enum:
+          - ADVERTISEMENT
+          - PRODUCT
+          - SERVICE
+        categoryId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 8000
+        attributes:
+          $ref: '#/components/schemas/AttributeMap'
+        price:
+          $ref: '#/components/schemas/Money'
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+        imageMediaAssetIds:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            format: uuid
+        publish:
+          type: boolean
+          default: false
+          description: True to publish immediately (post-publication moderation, BRULE-17); false saves
+            a draft.
+      additionalProperties: false
+    ListingUpdateRequest:
+      type: object
+      description: Owner edit; transitions the listing to EDITED and re-binds/re-validates against the
+        current form version.
+      required:
+      - lockVersion
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 8000
+        attributes:
+          $ref: '#/components/schemas/AttributeMap'
+        price:
+          $ref: '#/components/schemas/Money'
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+        lockVersion:
+          type: integer
+          description: Must match the current lockVersion or 409.
+      additionalProperties: false
+    ListingStatusChangeRequest:
+      type: object
+      required:
+      - action
+      properties:
+        action:
+          type: string
+          enum:
+          - PUBLISH
+          - ARCHIVE
+          - SUSPEND
+          - RENEW
+          - RESTORE
+          - DELETE
+          description: Owner-permitted lifecycle transitions (I-05); illegal transitions return 409.
+        reason:
+          type: string
+      additionalProperties: false
+    ImageReorderRequest:
+      type: object
+      required:
+      - order
+      properties:
+        order:
+          type: array
+          description: The full ordered list of image ids (position derives from array index; index 0
+            = primary).
+          items:
+            type: string
+            format: uuid
+          maxItems: 10
+      additionalProperties: false
+    Favorite:
+      type: object
+      required:
+      - listingId
+      - createdAt
+      properties:
+        listingId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    Category:
+      type: object
+      description: A navigable taxonomy node (read projection of the configured Category).
+      required:
+      - id
+      - name
+      - path
+      properties:
+        id:
+          type: string
+          format: uuid
+        parentId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        name:
+          $ref: '#/components/schemas/LocalizedText'
+        path:
+          type: string
+          description: Materialised path for subtree navigation.
+        slug:
+          type: string
+        displayOrder:
+          type: integer
+        formDefinitionId:
+          type: string
+          format: uuid
+          description: The one bound form (I-02).
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - RETIRED
+        iconUrl:
+          type:
+          - string
+          - 'null'
+          format: uri
+          description: Public media URL for the category's icon, when the admin has uploaded one.
+      additionalProperties: false
+    FormDefinition:
+      type: object
+      description: The resolved dynamic form for a category (sections → fields → validators), delivered
+        as data.
+      required:
+      - id
+      - versionId
+      - sections
+      properties:
+        id:
+          type: string
+          format: uuid
+        versionId:
+          type: string
+          format: uuid
+          description: Immutable version bound by listings (I-07).
+        categoryId:
+          type: string
+          format: uuid
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormSection'
+      additionalProperties: false
+    FormSection:
+      type: object
+      required:
+      - code
+      - label
+      - fields
+      properties:
+        code:
+          type: string
+        label:
+          $ref: '#/components/schemas/LocalizedText'
+        order:
+          type: integer
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/FormField'
+      additionalProperties: false
+    FormField:
+      type: object
+      description: A field composed from a whitelisted field type with validation metadata and conditional
+        visibility.
+      required:
+      - code
+      - label
+      - fieldType
+      - required
+      properties:
+        code:
+          type: string
+          description: Key used in the listing AttributeMap.
+        label:
+          $ref: '#/components/schemas/LocalizedText'
+        fieldType:
+          type: string
+          description: Whitelisted field type (closed [P] set).
+          enum:
+          - text
+          - number
+          - select
+          - multiselect
+          - boolean
+          - date
+          - range
+          - location
+          - file
+        required:
+          type: boolean
+        facetEligible:
+          type: boolean
+          description: May be selected as a search facet.
+        order:
+          type: integer
+        defaultValue: {}
+        options:
+          type: array
+          description: For select/multiselect.
+          items:
+            type: object
+            properties:
+              value:
+                type: string
+              label:
+                $ref: '#/components/schemas/LocalizedText'
+            additionalProperties: false
+        validators:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidatorBinding'
+        renderingHint:
+          type:
+          - string
+          - 'null'
+        conditionalVisibility:
+          type:
+          - object
+          - 'null'
+          description: Bounded declarative show/hide based on another field's value.
+          properties:
+            fieldCode:
+              type: string
+            operator:
+              type: string
+              enum:
+              - EQUALS
+              - NOT_EQUALS
+              - IN
+              - NOT_IN
+              - GREATER_THAN
+              - LESS_THAN
+            value: {}
+          additionalProperties: false
+      additionalProperties: false
+    ValidatorBinding:
+      type: object
+      required:
+      - validatorType
+      properties:
+        validatorType:
+          type: string
+          description: Whitelisted validator (closed [P] set); pattern draws only from a safe set.
+          enum:
+          - required
+          - length
+          - numeric_range
+          - pattern_safe
+          - option_membership
+          - image_count
+        params:
+          type: object
+          additionalProperties: true
+          description: Bounded parameters for the validator.
+      additionalProperties: false
+    SearchRequest:
+      type: object
+      description: Structured search query (also expressible via query parameters on GET /search).
+      properties:
+        q:
+          type: string
+          description: Free text; matched cross-script (Latin↔Cyrillic).
+        categoryId:
+          type: string
+          format: uuid
+        listingType:
+          type: string
+          enum:
+          - ADVERTISEMENT
+          - PRODUCT
+          - SERVICE
+        filters:
+          type: object
+          description: Facet filters keyed by facet-eligible field code (from the SearchConfiguration
+            snapshot).
+          additionalProperties: true
+        priceMin:
+          type: string
+        priceMax:
+          type: string
+        verifiedOnly:
+          type: boolean
+        geo:
+          type:
+          - object
+          - 'null'
+          properties:
+            center:
+              $ref: '#/components/schemas/GeoPoint'
+            radiusKm:
+              type: number
+              minimum: 0.1
+              maximum: 200
+          additionalProperties: false
+        sort:
+          type: string
+          enum:
+          - RELEVANCE
+          - RECENCY
+          - PRICE_ASC
+          - PRICE_DESC
+          default: RELEVANCE
+      additionalProperties: false
+    SearchResult:
+      type: object
+      description: Search response — matched listings, facet results, and promotion labelling.
+      required:
+      - items
+      - facets
+      - page
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchHit'
+        facets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Facet'
+        page:
+          $ref: '#/components/schemas/CursorPage'
+        degraded:
+          type: boolean
+          default: false
+          description: True when served from the DB fallback (reduced result set).
+      additionalProperties: false
+    SearchHit:
+      type: object
+      required:
+      - listingId
+      - title
+      properties:
+        listingId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        categoryPath:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+        thumbnailUrl:
+          type:
+          - string
+          - 'null'
+          format: uri
+        verifiedBadge:
+          type: boolean
+        promoted:
+          type:
+          - object
+          - 'null'
+          description: Present and labelled when the hit is a capped promoted result (BRULE-10).
+          properties:
+            kind:
+              type: string
+              enum:
+              - PREMIUM
+              - FEATURED
+              - TOP_PLACEMENT
+          additionalProperties: false
+        slug:
+          type: string
+      additionalProperties: false
+    Facet:
+      type: object
+      required:
+      - fieldCode
+      - label
+      - buckets
+      properties:
+        fieldCode:
+          type: string
+        label:
+          $ref: '#/components/schemas/LocalizedText'
+        buckets:
+          type: array
+          items:
+            type: object
+            properties:
+              value:
+                type: string
+              count:
+                type: integer
+            additionalProperties: false
+      additionalProperties: false
+    Suggestion:
+      type: object
+      required:
+      - text
+      properties:
+        text:
+          type: string
+        type:
+          type: string
+          enum:
+          - QUERY
+          - CATEGORY
+          - LISTING
+        refId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+      additionalProperties: false
+    MediaAsset:
+      type: object
+      description: Image/video asset metadata (BC-06). Bytes live in MinIO/CDN. Images and video only (DEC-10, widened by ADR-0008).
+      required:
+      - id
+      - contentType
+      - scanStatus
+      - processingStatus
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        ownerContextType:
+          type:
+          - string
+          - 'null'
+          enum:
+          - LISTING
+          - PROFILE_PORTFOLIO
+          - VERIFICATION_DOCUMENT
+          - BANNER_CREATIVE
+          - null
+        ownerContextId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        contentType:
+          type: string
+          enum:
+          - image/jpeg
+          - image/png
+          - image/webp
+          - video/mp4
+          - video/webm
+          description: Image/video whitelist; anything else is rejected at intake.
+        sizeBytes:
+          type: integer
+        scanStatus:
+          type: string
+          enum:
+          - PENDING
+          - CLEAN
+          - QUARANTINED
+          readOnly: true
+        processingStatus:
+          type: string
+          enum:
+          - PENDING
+          - COMPLETED
+          - FAILED
+          readOnly: true
+        url:
+          type:
+          - string
+          - 'null'
+          format: uri
+          readOnly: true
+          description: CDN delivery URL for the original (only when CLEAN).
+        variants:
+          type: array
+          readOnly: true
+          items:
+            type: object
+            properties:
+              kind:
+                type: string
+                enum:
+                - THUMBNAIL
+                - OPTIMIZED
+              url:
+                type: string
+                format: uri
+              width:
+                type: integer
+              height:
+                type: integer
+            additionalProperties: false
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    MediaUploadInitRequest:
+      type: object
+      description: Request a presigned direct-upload target. Images and video only.
+      required:
+      - contentType
+      - sizeBytes
+      - ownerContextType
+      properties:
+        contentType:
+          type: string
+          enum:
+          - image/jpeg
+          - image/png
+          - image/webp
+          - video/mp4
+          - video/webm
+        sizeBytes:
+          type: integer
+          minimum: 1
+          maximum: 31457280
+          description: Max 1.2 MB per image, max 30 MB per video (ADR-0008).
+        ownerContextType:
+          type: string
+          enum:
+          - LISTING
+          - PROFILE_PORTFOLIO
+          - VERIFICATION_DOCUMENT
+          - BANNER_CREATIVE
+      additionalProperties: false
+    MediaUploadInitResponse:
+      type: object
+      required:
+      - mediaAssetId
+      - uploadUrl
+      - method
+      - expiresAt
+      properties:
+        mediaAssetId:
+          type: string
+          format: uuid
+        uploadUrl:
+          type: string
+          format: uri
+          description: Presigned MinIO URL; client PUTs the bytes directly.
+        method:
+          type: string
+          enum:
+          - PUT
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        expiresAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    Conversation:
+      type: object
+      required:
+      - id
+      - listingId
+      - initiatorUserId
+      - recipientUserId
+      - status
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        listingId:
+          type: string
+          format: uuid
+        initiatorUserId:
+          type: string
+          format: uuid
+          readOnly: true
+        recipientUserId:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          type: string
+          enum:
+          - INITIATED
+          - ACTIVE
+          - ARCHIVED
+          readOnly: true
+        lastMessageAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    ConversationCreateRequest:
+      type: object
+      required:
+      - listingId
+      - message
+      properties:
+        listingId:
+          type: string
+          format: uuid
+        message:
+          type: string
+          minLength: 1
+          maxLength: 4000
+      additionalProperties: false
+    Message:
+      type: object
+      required:
+      - id
+      - conversationId
+      - authorUserId
+      - body
+      - sentAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        conversationId:
+          type: string
+          format: uuid
+          readOnly: true
+        authorUserId:
+          type: string
+          format: uuid
+          readOnly: true
+        body:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        sentAt:
+          type: string
+          format: date-time
+          readOnly: true
+        deliveredAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          readOnly: true
+        readAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    MessageCreateRequest:
+      type: object
+      required:
+      - body
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 4000
+      additionalProperties: false
+    PhoneRevealResponse:
+      type: object
+      required:
+      - allowed
+      properties:
+        allowed:
+          type: boolean
+          description: False when the owner's privacy settings block reveal (BRULE-13).
+        phoneNumber:
+          type:
+          - string
+          - 'null'
+          description: Present only when allowed.
+      additionalProperties: false
+    Block:
+      type: object
+      required:
+      - blockedUserId
+      properties:
+        blockedUserId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    ReportCreateRequest:
+      type: object
+      required:
+      - subjectType
+      - subjectId
+      - reason
+      properties:
+        subjectType:
+          type: string
+          enum:
+          - LISTING
+          - CONVERSATION
+          - USER
+          - PROFILE
+        subjectId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          maxLength: 1000
+      additionalProperties: false
+    Notification:
+      type: object
+      required:
+      - id
+      - eventKey
+      - channel
+      - createdAt
+      - deliveryStatus
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        eventKey:
+          type: string
+          readOnly: true
+        channel:
+          type: string
+          enum:
+          - EMAIL
+          - WEB_PUSH
+          - SMS
+          readOnly: true
+        subject:
+          type:
+          - string
+          - 'null'
+          readOnly: true
+        body:
+          type: string
+          readOnly: true
+        readAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        deliveryStatus:
+          type: string
+          enum:
+          - QUEUED
+          - SENT
+          - DELIVERED
+          - FAILED
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    NotificationReadRequest:
+      type: object
+      required:
+      - read
+      properties:
+        read:
+          type: boolean
+      additionalProperties: false
+    Product:
+      type: object
+      description: A purchasable product/plan (six closed types). Read projection of the configured ProductDefinition.
+      required:
+      - id
+      - code
+      - productType
+      - price
+      - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        productType:
+          type: string
+          enum:
+          - SUBSCRIPTION
+          - PREMIUM
+          - FEATURED
+          - TOP_PLACEMENT
+          - VERIFICATION
+          - BANNER_PLACEMENT
+        name:
+          $ref: '#/components/schemas/LocalizedText'
+        description:
+          $ref: '#/components/schemas/LocalizedText'
+        price:
+          $ref: '#/components/schemas/Money'
+        termDays:
+          type:
+          - integer
+          - 'null'
+        quota:
+          type:
+          - object
+          - 'null'
+          description: For SUBSCRIPTION — listing quotas/limits (BRULE-07).
+          additionalProperties: true
+      additionalProperties: false
+    Order:
+      type: object
+      description: A purchase request; freezes a ProductSnapshot (BC-08).
+      required:
+      - id
+      - purchaserProfileId
+      - productId
+      - amount
+      - status
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        purchaserProfileId:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        targetType:
+          type: string
+          enum:
+          - PROFILE
+          - LISTING
+          - SLOT_BOOKING
+        targetId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        amount:
+          $ref: '#/components/schemas/Money'
+        status:
+          type: string
+          enum:
+          - PENDING
+          - INVOICED
+          - PAID
+          - FULFILLED
+          - CANCELLED
+          readOnly: true
+        invoiceId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    OrderCreateRequest:
+      type: object
+      required:
+      - productId
+      - targetType
+      properties:
+        productId:
+          type: string
+          format: uuid
+        targetType:
+          type: string
+          enum:
+          - PROFILE
+          - LISTING
+          - SLOT_BOOKING
+        targetId:
+          type: string
+          format: uuid
+          description: Required for LISTING and SLOT_BOOKING targets.
+      additionalProperties: false
+    Invoice:
+      type: object
+      description: Offline billing document (one per order). Settled by operator confirmation (DEC-02).
+      required:
+      - id
+      - orderId
+      - invoiceNumber
+      - amount
+      - status
+      - issuedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        orderId:
+          type: string
+          format: uuid
+          readOnly: true
+        invoiceNumber:
+          type: string
+          readOnly: true
+        amount:
+          $ref: '#/components/schemas/Money'
+        status:
+          type: string
+          enum:
+          - ISSUED
+          - PAID
+          - VOID
+          readOnly: true
+        issuedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        paymentConfirmedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    PaymentConfirmationRequest:
+      type: object
+      description: Operator records confirmation of an offline payment (FR-BILL-002). Activates entitlements.
+      required:
+      - confirmed
+      properties:
+        confirmed:
+          type: boolean
+        note:
+          type: string
+          maxLength: 1000
+      additionalProperties: false
+    Entitlement:
+      type: object
+      required:
+      - id
+      - entitlementType
+      - validFrom
+      - validUntil
+      - activationState
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        orderId:
+          type: string
+          format: uuid
+          readOnly: true
+        entitlementType:
+          type: string
+          enum:
+          - ACTIVE_SUBSCRIPTION
+          - LISTING_PROMOTION
+          - VERIFICATION_ELIGIBILITY
+          - BANNER_SLOT_BOOKING
+        promotionKind:
+          type:
+          - string
+          - 'null'
+          enum:
+          - PREMIUM
+          - FEATURED
+          - TOP_PLACEMENT
+          - null
+        targetId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        validFrom:
+          type: string
+          format: date-time
+        validUntil:
+          type: string
+          format: date-time
+        activationState:
+          type: string
+          enum:
+          - ACTIVE
+          - EXPIRED
+          - REVOKED
+          readOnly: true
+      additionalProperties: false
+    BannerCampaign:
+      type: object
+      description: A scheduled, targeted banner engagement occupying a configured Placement Slot
+        (DDD Sec 5.9). References its slot/creative/entitlement by identifier only — never a
+        duplicated copy of another module's state. Carries no impression/click counters (Database
+        Architecture's counters-correction note; I-23) — those are BannerImpressionRecorded/
+        BannerClickRecorded metric events only.
+      required:
+      - id
+      - slotKey
+      - creativeMediaAssetId
+      - entitlementId
+      - scheduleStart
+      - scheduleEnd
+      - priority
+      - targeting
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        slotKey:
+          type: string
+          description: References a configuration PlacementSlotDefinition by SlotKey (BC-04).
+        creativeMediaAssetId:
+          type: string
+          format: uuid
+          description: References a media MediaAssetRef by identifier (BC-06). Must be Clean/not
+            quarantined (I-20) to ever be served.
+        entitlementId:
+          type: string
+          format: uuid
+          description: References a billing Entitlement (entitlementType=BANNER_SLOT_BOOKING) by
+            identifier (BC-08). Must be ACTIVE (I-15/I-21).
+        scheduleStart:
+          type: string
+          format: date-time
+        scheduleEnd:
+          type: string
+          format: date-time
+        priority:
+          type: integer
+          minimum: 0
+        targeting:
+          type: object
+          description: Basic targeting (FR-BANNER-003) — category/geo/language, all optional (unset
+            = untargeted on that dimension).
+          properties:
+            categoryIds:
+              type: array
+              items:
+                type: string
+                format: uuid
+            geo:
+              type:
+              - string
+              - 'null'
+            languages:
+              type: array
+              items:
+                type: string
+                enum:
+                - uz_latn
+                - uz_cyrl
+                - ru
+                - en
+          additionalProperties: false
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - SCHEDULED
+          - RUNNING
+          - PAUSED
+          - ENDED
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    BannerCampaignCreateRequest:
+      type: object
+      required:
+      - slotKey
+      - creativeMediaAssetId
+      - entitlementId
+      - scheduleStart
+      - scheduleEnd
+      - priority
+      properties:
+        slotKey:
+          type: string
+        creativeMediaAssetId:
+          type: string
+          format: uuid
+        entitlementId:
+          type: string
+          format: uuid
+        scheduleStart:
+          type: string
+          format: date-time
+        scheduleEnd:
+          type: string
+          format: date-time
+        priority:
+          type: integer
+          minimum: 0
+        targeting:
+          type: object
+          properties:
+            categoryIds:
+              type: array
+              items:
+                type: string
+                format: uuid
+            geo:
+              type:
+              - string
+              - 'null'
+            languages:
+              type: array
+              items:
+                type: string
+                enum:
+                - uz_latn
+                - uz_cyrl
+                - ru
+                - en
+          additionalProperties: false
+      additionalProperties: false
+    BannerCampaignUpdateRequest:
+      type: object
+      description: Every field optional — only supplied fields are mutated. Rejected with CONFLICT
+        once the campaign is no longer DRAFT.
+      properties:
+        creativeMediaAssetId:
+          type: string
+          format: uuid
+        scheduleStart:
+          type: string
+          format: date-time
+        scheduleEnd:
+          type: string
+          format: date-time
+        priority:
+          type: integer
+          minimum: 0
+        targeting:
+          type: object
+          properties:
+            categoryIds:
+              type: array
+              items:
+                type: string
+                format: uuid
+            geo:
+              type:
+              - string
+              - 'null'
+            languages:
+              type: array
+              items:
+                type: string
+                enum:
+                - uz_latn
+                - uz_cyrl
+                - ru
+                - en
+          additionalProperties: false
+      additionalProperties: false
+    BannerServeView:
+      type: object
+      description: The single eligible banner selected for a slot/context (FR-BANNER-004). Deliberately
+        minimal — no operator-only fields (entitlementId, priority, full targeting).
+      required:
+      - campaignId
+      - slotKey
+      - creativeMediaAssetId
+      properties:
+        campaignId:
+          type: string
+          format: uuid
+        slotKey:
+          type: string
+        creativeMediaAssetId:
+          type: string
+          format: uuid
+      additionalProperties: false
+    ConfigurationHead:
+      type: object
+      description: The head record of a configuration entity (uniform Head+Version pattern, DM-03).
+      required:
+      - id
+      - entityType
+      - code
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        entityType:
+          type: string
+          enum:
+          - category
+          - form-definition
+          - product-definition
+          - placement-slot
+          - role-definition
+          - search-configuration
+          - notification-template
+          - platform-settings
+        code:
+          type: string
+          description: Immutable business key, unique per entity type.
+        currentVersionId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          readOnly: true
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - PUBLISHED
+          - DEPRECATED
+          - ARCHIVED
+          readOnly: true
+        businessOwner:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    ConfigurationVersion:
+      type: object
+      description: An immutable-once-published configuration version carrying a self-contained definition
+        document.
+      required:
+      - id
+      - headId
+      - versionNumber
+      - status
+      - definition
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        headId:
+          type: string
+          format: uuid
+          readOnly: true
+        versionNumber:
+          type: integer
+          readOnly: true
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - VALIDATION
+          - APPROVAL
+          - PUBLISHED
+          - DEPRECATED
+          - ARCHIVED
+          readOnly: true
+        definition:
+          type: object
+          additionalProperties: true
+          description: Complete self-contained Configuration Descriptor + entity structure.
+        snapshot:
+          type:
+          - object
+          - 'null'
+          additionalProperties: true
+          readOnly: true
+          description: Resolved consumer-facing snapshot (written at publish).
+        validityFrom:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        validityUntil:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        rollbackOfVersionId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          readOnly: true
+        approvedBy:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          readOnly: true
+        publishedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    ConfigurationDraftRequest:
+      type: object
+      description: Create or edit a draft version's definition document (validated at publish).
+      required:
+      - definition
+      properties:
+        code:
+          type: string
+          description: Required when creating a new head.
+        businessOwner:
+          type: string
+        definition:
+          type: object
+          additionalProperties: true
+      additionalProperties: false
+    ConfigValidationResult:
+      type: object
+      description: Result of the pre-activation validation gate (dry-run or on publish).
+      required:
+      - valid
+      properties:
+        valid:
+          type: boolean
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+      additionalProperties: false
+    ConfigPublishRequest:
+      type: object
+      properties:
+        approvalNote:
+          type: string
+          description: Recorded on the maker–checker approval (controlled track).
+      additionalProperties: false
+    ConfigRollbackRequest:
+      type: object
+      required:
+      - targetVersionId
+      properties:
+        targetVersionId:
+          type: string
+          format: uuid
+          description: The prior version whose content is re-published as a new version.
+        expedited:
+          type: boolean
+          default: false
+          description: Emergency rollback (audited).
+      additionalProperties: false
+    AuditEntry:
+      type: object
+      required:
+      - id
+      - action
+      - occurredAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        actorUserId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        action:
+          type: string
+        targetType:
+          type:
+          - string
+          - 'null'
+        targetId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        payload:
+          type: object
+          additionalProperties: true
+        occurredAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    ModerationCase:
+      type: object
+      required:
+      - id
+      - subjectType
+      - subjectId
+      - originType
+      - status
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        subjectType:
+          type: string
+          enum:
+          - LISTING
+          - CONVERSATION
+          - USER
+          - PROFILE
+        subjectId:
+          type: string
+          format: uuid
+        originType:
+          type: string
+          enum:
+          - USER_REPORT
+          - AUTOMATED_FLAG
+          readOnly: true
+        reportReason:
+          type:
+          - string
+          - 'null'
+        ruleKey:
+          type:
+          - string
+          - 'null'
+        status:
+          type: string
+          enum:
+          - OPEN
+          - IN_REVIEW
+          - RESOLVED
+          readOnly: true
+        resolutionAction:
+          type:
+          - string
+          - 'null'
+          enum:
+          - HIDE
+          - REJECT
+          - SUSPEND
+          - REQUEST_CORRECTION
+          - REMOVE
+          - SUSPEND_ACCOUNT
+          - DISMISS
+          - REVOKE_BADGE
+          - ARCHIVE_PROFILE
+          - null
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+      additionalProperties: false
+    ModerationActionRequest:
+      type: object
+      required:
+      - action
+      properties:
+        action:
+          type: string
+          enum:
+          - HIDE
+          - REJECT
+          - SUSPEND
+          - REQUEST_CORRECTION
+          - REMOVE
+          - SUSPEND_ACCOUNT
+          - DISMISS
+          - REVOKE_BADGE
+          - ARCHIVE_PROFILE
+          description: Closed verb set (BR-MOD-02).
+        note:
+          type: string
+          maxLength: 1000
+      additionalProperties: false
+    VerificationDecisionRequest:
+      type: object
+      required:
+      - outcome
+      properties:
+        outcome:
+          type: string
+          enum:
+          - APPROVED
+          - REJECTED
+        reason:
+          type: string
+          maxLength: 1000
+      additionalProperties: false
+    UserAdminView:
+      type: object
+      required:
+      - id
+      - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        phoneNumber:
+          type:
+          - string
+          - 'null'
+        email:
+          type:
+          - string
+          - 'null'
+          format: email
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - SUSPENDED
+          - CLOSED
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    UserStatusChangeRequest:
+      type: object
+      required:
+      - action
+      properties:
+        action:
+          type: string
+          enum:
+          - SUSPEND
+          - REACTIVATE
+        reason:
+          type: string
+          maxLength: 1000
+      additionalProperties: false
+    RoleAssignmentRequest:
+      type: object
+      description: ADR-0006.
+      required:
+      - roleCode
+      properties:
+        roleCode:
+          type: string
+        actingProfileId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Null scopes the role to the account's personal acting context; a concrete
+            id scopes it to that one owned business profile only (I-10).
+      additionalProperties: false
+    RegistrationDecisionRequest:
+      type: object
+      description: ADR-0007. Mirrors VerificationDecisionRequest.
+      required:
+      - outcome
+      properties:
+        outcome:
+          type: string
+          enum:
+          - APPROVED
+          - REJECTED
+        reason:
+          type: string
+          maxLength: 1000
+      additionalProperties: false
+    RegistrationQueueItem:
+      type: object
+      description: ADR-0007. A PENDING account as the reviewer needs to see it.
+      required:
+      - id
+      - accountKind
+      - anketa
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        phoneNumber:
+          type:
+          - string
+          - 'null'
+        email:
+          type:
+          - string
+          - 'null'
+        displayName:
+          type:
+          - string
+          - 'null'
+        accountKind:
+          type: string
+          enum:
+          - INDIVIDUAL
+          - LEGAL_ENTITY
+          - INVESTOR
+        anketa:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    DashboardSummary:
+      type: object
+      description: Admin dashboard KPIs (rebuildable projections; FR-ADMIN-005).
+      properties:
+        activeListings:
+          type: integer
+        pendingModeration:
+          type: integer
+        pendingVerification:
+          type: integer
+        pendingInvoices:
+          type: integer
+        newUsers7d:
+          type: integer
+      additionalProperties: true
+    ListingStatistics:
+      type: object
+      description: Per-listing owner statistics (closed v1 metric vocabulary).
+      properties:
+        listingId:
+          type: string
+          format: uuid
+        views:
+          type: integer
+        contactClicks:
+          type: integer
+        phoneReveals:
+          type: integer
+        chatsInitiated:
+          type: integer
+        favorites:
+          type: integer
+      additionalProperties: false
+  examples:
+    ErrValidation:
+      summary: Field-level validation failure
+      value:
+        type: https://errors.activehome.uz/validation
+        title: Validation failed
+        status: 422
+        code: VALIDATION_FAILED
+        detail: One or more fields are invalid.
+        traceId: 01J9Z5K3QX8ac2f7b1e9d0c4a6b
+        details:
+        - path: /attributes/area_m2
+          rule: numeric_range
+          message: Must be between 1 and 100000.
+        - path: /title
+          rule: required
+          message: Title is required.
+    ErrBusinessRule:
+      summary: Business-rule violation (quota)
+      value:
+        type: https://errors.activehome.uz/business-rule
+        title: Listing quota exceeded
+        status: 422
+        code: QUOTA_EXCEEDED
+        detail: Your current subscription allows 10 active listings.
+        traceId: 01J9Z5K3QX8ac2f7b1e9d0c4a6c
+    ErrUnauthorized:
+      summary: No valid session
+      value:
+        type: https://errors.activehome.uz/authentication
+        title: Authentication required
+        status: 401
+        code: AUTHENTICATION_REQUIRED
+        traceId: 01J9Z5K3QX8ac2f7b1e9d0c4a6d
+    ErrForbidden:
+      summary: Permission denied
+      value:
+        type: https://errors.activehome.uz/authorization
+        title: Permission denied
+        status: 403
+        code: PERMISSION_DENIED
+        detail: You do not have permission to perform this action in the current acting context.
+        traceId: 01J9Z5K3QX8ac2f7b1e9d0c4a6e
+    ErrNotFound:
+      summary: Resource not found
+      value:
+        type: https://errors.activehome.uz/not-found
+        title: Resource not found
+        status: 404
+        code: RESOURCE_NOT_FOUND
+        traceId: 01J9Z5K3QX8ac2f7b1e9d0c4a6f
+    ErrConflict:
+      summary: Optimistic-lock conflict
+      value:
+        type: https://errors.activehome.uz/conflict
+        title: Update conflict
+        status: 409
+        code: CONFLICT
+        detail: The resource was modified by another request. Re-fetch and retry.
+        traceId: 01J9Z5K3QX8ac2f7b1e9d0c4a70
+    ErrRateLimited:
+      summary: Rate limit exceeded
+      value:
+        type: https://errors.activehome.uz/rate-limit
+        title: Too many requests
+        status: 429
+        code: RATE_LIMITED
+        detail: Retry after the indicated interval.
+        traceId: 01J9Z5K3QX8ac2f7b1e9d0c4a71
+    ErrDegraded:
+      summary: Dependency degraded
+      value:
+        type: https://errors.activehome.uz/degraded
+        title: Service temporarily degraded
+        status: 503
+        code: DEPENDENCY_DEGRADED
+        detail: Search is running in reduced (database fallback) mode.
+        traceId: 01J9Z5K3QX8ac2f7b1e9d0c4a72
+    ListingExample:
+      summary: A published apartment listing
+      value:
+        id: 7b3f1c2a-0e4d-4a9b-8c1f-2d3e4f5a6b7c
+        listingType: ADVERTISEMENT
+        ownerUserId: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+        ownerProfileId: null
+        categoryId: c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+        categoryPath: real-estate/residential/apartments
+        formDefinitionVersionId: f0e1d2c3-b4a5-4968-8778-6a5b4c3d2e1f
+        title: 3-room apartment in Yunusabad
+        description: Bright apartment, 5th floor, near metro.
+        attributes:
+          rooms: 3
+          area_m2: 72.5
+          floor: 5
+          has_balcony: true
+        price:
+          amount: '1500000.00'
+          currency: UZS
+        location:
+          latitude: 41.3667
+          longitude: 69.287
+        lifecycleState: PUBLISHED
+        isFlagged: false
+        expiresAt: '2026-08-06T10:00:00Z'
+        publishedAt: '2026-07-07T10:00:00Z'
+        promotion:
+          kind: FEATURED
+          validUntil: '2026-07-21T10:00:00Z'
+        images:
+        - id: 9e8d7c6b-5a4b-4c3d-2e1f-0a9b8c7d6e5f
+          mediaAssetId: aa11bb22-cc33-4d44-8e55-ff6677889900
+          position: 1
+          status: CLEAN
+        slug: 3-room-apartment-yunusabad-7b3f1c2a
+        lockVersion: 3
+        createdAt: '2026-07-07T09:30:00Z'
+        updatedAt: '2026-07-07T10:00:00Z'
+    ListingCreateExample:
+      summary: Create and publish a listing
+      value:
+        listingType: ADVERTISEMENT
+        categoryId: c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+        title: 3-room apartment in Yunusabad
+        description: Bright apartment, 5th floor, near metro.
+        attributes:
+          rooms: 3
+          area_m2: 72.5
+          floor: 5
+          has_balcony: true
+        price:
+          amount: '1500000.00'
+          currency: UZS
+        location:
+          latitude: 41.3667
+          longitude: 69.287
+        imageMediaAssetIds:
+        - aa11bb22-cc33-4d44-8e55-ff6677889900
+        publish: true
+    SearchResultExample:
+      summary: Faceted search response
+      value:
+        items:
+        - listingId: 7b3f1c2a-0e4d-4a9b-8c1f-2d3e4f5a6b7c
+          title: 3-room apartment in Yunusabad
+          categoryPath: real-estate/residential/apartments
+          price:
+            amount: '1500000.00'
+            currency: UZS
+          location:
+            latitude: 41.3667
+            longitude: 69.287
+          thumbnailUrl: https://cdn.activehome.uz/t/aa11bb22.webp
+          verifiedBadge: true
+          promoted:
+            kind: FEATURED
+          slug: 3-room-apartment-yunusabad-7b3f1c2a
+        facets:
+        - fieldCode: rooms
+          label:
+            uz_latn: Xonalar
+            ru: Комнаты
+            en: Rooms
+          buckets:
+          - value: '1'
+            count: 120
+          - value: '2'
+            count: 240
+          - value: '3'
+            count: 180
+        page:
+          items: []
+          page:
+            limit: 20
+            nextCursor: eyJvZmZzZXQiOjIwfQ
+            total: 540
+        degraded: false
+    SessionEstablishedExample:
+      summary: Session issued after OTP verification
+      value:
+        account:
+          id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+          phoneNumber: '+998901234567'
+          email: null
+          displayName: null
+          status: ACTIVE
+          privacySettings:
+            phoneRevealMode: ON_REQUEST
+          notificationPreferences:
+            email: true
+            webPush: false
+            sms: true
+          ownedProfileIds: []
+          roles:
+          - registered_user
+          createdAt: '2026-07-07T09:00:00Z'
+        session:
+          id: 55aa44bb-33cc-4d22-8e11-0099aabbccdd
+          actingProfileId: null
+          current: true
+          createdAt: '2026-07-07T09:00:00Z'
+          expiresAt: '2026-07-21T09:00:00Z'
+        sessionToken: sess_opaque_Yp9x2Lm7Qa1Kd8Rf

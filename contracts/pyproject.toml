@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "active-home-contracts"
+version = "0.0.0"
+description = "Frozen contracts (error envelope, event schemas) importable as `contracts.*` (Playbook Sec 2)."
+requires-python = ">=3.13"
+dependencies = [
+    "active-home-shared",
+]
+
+# STATUS: frozen surface (Task P-01). Only errors/ and events/ are Python packages; openapi.yaml
+# and README.md are plain files in this same directory, not part of the installed package.
+
+[tool.setuptools]
+packages = ["contracts", "contracts.errors", "contracts.events"]
+package-dir = {"contracts" = "."}
