@@ -15,7 +15,7 @@ import { useRef, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Link } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Tag, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Tag, Trees, type LucideIcon } from "lucide-react";
 import { catalogClient, type CategorySummary } from "@/lib/catalog-client";
 
 import iconKopQavatli from "@/assets/categories/Artboard_1_rtGKuRl.png";
@@ -121,6 +121,12 @@ const CATS: Cat[] = [
   },
   { key: "hostel", image: iconHostel, to: "/categories/hostel", label: "Hostel" },
   { key: "mexmonxona", image: iconMexmonxona, to: "/categories/mexmonxona", label: "Mexmonxona" },
+  {
+    key: "dam-olish-maskanlari",
+    Icon: Trees,
+    to: "/categories/dam-olish-maskanlari",
+    label: "Dam olish maskanlari",
+  },
 ];
 
 const ICON_BY_PATH: Record<string, string> = {

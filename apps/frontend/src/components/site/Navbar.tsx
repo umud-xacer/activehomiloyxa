@@ -2,7 +2,7 @@
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Link } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
+import { Plus, UserRound } from "lucide-react";
 import { Logo } from "./Logo";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
@@ -78,20 +78,23 @@ export function Navbar() {
           {account ? (
             <Link
               to={dashboardPathForAccount(account)}
-              className="hidden items-center gap-2 rounded-full py-1 pl-1 pr-3.5 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground sm:inline-flex"
+              aria-label={t("nav.dashboard", "Boshqaruv paneli")}
+              className="inline-flex items-center gap-2 rounded-full py-1 pl-1 pr-1 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground sm:pr-3.5"
             >
-              <span className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
                 {(account.displayName || account.email || "AH").trim().slice(0, 2).toUpperCase()}
               </span>
-              {t("nav.dashboard", "Boshqaruv paneli")}
+              <span className="hidden sm:inline">{t("nav.dashboard", "Boshqaruv paneli")}</span>
             </Link>
           ) : (
             <Link
               to="/auth/sign-in"
-              className="group relative hidden items-center rounded-full px-3.5 py-1.5 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground sm:inline-flex"
+              aria-label={t("nav.signin")}
+              className="group relative inline-flex items-center rounded-full px-2.5 py-1.5 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground sm:px-3.5"
             >
-              {t("nav.signin")}
-              <span className="pointer-events-none absolute inset-x-3.5 bottom-1.5 h-px origin-center scale-x-0 bg-foreground/40 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100" />
+              <UserRound className="size-4 sm:hidden" />
+              <span className="hidden sm:inline">{t("nav.signin")}</span>
+              <span className="pointer-events-none absolute inset-x-3.5 bottom-1.5 hidden h-px origin-center scale-x-0 bg-foreground/40 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100 sm:block" />
             </Link>
           )}
           <ChatAssistant />

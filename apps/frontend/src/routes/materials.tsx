@@ -5,7 +5,10 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { catalogClient, formatUzs, type CatalogListing } from "@/lib/catalog-client";
 
-const CATEGORY_PATH = "/qurilish-mollari";
+/** Matches the path `configuration/infrastructure/seed.py`'s `_seed_catalog_taxonomy` actually
+ * seeds and `CategoryCarousel.tsx` links to -- was `/qurilish-mollari` (no category ever existed
+ * at that path, so this page always rendered empty). */
+const CATEGORY_PATH = "/qurilish-materiallari";
 
 export const Route = createFileRoute("/materials")({
   head: () => ({
