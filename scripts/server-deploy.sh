@@ -5,6 +5,14 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
+# systemd's own EnvironmentFile= (see deployment/systemd/*.service) only applies to the units
+# it starts -- this script runs over plain SSH, so POSTGRES_*/REDIS_*/etc. need loading here too,
+# same pattern as scripts/dev-install.sh sourcing .env.local for local dev.
+set -a
+# shellcheck disable=SC1091
+source deployment/env/.env.production
+set +a
+
 echo "==> backend deps"
 .venv/bin/pip install --upgrade pip >/dev/null
 .venv/bin/pip install -r requirements-dev.txt -e packages/shared -e contracts -e apps/backend
