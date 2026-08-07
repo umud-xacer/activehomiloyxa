@@ -66,7 +66,7 @@ import { Route as AuthResetRouteImport } from './routes/auth/reset'
 import { Route as AuthSignInRouteImport } from './routes/auth/sign-in'
 import { Route as AuthSignUpRouteImport } from './routes/auth/sign-up'
 import { Route as CategoriesIndexRouteImport } from './routes/categories/index'
-import { Route as CategoriesSlugRouteImport } from './routes/categories/$slug'
+import { Route as CategoriesSplatRouteImport } from './routes/categories/$'
 import { Route as CompaniesIndexRouteImport } from './routes/companies/index'
 import { Route as CompaniesProfileIdRouteImport } from './routes/companies/$profileId'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
@@ -369,9 +369,9 @@ const CategoriesIndexRoute = CategoriesIndexRouteImport.update({
   path: '/categories/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CategoriesSlugRoute = CategoriesSlugRouteImport.update({
-  id: '/categories/$slug',
-  path: '/categories/$slug',
+const CategoriesSplatRoute = CategoriesSplatRouteImport.update({
+  id: '/categories/$',
+  path: '/categories/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompaniesIndexRoute = CompaniesIndexRouteImport.update({
@@ -511,7 +511,7 @@ export interface FileRoutesByFullPath {
   '/auth/reset': typeof AuthResetRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
-  '/categories/$slug': typeof CategoriesSlugRoute
+  '/categories/$': typeof CategoriesSplatRoute
   '/companies/$profileId': typeof CompaniesProfileIdRoute
   '/dashboard/business-profile': typeof DashboardBusinessProfileRoute
   '/dashboard/buyer': typeof DashboardBuyerRoute
@@ -587,7 +587,7 @@ export interface FileRoutesByTo {
   '/auth/reset': typeof AuthResetRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
-  '/categories/$slug': typeof CategoriesSlugRoute
+  '/categories/$': typeof CategoriesSplatRoute
   '/companies/$profileId': typeof CompaniesProfileIdRoute
   '/dashboard/business-profile': typeof DashboardBusinessProfileRoute
   '/dashboard/buyer': typeof DashboardBuyerRoute
@@ -664,7 +664,7 @@ export interface FileRoutesById {
   '/auth/reset': typeof AuthResetRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
-  '/categories/$slug': typeof CategoriesSlugRoute
+  '/categories/$': typeof CategoriesSplatRoute
   '/companies/$profileId': typeof CompaniesProfileIdRoute
   '/dashboard/business-profile': typeof DashboardBusinessProfileRoute
   '/dashboard/buyer': typeof DashboardBuyerRoute
@@ -742,7 +742,7 @@ export interface FileRouteTypes {
     | '/auth/reset'
     | '/auth/sign-in'
     | '/auth/sign-up'
-    | '/categories/$slug'
+    | '/categories/$'
     | '/companies/$profileId'
     | '/dashboard/business-profile'
     | '/dashboard/buyer'
@@ -818,7 +818,7 @@ export interface FileRouteTypes {
     | '/auth/reset'
     | '/auth/sign-in'
     | '/auth/sign-up'
-    | '/categories/$slug'
+    | '/categories/$'
     | '/companies/$profileId'
     | '/dashboard/business-profile'
     | '/dashboard/buyer'
@@ -894,7 +894,7 @@ export interface FileRouteTypes {
     | '/auth/reset'
     | '/auth/sign-in'
     | '/auth/sign-up'
-    | '/categories/$slug'
+    | '/categories/$'
     | '/companies/$profileId'
     | '/dashboard/business-profile'
     | '/dashboard/buyer'
@@ -971,7 +971,7 @@ export interface RootRouteChildren {
   AuthResetRoute: typeof AuthResetRoute
   AuthSignInRoute: typeof AuthSignInRoute
   AuthSignUpRoute: typeof AuthSignUpRoute
-  CategoriesSlugRoute: typeof CategoriesSlugRoute
+  CategoriesSplatRoute: typeof CategoriesSplatRoute
   CompaniesProfileIdRoute: typeof CompaniesProfileIdRoute
   DashboardBusinessProfileRoute: typeof DashboardBusinessProfileRoute
   DashboardBuyerRoute: typeof DashboardBuyerRoute
@@ -1394,11 +1394,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CategoriesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/categories/$slug': {
-      id: '/categories/$slug'
-      path: '/categories/$slug'
-      fullPath: '/categories/$slug'
-      preLoaderRoute: typeof CategoriesSlugRouteImport
+    '/categories/$': {
+      id: '/categories/$'
+      path: '/categories/$'
+      fullPath: '/categories/$'
+      preLoaderRoute: typeof CategoriesSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/companies/': {
@@ -1571,7 +1571,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthResetRoute: AuthResetRoute,
   AuthSignInRoute: AuthSignInRoute,
   AuthSignUpRoute: AuthSignUpRoute,
-  CategoriesSlugRoute: CategoriesSlugRoute,
+  CategoriesSplatRoute: CategoriesSplatRoute,
   CompaniesProfileIdRoute: CompaniesProfileIdRoute,
   DashboardBusinessProfileRoute: DashboardBusinessProfileRoute,
   DashboardBuyerRoute: DashboardBuyerRoute,

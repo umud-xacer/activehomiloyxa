@@ -57,12 +57,12 @@ const searchSchema = z.object({
   page: fallback(z.number().int().min(1), 1).default(1),
 });
 
-export const Route = createFileRoute("/categories/$slug")({
+export const Route = createFileRoute("/categories/$")({
   validateSearch: zodValidator(searchSchema),
   loaderDeps: ({ search }) => ({ sort: search.sort, page: search.page }),
   loader: async ({ context, params, deps }) => {
     const [category, allCategories] = await Promise.all([
-      catalogClient.categoryByPath(`/${params.slug}`),
+      catalogClient.categoryByPath(`/${params._splat}`),
       catalogClient.listCategories(),
     ]);
     if (!category) throw notFound();

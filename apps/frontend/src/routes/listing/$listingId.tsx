@@ -211,8 +211,8 @@ function Page() {
             <>
               <ChevronRight className="size-3" />
               <Link
-                to="/categories/$slug"
-                params={{ slug: category.path.replace(/^\//, "") }}
+                to="/categories/$"
+                params={{ _splat: category.path.replace(/^\//, "") }}
                 className="hover:text-foreground"
               >
                 {categoryLabel(category.name, "uz")}
