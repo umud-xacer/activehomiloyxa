@@ -1,7 +1,10 @@
 {
   "name": "tanstack_start_ts",
   "private": true,
-  "sideEffects": ["./src/lib/i18n.ts", "*.css"],
+  "sideEffects": [
+    "./src/lib/i18n.ts",
+    "*.css"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite dev",
@@ -61,6 +64,7 @@
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
     "lucide-react": "^1.21.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.2.0",

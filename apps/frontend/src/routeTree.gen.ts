@@ -33,18 +33,23 @@ import { Route as MaterialsRouteImport } from './routes/materials'
 import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as OfferRouteImport } from './routes/offer'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RecreationRouteImport } from './routes/recreation'
+import { Route as RefundRouteImport } from './routes/refund'
+import { Route as RulesRouteImport } from './routes/rules'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as SecurityRouteImport } from './routes/security'
+import { Route as SecurityPolicyRouteImport } from './routes/security-policy'
 import { Route as ServicesRouteImport } from './routes/services'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SubscriptionsRouteImport } from './routes/subscriptions'
 import { Route as SupportRouteImport } from './routes/support'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as VerificationRouteImport } from './routes/verification'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
@@ -195,6 +200,11 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OfferRoute = OfferRouteImport.update({
+  id: '/offer',
+  path: '/offer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PaymentsRoute = PaymentsRouteImport.update({
   id: '/payments',
   path: '/payments',
@@ -215,6 +225,16 @@ const RecreationRoute = RecreationRouteImport.update({
   path: '/recreation',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RefundRoute = RefundRouteImport.update({
+  id: '/refund',
+  path: '/refund',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RulesRoute = RulesRouteImport.update({
+  id: '/rules',
+  path: '/rules',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SavedRoute = SavedRouteImport.update({
   id: '/saved',
   path: '/saved',
@@ -228,6 +248,11 @@ const SearchRoute = SearchRouteImport.update({
 const SecurityRoute = SecurityRouteImport.update({
   id: '/security',
   path: '/security',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecurityPolicyRoute = SecurityPolicyRouteImport.update({
+  id: '/security-policy',
+  path: '/security-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ServicesRoute = ServicesRouteImport.update({
@@ -253,6 +278,11 @@ const SubscriptionsRoute = SubscriptionsRouteImport.update({
 const SupportRoute = SupportRouteImport.update({
   id: '/support',
   path: '/support',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerificationRoute = VerificationRouteImport.update({
@@ -427,18 +457,23 @@ export interface FileRoutesByFullPath {
   '/messages': typeof MessagesRoute
   '/news': typeof NewsRoute
   '/notifications': typeof NotificationsRoute
+  '/offer': typeof OfferRoute
   '/payments': typeof PaymentsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/recreation': typeof RecreationRoute
+  '/refund': typeof RefundRoute
+  '/rules': typeof RulesRoute
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
   '/security': typeof SecurityRoute
+  '/security-policy': typeof SecurityPolicyRoute
   '/services': typeof ServicesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/subscriptions': typeof SubscriptionsRoute
   '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/verification': typeof VerificationRoute
   '/wallet': typeof WalletRoute
   '/admin/moderation': typeof AdminModerationRoute
@@ -494,18 +529,23 @@ export interface FileRoutesByTo {
   '/messages': typeof MessagesRoute
   '/news': typeof NewsRoute
   '/notifications': typeof NotificationsRoute
+  '/offer': typeof OfferRoute
   '/payments': typeof PaymentsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/recreation': typeof RecreationRoute
+  '/refund': typeof RefundRoute
+  '/rules': typeof RulesRoute
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
   '/security': typeof SecurityRoute
+  '/security-policy': typeof SecurityPolicyRoute
   '/services': typeof ServicesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/subscriptions': typeof SubscriptionsRoute
   '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/verification': typeof VerificationRoute
   '/wallet': typeof WalletRoute
   '/admin/moderation': typeof AdminModerationRoute
@@ -562,18 +602,23 @@ export interface FileRoutesById {
   '/messages': typeof MessagesRoute
   '/news': typeof NewsRoute
   '/notifications': typeof NotificationsRoute
+  '/offer': typeof OfferRoute
   '/payments': typeof PaymentsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/recreation': typeof RecreationRoute
+  '/refund': typeof RefundRoute
+  '/rules': typeof RulesRoute
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
   '/security': typeof SecurityRoute
+  '/security-policy': typeof SecurityPolicyRoute
   '/services': typeof ServicesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/subscriptions': typeof SubscriptionsRoute
   '/support': typeof SupportRoute
+  '/terms': typeof TermsRoute
   '/verification': typeof VerificationRoute
   '/wallet': typeof WalletRoute
   '/admin/moderation': typeof AdminModerationRoute
@@ -631,18 +676,23 @@ export interface FileRouteTypes {
     | '/messages'
     | '/news'
     | '/notifications'
+    | '/offer'
     | '/payments'
     | '/pricing'
     | '/privacy'
     | '/recreation'
+    | '/refund'
+    | '/rules'
     | '/saved'
     | '/search'
     | '/security'
+    | '/security-policy'
     | '/services'
     | '/settings'
     | '/sitemap.xml'
     | '/subscriptions'
     | '/support'
+    | '/terms'
     | '/verification'
     | '/wallet'
     | '/admin/moderation'
@@ -698,18 +748,23 @@ export interface FileRouteTypes {
     | '/messages'
     | '/news'
     | '/notifications'
+    | '/offer'
     | '/payments'
     | '/pricing'
     | '/privacy'
     | '/recreation'
+    | '/refund'
+    | '/rules'
     | '/saved'
     | '/search'
     | '/security'
+    | '/security-policy'
     | '/services'
     | '/settings'
     | '/sitemap.xml'
     | '/subscriptions'
     | '/support'
+    | '/terms'
     | '/verification'
     | '/wallet'
     | '/admin/moderation'
@@ -765,18 +820,23 @@ export interface FileRouteTypes {
     | '/messages'
     | '/news'
     | '/notifications'
+    | '/offer'
     | '/payments'
     | '/pricing'
     | '/privacy'
     | '/recreation'
+    | '/refund'
+    | '/rules'
     | '/saved'
     | '/search'
     | '/security'
+    | '/security-policy'
     | '/services'
     | '/settings'
     | '/sitemap.xml'
     | '/subscriptions'
     | '/support'
+    | '/terms'
     | '/verification'
     | '/wallet'
     | '/admin/moderation'
@@ -833,18 +893,23 @@ export interface RootRouteChildren {
   MessagesRoute: typeof MessagesRoute
   NewsRoute: typeof NewsRoute
   NotificationsRoute: typeof NotificationsRoute
+  OfferRoute: typeof OfferRoute
   PaymentsRoute: typeof PaymentsRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
   RecreationRoute: typeof RecreationRoute
+  RefundRoute: typeof RefundRoute
+  RulesRoute: typeof RulesRoute
   SavedRoute: typeof SavedRoute
   SearchRoute: typeof SearchRoute
   SecurityRoute: typeof SecurityRoute
+  SecurityPolicyRoute: typeof SecurityPolicyRoute
   ServicesRoute: typeof ServicesRoute
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SubscriptionsRoute: typeof SubscriptionsRoute
   SupportRoute: typeof SupportRoute
+  TermsRoute: typeof TermsRoute
   VerificationRoute: typeof VerificationRoute
   WalletRoute: typeof WalletRoute
   AdminModerationRoute: typeof AdminModerationRoute
@@ -1046,6 +1111,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/offer': {
+      id: '/offer'
+      path: '/offer'
+      fullPath: '/offer'
+      preLoaderRoute: typeof OfferRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/payments': {
       id: '/payments'
       path: '/payments'
@@ -1074,6 +1146,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecreationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/refund': {
+      id: '/refund'
+      path: '/refund'
+      fullPath: '/refund'
+      preLoaderRoute: typeof RefundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rules': {
+      id: '/rules'
+      path: '/rules'
+      fullPath: '/rules'
+      preLoaderRoute: typeof RulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/saved': {
       id: '/saved'
       path: '/saved'
@@ -1093,6 +1179,13 @@ declare module '@tanstack/react-router' {
       path: '/security'
       fullPath: '/security'
       preLoaderRoute: typeof SecurityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/security-policy': {
+      id: '/security-policy'
+      path: '/security-policy'
+      fullPath: '/security-policy'
+      preLoaderRoute: typeof SecurityPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/services': {
@@ -1128,6 +1221,13 @@ declare module '@tanstack/react-router' {
       path: '/support'
       fullPath: '/support'
       preLoaderRoute: typeof SupportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verification': {
@@ -1361,18 +1461,23 @@ const rootRouteChildren: RootRouteChildren = {
   MessagesRoute: MessagesRoute,
   NewsRoute: NewsRoute,
   NotificationsRoute: NotificationsRoute,
+  OfferRoute: OfferRoute,
   PaymentsRoute: PaymentsRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
   RecreationRoute: RecreationRoute,
+  RefundRoute: RefundRoute,
+  RulesRoute: RulesRoute,
   SavedRoute: SavedRoute,
   SearchRoute: SearchRoute,
   SecurityRoute: SecurityRoute,
+  SecurityPolicyRoute: SecurityPolicyRoute,
   ServicesRoute: ServicesRoute,
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SubscriptionsRoute: SubscriptionsRoute,
   SupportRoute: SupportRoute,
+  TermsRoute: TermsRoute,
   VerificationRoute: VerificationRoute,
   WalletRoute: WalletRoute,
   AdminModerationRoute: AdminModerationRoute,

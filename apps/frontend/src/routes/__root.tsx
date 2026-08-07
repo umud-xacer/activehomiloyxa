@@ -10,6 +10,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import faviconUrl from "../assets/logo-mark.png";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 // Side-effect import: initializes i18next before any route component renders. Previously only
 // imported by routes/index.tsx, DashboardShell, and AppShell -- fragile, since a production
@@ -97,7 +98,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@ActiveHome" },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/png", href: faviconUrl },
+      { rel: "apple-touch-icon", href: faviconUrl },
+    ],
     scripts: [
       {
         type: "application/ld+json",
