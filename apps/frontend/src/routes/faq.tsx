@@ -1,45 +1,50 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AppShell } from "@/components/layout/AppShell";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { ComingSoon } from "@/components/layout/ComingSoon";
+import { LegalPage, LegalBoxGrid } from "@/components/layout/LegalPage";
 
 const faqEntries = [
   {
-    q: "What is ActiveHome?",
-    a: "ActiveHome is an AI-powered global super app for buying, renting, building, furnishing and booking homes.",
+    q: "Xavfsizmi?",
+    a: "Platforma e'lonlarni moderatsiya qiladi, lekin bitimdan oldin hujjatlarni mustaqil tekshirish tavsiya etiladi.",
   },
   {
-    q: "In which countries is ActiveHome available?",
-    a: "ActiveHome aggregates verified listings and partners across 10+ countries and is expanding globally.",
+    q: "E'lon bepulmi?",
+    a: "Dastlabki e'lonlar limit doirasida bepul; TOP/Premium xizmatlar pullik.",
   },
   {
-    q: "How does the AI valuation work?",
-    a: "Our AI models estimate property value using comparable sales, location signals and market trends.",
+    q: "Usta xizmatlari qanday ishlaydi?",
+    a: "Mustaqil mutaxassislar ko'rsatadi, Active Home mijoz va usta o'rtasida vositachi.",
   },
   {
-    q: "Is it free to browse properties?",
-    a: "Yes, browsing verified properties on ActiveHome is free. Professional plans unlock advanced tools.",
+    q: "To'lov qanday amalga oshiriladi?",
+    a: "Pullik xizmatlar Payme/Click orqali; bitim to'lovlari tomonlar kelishuvi asosida.",
+  },
+  {
+    q: "Xizmatdan norozi bo'lsam nima qilaman?",
+    a: "\"Shikoyat\" bo'limi yoki qo'llab-quvvatlash markazi orqali murojaat qilinadi.",
+  },
+  {
+    q: "Akkauntimni o'chira olamanmi?",
+    a: "Istalgan vaqtda mumkin — o'chirilganda barcha shaxsiy ma'lumot to'liq olib tashlanadi.",
   },
 ];
 
 export const Route = createFileRoute("/faq")({
   head: () => ({
     meta: [
-      { title: "FAQ — Answers about ActiveHome" },
+      { title: "Tez-tez so'raladigan savollar — ActiveHome" },
       {
         name: "description",
         content:
-          "Common questions about ActiveHome's property marketplace, AI tools, bookings and services.",
+          "ActiveHome platformasi, e'lonlar, to'lovlar va xizmatlar haqida tez-tez so'raladigan savollar.",
       },
-      { property: "og:title", content: "FAQ — Answers about ActiveHome" },
+      { property: "og:title", content: "Tez-tez so'raladigan savollar — ActiveHome" },
       {
         property: "og:description",
-        content: "Common questions about ActiveHome's property marketplace, AI tools and services.",
+        content:
+          "ActiveHome platformasi, e'lonlar, to'lovlar va xizmatlar haqida tez-tez so'raladigan savollar.",
       },
       { property: "og:type", content: "website" },
-      { property: "og:url", content: "https://active-home.lovable.app/faq" },
     ],
-    links: [{ rel: "canonical", href: "https://active-home.lovable.app/faq" }],
     scripts: [
       {
         type: "application/ld+json",
@@ -60,9 +65,12 @@ export const Route = createFileRoute("/faq")({
 
 function Page() {
   return (
-    <AppShell>
-      <PageHeader eyebrow="Help" title="FAQ" description="Answers to the most common questions." />
-      <ComingSoon wave={5} page="FAQ" />
-    </AppShell>
+    <LegalPage
+      eyebrow="Yordam"
+      title="Tez-tez so'raladigan savollar"
+      description="Eng ko'p so'raladigan savollarga javoblar."
+    >
+      <LegalBoxGrid items={faqEntries.map((e) => ({ title: e.q, body: e.a }))} />
+    </LegalPage>
   );
 }

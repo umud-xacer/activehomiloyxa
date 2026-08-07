@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AppShell } from "@/components/layout/AppShell";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { ComingSoon } from "@/components/layout/ComingSoon";
+import { LegalPage, LegalSection, LegalBoxGrid } from "@/components/layout/LegalPage";
 
 export const Route = createFileRoute("/refund")({
   head: () => ({
@@ -15,13 +13,37 @@ export const Route = createFileRoute("/refund")({
 
 function Page() {
   return (
-    <AppShell>
-      <PageHeader
-        eyebrow="Huquqiy"
-        title="To'lovni qaytarish"
-        description="To'lovlarni bekor qilish va mablag'ni qaytarish tartibi."
+    <LegalPage
+      eyebrow="Huquqiy"
+      title="To'lov va qaytarish siyosati"
+      description="Pullik xizmatlar va mablag' qaytarish tartibi haqida to'liq ma'lumot."
+    >
+      <LegalBoxGrid
+        items={[
+          {
+            title: "Pullik xizmatlar",
+            body: "Premium e'lonlar, bannerli reklamalar, vositachilik xizmatlari, maxsus marketing paketlari.",
+          },
+          {
+            title: "Refund tartibi",
+            body: "Texnik sabab bo'lsa to'liq qaytariladi; jarayon 3–10 ish kuni ichida amalga oshiriladi.",
+          },
+          {
+            title: "Istisno",
+            body: "Foydalanuvchi xatosi yoki qoida buzilishi sababli o'chirilgan pullik e'lonlar uchun mablag' qaytarilmasligi mumkin.",
+          },
+          {
+            title: "Nizolar",
+            body: "Har bir shikoyat maxsus komissiya tomonidan individual ko'rib chiqiladi.",
+          },
+        ]}
       />
-      <ComingSoon wave={5} page="To'lovni qaytarish" />
-    </AppShell>
+      <LegalSection title="Murojaat">
+        <p>
+          To'lov yoki qaytarish bo'yicha savollaringiz bo'lsa, qo'llab-quvvatlash markazi orqali
+          murojaat qiling.
+        </p>
+      </LegalSection>
+    </LegalPage>
   );
 }

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { LegalBoxGrid } from "@/components/layout/LegalPage";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -125,6 +126,44 @@ function Page() {
             chiqaruvchi ham, investor ham — bir joyda.
           </p>
         </motion.section>
+
+        {/* Company services -- O'zbekistonda ko'chmas mulk bozorining ishonchli hamkori */}
+        <section className="mt-16">
+          <h2 className="font-display text-2xl font-semibold">Kompaniya xizmatlari</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            O'zbekistonda ko'chmas mulk bozorining ishonchli hamkori.
+          </p>
+          <div className="mt-6">
+            <LegalBoxGrid
+              items={[
+                {
+                  title: "Ipoteka va kredit",
+                  body: "Ipoteka rasmiylashtirish va mikroqarz masalalarida yordam.",
+                },
+                {
+                  title: "Oldi-sotdi",
+                  body: "Uy sotib olish va sotish jarayonini tezkor va xavfsiz amalga oshirish.",
+                },
+                {
+                  title: "Noturar binolar",
+                  body: "Tijorat va noturar obyektlar bo'yicha keng qamrovli xizmatlar.",
+                },
+                {
+                  title: "Shaxsiy qidiruv",
+                  body: "Byudjet va talabga qarab eng mos uylarni topish.",
+                },
+                {
+                  title: "Noldan ta'mirlash",
+                  body: "Kalit topshirishgacha bo'lgan to'liq ta'mirlash xizmati.",
+                },
+                {
+                  title: "Tezkor yechimlar",
+                  body: "Uyini tezda sotmoqchi bo'lganlar uchun tayyor yechimlar.",
+                },
+              ]}
+            />
+          </div>
+        </section>
 
         {/* Capabilities */}
         <section className="mt-16">

@@ -92,8 +92,8 @@ export function Footer() {
                 </div>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   Kamerangiz bilan skanerlang va{" "}
-                  <span className="font-medium text-foreground">activehome.uz</span>ni telefoningizda
-                  oching.
+                  <span className="font-medium text-foreground">activehome.uz</span>ni
+                  telefoningizda oching.
                 </p>
               </div>
             </div>

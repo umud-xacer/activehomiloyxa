@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AppShell } from "@/components/layout/AppShell";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { ComingSoon } from "@/components/layout/ComingSoon";
+import { LegalPage, LegalSection, LegalList } from "@/components/layout/LegalPage";
 
 export const Route = createFileRoute("/terms")({
   head: () => ({
     meta: [
       { title: "Foydalanish shartlari — ActiveHome" },
-      { name: "description", content: "Platformadan foydalanish qoidalari va shartlari." },
+      {
+        name: "description",
+        content: "ActiveHome platformasidan foydalanish shartlari va qoidalari.",
+      },
     ],
   }),
   component: Page,
@@ -15,13 +16,45 @@ export const Route = createFileRoute("/terms")({
 
 function Page() {
   return (
-    <AppShell>
-      <PageHeader
-        eyebrow="Huquqiy"
-        title="Foydalanish shartlari"
-        description="Platformadan foydalanish qoidalari va shartlari."
-      />
-      <ComingSoon wave={5} page="Foydalanish shartlari" />
-    </AppShell>
+    <LegalPage
+      eyebrow="Huquqiy"
+      title="Foydalanish shartlari"
+      description="Active Home — qurilish va ko'chmas mulk sohasidagi ko'p tarmoqli holding kompaniya."
+    >
+      <LegalSection title="Yo'nalishlarimiz">
+        <LegalList
+          items={[
+            "Ko'chmas mulk savdosi",
+            "Qurilish va ta'mirlash",
+            "Usta va texnik xizmatlar",
+            "Qurilish materiallari savdosi",
+            "Ipoteka maslahatlari",
+            "Moliyaviy yo'naltirish",
+          ]}
+        />
+      </LegalSection>
+
+      <LegalSection title="Asosiy xizmatlar">
+        <LegalList
+          items={[
+            "E'lon joylashtirish va sotish",
+            "Vositachilik / konsalting",
+            "Ixtisoslashgan usta xizmatlari",
+            "Qurilish materiallari onlayn katalogi",
+          ]}
+        />
+      </LegalSection>
+
+      <LegalSection title="Muhim ogohlantirish">
+        <p>
+          Veb-sayt orqali kredit yoki moliyaviy shartnomalar to'g'ridan-to'g'ri rasmiylashtirilmaydi
+          — bu jarayonlar hamkor banklar orqali amalga oshiriladi.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Rozilik">
+        <p>Saytdan foydalanish orqali foydalanuvchi ushbu shartlarga to'liq rozilik bildiradi.</p>
+      </LegalSection>
+    </LegalPage>
   );
 }

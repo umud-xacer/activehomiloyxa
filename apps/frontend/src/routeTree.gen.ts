@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as AdRulesRouteImport } from './routes/ad-rules'
 import { Route as AiRouteImport } from './routes/ai'
 import { Route as AppliancesRouteImport } from './routes/appliances'
 import { Route as BlogRouteImport } from './routes/blog'
@@ -37,8 +38,10 @@ import { Route as OfferRouteImport } from './routes/offer'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PublicOfferRouteImport } from './routes/public-offer'
 import { Route as RecreationRouteImport } from './routes/recreation'
 import { Route as RefundRouteImport } from './routes/refund'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
 import { Route as RulesRouteImport } from './routes/rules'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as SearchRouteImport } from './routes/search'
@@ -88,6 +91,11 @@ const IndexRoute = IndexRouteImport.update({
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdRulesRoute = AdRulesRouteImport.update({
+  id: '/ad-rules',
+  path: '/ad-rules',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AiRoute = AiRouteImport.update({
@@ -220,6 +228,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PublicOfferRoute = PublicOfferRouteImport.update({
+  id: '/public-offer',
+  path: '/public-offer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RecreationRoute = RecreationRouteImport.update({
   id: '/recreation',
   path: '/recreation',
@@ -228,6 +241,11 @@ const RecreationRoute = RecreationRouteImport.update({
 const RefundRoute = RefundRouteImport.update({
   id: '/refund',
   path: '/refund',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RulesRoute = RulesRouteImport.update({
@@ -435,6 +453,7 @@ const PropertiesSlugRoute = PropertiesSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/ad-rules': typeof AdRulesRoute
   '/ai': typeof AiRoute
   '/appliances': typeof AppliancesRoute
   '/blog': typeof BlogRoute
@@ -461,8 +480,10 @@ export interface FileRoutesByFullPath {
   '/payments': typeof PaymentsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/public-offer': typeof PublicOfferRoute
   '/recreation': typeof RecreationRoute
   '/refund': typeof RefundRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/rules': typeof RulesRoute
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
@@ -507,6 +528,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/ad-rules': typeof AdRulesRoute
   '/ai': typeof AiRoute
   '/appliances': typeof AppliancesRoute
   '/blog': typeof BlogRoute
@@ -533,8 +555,10 @@ export interface FileRoutesByTo {
   '/payments': typeof PaymentsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/public-offer': typeof PublicOfferRoute
   '/recreation': typeof RecreationRoute
   '/refund': typeof RefundRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/rules': typeof RulesRoute
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
@@ -580,6 +604,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/ad-rules': typeof AdRulesRoute
   '/ai': typeof AiRoute
   '/appliances': typeof AppliancesRoute
   '/blog': typeof BlogRoute
@@ -606,8 +631,10 @@ export interface FileRoutesById {
   '/payments': typeof PaymentsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/public-offer': typeof PublicOfferRoute
   '/recreation': typeof RecreationRoute
   '/refund': typeof RefundRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/rules': typeof RulesRoute
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
@@ -654,6 +681,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/ad-rules'
     | '/ai'
     | '/appliances'
     | '/blog'
@@ -680,8 +708,10 @@ export interface FileRouteTypes {
     | '/payments'
     | '/pricing'
     | '/privacy'
+    | '/public-offer'
     | '/recreation'
     | '/refund'
+    | '/refund-policy'
     | '/rules'
     | '/saved'
     | '/search'
@@ -726,6 +756,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/ad-rules'
     | '/ai'
     | '/appliances'
     | '/blog'
@@ -752,8 +783,10 @@ export interface FileRouteTypes {
     | '/payments'
     | '/pricing'
     | '/privacy'
+    | '/public-offer'
     | '/recreation'
     | '/refund'
+    | '/refund-policy'
     | '/rules'
     | '/saved'
     | '/search'
@@ -798,6 +831,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/ad-rules'
     | '/ai'
     | '/appliances'
     | '/blog'
@@ -824,8 +858,10 @@ export interface FileRouteTypes {
     | '/payments'
     | '/pricing'
     | '/privacy'
+    | '/public-offer'
     | '/recreation'
     | '/refund'
+    | '/refund-policy'
     | '/rules'
     | '/saved'
     | '/search'
@@ -871,6 +907,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AdRulesRoute: typeof AdRulesRoute
   AiRoute: typeof AiRoute
   AppliancesRoute: typeof AppliancesRoute
   BlogRoute: typeof BlogRoute
@@ -897,8 +934,10 @@ export interface RootRouteChildren {
   PaymentsRoute: typeof PaymentsRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
+  PublicOfferRoute: typeof PublicOfferRoute
   RecreationRoute: typeof RecreationRoute
   RefundRoute: typeof RefundRoute
+  RefundPolicyRoute: typeof RefundPolicyRoute
   RulesRoute: typeof RulesRoute
   SavedRoute: typeof SavedRoute
   SearchRoute: typeof SearchRoute
@@ -955,6 +994,13 @@ declare module '@tanstack/react-router' {
       path: '/about'
       fullPath: '/about'
       preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ad-rules': {
+      id: '/ad-rules'
+      path: '/ad-rules'
+      fullPath: '/ad-rules'
+      preLoaderRoute: typeof AdRulesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ai': {
@@ -1139,6 +1185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/public-offer': {
+      id: '/public-offer'
+      path: '/public-offer'
+      fullPath: '/public-offer'
+      preLoaderRoute: typeof PublicOfferRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/recreation': {
       id: '/recreation'
       path: '/recreation'
@@ -1151,6 +1204,13 @@ declare module '@tanstack/react-router' {
       path: '/refund'
       fullPath: '/refund'
       preLoaderRoute: typeof RefundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rules': {
@@ -1439,6 +1499,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AdRulesRoute: AdRulesRoute,
   AiRoute: AiRoute,
   AppliancesRoute: AppliancesRoute,
   BlogRoute: BlogRoute,
@@ -1465,8 +1526,10 @@ const rootRouteChildren: RootRouteChildren = {
   PaymentsRoute: PaymentsRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
+  PublicOfferRoute: PublicOfferRoute,
   RecreationRoute: RecreationRoute,
   RefundRoute: RefundRoute,
+  RefundPolicyRoute: RefundPolicyRoute,
   RulesRoute: RulesRoute,
   SavedRoute: SavedRoute,
   SearchRoute: SearchRoute,
