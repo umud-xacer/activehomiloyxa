@@ -331,6 +331,10 @@ async def _seed_furniture_category(
     except DuplicateCodeError:
         existing = await repo.get_head_by_code(ConfigEntityType.CATEGORY, code)
         assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
+        await _backfill_listing_kind(
+            use_cases, repo, head_id=existing.id, current_version_id=existing.current_version_id,
+            listing_kind="GOODS", now=now,
+        )
         return existing.id
 
     manage_key = _registry.manage_permission_key(ConfigEntityType.CATEGORY.value)
@@ -665,6 +669,10 @@ async def _seed_category(
     except DuplicateCodeError:
         existing = await repo.get_head_by_code(ConfigEntityType.CATEGORY, code)
         assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
+        await _backfill_listing_kind(
+            use_cases, repo, head_id=existing.id, current_version_id=existing.current_version_id,
+            listing_kind=listing_kind, now=now,
+        )
         return existing.id
 
     manage_key = _registry.manage_permission_key(ConfigEntityType.CATEGORY.value)
@@ -689,6 +697,52 @@ async def _seed_category(
             now=now,
         )
     return head.id
+
+
+async def _backfill_listing_kind(
+    use_cases: ConfigurationUseCases,
+    repo: SqlalchemyConfigHeadRepository,
+    *,
+    head_id: UUID,
+    current_version_id: UUID | None,
+    listing_kind: str | None,
+    now: datetime,
+) -> None:
+    """Self-heal for a category that already existed (e.g. seeded in an earlier session/deploy
+    before `listing_kind` existed) and so was skipped by `_seed_category`'s `DuplicateCodeError`
+    branch without ever getting the metadata. Publishes a new version -- same maker-checker flow
+    as a fresh category -- only when the stored `listingKind` doesn't already match, so this is a
+    no-op on every subsequent run once it's caught up (true idempotency, not just duplicate-skip)."""
+    if listing_kind is None or current_version_id is None:
+        return
+    current = await repo.get_version(ConfigEntityType.CATEGORY, head_id, current_version_id)
+    if current is None:
+        return
+    current_descriptor = dict(current.definition_document.get("descriptor") or {})
+    current_metadata = dict(current_descriptor.get("metadata") or {})
+    if current_metadata.get("listingKind") == listing_kind:
+        return
+
+    new_metadata = {**current_metadata, "listingKind": listing_kind}
+    new_descriptor = {**current_descriptor, "metadata": new_metadata}
+    new_document = {**current.definition_document, "descriptor": new_descriptor}
+
+    new_version = await use_cases.create_version_draft(
+        ConfigEntityType.CATEGORY, head_id, definition=new_document, actor_id=SEED_MAKER_ID, now=now,
+    )
+    manage_key = _registry.manage_permission_key(ConfigEntityType.CATEGORY.value)
+    approve_key = _registry.approve_permission_key(ConfigEntityType.CATEGORY.value)
+    step1 = await use_cases.publish(
+        ConfigEntityType.CATEGORY, head_id, new_version.id,
+        actor_id=SEED_MAKER_ID, actor_permission_keys=frozenset({manage_key}),
+        approval_note="seed: backfill listingKind metadata", now=now,
+    )
+    if step1.status.value == "APPROVAL":
+        await use_cases.publish(
+            ConfigEntityType.CATEGORY, head_id, step1.id,
+            actor_id=SEED_CHECKER_ID, actor_permission_keys=frozenset({manage_key, approve_key}),
+            approval_note="seed: backfill listingKind metadata approval", now=now,
+        )
 
 
 def _slugify(text: str) -> str:

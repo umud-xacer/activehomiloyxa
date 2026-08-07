@@ -28,7 +28,7 @@ import { messagingApi } from "@/lib/messaging-client";
 import { useMe } from "@/features/auth/useAuth";
 import { ApiError } from "@/lib/http";
 import { categoryLabel } from "@/components/site/CategoryCarousel";
-import { listingKindOf, KIND_ICON, KIND_EYEBROW } from "@/lib/listing-kind";
+import { resolveListingKind, KIND_ICON, KIND_EYEBROW } from "@/lib/listing-kind";
 
 export const Route = createFileRoute("/listing/$listingId")({
   head: () => ({ meta: [{ title: "E'lon — ActiveHome" }] }),
@@ -185,7 +185,9 @@ function Page() {
     );
   }
 
-  const kind = category ? listingKindOf(category) : "GOODS";
+  const kind = category
+    ? resolveListingKind(category, new Map(categories.map((c) => [c.id, c])))
+    : "GOODS";
   const catalogKind = kind === "PROPERTY" ? "GOODS" : kind;
   const KindIcon = KIND_ICON[catalogKind];
   const marker: MapMarker | null = listing.location

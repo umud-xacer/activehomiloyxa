@@ -136,22 +136,45 @@ const CATEGORIES_CACHE_TTL_MS = 30_000;
  * last admin edit (add/retire/rename) until the process restarts. 30s bounds that staleness
  * while still deduping the several `listCategories()` calls a single page render triggers. */
 
+/** How many `GET /categories?parentId=` requests run concurrently while walking a tree level.
+ * With ~100+ seeded categories (nested materials/furniture/hostel/etc. subcategories), firing one
+ * request per node in a level fully in parallel (`Promise.all` with no cap) was enough concurrent
+ * connections to exhaust the dev backend's connection pool and crash it outright -- confirmed live
+ * (the backend process died mid-crawl). A small fixed concurrency keeps this fast without that. */
+const CATEGORY_FETCH_CONCURRENCY = 6;
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await fn(items[index]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 /** `GET /categories` is a one-level-at-a-time API ("Restrict to direct children of a node; omit
  * for roots" -- the query param's own description in the contract): omitting `parentId` returns
  * ONLY root categories, never the full taxonomy. Every consumer of `listCategories()` in this app
  * (the listing-wizard category picker, category drill-down pages, admin parent selectors) assumes
  * a flat list of every category, root or not -- so this walks the tree breadth-first, one request
  * per node that turns out to have children, and flattens the result client-side (matching the
- * operation description: "a flat list ... assemble the tree client-side"). */
+ * operation description: "a flat list ... assemble the tree client-side"), at bounded concurrency
+ * (see `CATEGORY_FETCH_CONCURRENCY`) rather than fully parallel. */
 async function fetchAllCategoriesRecursive(): Promise<CategorySummary[]> {
   const all: CategorySummary[] = await http.get<CategorySummary[]>("/categories");
   let frontier = all;
   while (frontier.length > 0) {
     const children = (
-      await Promise.all(
-        frontier.map((c) =>
-          http.get<CategorySummary[]>("/categories", { params: { parentId: c.id } }),
-        ),
+      await mapWithConcurrency(frontier, CATEGORY_FETCH_CONCURRENCY, (c) =>
+        http.get<CategorySummary[]>("/categories", { params: { parentId: c.id } }),
       )
     ).flat();
     if (children.length === 0) break;

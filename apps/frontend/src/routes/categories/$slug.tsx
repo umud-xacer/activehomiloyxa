@@ -42,7 +42,7 @@ import {
 import { categoryLabel } from "@/components/site/CategoryCarousel";
 import { formatPriceWithUnit } from "@/lib/format";
 import {
-  listingKindOf,
+  resolveListingKind,
   KIND_EYEBROW,
   KIND_ICON,
   KIND_THEME,
@@ -61,10 +61,13 @@ export const Route = createFileRoute("/categories/$slug")({
   validateSearch: zodValidator(searchSchema),
   loaderDeps: ({ search }) => ({ sort: search.sort, page: search.page }),
   loader: async ({ context, params, deps }) => {
-    const category = await catalogClient.categoryByPath(`/${params.slug}`);
+    const [category, allCategories] = await Promise.all([
+      catalogClient.categoryByPath(`/${params.slug}`),
+      catalogClient.listCategories(),
+    ]);
     if (!category) throw notFound();
 
-    const kind = listingKindOf(category);
+    const kind = resolveListingKind(category, new Map(allCategories.map((c) => [c.id, c])));
     if (kind === "PROPERTY") {
       const query: PropertyQuery = {
         category_id: category.id,
