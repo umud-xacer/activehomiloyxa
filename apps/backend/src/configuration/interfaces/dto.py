@@ -70,6 +70,18 @@ class Category(CamelModel):
     """Additive field (not in the original contract's `required`): a public media URL for the
     category's icon, sourced from `descriptor.metadata.iconUrl` when the admin has uploaded one.
     Optional and nullable so every pre-existing category (no icon set) round-trips unchanged."""
+    hero_image_url: str | None = None
+    """Additive field, same pattern as `icon_url`: sourced from `descriptor.metadata.heroImageUrl`.
+    Lets the category page's Hero section be admin-authored per category instead of hardcoded."""
+    hero_tagline: str | None = None
+    """Additive field, sourced from `descriptor.metadata.heroTagline`."""
+    accent_color: str | None = None
+    """Additive field, sourced from `descriptor.metadata.accentColor`."""
+    listing_kind: str | None = None
+    """Additive field, sourced from `descriptor.metadata.listingKind`. Deliberately untyped (not a
+    `Literal`) so a stray/legacy metadata value on any one category can never turn into a 500 for
+    the whole `listCategories()` response -- the frontend validates/falls back to PROPERTY itself.
+    Replaces the frontend's former hardcoded path->kind lookup table."""
 
 
 class FormDefinition(CamelModel):

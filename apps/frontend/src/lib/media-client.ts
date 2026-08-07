@@ -59,6 +59,20 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Resolves one already-uploaded media asset's CDN url. `CatalogListing.images` (catalog-client.ts)
+ * only carries `mediaAssetId` -- no url -- so any surface that needs to actually render a listing's
+ * photos (the listing detail page) has to look each one up individually. Swallows a lookup failure
+ * (asset still processing, deleted, etc.) into `null` rather than throwing, since a listing with N
+ * images shouldn't have its whole gallery break because one image failed to resolve. */
+export async function getMediaAssetUrl(mediaAssetId: string): Promise<string | null> {
+  try {
+    const asset = await http.get<MediaAssetDto>(`/media/${mediaAssetId}`);
+    return asset.url;
+  } catch {
+    return null;
+  }
+}
+
 export interface UploadedMedia {
   mediaAssetId: string;
   url: string | null;

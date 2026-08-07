@@ -12,9 +12,16 @@ export interface CategorySummary {
   path: string;
   formDefinitionId: string;
   status: "ACTIVE" | "RETIRED";
-  /** Set only when an admin uploaded a custom icon via the owner-admin panel; most categories
-   * still fall back to the hardcoded `ICON_BY_PATH` map (`CategoryCarousel.tsx`). */
+  /** Set only when an admin uploaded a custom icon via the owner-admin panel; falls back to the
+   * generic default icon (`CategoryCarousel.tsx`) when unset. */
   iconUrl?: string | null;
+  /** Admin-authored per-category page theming (`owner-admin` panel) -- all optional, all fall
+   * back to generic defaults when unset. See `lib/listing-kind.ts` for how `listingKind` drives
+   * which shared template (`categories/$slug.tsx`) renders. */
+  heroImageUrl?: string | null;
+  heroTagline?: string | null;
+  accentColor?: string | null;
+  listingKind?: string | null;
 }
 
 export interface CatalogListing {
@@ -24,6 +31,11 @@ export interface CatalogListing {
   categoryPath?: string;
   title: string;
   description: string | null;
+  /** The business profile that owns this listing, if it was posted under a company rather than a
+   * personal account -- already on the public wire DTO (`catalog/interfaces/dto.py`'s `Listing`),
+   * just not previously declared on this frontend type. Drives the "Top kompaniyalar" section
+   * (`components/catalog/TopCompanies.tsx`) -- no backend change needed for that feature. */
+  ownerProfileId?: string | null;
   attributes: Record<string, unknown>;
   price: { amount: string; currency: string } | null;
   location: { latitude: number; longitude: number } | null;
@@ -41,7 +53,7 @@ export interface CatalogListing {
     | "DELETED";
 }
 
-interface ListingsPage {
+export interface ListingsPage {
   items: CatalogListing[];
   page: { limit: number; nextCursor: string | null };
 }
@@ -176,6 +188,20 @@ export const catalogClient = {
       params: { categoryId: category.id, limit },
     });
     return page.items;
+  },
+
+  /** Cursor-paginated version of the above (real "load more" / infinite scroll, not a single
+   * capped fetch) -- returns the full page envelope so the caller can keep requesting
+   * `nextCursor` until it comes back `null`. Used by `CatalogDirectionView` (goods/service/venue
+   * category pages) so a category with more than one page of listings doesn't silently truncate
+   * at a fixed limit. */
+  async listingsPageByCategoryId(
+    categoryId: string,
+    params: { cursor?: string | null; limit?: number } = {},
+  ): Promise<ListingsPage> {
+    return http.get<ListingsPage>("/listings", {
+      params: { categoryId, cursor: params.cursor ?? undefined, limit: params.limit ?? 24 },
+    });
   },
 
   /** GET /me/listings -- the authenticated account's own listings, any status. */

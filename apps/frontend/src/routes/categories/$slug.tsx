@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, notFound, useNavigate, Link } from "@tanstack/react-router";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
-import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { motion } from "framer-motion";
 import {
@@ -9,12 +9,13 @@ import {
   Tag,
   Layers,
   Loader2,
-  Wrench,
-  Building2,
-  Sofa,
   Clock,
-  MapPin,
+  TrendingDown,
+  TrendingUp,
+  Sparkles,
+  BadgePercent,
 } from "lucide-react";
+import { CategoryHub, type HubOption } from "@/components/catalog/CategoryHub";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PropertyCard } from "@/components/data/PropertyCard";
@@ -22,6 +23,14 @@ import { PropertyGridSkeleton } from "@/components/data/PropertyCardSkeleton";
 import { EmptyState } from "@/components/state/EmptyState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { LeafletMapView, type MapMarker } from "@/components/map/LeafletMapView";
+import { GoodsCard, ServiceCard, VenueCard } from "@/components/catalog/ListingCards";
+import {
+  CategoryFiltersSheet,
+  applyListingFilters,
+  emptyFilterState,
+  type ListingFilterState,
+} from "@/components/catalog/CategoryFilters";
+import { TopCompanies, useTopCompanies } from "@/components/catalog/TopCompanies";
 import { propertyListOptions } from "@/features/properties/queries";
 import type { Property, PropertyQuery } from "@/features/properties/types";
 import {
@@ -32,39 +41,13 @@ import {
 } from "@/lib/catalog-client";
 import { categoryLabel } from "@/components/site/CategoryCarousel";
 import { formatPriceWithUnit } from "@/lib/format";
-
-/** Which shape a category's listings should be queried/rendered through. Everything not listed
- * here defaults to `"PROPERTY"` -- the original (and still the common) case, real estate served
- * via `/search` and force-fit into the `Property` shape (`catalog-client.ts`'s own docstring).
- * The other three kinds go straight at `catalogClient.listingsByCategoryPath` instead -- goods,
- * a service-provider's public "CV", and a venue, in that listing's own natural shape rather than
- * a real-estate one. Keyed by path the same way `CategoryCarousel.tsx`'s `ICON_BY_PATH` already
- * is -- keep both in sync if a seeded category's path ever changes
- * (`configuration/infrastructure/seed.py`'s `_seed_catalog_taxonomy` is the source of truth for
- * what's actually seeded). */
-type ListingKind = "PROPERTY" | "GOODS" | "SERVICE" | "VENUE";
-
-const CATEGORY_LISTING_KIND: Record<string, ListingKind> = {
-  "/qurilish-materiallari": "GOODS",
-  "/mebel-materiallari": "GOODS",
-  "/maishiy-texnikalar": "GOODS",
-  "/uy-bezaklari": "GOODS",
-  "/uniforma-va-maxsus-kiyimlar": "GOODS",
-  "/mebel-salonlari": "GOODS",
-  "/hostel": "VENUE",
-  "/mexmonxona": "VENUE",
-  "/dam-olish-maskanlari": "VENUE",
-  "/xizmat-korsatish": "SERVICE",
-  "/tamirchi": "SERVICE",
-  "/haydovchi": "SERVICE",
-  "/yuk-haydovchi": "SERVICE",
-  "/landshaft-dizayni": "SERVICE",
-  "/ish-orni": "SERVICE",
-};
-
-function listingKindForPath(path: string): ListingKind {
-  return CATEGORY_LISTING_KIND[path] ?? "PROPERTY";
-}
+import {
+  listingKindOf,
+  KIND_EYEBROW,
+  KIND_ICON,
+  KIND_THEME,
+  type ListingKind,
+} from "@/lib/listing-kind";
 
 const searchSchema = z.object({
   sort: fallback(
@@ -81,7 +64,7 @@ export const Route = createFileRoute("/categories/$slug")({
     const category = await catalogClient.categoryByPath(`/${params.slug}`);
     if (!category) throw notFound();
 
-    const kind = listingKindForPath(category.path);
+    const kind = listingKindOf(category);
     if (kind === "PROPERTY") {
       const query: PropertyQuery = {
         category_id: category.id,
@@ -152,7 +135,20 @@ function useCategoryTree(categoryId: string, parentId: string | null) {
   });
   const children = allCategories.filter((c) => c.status === "ACTIVE" && c.parentId === categoryId);
   const parent = parentId ? allCategories.find((c) => c.id === parentId) : undefined;
-  return { children, parent };
+
+  /** Full ancestor chain (root -> immediate parent), not just the one level `parent` gives --
+   * an unlimited-depth category tree needs its whole path shown, not a single skipped level. */
+  const byId = new Map(allCategories.map((c) => [c.id, c]));
+  const ancestors: CategorySummary[] = [];
+  let cursor = parentId ? byId.get(parentId) : undefined;
+  const seen = new Set<string>();
+  while (cursor && !seen.has(cursor.id)) {
+    seen.add(cursor.id);
+    ancestors.unshift(cursor);
+    cursor = cursor.parentId ? byId.get(cursor.parentId) : undefined;
+  }
+
+  return { children, parent, ancestors };
 }
 
 /* ---------------------------------------------------------------------------------------------
@@ -173,10 +169,18 @@ function buildMarkers(properties: Property[]): MapMarker[] {
   }));
 }
 
+const PROPERTY_HUB_OPTIONS: HubOption<PropertyQuery["sort"] & string>[] = [
+  { value: "newest", label: "Yangi qo'shilganlar", icon: Clock },
+  { value: "price_asc", label: "Arzon narxdan", icon: TrendingDown },
+  { value: "price_desc", label: "Qimmat narxdan", icon: TrendingUp },
+  { value: "ai_score", label: "Tavsiya etiladi", icon: Sparkles },
+];
+
 function PropertyDirectionView({ category }: { category: CategorySummary }) {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const { children, parent } = useCategoryTree(category.id, category.parentId);
+  const { children, ancestors } = useCategoryTree(category.id, category.parentId);
+  const [featuredOnly, setFeaturedOnly] = useState(false);
 
   const query: PropertyQuery = {
     category_id: category.id,
@@ -185,9 +189,13 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
     page_size: 24,
   };
   const { data } = useSuspenseQuery(propertyListOptions(query));
+  const items = useMemo(
+    () => (featuredOnly ? data.items.filter((p) => p.featured) : data.items),
+    [data.items, featuredOnly],
+  );
 
   const name = categoryLabel(category.name, "uz");
-  const markers = useMemo(() => buildMarkers(data.items), [data.items]);
+  const markers = useMemo(() => buildMarkers(items), [items]);
   const mapCenter = useMemo(() => {
     if (markers.length === 0) return { lat: 41.3111, lng: 69.2797 };
     const lat = markers.reduce((sum, m) => sum + m.lat, 0) / markers.length;
@@ -203,51 +211,56 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
         description={`${data.total.toLocaleString()} ta e'lon — faqat "${name}" kategoriyasiga tegishli.`}
         crumbs={[
           { label: "Bosh sahifa", to: "/" },
-          ...(parent
-            ? [{ label: categoryLabel(parent.name, "uz"), to: categoryHref(parent.path) }]
-            : []),
+          ...ancestors.map((a) => ({ label: categoryLabel(a.name, "uz"), to: categoryHref(a.path) })),
           { label: name },
         ]}
+        backgroundImageUrl={category.heroImageUrl}
+        accentColor={category.accentColor}
       />
 
       <ChildrenPills children={children} />
+
+      <div className="mx-auto max-w-7xl px-6 pt-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CategoryHub
+            options={PROPERTY_HUB_OPTIONS}
+            value={search.sort}
+            onChange={(sort) =>
+              navigate({ search: (prev: typeof search) => ({ ...prev, sort, page: 1 }) })
+            }
+          />
+          <button
+            type="button"
+            onClick={() => setFeaturedOnly((v) => !v)}
+            className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium shadow-soft transition ${
+              featuredOnly
+                ? "border-warning bg-warning/10 text-warning"
+                : "border-border bg-card text-foreground/80 hover:border-warning/40"
+            }`}
+          >
+            <BadgePercent className="size-4" />
+            Chegirmadagilar
+          </button>
+        </div>
+      </div>
 
       <div className="mx-auto max-w-7xl px-6 py-10">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/70">
             <Tag className="size-4" />
             {name}
+            <span className="opacity-70">· {items.length} ta e'lon</span>
           </div>
-
-          <select
-            value={search.sort}
-            onChange={(e) =>
-              navigate({
-                search: (prev: typeof search) => ({
-                  ...prev,
-                  sort: e.target.value as typeof search.sort,
-                  page: 1,
-                }),
-              })
-            }
-            className="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground"
-          >
-            <option value="newest">Yangi qo'shilganlar</option>
-            <option value="price_asc">Narx: pastdan yuqoriga</option>
-            <option value="price_desc">Narx: yuqoridan pastga</option>
-            <option value="ai_score">AI bahosi</option>
-            <option value="popular">Ko'p ko'rilgan</option>
-          </select>
         </div>
 
-        {data.items.length === 0 ? (
+        {items.length === 0 ? (
           <EmptyState
             title="Bu kategoriyada hali e'lon yo'q"
             description="Tez orada shu kategoriyaga tegishli yangi e'lonlar paydo bo'ladi."
           />
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {data.items.map((p, i) => (
+            {items.map((p, i) => (
               <PropertyCard key={p.id} property={p} index={i} />
             ))}
           </div>
@@ -296,166 +309,56 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
  * use), three card renderings depending on `kind`.
  * ------------------------------------------------------------------------------------------- */
 
-const KIND_EYEBROW: Record<Exclude<ListingKind, "PROPERTY">, string> = {
-  GOODS: "Do'kon",
-  SERVICE: "Xizmat ko'rsatuvchilar",
-  VENUE: "Dam olish",
-};
-
-const KIND_ICON: Record<Exclude<ListingKind, "PROPERTY">, typeof Sofa> = {
-  GOODS: Sofa,
-  SERVICE: Wrench,
-  VENUE: Building2,
-};
-
-function GoodsCard({ listing }: { listing: CatalogListing }) {
-  return (
-    <div className="group overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-elevated">
-      <div className="flex h-32 items-center justify-center bg-gradient-to-br from-primary/10 to-primary-glow/10 text-primary">
-        <Sofa className="size-9" />
-      </div>
-      <div className="p-4">
-        <h3 className="font-display text-base font-semibold text-foreground">{listing.title}</h3>
-        {listing.description && (
-          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{listing.description}</p>
-        )}
-        <div className="mt-3 flex items-center justify-between">
-          <span className="font-display text-lg font-semibold text-foreground">
-            {formatUzs(listing.price?.amount)}
-          </span>
-          {listing.attributes.condition != null && (
-            <span className="text-xs text-muted-foreground">
-              {String(listing.attributes.condition) === "new" ? "Yangi" : "Ishlatilgan"}
-            </span>
-          )}
-        </div>
-        {listing.attributes.brand != null && (
-          <div className="mt-2 inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {String(listing.attributes.brand)}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+/** Builds map markers straight from catalog listings' own `location` (lat/lng) -- the same
+ * `LeafletMapView` the PROPERTY direction already uses, so goods/service/venue categories get map
+ * parity without a second map implementation (and without the API-key dependency an embedded
+ * Yandex Maps widget would need -- see `LeafletMapView`'s own docstring on why this app stays on
+ * keyless tiles after that exact failure mode took down a previous Google Maps integration).
+ * Listings with no `location` are simply omitted -- not every goods/service listing carries one. */
+function buildCatalogMarkers(listings: CatalogListing[]): MapMarker[] {
+  return listings
+    .filter((l) => l.location != null)
+    .map((l) => ({
+      id: l.id,
+      lat: l.location!.latitude,
+      lng: l.location!.longitude,
+      label: formatUzs(l.price?.amount) || l.title,
+      title: l.title,
+      href: `/listing/${l.id}`,
+    }));
 }
 
-/** A service-provider's public "CV" -- experience/specialization/coverage/rate, whatever a
- * hiring business or household would actually filter a repairman/driver/truck-driver by.
- * Reads whichever trade-specific attribute (`trade`/`license_category`/`vehicle_type`) happens
- * to be present without hardcoding one particular trade's shape, since this card serves every
- * `xizmat-korsatish` child category. */
-function ServiceCard({ listing }: { listing: CatalogListing }) {
-  const a = listing.attributes;
-  const trade = a.trade ?? a.license_category ?? a.vehicle_type;
-  const availableNow = a.available_now !== false;
-  const rateLabel =
-    a.rate_type === "hourly"
-      ? "/soat"
-      : a.rate_type === "daily"
-        ? "/kun"
-        : a.rate_type === "per_job"
-          ? "/ish"
-          : "";
+type CatalogSort = "newest" | "price_asc" | "price_desc";
 
-  return (
-    <div className="group overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-soft transition hover:-translate-y-1 hover:shadow-elevated">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <Wrench className="size-5" />
-        </div>
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
-            availableNow ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
-          }`}
-        >
-          <span
-            className={`size-1.5 rounded-full ${availableNow ? "bg-success" : "bg-muted-foreground"}`}
-          />
-          {availableNow ? "Band emas" : "Band"}
-        </span>
-      </div>
+const CATALOG_HUB_OPTIONS: HubOption<CatalogSort>[] = [
+  { value: "newest", label: "Yangi qo'shilganlar", icon: Clock },
+  { value: "price_asc", label: "Arzon narxdan", icon: TrendingDown },
+  { value: "price_desc", label: "Qimmat narxdan", icon: TrendingUp },
+];
 
-      <h3 className="font-display mt-3 text-base font-semibold text-foreground">{listing.title}</h3>
-      {listing.description && (
-        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{listing.description}</p>
-      )}
-
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {a.specialization != null && (
-          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {String(a.specialization)}
-          </span>
-        )}
-        {trade != null && (
-          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {String(trade)}
-          </span>
-        )}
-        {a.experience_years != null && (
-          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {String(a.experience_years)} yil tajriba
-          </span>
-        )}
-      </div>
-
-      {a.service_regions != null && (
-        <div className="mt-2.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <MapPin className="size-3.5 shrink-0" />
-          <span className="truncate">{String(a.service_regions)}</span>
-        </div>
-      )}
-
-      <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3">
-        <span className="font-display text-lg font-semibold text-foreground">
-          {formatUzs(listing.price?.amount)}
-          <span className="text-xs font-normal text-muted-foreground">{rateLabel}</span>
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function VenueCard({ listing }: { listing: CatalogListing }) {
-  const a = listing.attributes;
-  const priceUnitLabel =
-    a.price_unit === "per_person"
-      ? "kishi boshiga"
-      : a.price_unit === "per_hour"
-        ? "soatiga"
-        : a.price_unit === "per_day"
-          ? "kuniga"
-          : "";
-
-  return (
-    <div className="group overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-elevated">
-      <div className="flex h-32 items-center justify-center bg-gradient-to-br from-primary/10 to-primary-glow/10 text-primary">
-        <Building2 className="size-9" />
-      </div>
-      <div className="p-4">
-        <h3 className="font-display text-base font-semibold text-foreground">{listing.title}</h3>
-        {listing.description && (
-          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{listing.description}</p>
-        )}
-        <div className="mt-3 flex items-center justify-between">
-          <span className="font-display text-lg font-semibold text-foreground">
-            {formatUzs(listing.price?.amount)}
-            {priceUnitLabel && (
-              <span className="text-xs font-normal text-muted-foreground"> / {priceUnitLabel}</span>
-            )}
-          </span>
-          {a.capacity != null && (
-            <span className="text-xs text-muted-foreground">{String(a.capacity)} kishi</span>
-          )}
-        </div>
-        {a.open_hours != null && (
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Clock className="size-3.5 shrink-0" />
-            {String(a.open_hours)}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+function sortListings(listings: CatalogListing[], sort: CatalogSort): CatalogListing[] {
+  const withIndex = listings.map((l, i) => ({ l, i }));
+  const priceOf = (l: CatalogListing) => {
+    const n = Number(l.price?.amount);
+    return Number.isFinite(n) ? n : null;
+  };
+  if (sort === "price_asc" || sort === "price_desc") {
+    withIndex.sort((a, b) => {
+      const pa = priceOf(a.l);
+      const pb = priceOf(b.l);
+      if (pa == null && pb == null) return a.i - b.i;
+      if (pa == null) return 1;
+      if (pb == null) return -1;
+      return sort === "price_asc" ? pa - pb : pb - pa;
+    });
+  } else {
+    withIndex.sort((a, b) => {
+      const ta = Date.parse(a.l.createdAt);
+      const tb = Date.parse(b.l.createdAt);
+      return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
+    });
+  }
+  return withIndex.map((x) => x.l);
 }
 
 function CatalogDirectionView({
@@ -465,14 +368,46 @@ function CatalogDirectionView({
   category: CategorySummary;
   kind: Exclude<ListingKind, "PROPERTY">;
 }) {
-  const { children, parent } = useCategoryTree(category.id, category.parentId);
+  const { children, ancestors } = useCategoryTree(category.id, category.parentId);
   const name = categoryLabel(category.name, "uz");
   const Icon = KIND_ICON[kind];
+  const theme = KIND_THEME[kind];
+  const [filters, setFilters] = useState<ListingFilterState>(emptyFilterState());
+  const [sort, setSort] = useState<CatalogSort>("newest");
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
-  const { data: listings, isLoading } = useQuery({
-    queryKey: ["catalog", "listings", category.path],
-    queryFn: () => catalogClient.listingsByCategoryPath(category.path, 40),
+  const {
+    data: listingPages,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["catalog", "listings", category.id],
+    queryFn: ({ pageParam }) =>
+      catalogClient.listingsPageByCategoryId(category.id, { cursor: pageParam, limit: 24 }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.page.nextCursor,
   });
+  const listings = useMemo(
+    () => listingPages?.pages.flatMap((p) => p.items) ?? [],
+    [listingPages],
+  );
+
+  const { data: form } = useQuery({
+    queryKey: ["catalog", "category-form", category.id],
+    queryFn: () => catalogClient.getCategoryForm(category.id),
+  });
+
+  const filtered = useMemo(() => applyListingFilters(listings, filters), [listings, filters]);
+  const byCompany = useMemo(
+    () =>
+      selectedCompanyId ? filtered.filter((l) => l.ownerProfileId === selectedCompanyId) : filtered,
+    [filtered, selectedCompanyId],
+  );
+  const sorted = useMemo(() => sortListings(byCompany, sort), [byCompany, sort]);
+  const markers = useMemo(() => buildCatalogMarkers(sorted), [sorted]);
+  const companies = useTopCompanies(filtered);
 
   return (
     <AppShell>
@@ -486,19 +421,38 @@ function CatalogDirectionView({
         }
         crumbs={[
           { label: "Bosh sahifa", to: "/" },
-          ...(parent
-            ? [{ label: categoryLabel(parent.name, "uz"), to: categoryHref(parent.path) }]
-            : []),
+          ...ancestors.map((a) => ({ label: categoryLabel(a.name, "uz"), to: categoryHref(a.path) })),
           { label: name },
         ]}
+        backgroundImageUrl={category.heroImageUrl}
+        accentColor={category.accentColor}
       />
 
       <ChildrenPills children={children} />
 
+      <div className="mx-auto max-w-7xl px-4 pt-8 lg:px-8">
+        <CategoryHub options={CATALOG_HUB_OPTIONS} value={sort} onChange={setSort} />
+      </div>
+
       <div className="mx-auto max-w-7xl px-4 py-10 pb-24 lg:px-8">
-        <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/70">
-          <Icon className="size-4" />
-          {name}
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+          <div
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ${theme.badge}`}
+          >
+            <Icon className="size-4" />
+            {name}
+            {!isLoading && <span className="opacity-70">· {sorted.length} ta e'lon</span>}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {form && form.sections.length > 0 && (
+              <CategoryFiltersSheet
+                fields={form.sections.flatMap((s) => s.fields)}
+                state={filters}
+                onChange={setFilters}
+                resultCount={filtered.length}
+              />
+            )}
+          </div>
         </div>
 
         {isLoading && (
@@ -507,20 +461,26 @@ function CatalogDirectionView({
           </div>
         )}
 
-        {!isLoading && listings?.length === 0 && (
+        {!isLoading && sorted.length === 0 && (
           <EmptyState
-            title="Bu kategoriyada hali e'lon yo'q"
+            title={
+              listings.length > 0
+                ? "Filtrga mos e'lon topilmadi"
+                : "Bu kategoriyada hali e'lon yo'q"
+            }
             description={
-              kind === "SERVICE"
-                ? "Tez orada bu yo'nalishda xizmat ko'rsatuvchilar ro'yxatdan o'tadi."
-                : "Tez orada shu kategoriyaga tegishli yangi e'lonlar paydo bo'ladi."
+              listings.length > 0
+                ? "Filtrlarni o'zgartirib qayta urinib ko'ring."
+                : kind === "SERVICE"
+                  ? "Tez orada bu yo'nalishda xizmat ko'rsatuvchilar ro'yxatdan o'tadi."
+                  : "Tez orada shu kategoriyaga tegishli yangi e'lonlar paydo bo'ladi."
             }
           />
         )}
 
-        {!isLoading && listings != null && listings.length > 0 && (
+        {!isLoading && sorted.length > 0 && (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {listings.map((listing) =>
+            {sorted.map((listing) =>
               kind === "SERVICE" ? (
                 <ServiceCard key={listing.id} listing={listing} />
               ) : kind === "VENUE" ? (
@@ -531,7 +491,49 @@ function CatalogDirectionView({
             )}
           </div>
         )}
+
+        {hasNextPage && (
+          <div className="mt-8 flex justify-center">
+            <button
+              type="button"
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-2.5 text-sm font-medium text-foreground transition hover:border-primary/40 disabled:opacity-60"
+            >
+              {isFetchingNextPage && <Loader2 className="size-4 animate-spin" />}
+              Ko'proq yuklash
+            </button>
+          </div>
+        )}
+
+        <TopCompanies
+          companies={companies}
+          selectedId={selectedCompanyId}
+          onSelect={setSelectedCompanyId}
+        />
       </div>
+
+      {markers.length > 0 && (
+        <section className="pb-20">
+          <div className="mx-auto max-w-7xl px-4 lg:px-8">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-foreground/70 backdrop-blur">
+                <MapIcon className="size-3.5" />
+                Jonli xarita
+              </div>
+              <h2 className="font-display mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                {name} — xaritada
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Joylashuvi ko'rsatilgan e'lonlar xaritada aks etadi.
+              </p>
+            </div>
+            <div className="mt-8">
+              <LeafletMapView markers={markers} zoom={11} height="480px" enableDrawTools={false} />
+            </div>
+          </div>
+        </section>
+      )}
     </AppShell>
   );
 }

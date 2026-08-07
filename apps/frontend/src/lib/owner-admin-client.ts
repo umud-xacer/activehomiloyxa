@@ -147,6 +147,8 @@ export async function updateFormDefinitionFields(
   await publishSolo("form-definition", headId, version.id);
 }
 
+export type ListingKind = "PROPERTY" | "GOODS" | "SERVICE" | "VENUE";
+
 export interface CategoryDraftInput {
   code: string;
   name: LocalizedText;
@@ -156,15 +158,27 @@ export interface CategoryDraftInput {
   formDefinitionId: string;
   iconUrl: string | null;
   treeStatus: "ACTIVE" | "RETIRED";
+  /** Per-category page theming (`categories/$slug.tsx`'s Hero + which shared template renders) --
+   * all optional, all additive on top of the pre-existing `iconUrl` metadata field. */
+  heroImageUrl?: string | null;
+  heroTagline?: string | null;
+  accentColor?: string | null;
+  listingKind?: ListingKind | null;
 }
 
 function categoryDefinition(input: CategoryDraftInput) {
+  const metadata: Record<string, unknown> = {};
+  if (input.iconUrl) metadata.iconUrl = input.iconUrl;
+  if (input.heroImageUrl) metadata.heroImageUrl = input.heroImageUrl;
+  if (input.heroTagline) metadata.heroTagline = input.heroTagline;
+  if (input.accentColor) metadata.accentColor = input.accentColor;
+  if (input.listingKind) metadata.listingKind = input.listingKind;
   return {
     descriptor: {
       name: input.name,
       description: null,
       display_order: input.displayOrder,
-      metadata: input.iconUrl ? { iconUrl: input.iconUrl } : {},
+      metadata,
     },
     parent_category_id: input.parentCategoryId,
     path: input.path,

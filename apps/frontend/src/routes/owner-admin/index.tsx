@@ -41,6 +41,7 @@ import {
   type ConfigVersionDto,
   type DynamicFieldDraft,
   type LocalizedText,
+  type ListingKind,
   type ProductDraftInput,
 } from "@/lib/owner-admin-client";
 import type { FormField as FieldType } from "@/lib/catalog-client";
@@ -120,6 +121,37 @@ function categoryIconUrl(row: CategoryRow): string | null {
   const snapshot = (row.version?.snapshot ?? row.version?.definition) as
     { descriptor?: { metadata?: { iconUrl?: string } } } | undefined;
   return snapshot?.descriptor?.metadata?.iconUrl ?? null;
+}
+
+/** Per-category Hero/page-template metadata -- same additive `descriptor.metadata` slot
+ * `categoryIconUrl` already reads from (see `owner-admin-client.ts`'s `categoryDefinition`). */
+function categoryPageMeta(row: CategoryRow): {
+  heroImageUrl: string | null;
+  heroTagline: string;
+  accentColor: string | null;
+  listingKind: ListingKind;
+} {
+  const snapshot = (row.version?.snapshot ?? row.version?.definition) as
+    | {
+        descriptor?: {
+          metadata?: {
+            heroImageUrl?: string;
+            heroTagline?: string;
+            accentColor?: string;
+            listingKind?: string;
+          };
+        };
+      }
+    | undefined;
+  const metadata = snapshot?.descriptor?.metadata ?? {};
+  const kind = metadata.listingKind;
+  return {
+    heroImageUrl: metadata.heroImageUrl ?? null,
+    heroTagline: metadata.heroTagline ?? "",
+    accentColor: metadata.accentColor ?? null,
+    listingKind:
+      kind === "GOODS" || kind === "SERVICE" || kind === "VENUE" ? kind : "PROPERTY",
+  };
 }
 
 /** How many ancestors `row` has within `all` (0 for a root category). Walks the parent chain via
@@ -206,6 +238,12 @@ function CategoryFormPanel({ editing, parentOptions, onClose, onSaved }: FormPan
   );
   const [iconUrl, setIconUrl] = useState<string | null>(existingIcon);
   const [iconUploading, setIconUploading] = useState(false);
+  const existingMeta = editing ? categoryPageMeta(editing) : null;
+  const [listingKind, setListingKind] = useState<ListingKind>(existingMeta?.listingKind ?? "PROPERTY");
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(existingMeta?.heroImageUrl ?? null);
+  const [heroUploading, setHeroUploading] = useState(false);
+  const [heroTagline, setHeroTagline] = useState(existingMeta?.heroTagline ?? "");
+  const [accentColor, setAccentColor] = useState(existingMeta?.accentColor ?? "#6366f1");
   const [fields, setFields] = useState<DynamicFieldDraft[]>([emptyField()]);
   const [fieldsLoaded, setFieldsLoaded] = useState(!isEditing);
   const [busy, setBusy] = useState(false);
@@ -251,6 +289,20 @@ function CategoryFormPanel({ editing, parentOptions, onClose, onSaved }: FormPan
     }
   };
 
+  const handleHeroImageChange = async (file: File | undefined) => {
+    if (!file) return;
+    setHeroUploading(true);
+    setError(null);
+    try {
+      const result = await uploadCategoryIcon(file);
+      setHeroImageUrl(result.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Hero rasmini yuklab bo'lmadi.");
+    } finally {
+      setHeroUploading(false);
+    }
+  };
+
   const canSubmit =
     nameUz.trim().length > 0 &&
     effectivePath.trim().length > 0 &&
@@ -284,6 +336,10 @@ function CategoryFormPanel({ editing, parentOptions, onClose, onSaved }: FormPan
           formDefinitionId: formHeadId ?? "",
           iconUrl,
           treeStatus: categoryTreeStatus(editing),
+          heroImageUrl,
+          heroTagline: heroTagline.trim() || null,
+          accentColor,
+          listingKind,
         });
       } else {
         const code = slugify(nameUz);
@@ -297,6 +353,10 @@ function CategoryFormPanel({ editing, parentOptions, onClose, onSaved }: FormPan
           formDefinitionId: formHeadId,
           iconUrl,
           treeStatus: "ACTIVE",
+          heroImageUrl,
+          heroTagline: heroTagline.trim() || null,
+          accentColor,
+          listingKind,
         });
       }
       onSaved();
@@ -456,6 +516,93 @@ function CategoryFormPanel({ editing, parentOptions, onClose, onSaved }: FormPan
                     onChange={(e) => handleIconChange(e.target.files?.[0])}
                   />
                 </label>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+              <p className="text-xs font-semibold text-foreground">
+                Sahifa dizayni (Hero) — ixtiyoriy
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Kategoriya sahifasi qaysi shablon bilan (ko'chmas mulk / tovar / xizmat / obyekt)
+                va qanday fonda ochilishini belgilaydi.
+              </p>
+
+              <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Sahifa turi</label>
+                  <select
+                    value={listingKind}
+                    onChange={(e) => setListingKind(e.target.value as ListingKind)}
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="PROPERTY">Ko'chmas mulk</option>
+                    <option value="GOODS">Tovar / mahsulot</option>
+                    <option value="SERVICE">Xizmat ko'rsatuvchi</option>
+                    <option value="VENUE">Obyekt / maskan</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Urg'u rangi</label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={accentColor}
+                      onChange={(e) => setAccentColor(e.target.value)}
+                      className="h-9 w-12 shrink-0 cursor-pointer rounded-lg border border-border bg-background p-1"
+                    />
+                    <input
+                      value={accentColor}
+                      onChange={(e) => setAccentColor(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Hero shiori (tagline)
+                </label>
+                <input
+                  value={heroTagline}
+                  onChange={(e) => setHeroTagline(e.target.value)}
+                  placeholder="Masalan: Qurilish materiallari uchun professional marketplace"
+                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="mt-4">
+                <label className="text-xs font-medium text-muted-foreground">Hero foni (rasm)</label>
+                <div className="mt-1 flex items-center gap-3">
+                  <div className="flex h-14 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-border bg-muted">
+                    {heroUploading ? (
+                      <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                    ) : heroImageUrl ? (
+                      <img src={heroImageUrl} alt="" className="size-full object-cover" />
+                    ) : (
+                      <ImagePlus className="size-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted">
+                    Rasm tanlash
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      onChange={(e) => handleHeroImageChange(e.target.files?.[0])}
+                    />
+                  </label>
+                  {heroImageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setHeroImageUrl(null)}
+                      className="text-xs text-muted-foreground hover:text-destructive"
+                    >
+                      O'chirish
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

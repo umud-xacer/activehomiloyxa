@@ -4632,6 +4632,36 @@ components:
           - 'null'
           format: uri
           description: Public media URL for the category's icon, when the admin has uploaded one.
+        heroImageUrl:
+          type:
+          - string
+          - 'null'
+          format: uri
+          description: Public media URL for the category page's Hero background, when the admin
+            has set one.
+        heroTagline:
+          type:
+          - string
+          - 'null'
+          description: Short marketing line shown in the category page's Hero, when the admin has
+            set one.
+        accentColor:
+          type:
+          - string
+          - 'null'
+          description: Per-category accent color (CSS color value) for themeing the category page,
+            when the admin has set one.
+        listingKind:
+          type:
+          - string
+          - 'null'
+          enum:
+          - PROPERTY
+          - GOODS
+          - SERVICE
+          - VENUE
+          description: Which listing shape/visual direction this category's page should render as.
+            Null defaults to PROPERTY client-side.
       additionalProperties: false
     FormDefinition:
       type: object

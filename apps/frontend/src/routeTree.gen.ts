@@ -78,6 +78,7 @@ import { Route as InvestIndexRouteImport } from './routes/invest/index'
 import { Route as InvestSlugRouteImport } from './routes/invest/$slug'
 import { Route as ListIndexRouteImport } from './routes/list/index'
 import { Route as ListListingIdRouteImport } from './routes/list/$listingId'
+import { Route as ListingListingIdRouteImport } from './routes/listing/$listingId'
 import { Route as OwnerAdminIndexRouteImport } from './routes/owner-admin/index'
 import { Route as OwnerAdminBannersRouteImport } from './routes/owner-admin/banners'
 import { Route as PropertiesIndexRouteImport } from './routes/properties/index'
@@ -429,6 +430,11 @@ const ListListingIdRoute = ListListingIdRouteImport.update({
   path: '/list/$listingId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ListingListingIdRoute = ListingListingIdRouteImport.update({
+  id: '/listing/$listingId',
+  path: '/listing/$listingId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OwnerAdminIndexRoute = OwnerAdminIndexRouteImport.update({
   id: '/owner-admin/',
   path: '/owner-admin/',
@@ -513,6 +519,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/seller': typeof DashboardSellerRoute
   '/invest/$slug': typeof InvestSlugRoute
   '/list/$listingId': typeof ListListingIdRoute
+  '/listing/$listingId': typeof ListingListingIdRoute
   '/owner-admin/banners': typeof OwnerAdminBannersRoute
   '/properties/$slug': typeof PropertiesSlugRoute
   '/admin/': typeof AdminIndexRoute
@@ -588,6 +595,7 @@ export interface FileRoutesByTo {
   '/dashboard/seller': typeof DashboardSellerRoute
   '/invest/$slug': typeof InvestSlugRoute
   '/list/$listingId': typeof ListListingIdRoute
+  '/listing/$listingId': typeof ListingListingIdRoute
   '/owner-admin/banners': typeof OwnerAdminBannersRoute
   '/properties/$slug': typeof PropertiesSlugRoute
   '/admin': typeof AdminIndexRoute
@@ -664,6 +672,7 @@ export interface FileRoutesById {
   '/dashboard/seller': typeof DashboardSellerRoute
   '/invest/$slug': typeof InvestSlugRoute
   '/list/$listingId': typeof ListListingIdRoute
+  '/listing/$listingId': typeof ListingListingIdRoute
   '/owner-admin/banners': typeof OwnerAdminBannersRoute
   '/properties/$slug': typeof PropertiesSlugRoute
   '/admin/': typeof AdminIndexRoute
@@ -741,6 +750,7 @@ export interface FileRouteTypes {
     | '/dashboard/seller'
     | '/invest/$slug'
     | '/list/$listingId'
+    | '/listing/$listingId'
     | '/owner-admin/banners'
     | '/properties/$slug'
     | '/admin/'
@@ -816,6 +826,7 @@ export interface FileRouteTypes {
     | '/dashboard/seller'
     | '/invest/$slug'
     | '/list/$listingId'
+    | '/listing/$listingId'
     | '/owner-admin/banners'
     | '/properties/$slug'
     | '/admin'
@@ -891,6 +902,7 @@ export interface FileRouteTypes {
     | '/dashboard/seller'
     | '/invest/$slug'
     | '/list/$listingId'
+    | '/listing/$listingId'
     | '/owner-admin/banners'
     | '/properties/$slug'
     | '/admin/'
@@ -967,6 +979,7 @@ export interface RootRouteChildren {
   DashboardSellerRoute: typeof DashboardSellerRoute
   InvestSlugRoute: typeof InvestSlugRoute
   ListListingIdRoute: typeof ListListingIdRoute
+  ListingListingIdRoute: typeof ListingListingIdRoute
   OwnerAdminBannersRoute: typeof OwnerAdminBannersRoute
   PropertiesSlugRoute: typeof PropertiesSlugRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -1465,6 +1478,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListListingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/listing/$listingId': {
+      id: '/listing/$listingId'
+      path: '/listing/$listingId'
+      fullPath: '/listing/$listingId'
+      preLoaderRoute: typeof ListingListingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/owner-admin/': {
       id: '/owner-admin/'
       path: '/owner-admin'
@@ -1559,6 +1579,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardSellerRoute: DashboardSellerRoute,
   InvestSlugRoute: InvestSlugRoute,
   ListListingIdRoute: ListListingIdRoute,
+  ListingListingIdRoute: ListingListingIdRoute,
   OwnerAdminBannersRoute: OwnerAdminBannersRoute,
   PropertiesSlugRoute: PropertiesSlugRoute,
   AdminIndexRoute: AdminIndexRoute,

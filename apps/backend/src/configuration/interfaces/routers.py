@@ -113,6 +113,7 @@ def _category_dto_from_snapshot(snapshot: dict[str, Any]) -> Category:
     descriptor = snapshot.get("descriptor") or {}
     parent_id = snapshot.get("parent_category_id")
     form_id = snapshot.get("form_definition_id")
+    metadata = descriptor.get("metadata") or {}
     return Category(
         id=UUID(str(snapshot["id"])),
         parent_id=UUID(str(parent_id)) if parent_id else None,
@@ -122,7 +123,11 @@ def _category_dto_from_snapshot(snapshot: dict[str, Any]) -> Category:
         display_order=descriptor.get("display_order"),
         form_definition_id=UUID(str(form_id)) if form_id else None,
         status=snapshot.get("tree_status"),
-        icon_url=(descriptor.get("metadata") or {}).get("iconUrl"),
+        icon_url=metadata.get("iconUrl"),
+        hero_image_url=metadata.get("heroImageUrl"),
+        hero_tagline=metadata.get("heroTagline"),
+        accent_color=metadata.get("accentColor"),
+        listing_kind=metadata.get("listingKind"),
     )
 
 
