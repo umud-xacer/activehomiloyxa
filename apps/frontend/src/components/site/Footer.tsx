@@ -4,7 +4,6 @@ import { QRCodeSVG } from "qrcode.react";
 import { QrCode } from "lucide-react";
 import { Logo } from "./Logo";
 import { SocialIconsExpanded } from "./SocialIcons";
-import footerBg from "@/assets/bg-worldmap-logo.png.asset.json";
 import logoMark from "@/assets/logo-mark.png";
 
 /** Every link points at a real route. `null` means no page exists yet for that label (Terms,
@@ -58,14 +57,9 @@ export function Footer() {
     { title: t("footer.company"), links: ["About", "Careers", "Press", "Partners", "Contact"] },
   ];
   return (
-    <footer className="relative isolate overflow-hidden border-t border-border bg-surface/60">
-      <div
-        className="absolute inset-0 -z-10 bg-cover bg-center opacity-10"
-        style={{ backgroundImage: `url(${footerBg.url})` }}
-        aria-hidden
-      />
-      <div className="mx-auto max-w-7xl px-6 py-16">
-        <div className="grid gap-x-8 gap-y-12 md:grid-cols-[1.3fr_0.8fr_0.8fr_0.9fr_0.9fr]">
+    <footer className="border-t border-border bg-background">
+      <div className="mx-auto max-w-7xl px-6 py-20">
+        <div className="grid gap-x-10 gap-y-14 md:grid-cols-[1.3fr_0.8fr_0.8fr_0.9fr_0.9fr]">
           <div>
             <Logo className="h-9" />
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">{t("footer.tagline")}</p>
