@@ -22,8 +22,9 @@ const FOOTER_LINK_TO: Record<string, string | null> = {
   Contact: "/contact",
 };
 
-/** Public site URL the footer QR code points visitors to on their phone. */
-const SITE_URL = "https://activehome.uz";
+/** Taplink hand-off link the footer QR code points visitors to on their phone
+ * (tracked with `from=qr` so scans are distinguishable from other Taplink traffic). */
+const QR_TARGET_URL = "https://taplink.cc/activehome.uz?from=qr";
 
 /** Legal/info links, split into two short, clearly-labeled groups (mirrors how every real
  * marketplace footer organizes this -- one glance answers "where are the rules" vs "where are
@@ -66,12 +67,12 @@ export function Footer() {
             <SocialIconsExpanded className="mt-5" />
 
             {/* Scan-to-open card: branded QR (logo excavated into the center, same trick the
-                reference site used with its Taplink badge) pointing at the live production
-                domain -- a real mobile-handoff affordance, not decoration. */}
+                reference site used with its Taplink badge) pointing at the Taplink hand-off
+                page -- a real mobile-handoff affordance, not decoration. */}
             <div className="mt-6 flex max-w-xs items-center gap-4 rounded-2xl border border-border bg-card p-4 shadow-soft">
               <div className="shrink-0 rounded-xl bg-white p-2">
                 <QRCodeSVG
-                  value={SITE_URL}
+                  value={QR_TARGET_URL}
                   size={84}
                   level="H"
                   bgColor="#ffffff"
