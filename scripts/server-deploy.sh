@@ -44,6 +44,9 @@ if failed:
 echo "==> seed data (idempotent -- skips anything already seeded)"
 PYTHONPATH="apps/backend/src:packages/shared/src:." .venv/bin/python3 -m configuration.infrastructure.seed
 
+echo "==> seed demo listings (idempotent -- skips once the demo seller already owns them)"
+PYTHONPATH="apps/backend/src:packages/shared/src:." .venv/bin/python3 -m catalog.infrastructure.seed_demo_listings
+
 echo "==> frontend build"
 cd apps/frontend
 export NODE_OPTIONS="--max-old-space-size=1536"

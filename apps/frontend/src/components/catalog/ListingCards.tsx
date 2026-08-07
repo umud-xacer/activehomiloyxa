@@ -7,11 +7,64 @@
  * from the category grid at all).
  */
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { Sofa, Wrench, Building2, Clock, MapPin } from "lucide-react";
+import { http } from "@/lib/http";
 import { formatUzs, type CatalogListing } from "@/lib/catalog-client";
 
 function listingHref(listing: CatalogListing) {
   return { to: "/listing/$listingId" as const, params: { listingId: listing.id } };
+}
+
+interface _MediaAssetResponse {
+  id: string;
+  url?: string | null;
+  variants?: Array<{ kind: string; url: string }>;
+}
+
+/** Resolves the listing's first CLEAN image to a real delivery URL (preferring the THUMBNAIL
+ * variant -- a card doesn't need the full-size OPTIMIZED asset). A listing's `images` carry only
+ * `mediaAssetId` (X-06: "catalog holds MediaAssetRef only"), never a URL directly, so this is a
+ * per-card fetch, same as the listing detail page's own `resolveMediaUrls` -- react-query's
+ * cache dedupes repeat requests for the same asset across cards. Returns `undefined` while
+ * loading or when there is no clean image, both of which fall back to the icon placeholder. */
+function useListingThumbnail(listing: CatalogListing): string | undefined {
+  const image = listing.images?.find((img) => img.status === "CLEAN");
+  const { data } = useQuery({
+    queryKey: ["media-asset", image?.mediaAssetId],
+    queryFn: () => http.get<_MediaAssetResponse>(`/media/${image!.mediaAssetId}`),
+    enabled: image != null,
+    staleTime: 5 * 60_000,
+  });
+  if (!data) return undefined;
+  const thumbnail = data.variants?.find((v) => v.kind === "THUMBNAIL");
+  return thumbnail?.url ?? data.url ?? undefined;
+}
+
+function CardThumbnail({
+  listing,
+  Icon,
+}: {
+  listing: CatalogListing;
+  Icon: typeof Sofa;
+}) {
+  const thumbnailUrl = useListingThumbnail(listing);
+  if (thumbnailUrl) {
+    return (
+      <div className="h-32 overflow-hidden bg-muted">
+        <img
+          src={thumbnailUrl}
+          alt={listing.title}
+          className="size-full object-cover transition duration-300 group-hover:scale-105"
+        />
+      </div>
+    );
+  }
+  return (
+    <div className="flex h-32 items-center justify-center bg-gradient-to-br from-primary/10 to-primary-glow/10 text-primary">
+      <Icon className="size-9" />
+    </div>
+  );
 }
 
 export function GoodsCard({ listing }: { listing: CatalogListing }) {
@@ -20,9 +73,7 @@ export function GoodsCard({ listing }: { listing: CatalogListing }) {
       {...listingHref(listing)}
       className="group block overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-elevated"
     >
-      <div className="flex h-32 items-center justify-center bg-gradient-to-br from-primary/10 to-primary-glow/10 text-primary">
-        <Sofa className="size-9" />
-      </div>
+      <CardThumbnail listing={listing} Icon={Sofa} />
       <div className="p-4">
         <h3 className="font-display text-base font-semibold text-foreground">{listing.title}</h3>
         {listing.description && (
@@ -57,6 +108,7 @@ export function ServiceCard({ listing }: { listing: CatalogListing }) {
   const a = listing.attributes;
   const trade = a.trade ?? a.license_category ?? a.vehicle_type;
   const availableNow = a.available_now !== false;
+  const thumbnailUrl = useListingThumbnail(listing);
   const rateLabel =
     a.rate_type === "hourly"
       ? "/soat"
@@ -72,8 +124,14 @@ export function ServiceCard({ listing }: { listing: CatalogListing }) {
       className="group block overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-soft transition hover:-translate-y-1 hover:shadow-elevated"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <Wrench className="size-5" />
+        <div className="size-12 shrink-0 overflow-hidden rounded-2xl bg-primary/10 text-primary">
+          {thumbnailUrl ? (
+            <img src={thumbnailUrl} alt={listing.title} className="size-full object-cover" />
+          ) : (
+            <div className="flex size-full items-center justify-center">
+              <Wrench className="size-5" />
+            </div>
+          )}
         </div>
         <span
           className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
@@ -143,9 +201,7 @@ export function VenueCard({ listing }: { listing: CatalogListing }) {
       {...listingHref(listing)}
       className="group block overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-elevated"
     >
-      <div className="flex h-32 items-center justify-center bg-gradient-to-br from-primary/10 to-primary-glow/10 text-primary">
-        <Building2 className="size-9" />
-      </div>
+      <CardThumbnail listing={listing} Icon={Building2} />
       <div className="p-4">
         <h3 className="font-display text-base font-semibold text-foreground">{listing.title}</h3>
         {listing.description && (
