@@ -72,7 +72,17 @@ class TraceIdMiddleware:
         await self.app(scope, receive, send_with_trace_id)
 
 
-def _problem_response(problem: Problem, trace_id: str) -> JSONResponse:
+def _problem_response(problem: Problem, trace_id: str, *, exc: Exception | None = None) -> JSONResponse:
+    headers = {TRACE_ID_HEADER: trace_id, "Connection": "close"}
+    # `retry_after_seconds` is a duck-typed convention, not a `ProblemBuilder`/`Problem` contract
+    # field: every 429-mapped exception that carries a wait time already exposes it as a plain
+    # attribute (`OtpThrottledError`, `LoginLockedOutError`, `messaging.RateLimitExceededError`),
+    # so reading it here generically closes `contracts/openapi.yaml`'s `TooManyRequests` response
+    # component's own declared-but-previously-never-populated `Retry-After` header for all three
+    # at once, without widening `ProblemBuilder`'s signature or touching `ExceptionMapper` at all.
+    retry_after = getattr(exc, "retry_after_seconds", None) if exc is not None else None
+    if isinstance(retry_after, int):
+        headers["Retry-After"] = str(retry_after)
     with_trace_id = problem.model_copy(update={"trace_id": trace_id})
     return JSONResponse(
         status_code=with_trace_id.status,
@@ -90,7 +100,7 @@ def _problem_response(problem: Problem, trace_id: str) -> JSONResponse:
         # entirely -- confirmed fixed against the same bare repro -- rather than chasing further
         # into Starlette internals for a root cause with no newer pinned-dependency version to
         # try (`starlette`/`uvicorn` are already at their latest release).
-        headers={TRACE_ID_HEADER: trace_id, "Connection": "close"},
+        headers=headers,
     )
 
 
@@ -116,7 +126,7 @@ def install_error_handlers(app: FastAPI, mapper: ExceptionMapper | None = None) 
         # own guarantee ("every response is a `Problem`, Playbook Sec 6") true even then, rather
         # than crashing on an unmet assertion (or, stripped under `-O`, on `None.model_copy`).
         problem = mapper.resolve(exc) or unhandled_fallback(exc)
-        return _problem_response(problem, _trace_id(request))
+        return _problem_response(problem, _trace_id(request), exc=exc)
 
     @app.exception_handler(Exception)
     async def handle_unhandled_exception(request: Request, exc: Exception) -> JSONResponse:
@@ -126,7 +136,7 @@ def install_error_handlers(app: FastAPI, mapper: ExceptionMapper | None = None) 
             extra={"trace_id": trace_id, "path": request.url.path, "method": request.method},
         )
         problem = mapper.resolve(exc) or unhandled_fallback(exc)
-        return _problem_response(problem, trace_id)
+        return _problem_response(problem, trace_id, exc=exc)
 
 
 def _trace_id(request: Request) -> str:

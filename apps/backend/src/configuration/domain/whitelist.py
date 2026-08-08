@@ -286,6 +286,11 @@ SETTINGS_SCHEMA: dict[str, type] = {
     # itself, at will, without a redeploy. Never served back verbatim to an unauthenticated
     # caller (see `verify_owner_admin_slug` in interfaces/routers.py, a yes/no oracle only).
     "admin.owner_panel_slug": str,
+    # Security Sec 3.1 brute-force protection (`identity.domain.policies.LoginLockoutPolicy`) --
+    # admin-tunable without a redeploy per that feature's own explicit requirement, unlike
+    # OtpThrottlePolicy's hardcoded thresholds a few lines above this file's sibling constants.
+    "login_lockout.max_attempts": int,
+    "login_lockout.block_minutes": int,
 }
 
 # Every top-level static route the frontend already owns (`apps/frontend/src/routes/*.tsx`/`*/`),

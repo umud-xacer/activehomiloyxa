@@ -260,13 +260,46 @@ class FakeRoleDefinitionReader:
 
 
 class FakePlatformSettingsReader:
-    def __init__(self, *, otp_expiry_minutes: int = 5, session_expiry_hours: int = 720) -> None:
+    def __init__(
+        self,
+        *,
+        otp_expiry_minutes: int = 5,
+        session_expiry_hours: int = 720,
+        login_lockout_max_attempts: int = 4,
+        login_lockout_block_minutes: int = 15,
+    ) -> None:
         self._settings = IdentityPlatformSettings(
-            otp_expiry_minutes=otp_expiry_minutes, session_expiry_hours=session_expiry_hours
+            otp_expiry_minutes=otp_expiry_minutes,
+            session_expiry_hours=session_expiry_hours,
+            login_lockout_max_attempts=login_lockout_max_attempts,
+            login_lockout_block_minutes=login_lockout_block_minutes,
         )
 
     async def get_identity_settings(self) -> IdentityPlatformSettings:
         return self._settings
+
+
+@dataclass
+class FakeLoginAttemptTracker:
+    """Implements `identity.application.ports.LoginAttemptTrackerPort` -- an in-memory
+    `{(scope, identifier): count}` map with no real TTL (tests that care about window expiry call
+    `reset(...)` explicitly rather than waiting out a clock)."""
+
+    counts: dict[tuple[str, str], int] = field(default_factory=dict)
+
+    async def record_failure(self, *, scope: str, identifier: str, window_seconds: int) -> int:
+        key = (scope, identifier)
+        self.counts[key] = self.counts.get(key, 0) + 1
+        return self.counts[key]
+
+    async def get_failure_count(self, *, scope: str, identifier: str) -> int:
+        return self.counts.get((scope, identifier), 0)
+
+    async def get_retry_after_seconds(self, *, scope: str, identifier: str) -> int:
+        return 900 if self.counts.get((scope, identifier), 0) > 0 else 0
+
+    async def reset(self, *, scope: str, identifier: str) -> None:
+        self.counts.pop((scope, identifier), None)
 
 
 class FakeOutbox:
@@ -315,6 +348,11 @@ def fake_platform_settings() -> FakePlatformSettingsReader:
 
 
 @pytest.fixture
+def fake_login_attempts() -> FakeLoginAttemptTracker:
+    return FakeLoginAttemptTracker()
+
+
+@pytest.fixture
 def fake_otp_sms_provider() -> FakeOtpSmsProvider:
     return FakeOtpSmsProvider()
 
@@ -340,6 +378,7 @@ def auth_use_cases(
     fake_otp_sms_provider: FakeOtpSmsProvider,
     fake_email_provider: FakeEmailProvider,
     fake_google_provider: FakeGoogleOAuthProvider,
+    fake_login_attempts: FakeLoginAttemptTracker,
 ) -> AuthenticationUseCases:
     from identity.application import AuthenticationUseCases
 
@@ -356,6 +395,7 @@ def auth_use_cases(
         otp_code_generator=FakeOtpCodeGenerator(),
         session_token_generator=FakeSessionTokenGenerator(),
         platform_settings=fake_platform_settings,
+        login_attempts=fake_login_attempts,
     )
 
 

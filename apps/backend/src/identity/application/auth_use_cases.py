@@ -21,6 +21,7 @@ from identity.application.exceptions import (
 from identity.application.ports import (
     EmailProviderPort,
     GoogleOAuthProviderPort,
+    LoginAttemptTrackerPort,
     OtpChallengeRepository,
     OtpChallengeUnitOfWork,
     OtpCodeGeneratorPort,
@@ -37,6 +38,7 @@ from identity.domain import (
     DuplicateContactError,
     EmailAddress,
     InvalidCredentialsError,
+    LoginLockoutPolicy,
     OtpChallenge,
     OtpCodeMismatchError,
     OtpPurpose,
@@ -68,6 +70,7 @@ class AuthenticationUseCases:
         otp_code_generator: OtpCodeGeneratorPort,
         session_token_generator: SessionTokenGeneratorPort,
         platform_settings: PlatformSettingsReaderPort,
+        login_attempts: LoginAttemptTrackerPort,
         otp_throttle_policy: OtpThrottlePolicy | None = None,
     ) -> None:
         self._accounts = accounts
@@ -82,6 +85,7 @@ class AuthenticationUseCases:
         self._otp_code_generator = otp_code_generator
         self._session_token_generator = session_token_generator
         self._platform_settings = platform_settings
+        self._login_attempts = login_attempts
         self._otp_throttle_policy = otp_throttle_policy or OtpThrottlePolicy()
 
     # --- FR-AUTH-001: phone OTP ---------------------------------------------------------------
@@ -224,16 +228,63 @@ class AuthenticationUseCases:
         now: datetime,
     ) -> tuple[UserAccount, Session, str]:
         """loginEmail. Generic `InvalidCredentialsError` (401) for both "no such account" and
-        "wrong password" -- Security Sec 3.1 enumeration control."""
+        "wrong password" -- Security Sec 3.1 enumeration control.
+
+        Brute-force protection (same section): checked BEFORE touching the account or hashing
+        the password, both scopes (IP, account) independently, so an already-locked-out caller
+        never reaches the Argon2 verify call at all (cheap 429 instead of a deliberately-slow
+        hash, which is itself a minor DoS-resistance win on top of the lockout itself). The
+        account-scope key is the lowercased email as typed, not a resolved account id -- so a
+        nonexistent-account probe accumulates its own counter exactly like a real one, keeping
+        the same enumeration-safety property `InvalidCredentialsError`'s docstring already
+        commits to (a nonexistent account "locking out" is indistinguishable from a real one)."""
+        settings = await self._platform_settings.get_identity_settings()
+        policy = LoginLockoutPolicy(
+            max_attempts=settings.login_lockout_max_attempts,
+            block_minutes=settings.login_lockout_block_minutes,
+        )
+        account_key = email.value.strip().lower()
+
+        if ip_address is not None:
+            await self._enforce_not_locked(policy=policy, scope="ip", identifier=ip_address)
+        await self._enforce_not_locked(policy=policy, scope="account", identifier=account_key)
+
         account = await self._accounts.get_by_email(email)
-        if account is None or not account.has_authentication_method(AuthMethodType.EMAIL):
+        password_matched = False
+        if account is not None and account.has_authentication_method(AuthMethodType.EMAIL):
+            method = account.authentication_method(AuthMethodType.EMAIL)
+            if method.password_hash is not None:
+                password_matched = self._password_hasher.verify_password(
+                    password=password, password_hash=method.password_hash
+                )
+
+        if account is None or not password_matched:
+            window_seconds = policy.block_minutes * 60
+            account_count = await self._login_attempts.record_failure(
+                scope="account", identifier=account_key, window_seconds=window_seconds
+            )
+            ip_count = (
+                await self._login_attempts.record_failure(
+                    scope="ip", identifier=ip_address, window_seconds=window_seconds
+                )
+                if ip_address is not None
+                else None
+            )
+            logger.warning(
+                "login.failed",
+                extra={
+                    "email": account_key,
+                    "ip": ip_address,
+                    "account_attempt": account_count,
+                    "ip_attempt": ip_count,
+                },
+            )
             raise InvalidCredentialsError()
 
-        method = account.authentication_method(AuthMethodType.EMAIL)
-        if method.password_hash is None or not self._password_hasher.verify_password(
-            password=password, password_hash=method.password_hash
-        ):
-            raise InvalidCredentialsError()
+        await self._login_attempts.reset(scope="account", identifier=account_key)
+        if ip_address is not None:
+            await self._login_attempts.reset(scope="ip", identifier=ip_address)
+        logger.info("login.success", extra={"email": account_key, "ip": ip_address})
 
         account.require_active()
         session, raw_token = await self._issue_session(
@@ -326,6 +377,29 @@ class AuthenticationUseCases:
                 await self._email_provider.send_recovery_notice(email=email)
 
     # --- shared helpers -------------------------------------------------------------------
+
+    async def _enforce_not_locked(
+        self, *, policy: LoginLockoutPolicy, scope: str, identifier: str
+    ) -> None:
+        """Raises `LoginLockedOutError` (429) if `scope`/`identifier` (an IP or a lowercased
+        email) already has `policy.max_attempts`+ recorded failures. The count-then-TTL split
+        means a request that isn't locked out (the common case) costs one Redis round trip, not
+        two -- `get_retry_after_seconds` only runs once we already know we're about to reject."""
+        failed_count = await self._login_attempts.get_failure_count(
+            scope=scope, identifier=identifier
+        )
+        if failed_count < policy.max_attempts:
+            return
+        retry_after = await self._login_attempts.get_retry_after_seconds(
+            scope=scope, identifier=identifier
+        )
+        logger.warning(
+            "login.blocked",
+            extra={"scope": scope, "identifier": identifier, "failed_count": failed_count},
+        )
+        policy.check_not_locked(
+            failed_count=failed_count, retry_after_seconds=retry_after, scope=scope
+        )
 
     async def _issue_session(
         self,

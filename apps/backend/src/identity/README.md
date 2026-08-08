@@ -100,6 +100,14 @@ concrete bridge from `configuration`'s own `ConfigurationUseCases` to that Proto
 
 - `platform-settings-global.otp.expiry_minutes` -- `OtpChallenge.issue`'s expiry.
 - `platform-settings-global.session.expiry_hours` -- `SessionExpiryPolicy`.
+- `platform-settings-global.login_lockout.max_attempts` / `.login_lockout.block_minutes` --
+  `LoginLockoutPolicy` (Security Sec 3.1 brute-force protection on `loginEmail`). Unlike OTP
+  throttle just below, these ARE configuration-owned: the feature's own requirement explicitly
+  calls for the lockout duration to be admin-tunable without a redeploy. Defaults (4 attempts /
+  15 minutes) live in `configuration.infrastructure.seed`'s `_seed_platform_settings` (fresh DB)
+  and `_backfill_platform_settings_defaults` (already-seeded DB, additive-only -- never overwrites
+  an admin's own edit). `IdentityPlatformSettings`' reader falls back to the same two numbers if
+  a published `platform-settings-global` version predates this task's seed backfill.
 - Any published `role-definition` -- `RoleAssignment` pins its head+version; `AuthorizationService`
   evaluates the already-flattened `permission_keys` as-is (Config Framework Sec 7.2: identity
   never re-flattens or walks a hierarchy itself).
@@ -107,11 +115,24 @@ concrete bridge from `configuration`'s own `ConfigurationUseCases` to that Proto
 OTP throttle thresholds (`identity.domain.policies`: 3 requests per 15-minute window per phone
 and, independently, per IP; 5 verify attempts before lockout) are **implementation-chosen
 constants**, not configuration-owned -- no document gives literal numbers (only the qualitative
-NFR-SEC-004 language), and `configuration`'s `SETTINGS_SCHEMA` whitelist has no throttle-specific
-key. Session/OTP-code hashing peppers reuse the single `SESSION_SIGNING_KEY` environment variable
-(already declared in `deployment/env/.env.*.example` under "Session auth"), domain-separated by a
-fixed HMAC context prefix per use, rather than inventing new secret env vars for the same
-underlying key material.
+NFR-SEC-004 language), and `configuration`'s `SETTINGS_SCHEMA` whitelist had no throttle-specific
+key until the login-lockout task above added one (scoped to `login_lockout.*` only -- OTP's own
+thresholds were deliberately left as they were, not retrofitted onto the same mechanism, since
+nothing in that task asked for OTP throttle to become admin-tunable too). Session/OTP-code
+hashing peppers reuse the single `SESSION_SIGNING_KEY` environment variable (already declared in
+`deployment/env/.env.*.example` under "Session auth"), domain-separated by a fixed HMAC context
+prefix per use, rather than inventing new secret env vars for the same underlying key material.
+
+Login-lockout counters themselves (the failure counts, not the thresholds) are Redis-backed,
+same as sessions -- `identity.infrastructure.login_attempt_tracker.RedisLoginAttemptTracker`,
+keyed `identity:login_lockout:{ip|account}:{identifier}`, one bare `INCR`-managed integer per
+key whose own TTL doubles as both the failure-counting window and, once the threshold is
+crossed, the remaining lockout duration (see the adapter's and `LoginLockoutPolicy`'s docstrings
+for why one number serves both). Two independent scopes -- IP and (lowercased) email -- are
+checked and recorded on every `loginEmail` call so that neither a single attacker sweeping many
+accounts from one IP nor one attacker rotating IPs against one account escapes both nets, while
+neither scope's lockout collaterally blocks traffic outside it (e.g. other legitimate users
+behind the same NAT/office IP as an attacker targeting one victim account).
 
 ## Permission keys (this module's contribution to `configuration.domain.whitelist.PERMISSION_KEYS`)
 

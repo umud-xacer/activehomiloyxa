@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from identity.domain.exceptions import OtpThrottledError
+from identity.domain.exceptions import LoginLockedOutError, OtpThrottledError
 
 OTP_MAX_REQUESTS_PER_WINDOW = 3
 """Max OTP requests per phone (and, independently, per IP) within the throttle window."""
@@ -41,6 +41,34 @@ class OtpThrottlePolicy:
             raise OtpThrottledError(retry_after_seconds=self.window_minutes * 60)
         if recent_requests_by_ip >= self.max_requests_per_window:
             raise OtpThrottledError(retry_after_seconds=self.window_minutes * 60)
+
+
+@dataclass(frozen=True)
+class LoginLockoutPolicy:
+    """Security Sec 3.1 brute-force protection: consecutive failed `loginEmail` attempts, tracked
+    independently per source IP and per targeted account (`LoginAttemptTrackerPort`, Redis-backed)
+    so this policy stays a pure allow/deny decision over a count the calling use case resolves --
+    same split as `OtpThrottlePolicy` above. Two independent scopes rather than one: IP-only
+    would let one attacker's failures against ONE victim account lock out every other legitimate
+    user sharing that IP (NAT/office/campus) from logging into their OWN, unrelated accounts;
+    account-only would miss an attacker sweeping many accounts from one IP. Checking both catches
+    both attack shapes without either scope's lockout punishing traffic outside it.
+
+    Unlike `OtpThrottlePolicy`'s hardcoded class-default thresholds, `max_attempts`/
+    `block_minutes` are always constructed from `platform-settings-global`'s
+    `login_lockout.max_attempts`/`login_lockout.block_minutes` (`IdentityPlatformSettings`) --
+    admin-tunable without a redeploy, per this feature's own requirement. The same value doubles
+    as the failure-counting window: `LoginAttemptTrackerPort.record_failure` re-arms the Redis key
+    TTL to `block_minutes` on every failure, so an attacker who pauses between guesses long enough
+    for the window to lapse starts counting from zero again -- "consecutive" in the ordinary
+    sense, not an unbounded lifetime count."""
+
+    max_attempts: int
+    block_minutes: int
+
+    def check_not_locked(self, *, failed_count: int, retry_after_seconds: int, scope: str) -> None:
+        if failed_count >= self.max_attempts:
+            raise LoginLockedOutError(retry_after_seconds=retry_after_seconds, scope=scope)
 
 
 class SessionExpiryPolicy:

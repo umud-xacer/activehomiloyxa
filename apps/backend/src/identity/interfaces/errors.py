@@ -32,6 +32,7 @@ from identity.domain import (
     DuplicateContactError,
     IllegalAccountStateTransitionError,
     InvalidCredentialsError,
+    LoginLockedOutError,
     OtpAlreadyConsumedError,
     OtpAttemptsExceededError,
     OtpCodeMismatchError,
@@ -200,6 +201,14 @@ def register_identity_exception_mappings(mapper: ExceptionMapper) -> None:
         OtpThrottledError,
         simple_problem_builder(
             status=429, code="OTP_THROTTLED", title="Too many OTP requests, try again later"
+        ),
+    )
+    mapper.register(
+        LoginLockedOutError,
+        simple_problem_builder(
+            status=429,
+            code="RATE_LIMITED",
+            title="Too many failed login attempts, try again later",
         ),
     )
 

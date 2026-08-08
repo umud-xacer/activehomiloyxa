@@ -14,6 +14,7 @@ from identity.domain import (
     DuplicateContactError,
     EmailAddress,
     InvalidCredentialsError,
+    LoginLockedOutError,
     OtpCodeMismatchError,
     OtpPurpose,
     OtpPurposeMismatchError,
@@ -24,6 +25,7 @@ from identity.domain import (
 from .conftest import (
     FakeEmailProvider,
     FakeGoogleOAuthProvider,
+    FakeLoginAttemptTracker,
     FakeOtpSmsProvider,
     FakeSessionRepository,
     FakeUserAccountRepository,
@@ -247,6 +249,117 @@ async def test_login_email_unknown_account_raises_invalid_credentials(
             user_agent="pytest",
             now=NOW,
         )
+
+
+# --- Security Sec 3.1: brute-force login lockout ----------------------------------------------
+
+
+async def test_login_email_locked_out_by_account_after_max_attempts(
+    auth_use_cases: AuthenticationUseCases,
+) -> None:
+    """The default fake settings' `login_lockout_max_attempts` is 4 (`FakePlatformSettingsReader`):
+    attempts 1-4 with the wrong password each raise the ordinary `InvalidCredentialsError` (never
+    reveal that a lockout is about to trip), the 5th -- even with the CORRECT password -- is
+    rejected outright as `LoginLockedOutError` without ever reaching the password check."""
+    email = EmailAddress("test@example.com")
+    await auth_use_cases.register_email(
+        email=email, password="s3cret123", display_name=None, now=NOW
+    )
+    for attempt in range(4):
+        with pytest.raises(InvalidCredentialsError):
+            await auth_use_cases.login_email(
+                email=email,
+                password="wrong",
+                ip_address=f"10.0.0.{attempt}",  # different IP each time -- isolates account scope
+                user_agent="pytest",
+                now=NOW,
+            )
+    with pytest.raises(LoginLockedOutError):
+        await auth_use_cases.login_email(
+            email=email, password="s3cret123", ip_address="10.0.0.99", user_agent="pytest", now=NOW
+        )
+
+
+async def test_login_email_locked_out_by_ip_after_max_attempts(
+    auth_use_cases: AuthenticationUseCases,
+) -> None:
+    """4 failures from the same IP against 4 DIFFERENT (nonexistent) accounts -- isolates IP scope
+    from account scope -- locks that IP out of logging in even to a real, correctly-credentialed
+    account, matching the literal requirement ("keyingi login so'rovlari rad etilsin")."""
+    ip = "203.0.113.7"
+    for i in range(4):
+        with pytest.raises(InvalidCredentialsError):
+            await auth_use_cases.login_email(
+                email=EmailAddress(f"nobody{i}@example.com"),
+                password="whatever",
+                ip_address=ip,
+                user_agent="pytest",
+                now=NOW,
+            )
+
+    email = EmailAddress("real@example.com")
+    await auth_use_cases.register_email(
+        email=email, password="s3cret123", display_name=None, now=NOW
+    )
+    with pytest.raises(LoginLockedOutError):
+        await auth_use_cases.login_email(
+            email=email, password="s3cret123", ip_address=ip, user_agent="pytest", now=NOW
+        )
+
+
+async def test_login_email_success_resets_both_lockout_counters(
+    auth_use_cases: AuthenticationUseCases, fake_login_attempts: FakeLoginAttemptTracker
+) -> None:
+    email = EmailAddress("test@example.com")
+    await auth_use_cases.register_email(
+        email=email, password="s3cret123", display_name=None, now=NOW
+    )
+    with pytest.raises(InvalidCredentialsError):
+        await auth_use_cases.login_email(
+            email=email, password="wrong", ip_address="1.2.3.4", user_agent="pytest", now=NOW
+        )
+    assert fake_login_attempts.counts[("account", "test@example.com")] == 1
+    assert fake_login_attempts.counts[("ip", "1.2.3.4")] == 1
+
+    await auth_use_cases.login_email(
+        email=email, password="s3cret123", ip_address="1.2.3.4", user_agent="pytest", now=NOW
+    )
+    assert ("account", "test@example.com") not in fake_login_attempts.counts
+    assert ("ip", "1.2.3.4") not in fake_login_attempts.counts
+
+
+async def test_login_email_ip_lockout_does_not_block_a_different_ip(
+    auth_use_cases: AuthenticationUseCases,
+) -> None:
+    """A locked-out IP must not make an unrelated IP's attempts against the SAME account fail too
+    -- otherwise the lockout itself would be a denial-of-service vector against a known victim
+    email from an attacker-chosen IP. (The victim's own account-scope counter is shared across
+    both IPs here on purpose -- this test isolates that the IP-scope lockout specifically doesn't
+    leak across IPs, by using a fresh account per IP so account-scope can't also explain a block.)"""
+    attacker_ip = "198.51.100.1"
+    for i in range(4):
+        with pytest.raises(InvalidCredentialsError):
+            await auth_use_cases.login_email(
+                email=EmailAddress(f"decoy{i}@example.com"),
+                password="whatever",
+                ip_address=attacker_ip,
+                user_agent="pytest",
+                now=NOW,
+            )
+
+    victim_email = EmailAddress("victim@example.com")
+    await auth_use_cases.register_email(
+        email=victim_email, password="s3cret123", display_name=None, now=NOW
+    )
+    account, _session, raw_token = await auth_use_cases.login_email(
+        email=victim_email,
+        password="s3cret123",
+        ip_address="192.0.2.50",  # legitimate user, unrelated IP
+        user_agent="pytest",
+        now=NOW,
+    )
+    assert account.email == victim_email
+    assert raw_token
 
 
 # --- FR-AUTH-003: Google federated -----------------------------------------------------------

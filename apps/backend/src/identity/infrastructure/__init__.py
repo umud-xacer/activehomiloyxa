@@ -11,6 +11,7 @@ from identity.infrastructure.configuration_adapter import (
     ConfigurationRoleDefinitionAdapter,
 )
 from identity.infrastructure.event_projection import handle_profiles_event
+from identity.infrastructure.login_attempt_tracker import RedisLoginAttemptTracker
 from identity.infrastructure.persistence import (
     SqlalchemyOtpChallengeRepository,
     SqlalchemyOtpChallengeUnitOfWork,
@@ -39,6 +40,7 @@ __all__ = [
     "EskizSmsProviderAdapter",
     "GoogleOAuthProviderAdapter",
     "OtpCodeGeneratorAdapter",
+    "RedisLoginAttemptTracker",
     "RedisSessionRepository",
     "SessionTokenGeneratorAdapter",
     "SmtpEmailProviderAdapter",

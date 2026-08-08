@@ -30,6 +30,7 @@ from main import create_app
 from .conftest import (
     FakeEmailProvider,
     FakeGoogleOAuthProvider,
+    FakeLoginAttemptTracker,
     FakeOtpChallengeRepository,
     FakeOtpChallengeUnitOfWork,
     FakeOtpCodeGenerator,
@@ -51,6 +52,7 @@ def client(
     fake_outbox: FakeOutbox,
     fake_role_reader: FakeRoleDefinitionReader,
     fake_platform_settings: FakePlatformSettingsReader,
+    fake_login_attempts: FakeLoginAttemptTracker,
 ) -> Iterator[TestClient]:
     from identity.infrastructure.security import Argon2PasswordHasherAdapter
 
@@ -72,6 +74,7 @@ def client(
             otp_code_generator=FakeOtpCodeGenerator(),
             session_token_generator=token_generator,
             platform_settings=fake_platform_settings,
+            login_attempts=fake_login_attempts,
         )
 
     def _account_use_cases() -> AccountUseCases:
@@ -157,6 +160,31 @@ def test_login_email_wrong_password_returns_401(client: TestClient) -> None:
     )
     assert response.status_code == 401
     assert response.json()["code"] == "AUTHENTICATION_INVALID"
+
+
+def test_login_email_locked_out_after_repeated_failures_returns_429_with_retry_after(
+    client: TestClient,
+) -> None:
+    """End-to-end through the real HTTP layer (routing, `_client_ip`, error middleware) rather
+    than the use-case layer directly -- also verifies the `Retry-After` header the `TooManyRequests`
+    contract component declares but, before this task, nothing in `backbone.errors` ever
+    populated for ANY 429 (OTP throttle/messaging rate limit had the identical gap)."""
+    client.post(
+        "/api/v1/auth/register/email", json={"email": "test@example.com", "password": "s3cret123"}
+    )
+    for _ in range(4):
+        response = client.post(
+            "/api/v1/auth/login/email", json={"email": "test@example.com", "password": "wrong"}
+        )
+        assert response.status_code == 401
+
+    # 5th attempt -- correct password, but the account is already locked out.
+    response = client.post(
+        "/api/v1/auth/login/email", json={"email": "test@example.com", "password": "s3cret123"}
+    )
+    assert response.status_code == 429
+    assert response.json()["code"] == "RATE_LIMITED"
+    assert int(response.headers["retry-after"]) > 0
 
 
 def test_request_otp_returns_202(client: TestClient) -> None:

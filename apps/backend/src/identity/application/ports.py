@@ -221,7 +221,36 @@ class IdentityPlatformSettings:
 
     otp_expiry_minutes: int
     session_expiry_hours: int
+    login_lockout_max_attempts: int
+    login_lockout_block_minutes: int
 
 
 class PlatformSettingsReaderPort(Protocol):
     async def get_identity_settings(self) -> IdentityPlatformSettings: ...
+
+
+class LoginAttemptTrackerPort(Protocol):
+    """Redis-backed consecutive-failure counter behind `LoginLockoutPolicy` (Security Sec 3.1
+    brute-force protection). `scope` is `"ip"` or `"account"`; `identifier` is the raw client IP
+    or the lowercased email address -- two independent counters per login attempt, never mixed
+    into one key. `window_seconds` doubles as both the failure-counting window and, once the
+    threshold is crossed, the lockout duration (`LoginLockoutPolicy`'s own docstring explains
+    why one value suffices for both)."""
+
+    async def record_failure(self, *, scope: str, identifier: str, window_seconds: int) -> int:
+        """Atomically increments the counter and (re)arms its TTL to `window_seconds`. Returns
+        the new count."""
+        ...
+
+    async def get_failure_count(self, *, scope: str, identifier: str) -> int:
+        """0 if no counter exists (never failed, or the window already lapsed)."""
+        ...
+
+    async def get_retry_after_seconds(self, *, scope: str, identifier: str) -> int:
+        """Remaining TTL on the counter, i.e. how long until it's eligible to count from zero
+        again. 0 if no counter exists."""
+        ...
+
+    async def reset(self, *, scope: str, identifier: str) -> None:
+        """Clears the counter outright -- called on a successful login for both scopes."""
+        ...

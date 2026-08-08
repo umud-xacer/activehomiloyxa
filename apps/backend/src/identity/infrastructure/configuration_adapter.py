@@ -101,6 +101,19 @@ class ConfigurationPlatformSettingsAdapter:
                     return IdentityPlatformSettings(
                         otp_expiry_minutes=int(settings["otp.expiry_minutes"]),
                         session_expiry_hours=int(settings["session.expiry_hours"]),
+                        # `.get(..., default)`, not a direct index like the two keys above:
+                        # these are new (Security Sec 3.1 login-lockout task) and a published
+                        # `platform-settings-global` version from before this task predates them
+                        # -- an environment that hasn't re-published since must still authenticate
+                        # rather than 500 on every login. `seed.py`'s idempotent backfill sets the
+                        # real values on the next deploy; these defaults match its own (4 attempts
+                        # / 15 minutes) so behaviour is identical either way.
+                        login_lockout_max_attempts=int(
+                            settings.get("login_lockout.max_attempts", 4)
+                        ),
+                        login_lockout_block_minutes=int(
+                            settings.get("login_lockout.block_minutes", 15)
+                        ),
                     )
             cursor = page.page.next_cursor
             if cursor is None:

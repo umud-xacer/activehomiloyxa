@@ -144,6 +144,24 @@ def _set_session_cookie(response: Response, raw_token: str, session: DomainSessi
 
 
 def _client_ip(request: Request) -> str:
+    """The real client IP, not the TCP peer -- production runs behind nginx on the same host
+    (`deployment/nginx/activehome.conf` proxies to `127.0.0.1:8000`), and uvicorn is started
+    without `--proxy-headers` (`deployment/systemd/activehome-api.service`), so
+    `request.client.host` is always `127.0.0.1` there regardless of who's actually asking. This
+    silently broke the OTP throttle's per-IP scoping in production (every request looked like the
+    same IP) and would have made login-lockout's IP scope equally useless -- discovered while
+    building login lockout (NFR-SEC brute-force protection task).
+
+    `X-Real-IP` is nginx's own `proxy_set_header X-Real-IP $remote_addr` -- nginx *sets* this
+    (doesn't merge/append a client-supplied value), so a client can't spoof it as long as nginx is
+    the sole ingress (uvicorn is bound to loopback only). `X-Forwarded-For`'s first hop is NOT
+    used as a fallback for that reason -- nginx's `$proxy_add_x_forwarded_for` appends to
+    whatever the client already sent, so an attacker-supplied first entry survives untouched.
+    Falls back to the TCP peer for local dev (no nginx in front) and any other topology where
+    neither header is present."""
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
     return request.client.host if request.client else "unknown"
 
 

@@ -132,6 +132,8 @@ async def _seed_platform_settings(use_cases: ConfigurationUseCases, *, now: date
             "session.expiry_hours": 720,
             "search.default_page_size": 20,
             "admin.owner_panel_slug": "owner-admin",
+            "login_lockout.max_attempts": 4,
+            "login_lockout.block_minutes": 15,
         },
         "homepage_zones": [],
         "navigation_items": [],
@@ -170,6 +172,70 @@ async def _seed_platform_settings(use_cases: ConfigurationUseCases, *, now: date
             actor_permission_keys=frozenset({approve_key}),
             approval_note="seed: bootstrap settings approval",
             now=now,
+        )
+
+
+_PLATFORM_SETTINGS_ADDITIVE_DEFAULTS: dict[str, object] = {
+    "login_lockout.max_attempts": 4,
+    "login_lockout.block_minutes": 15,
+}
+"""Settings keys introduced by a task after `_seed_platform_settings` last ran against a given
+database. That function's own `DuplicateCodeError` early-return means it never touches an
+already-existing `platform-settings-global` head again, so a key added here without also being
+backfilled would read back to `IdentityPlatformSettings`'s hardcoded fallback default forever on
+any environment seeded before this task -- works, but silently never becomes admin-editable
+(there's nothing in the published settings dict for the owner-admin panel's future settings UI to
+show or a script to publish an override for). See `_backfill_platform_settings_defaults` below."""
+
+
+async def _backfill_platform_settings_defaults(
+    use_cases: ConfigurationUseCases,
+    repo: SqlalchemyConfigHeadRepository,
+    *,
+    now: datetime,
+) -> None:
+    """Adds any `_PLATFORM_SETTINGS_ADDITIVE_DEFAULTS` key missing from the published
+    `platform-settings-global` version. Deliberately additive-only -- an already-present key is
+    left exactly as published, even if its value differs from the table here, so an admin's own
+    in-panel edit (e.g. the owner-admin panel's `admin.owner_panel_slug`, changeable at will per
+    its own task) is never silently reverted by a later deploy. Unlike `_backfill_category_theme`
+    below (which intentionally always overwrites back to its table, since category hero content
+    has no "admin edits it live and expects it to stick" use case), this one must not -- login
+    lockout's own thresholds are exactly that kind of live-editable setting."""
+    head = await repo.get_head_by_code(
+        ConfigEntityType.PLATFORM_SETTINGS, "platform-settings-global"
+    )
+    if head is None or head.current_version_id is None:
+        return
+    current = await repo.get_version(
+        ConfigEntityType.PLATFORM_SETTINGS, head.id, head.current_version_id
+    )
+    if current is None:
+        return
+    current_settings = dict(current.definition_document.get("settings") or {})
+    missing = {
+        k: v for k, v in _PLATFORM_SETTINGS_ADDITIVE_DEFAULTS.items() if k not in current_settings
+    }
+    if not missing:
+        return
+
+    new_document = {**current.definition_document, "settings": {**current_settings, **missing}}
+    new_version = await use_cases.create_version_draft(
+        ConfigEntityType.PLATFORM_SETTINGS, head.id, definition=new_document,
+        actor_id=SEED_MAKER_ID, now=now,
+    )
+    manage_key = _registry.manage_permission_key(ConfigEntityType.PLATFORM_SETTINGS.value)
+    approve_key = _registry.approve_permission_key(ConfigEntityType.PLATFORM_SETTINGS.value)
+    step1 = await use_cases.publish(
+        ConfigEntityType.PLATFORM_SETTINGS, head.id, new_version.id,
+        actor_id=SEED_MAKER_ID, actor_permission_keys=frozenset({manage_key}),
+        approval_note="seed: backfill missing platform settings defaults", now=now,
+    )
+    if step1.status.value == "APPROVAL":
+        await use_cases.publish(
+            ConfigEntityType.PLATFORM_SETTINGS, head.id, step1.id,
+            actor_id=SEED_CHECKER_ID, actor_permission_keys=frozenset({manage_key, approve_key}),
+            approval_note="seed: backfill missing platform settings defaults approval", now=now,
         )
 
 
@@ -1629,6 +1695,7 @@ async def run_seed() -> None:
                     now=now,
                 )
                 await _seed_platform_settings(use_cases, now=now)
+                await _backfill_platform_settings_defaults(use_cases, repo, now=now)
 
                 furniture_form_id = await _seed_furniture_form(use_cases, repo, now=now)
                 furniture_head_id = await _seed_furniture_category(

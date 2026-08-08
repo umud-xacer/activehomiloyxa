@@ -56,6 +56,19 @@ class AccountNotActiveError(IdentityDomainError):
         super().__init__(f"account is {status}, not ACTIVE")
 
 
+class LoginLockedOutError(IdentityDomainError):
+    """Security Sec 3.1 brute-force protection: too many consecutive failed `loginEmail` attempts
+    against this IP or this account within the lockout window (`LoginLockoutPolicy`). `scope`
+    ("ip"/"account") is carried only for logging -- the HTTP response is identical either way
+    (Security Sec 3.1's own enumeration-safety reasoning: an attacker probing which scope tripped
+    would itself be information leakage)."""
+
+    def __init__(self, retry_after_seconds: int, scope: str) -> None:
+        self.retry_after_seconds = retry_after_seconds
+        self.scope = scope
+        super().__init__(f"login locked out ({scope}), retry after {retry_after_seconds}s")
+
+
 # --- OtpChallenge (FR-AUTH-001 acceptance criteria) -------------------------------------------
 
 

@@ -166,6 +166,7 @@ from identity.infrastructure import (
     EskizSmsProviderAdapter,
     GoogleOAuthProviderAdapter,
     OtpCodeGeneratorAdapter,
+    RedisLoginAttemptTracker,
     RedisSessionRepository,
     SessionTokenGeneratorAdapter,
     SmtpEmailProviderAdapter,
@@ -449,6 +450,11 @@ def _session_token_generator() -> SessionTokenGeneratorAdapter:
     return SessionTokenGeneratorAdapter()
 
 
+@lru_cache(maxsize=1)
+def _login_attempt_tracker() -> RedisLoginAttemptTracker:
+    return RedisLoginAttemptTracker(_identity_redis_client())
+
+
 async def provide_authentication_use_cases() -> AsyncIterator[AuthenticationUseCases]:
     async for session in _identity_session():
         yield AuthenticationUseCases(
@@ -466,6 +472,7 @@ async def provide_authentication_use_cases() -> AsyncIterator[AuthenticationUseC
             otp_code_generator=_otp_code_generator(),
             session_token_generator=_session_token_generator(),
             platform_settings=_platform_settings_reader(),
+            login_attempts=_login_attempt_tracker(),
         )
 
 
