@@ -21,18 +21,27 @@ class CategoryReadUseCases:
         self._cache = snapshot_cache
 
     async def list_categories(
-        self, *, parent_id: UUID | None, include_retired: bool
+        self, *, parent_id: UUID | None, include_retired: bool, include_descendants: bool = False
     ) -> list[dict[str, Any]]:
+        """`include_descendants` (additive, backward-compatible -- default False leaves every
+        existing caller's behaviour unchanged) skips the parent-level filter entirely and returns
+        every category at every depth in the one cache read this method already does regardless
+        (`self._cache.list_current` has no per-level cost). Added because `catalog-client.ts`'s
+        `fetchAllCategoriesRecursive` had to reconstruct the whole taxonomy with one HTTP round
+        trip per tree node (bounded-concurrency BFS, one level at a time) since that was the only
+        way to get a flat list through this endpoint -- fine at the taxonomy's original size, a
+        genuine multi-second stall once the taxonomy grew to 100+ categories (confirmed live)."""
         snapshots = await self._cache.list_current(ConfigEntityType.CATEGORY)
         results: list[dict[str, Any]] = []
         for snapshot in snapshots:
             if not include_retired and snapshot.get("tree_status") == "RETIRED":
                 continue
-            snapshot_parent = snapshot.get("parent_category_id")
-            if parent_id is not None and snapshot_parent != str(parent_id):
-                continue
-            if parent_id is None and snapshot_parent is not None:
-                continue
+            if not include_descendants:
+                snapshot_parent = snapshot.get("parent_category_id")
+                if parent_id is not None and snapshot_parent != str(parent_id):
+                    continue
+                if parent_id is None and snapshot_parent is not None:
+                    continue
             results.append(snapshot)
         return results
 

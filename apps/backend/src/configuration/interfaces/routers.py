@@ -215,10 +215,15 @@ categories_router = APIRouter(tags=["Categories"])
 async def list_categories(
     parent_id: UUID | None = Query(None, alias="parentId"),
     include_retired: bool = Query(False, alias="includeRetired"),
+    # Additive, outside the frozen contract's originally-documented parameter set (same
+    # escape-hatch precedent as `publish-solo`) -- default False keeps every existing caller's
+    # response identical; see `CategoryReadUseCases.list_categories`'s docstring for why this
+    # exists (100+-category taxonomy made the old per-level-BFS client pattern too slow).
+    include_descendants: bool = Query(False, alias="includeDescendants"),
     use_cases: CategoryReadUseCases = Depends(get_category_read_use_cases),
 ) -> list[Category]:
     snapshots = await use_cases.list_categories(
-        parent_id=parent_id, include_retired=include_retired
+        parent_id=parent_id, include_retired=include_retired, include_descendants=include_descendants
     )
     return [_category_dto_from_snapshot(s) for s in snapshots]
 

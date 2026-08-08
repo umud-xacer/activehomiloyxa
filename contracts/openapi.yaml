@@ -1215,6 +1215,16 @@ paths:
         schema:
           type: boolean
           default: false
+      - name: includeDescendants
+        in: query
+        description: When true, ignore parentId and return every category at every depth in one
+          call -- the flat-list-for-client-side-tree-assembly reading of this operation's own
+          summary, made explicit once the taxonomy grew large enough that reconstructing it via
+          repeated parentId calls became a real latency cost. Additive; omitting it preserves the
+          original one-level-at-a-time behaviour exactly.
+        schema:
+          type: boolean
+          default: false
       responses:
         '200':
           description: Categories.
