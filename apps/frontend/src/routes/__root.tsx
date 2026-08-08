@@ -102,6 +102,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "stylesheet", href: appCss },
       { rel: "icon", type: "image/png", href: faviconUrl },
       { rel: "apple-touch-icon", href: faviconUrl },
+      // Category hero backgrounds (`Category.heroImageUrl`, owner-admin-authored) are hosted on
+      // loremflickr.com by default -- warming up the connection here shaves the DNS/TLS handshake
+      // off the very first hero image request on any category page, on top of the seed data's own
+      // switch to loremflickr's direct (non-redirecting) cache URLs.
+      { rel: "preconnect", href: "https://loremflickr.com" },
     ],
     scripts: [
       {
