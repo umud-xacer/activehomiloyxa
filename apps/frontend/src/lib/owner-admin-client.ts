@@ -400,7 +400,11 @@ export const OWNER_PANEL_SLUG_DEFAULT = "owner-admin";
  * forever and silently strand the panel (confirmed incident: set to "boss", permanently shadowed
  * by the dedicated login route at that exact path). The backend is the real enforcement point
  * (rejects a save, and self-heals an already-bad stored value back to the default on read) --
- * this copy only gives instant client-side feedback instead of a round trip.  */
+ * this copy only gives instant client-side feedback instead of a round trip.
+ *
+ * Deliberately excludes "owner-admin" itself -- that was a real conflict back when the frontend
+ * had a static `routes/owner-admin/` directory, but that's gone now; it's just this dynamic
+ * route's fallback DEFAULT value (`OWNER_PANEL_SLUG_DEFAULT` below), which must stay assignable. */
 export const OWNER_PANEL_RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "about",
   "ad-rules",
@@ -438,7 +442,6 @@ export const OWNER_PANEL_RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "news",
   "notifications",
   "offer",
-  "owner-admin",
   "payments",
   "pricing",
   "privacy",

@@ -39,7 +39,11 @@ from configuration.domain import (
     ConfigEntityType,
     DuplicateCodeError,
 )
-from configuration.domain.whitelist import PERMISSION_KEYS, WhitelistRegistry
+from configuration.domain.whitelist import (
+    PERMISSION_KEYS,
+    WhitelistRegistry,
+    is_valid_owner_panel_slug,
+)
 from configuration.infrastructure.cache.redis_snapshot_cache import RedisSnapshotCache
 from configuration.infrastructure.persistence.models import OutboxEvent
 from configuration.infrastructure.persistence.repository import SqlalchemyConfigHeadRepository
@@ -201,7 +205,17 @@ async def _backfill_platform_settings_defaults(
     its own task) is never silently reverted by a later deploy. Unlike `_backfill_category_theme`
     below (which intentionally always overwrites back to its table, since category hero content
     has no "admin edits it live and expects it to stick" use case), this one must not -- login
-    lockout's own thresholds are exactly that kind of live-editable setting."""
+    lockout's own thresholds are exactly that kind of live-editable setting.
+
+    Also sanitizes `admin.owner_panel_slug` if the currently-stored value would fail
+    `check_settings_key`'s gate validation (real incident: an admin set it to "boss" before that
+    validation existed; the read-side self-heal in `interfaces/routers.py` means the panel itself
+    was never actually broken by this, but the stored value stayed invalid -- and the FIRST
+    unrelated settings republish after the validation was added, i.e. this very function adding
+    `login_lockout.*`, failed the whole seed run trying to carry it forward unchanged. Confirmed
+    live.). Falls back to the owner-admin default, matching `interfaces/routers.py`'s own
+    self-heal exactly, so this is a no-op from the panel's point of view -- just makes the
+    correction permanent instead of read-time-only."""
     head = await repo.get_head_by_code(
         ConfigEntityType.PLATFORM_SETTINGS, "platform-settings-global"
     )
@@ -216,10 +230,19 @@ async def _backfill_platform_settings_defaults(
     missing = {
         k: v for k, v in _PLATFORM_SETTINGS_ADDITIVE_DEFAULTS.items() if k not in current_settings
     }
-    if not missing:
+    stale_slug = current_settings.get("admin.owner_panel_slug")
+    slug_fix = (
+        {}
+        if stale_slug is None or is_valid_owner_panel_slug(stale_slug)
+        else {"admin.owner_panel_slug": "owner-admin"}
+    )
+    if not missing and not slug_fix:
         return
 
-    new_document = {**current.definition_document, "settings": {**current_settings, **missing}}
+    new_document = {
+        **current.definition_document,
+        "settings": {**current_settings, **missing, **slug_fix},
+    }
     new_version = await use_cases.create_version_draft(
         ConfigEntityType.PLATFORM_SETTINGS, head.id, definition=new_document,
         actor_id=SEED_MAKER_ID, now=now,

@@ -302,6 +302,15 @@ SETTINGS_SCHEMA: dict[str, type] = {
 # owner-admin-panel-access). Checked case-insensitively at both write time (`check_settings_key`
 # below) and read time (`_current_owner_admin_slug` in interfaces/routers.py, so an already-bad
 # stored value self-heals to the default on the very next read instead of staying broken).
+#
+# Deliberately does NOT include "owner-admin" itself: that was the panel's original fixed
+# route (a real conflict back when the frontend still had a static `routes/owner-admin/`
+# directory), but that directory no longer exists -- it's the dynamic `/$ownerAdminSlug`
+# route's fallback DEFAULT value now (`_OWNER_ADMIN_SLUG_DEFAULT` here and in
+# interfaces/routers.py, `OWNER_PANEL_SLUG_DEFAULT` in the frontend), which must stay a
+# legal, assignable value or the very first settings republish after any unrelated key is
+# added would fail gate validation trying to carry an "already invalid" default forward
+# (confirmed live -- this was the exact second half of the same incident above).
 RESERVED_OWNER_PANEL_SLUGS: frozenset[str] = frozenset(
     {
         "about",
@@ -340,7 +349,6 @@ RESERVED_OWNER_PANEL_SLUGS: frozenset[str] = frozenset(
         "news",
         "notifications",
         "offer",
-        "owner-admin",
         "payments",
         "pricing",
         "privacy",
