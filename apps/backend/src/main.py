@@ -81,7 +81,11 @@ from configuration.interfaces.di import (
     get_configuration_use_cases,
 )
 from configuration.interfaces.errors import register_configuration_exception_mappings
-from configuration.interfaces.routers import admin_config_router, categories_router
+from configuration.interfaces.routers import (
+    admin_config_router,
+    categories_router,
+    owner_admin_access_router,
+)
 from identity.interfaces.di import (
     get_account_use_cases,
     get_admin_identity_use_cases,
@@ -274,6 +278,7 @@ def create_app() -> FastAPI:
 
     app.include_router(categories_router, prefix="/api/v1")
     app.include_router(admin_config_router, prefix="/api/v1")
+    app.include_router(owner_admin_access_router, prefix="/api/v1")
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(users_router, prefix="/api/v1")
     app.include_router(admin_users_router, prefix="/api/v1")

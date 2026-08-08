@@ -1,6 +1,7 @@
 import { redirect } from "@tanstack/react-router";
 import { authApi } from "@/lib/auth-client";
 import { ApiError } from "@/lib/http";
+import { verifyOwnerAdminSlug } from "@/lib/owner-admin-client";
 
 /**
  * Client-side auth guard for protected routes. Use in `beforeLoad`.
@@ -65,22 +66,41 @@ export const requireAdmin = async ({ location }: { location: { href: string } })
 };
 
 /**
- * Guard for the secret owner-admin area. Unlike `requireAuth`, an unauthorized visitor is sent
- * to the homepage rather than shown a 401/403 page or a sign-in prompt -- the route's own
- * existence is meant to stay unadvertised (not in any nav menu, reachable only by typing the
- * URL), so the failure mode for "wrong person found this URL" should look exactly like "this URL
- * doesn't exist", not like "here's a locked door". The backend's own permission checks
+ * Guard for the secret owner-admin area (route `/$ownerAdminSlug`). The panel's real URL segment
+ * is a super-admin-editable platform setting (`admin.owner_panel_slug`, changeable from inside
+ * the panel itself, see `owner-admin-client.ts`'s `updateOwnerPanelSlug`) rather than anything
+ * fixed in this (public) repo's source -- `verifyOwnerAdminSlug` checks the visitor's guess
+ * against it through a yes/no-only backend call that never reveals the real value in its
+ * response, so it doesn't have to sit in plaintext in the shipped JS bundle either.
+ *
+ * Unlike `requireAuth`, a visitor whose guess doesn't match, or who isn't a super-admin, is sent
+ * to the homepage rather than shown a 401/403 page -- the route's own existence is meant to stay
+ * unadvertised, so the failure mode for "wrong person found this URL" should look exactly like
+ * "this URL doesn't exist", not like "here's a locked door". An unauthenticated visitor who *did*
+ * guess right is sent to `/boss` instead (the one dedicated admin login gateway) so they can
+ * still get in without needing to guess the slug twice. The backend's own permission checks
  * (`config:category:manage`/`approve`) are the real security boundary; this is a client-side
  * fast-fail so the wrong visitor never even sees the panel's shell render.
  */
-export const requireSuperAdmin = async (_ctx: { location: { href: string } }) => {
+export const requireOwnerAdminSlug = async ({
+  params,
+  location,
+}: {
+  params: { ownerAdminSlug: string };
+  location: { href: string };
+}) => {
   if (typeof window === "undefined") return;
+
+  const validSlug = await verifyOwnerAdminSlug(params.ownerAdminSlug).catch(() => false);
+  if (!validSlug) {
+    throw redirect({ to: "/" });
+  }
 
   let account: Awaited<ReturnType<typeof authApi.me>>;
   try {
     account = await authApi.me();
   } catch {
-    throw redirect({ to: "/" });
+    throw redirect({ to: "/boss", search: { redirect: location.href } });
   }
 
   if (!(account.roles ?? []).includes("super-admin")) {

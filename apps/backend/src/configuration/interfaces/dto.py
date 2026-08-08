@@ -208,6 +208,21 @@ class ConfigRollbackRequest(CamelModel):
     """Emergency rollback (audited)."""
 
 
+class OwnerAdminSlugCheckRequest(CamelModel):
+    """Additive, outside the frozen OpenAPI contract (same escape-hatch precedent as
+    `ConfigPublishRequest`'s `publish-solo` sibling endpoint) -- backs the public owner-admin
+    panel access check. Carries only the visitor's guess, never the real stored value."""
+
+    slug: str
+
+
+class OwnerAdminSlugCheckResult(CamelModel):
+    """A yes/no oracle only -- the real slug (`settings["admin.owner_panel_slug"]` on the
+    `platform-settings-global` config head) is never included in this response."""
+
+    valid: bool
+
+
 class ConfigValidationResult(CamelModel):
     """Result of the pre-activation validation gate (dry-run or on publish)."""
 

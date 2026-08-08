@@ -49,6 +49,8 @@ from configuration.interfaces.dto import (
     FormField,
     FormSection,
     ImportConfigBody,
+    OwnerAdminSlugCheckRequest,
+    OwnerAdminSlugCheckResult,
     PageInfo,
 )
 from contracts.errors import ValidationError
@@ -243,6 +245,52 @@ async def get_category_form(
         # published form for this category" from this endpoint's point of view.
         raise ConfigHeadNotFoundError("form-definition", str(categoryId))
     return _form_definition_dto_from_snapshot(snapshot, category_id=categoryId)
+
+
+# -- public: Owner Admin Access (unauthenticated, additive -- outside the frozen OpenAPI contract,
+# same escape-hatch precedent as `publish_config_version_solo` below) ---------------------------
+
+owner_admin_access_router = APIRouter(tags=["Owner Admin Access"])
+
+_PLATFORM_SETTINGS_GLOBAL_CODE = "platform-settings-global"
+_OWNER_ADMIN_SLUG_SETTING_KEY = "admin.owner_panel_slug"
+_OWNER_ADMIN_SLUG_DEFAULT = "owner-admin"
+
+
+async def _current_owner_admin_slug(use_cases: ConfigurationUseCases) -> str:
+    """Reads the live `admin.owner_panel_slug` platform setting. Falls back to the historical
+    fixed path if the setting was never set (fresh DB before the first seed run, or a published
+    version that predates this key) so the panel never becomes unreachable."""
+    cursor: str | None = None
+    while True:
+        heads, cursor = await use_cases.list_heads(
+            ConfigEntityType.PLATFORM_SETTINGS, cursor=cursor, limit=50
+        )
+        for head in heads:
+            if head.code == _PLATFORM_SETTINGS_GLOBAL_CODE and head.current_version_id is not None:
+                version = await use_cases.get_version(
+                    ConfigEntityType.PLATFORM_SETTINGS, head.id, head.current_version_id
+                )
+                settings = (version.snapshot_document or {}).get("settings", {})
+                value = settings.get(_OWNER_ADMIN_SLUG_SETTING_KEY)
+                return str(value) if value else _OWNER_ADMIN_SLUG_DEFAULT
+        if cursor is None:
+            return _OWNER_ADMIN_SLUG_DEFAULT
+
+
+@owner_admin_access_router.post(
+    "/public/owner-admin-access/verify", operation_id="verifyOwnerAdminSlug"
+)
+async def verify_owner_admin_slug(
+    body: OwnerAdminSlugCheckRequest,
+    use_cases: ConfigurationUseCases = Depends(get_configuration_use_cases),
+) -> OwnerAdminSlugCheckResult:
+    """The one deliberate exception to "no public read of `platform-settings`" -- a yes/no oracle
+    for a single guessed slug, never the real value, so the frontend's `/$ownerAdminSlug` route
+    guard can tell a right guess from a wrong one without shipping the real path in the client
+    bundle (Task: owner-admin panel access, runtime-configurable slug)."""
+    real_slug = await _current_owner_admin_slug(use_cases)
+    return OwnerAdminSlugCheckResult(valid=body.slug == real_slug)
 
 
 # -- admin: Configuration (Admin) ------------------------------------------------------------------

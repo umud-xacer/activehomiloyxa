@@ -131,6 +131,7 @@ async def _seed_platform_settings(use_cases: ConfigurationUseCases, *, now: date
             "otp.expiry_minutes": 5,
             "session.expiry_hours": 720,
             "search.default_page_size": 20,
+            "admin.owner_panel_slug": "owner-admin",
         },
         "homepage_zones": [],
         "navigation_items": [],

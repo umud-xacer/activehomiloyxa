@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   ShieldCheck,
@@ -13,6 +14,7 @@ import {
 import { requireAdmin } from "@/lib/require-auth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { useMe } from "@/features/auth/useAuth";
+import { getOwnerPanelSlug, OWNER_PANEL_SLUG_DEFAULT } from "@/lib/owner-admin-client";
 
 export const Route = createFileRoute("/admin/")({
   beforeLoad: requireAdmin,
@@ -61,6 +63,12 @@ function AdminLinkCard({ to, icon: Icon, title, description, index }: AdminLinkC
 function Page() {
   const { data: account } = useMe();
   const isSuperAdmin = (account?.roles ?? []).includes("super-admin");
+  const { data: ownerPanelSlug = OWNER_PANEL_SLUG_DEFAULT } = useQuery({
+    queryKey: ["owner-admin", "panel-slug"],
+    queryFn: getOwnerPanelSlug,
+    enabled: isSuperAdmin,
+    staleTime: 0,
+  });
 
   return (
     <DashboardShell account={account}>
@@ -113,7 +121,7 @@ function Page() {
           />
           {isSuperAdmin && (
             <AdminLinkCard
-              to="/owner-admin"
+              to={`/${ownerPanelSlug}`}
               icon={Layers}
               title="Kategoriyalar va tariflar boshqaruvi"
               description="E'lon kategoriyalari, dinamik maydonlar va barcha tarif turlarini yarating, tahrirlang."
@@ -122,7 +130,7 @@ function Page() {
           )}
           {isSuperAdmin && (
             <AdminLinkCard
-              to="/owner-admin/banners"
+              to={`/${ownerPanelSlug}/banners`}
               icon={Megaphone}
               title="Bannerlar boshqaruvi"
               description="Banner joylarini belgilang, kampaniyalarni yarating va rejalashtiring."

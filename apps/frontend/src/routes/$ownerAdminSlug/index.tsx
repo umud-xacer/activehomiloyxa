@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,8 +18,9 @@ import {
   ChevronRight,
   ChevronDown,
   Megaphone,
+  KeyRound,
 } from "lucide-react";
-import { requireSuperAdmin } from "@/lib/require-auth";
+import { requireOwnerAdminSlug } from "@/lib/require-auth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -37,6 +38,7 @@ import {
   listAllProductVersions,
   publishNewProduct,
   publishProductUpdate,
+  updateOwnerPanelSlug,
   type ConfigHeadDto,
   type ConfigVersionDto,
   type DynamicFieldDraft,
@@ -46,9 +48,9 @@ import {
 } from "@/lib/owner-admin-client";
 import type { FormField as FieldType } from "@/lib/catalog-client";
 
-export const Route = createFileRoute("/owner-admin/")({
-  beforeLoad: requireSuperAdmin,
-  // `requireSuperAdmin` only enforces client-side (no request-scoped cookie forwarding into SSR
+export const Route = createFileRoute("/$ownerAdminSlug/")({
+  beforeLoad: requireOwnerAdminSlug,
+  // `requireOwnerAdminSlug` only enforces client-side (no request-scoped cookie forwarding into SSR
   // yet) -- without this, the server would render the full panel into the initial HTML for
   // anyone who requests the URL, defeating the "this route doesn't exist" posture entirely.
   ssr: false,
@@ -149,8 +151,7 @@ function categoryPageMeta(row: CategoryRow): {
     heroImageUrl: metadata.heroImageUrl ?? null,
     heroTagline: metadata.heroTagline ?? "",
     accentColor: metadata.accentColor ?? null,
-    listingKind:
-      kind === "GOODS" || kind === "SERVICE" || kind === "VENUE" ? kind : "PROPERTY",
+    listingKind: kind === "GOODS" || kind === "SERVICE" || kind === "VENUE" ? kind : "PROPERTY",
   };
 }
 
@@ -239,8 +240,12 @@ function CategoryFormPanel({ editing, parentOptions, onClose, onSaved }: FormPan
   const [iconUrl, setIconUrl] = useState<string | null>(existingIcon);
   const [iconUploading, setIconUploading] = useState(false);
   const existingMeta = editing ? categoryPageMeta(editing) : null;
-  const [listingKind, setListingKind] = useState<ListingKind>(existingMeta?.listingKind ?? "PROPERTY");
-  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(existingMeta?.heroImageUrl ?? null);
+  const [listingKind, setListingKind] = useState<ListingKind>(
+    existingMeta?.listingKind ?? "PROPERTY",
+  );
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(
+    existingMeta?.heroImageUrl ?? null,
+  );
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroTagline, setHeroTagline] = useState(existingMeta?.heroTagline ?? "");
   const [accentColor, setAccentColor] = useState(existingMeta?.accentColor ?? "#6366f1");
@@ -524,8 +529,8 @@ function CategoryFormPanel({ editing, parentOptions, onClose, onSaved }: FormPan
                 Sahifa dizayni (Hero) — ixtiyoriy
               </p>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Kategoriya sahifasi qaysi shablon bilan (ko'chmas mulk / tovar / xizmat / obyekt)
-                va qanday fonda ochilishini belgilaydi.
+                Kategoriya sahifasi qaysi shablon bilan (ko'chmas mulk / tovar / xizmat / obyekt) va
+                qanday fonda ochilishini belgilaydi.
               </p>
 
               <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -573,7 +578,9 @@ function CategoryFormPanel({ editing, parentOptions, onClose, onSaved }: FormPan
               </div>
 
               <div className="mt-4">
-                <label className="text-xs font-medium text-muted-foreground">Hero foni (rasm)</label>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Hero foni (rasm)
+                </label>
                 <div className="mt-1 flex items-center gap-3">
                   <div className="flex h-14 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-border bg-muted">
                     {heroUploading ? (
@@ -744,7 +751,9 @@ const PRODUCT_TYPE_LABEL: Record<ProductDraftInput["productType"], string> = {
 
 const PRODUCT_TYPES = Object.keys(PRODUCT_TYPE_LABEL) as ProductDraftInput["productType"][];
 
-function emptyProductDraft(productType: ProductDraftInput["productType"] = "SUBSCRIPTION"): ProductDraftInput {
+function emptyProductDraft(
+  productType: ProductDraftInput["productType"] = "SUBSCRIPTION",
+): ProductDraftInput {
   return {
     code: "",
     name: { uz_latn: "" },
@@ -1007,10 +1016,14 @@ function TariffsSection() {
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold text-foreground">{productName(row)}</p>
                   <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                    {PRODUCT_TYPE_LABEL[
-                      (productSnapshot(row) as { product_type?: ProductDraftInput["productType"] } | undefined)
-                        ?.product_type ?? "SUBSCRIPTION"
-                    ]}
+                    {
+                      PRODUCT_TYPE_LABEL[
+                        (
+                          productSnapshot(row) as
+                            { product_type?: ProductDraftInput["productType"] } | undefined
+                        )?.product_type ?? "SUBSCRIPTION"
+                      ]
+                    }
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -1142,8 +1155,68 @@ function CategoryTreeRow({
   );
 }
 
+/** Lets a super-admin change the panel's own URL segment (`/$ownerAdminSlug`) from inside the
+ * panel itself, at will -- stored as the `admin.owner_panel_slug` platform setting
+ * (`owner-admin-client.ts`), not anything fixed in this repo's source. Saving redirects to the
+ * new URL immediately since the old one stops working the moment the setting changes. */
+function OwnerPanelSlugCard({ currentSlug }: { currentSlug: string }) {
+  const navigate = useNavigate();
+  const [value, setValue] = useState(currentSlug);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => setValue(currentSlug), [currentSlug]);
+
+  const trimmed = value.trim();
+  const canSave = !saving && trimmed.length > 0 && trimmed !== currentSlug;
+
+  const save = async () => {
+    if (!canSave) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await updateOwnerPanelSlug(trimmed);
+      await navigate({ to: "/$ownerAdminSlug", params: { ownerAdminSlug: trimmed } });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Saqlashda xatolik yuz berdi.");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <SectionCard
+      title="Panel manzili"
+      icon={KeyRound}
+      description="Bu paneldan faqat shu manzil (URL) orqali kirasiz — xohlagan vaqtingizda o'zgartiring."
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-muted-foreground">activehome.uz/</span>
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+          className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+        />
+        <button
+          type="button"
+          onClick={save}
+          disabled={!canSave}
+          className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {saving && <Loader2 className="size-4 animate-spin" />}
+          O'zgartirish
+        </button>
+      </div>
+      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+      <p className="mt-2 text-xs text-muted-foreground">
+        O'zgartirgach, joriy manzil ({currentSlug}) darhol ishlamay qoladi — yangisini eslab qoling.
+      </p>
+    </SectionCard>
+  );
+}
+
 function Page() {
   const { data: account } = useMe();
+  const { ownerAdminSlug } = Route.useParams();
   const queryClient = useQueryClient();
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingRow, setEditingRow] = useState<CategoryRow | null>(null);
@@ -1226,7 +1299,8 @@ function Page() {
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <Link
-              to="/owner-admin/banners"
+              to="/$ownerAdminSlug/banners"
+              params={{ ownerAdminSlug }}
               className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted"
             >
               <Megaphone className="size-4" /> Bannerlar boshqaruvi
@@ -1243,6 +1317,8 @@ function Page() {
             </button>
           </div>
         </motion.div>
+
+        <OwnerPanelSlugCard currentSlug={ownerAdminSlug} />
 
         <section className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <StatCard

@@ -36,7 +36,8 @@ export interface ConfigVersionDto {
   publishedAt: string | null;
 }
 
-type EntityType = "category" | "form-definition" | "product-definition" | "placement-slot";
+type EntityType =
+  "category" | "form-definition" | "product-definition" | "placement-slot" | "platform-settings";
 
 const base = (entityType: EntityType) => `/admin/config/${entityType}`;
 
@@ -379,6 +380,63 @@ export async function listAllPlacementSlotVersions(): Promise<
     })),
   );
   return rows;
+}
+
+// -- owner-admin panel access (platform-settings' `admin.owner_panel_slug`) --------------------
+//
+// The panel's own URL segment (frontend `/$ownerAdminSlug`) is stored as a platform setting
+// instead of a build-time env var, specifically so a super-admin can change it from inside the
+// panel itself whenever they want, without a code change or redeploy.
+
+const PLATFORM_SETTINGS_CODE = "platform-settings-global";
+const OWNER_PANEL_SLUG_KEY = "admin.owner_panel_slug";
+export const OWNER_PANEL_SLUG_DEFAULT = "owner-admin";
+
+async function getPlatformSettingsHead(): Promise<ConfigHeadDto | null> {
+  const { items } = await listHeads("platform-settings");
+  return items.find((h) => h.code === PLATFORM_SETTINGS_CODE) ?? null;
+}
+
+/** The currently-published owner-admin panel URL segment. Only reachable by an already
+ * logged-in super-admin (`config:platform-settings:manage`) -- used by the `/admin` hub to build
+ * a working link, and by the panel itself to link between its own pages. */
+export async function getOwnerPanelSlug(): Promise<string> {
+  const head = await getPlatformSettingsHead();
+  if (!head?.currentVersionId) return OWNER_PANEL_SLUG_DEFAULT;
+  const version = await getVersion("platform-settings", head.id, head.currentVersionId);
+  const settings = (version.snapshot?.settings as Record<string, unknown> | undefined) ?? {};
+  const value = settings[OWNER_PANEL_SLUG_KEY];
+  return typeof value === "string" && value ? value : OWNER_PANEL_SLUG_DEFAULT;
+}
+
+/** Changes the owner-admin panel's URL segment. Reads forward from the current *definition* (not
+ * snapshot) and only patches the one settings key -- `platform-settings` also carries homepage
+ * zones/navigation/SEO templates/other settings this panel doesn't manage, and a new version
+ * always replaces the whole document, so anything not carried forward here would be silently
+ * dropped. */
+export async function updateOwnerPanelSlug(newSlug: string): Promise<void> {
+  const head = await getPlatformSettingsHead();
+  if (!head?.currentVersionId) {
+    throw new Error("Platform sozlamalari hali ishga tushirilmagan.");
+  }
+  const version = await getVersion("platform-settings", head.id, head.currentVersionId);
+  const definition = version.definition as Record<string, unknown>;
+  const settings = {
+    ...(definition.settings as Record<string, unknown> | undefined),
+    [OWNER_PANEL_SLUG_KEY]: newSlug,
+  };
+  const draft = await createVersionDraft("platform-settings", head.id, { ...definition, settings });
+  await publishSolo("platform-settings", head.id, draft.id);
+}
+
+/** Public, unauthenticated yes/no check backing the `/$ownerAdminSlug` route guard
+ * (`require-auth.ts`'s `requireOwnerAdminSlug`) -- never learns or reveals the real slug, only
+ * whether a given guess matches it, so the real value never has to sit in the client bundle. */
+export async function verifyOwnerAdminSlug(slug: string): Promise<boolean> {
+  const { valid } = await http.post<{ valid: boolean }>("/public/owner-admin-access/verify", {
+    slug,
+  });
+  return valid;
 }
 
 // -- icon upload -------------------------------------------------------------------------------

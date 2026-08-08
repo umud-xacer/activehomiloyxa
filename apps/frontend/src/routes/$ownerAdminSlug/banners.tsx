@@ -17,7 +17,7 @@ import {
   ImagePlus,
   ArrowLeft,
 } from "lucide-react";
-import { requireSuperAdmin } from "@/lib/require-auth";
+import { requireOwnerAdminSlug } from "@/lib/require-auth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -47,8 +47,8 @@ import {
   type CampaignStatus,
 } from "@/lib/ads-client";
 
-export const Route = createFileRoute("/owner-admin/banners")({
-  beforeLoad: requireSuperAdmin,
+export const Route = createFileRoute("/$ownerAdminSlug/banners")({
+  beforeLoad: requireOwnerAdminSlug,
   ssr: false,
   head: () => ({ meta: [{ title: "Bannerlar boshqaruvi — ActiveHome" }] }),
   component: Page,
@@ -833,6 +833,7 @@ function CampaignsSection({ slots }: { slots: SlotRow[] }) {
 
 function Page() {
   const { data: account } = useMe();
+  const { ownerAdminSlug } = Route.useParams();
   const { data: slotRows = [] } = useQuery({
     queryKey: ["owner-admin", "placement-slots"],
     queryFn: listAllPlacementSlotVersions,
@@ -863,7 +864,8 @@ function Page() {
           <div className="gradient-mesh absolute inset-0 -z-10 opacity-70" />
           <div>
             <Link
-              to="/owner-admin"
+              to="/$ownerAdminSlug"
+              params={{ ownerAdminSlug }}
               className="mb-2 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="size-3.5" /> Kategoriyalar boshqaruviga qaytish

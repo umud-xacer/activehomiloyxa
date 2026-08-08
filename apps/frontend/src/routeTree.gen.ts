@@ -55,6 +55,8 @@ import { Route as SupportRouteImport } from './routes/support'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as VerificationRouteImport } from './routes/verification'
 import { Route as WalletRouteImport } from './routes/wallet'
+import { Route as OwnerAdminSlugIndexRouteImport } from './routes/$ownerAdminSlug/index'
+import { Route as OwnerAdminSlugBannersRouteImport } from './routes/$ownerAdminSlug/banners'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminModerationRouteImport } from './routes/admin/moderation'
 import { Route as AdminPaymentsRouteImport } from './routes/admin/payments'
@@ -79,8 +81,6 @@ import { Route as InvestSlugRouteImport } from './routes/invest/$slug'
 import { Route as ListIndexRouteImport } from './routes/list/index'
 import { Route as ListListingIdRouteImport } from './routes/list/$listingId'
 import { Route as ListingListingIdRouteImport } from './routes/listing/$listingId'
-import { Route as OwnerAdminIndexRouteImport } from './routes/owner-admin/index'
-import { Route as OwnerAdminBannersRouteImport } from './routes/owner-admin/banners'
 import { Route as PropertiesIndexRouteImport } from './routes/properties/index'
 import { Route as PropertiesSlugRouteImport } from './routes/properties/$slug'
 
@@ -314,6 +314,16 @@ const WalletRoute = WalletRouteImport.update({
   path: '/wallet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OwnerAdminSlugIndexRoute = OwnerAdminSlugIndexRouteImport.update({
+  id: '/$ownerAdminSlug/',
+  path: '/$ownerAdminSlug/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OwnerAdminSlugBannersRoute = OwnerAdminSlugBannersRouteImport.update({
+  id: '/$ownerAdminSlug/banners',
+  path: '/$ownerAdminSlug/banners',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
@@ -435,16 +445,6 @@ const ListingListingIdRoute = ListingListingIdRouteImport.update({
   path: '/listing/$listingId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OwnerAdminIndexRoute = OwnerAdminIndexRouteImport.update({
-  id: '/owner-admin/',
-  path: '/owner-admin/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OwnerAdminBannersRoute = OwnerAdminBannersRouteImport.update({
-  id: '/owner-admin/banners',
-  path: '/owner-admin/banners',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
   id: '/properties/',
   path: '/properties/',
@@ -503,6 +503,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/verification': typeof VerificationRoute
   '/wallet': typeof WalletRoute
+  '/$ownerAdminSlug/banners': typeof OwnerAdminSlugBannersRoute
   '/admin/moderation': typeof AdminModerationRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/registrations': typeof AdminRegistrationsRoute
@@ -520,8 +521,8 @@ export interface FileRoutesByFullPath {
   '/invest/$slug': typeof InvestSlugRoute
   '/list/$listingId': typeof ListListingIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
-  '/owner-admin/banners': typeof OwnerAdminBannersRoute
   '/properties/$slug': typeof PropertiesSlugRoute
+  '/$ownerAdminSlug/': typeof OwnerAdminSlugIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/agents/': typeof AgentsIndexRoute
   '/categories/': typeof CategoriesIndexRoute
@@ -529,7 +530,6 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof DashboardIndexRoute
   '/invest/': typeof InvestIndexRoute
   '/list/': typeof ListIndexRoute
-  '/owner-admin/': typeof OwnerAdminIndexRoute
   '/properties/': typeof PropertiesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -579,6 +579,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/verification': typeof VerificationRoute
   '/wallet': typeof WalletRoute
+  '/$ownerAdminSlug/banners': typeof OwnerAdminSlugBannersRoute
   '/admin/moderation': typeof AdminModerationRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/registrations': typeof AdminRegistrationsRoute
@@ -596,8 +597,8 @@ export interface FileRoutesByTo {
   '/invest/$slug': typeof InvestSlugRoute
   '/list/$listingId': typeof ListListingIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
-  '/owner-admin/banners': typeof OwnerAdminBannersRoute
   '/properties/$slug': typeof PropertiesSlugRoute
+  '/$ownerAdminSlug': typeof OwnerAdminSlugIndexRoute
   '/admin': typeof AdminIndexRoute
   '/agents': typeof AgentsIndexRoute
   '/categories': typeof CategoriesIndexRoute
@@ -605,7 +606,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardIndexRoute
   '/invest': typeof InvestIndexRoute
   '/list': typeof ListIndexRoute
-  '/owner-admin': typeof OwnerAdminIndexRoute
   '/properties': typeof PropertiesIndexRoute
 }
 export interface FileRoutesById {
@@ -656,6 +656,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/verification': typeof VerificationRoute
   '/wallet': typeof WalletRoute
+  '/$ownerAdminSlug/banners': typeof OwnerAdminSlugBannersRoute
   '/admin/moderation': typeof AdminModerationRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/registrations': typeof AdminRegistrationsRoute
@@ -673,8 +674,8 @@ export interface FileRoutesById {
   '/invest/$slug': typeof InvestSlugRoute
   '/list/$listingId': typeof ListListingIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
-  '/owner-admin/banners': typeof OwnerAdminBannersRoute
   '/properties/$slug': typeof PropertiesSlugRoute
+  '/$ownerAdminSlug/': typeof OwnerAdminSlugIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/agents/': typeof AgentsIndexRoute
   '/categories/': typeof CategoriesIndexRoute
@@ -682,7 +683,6 @@ export interface FileRoutesById {
   '/dashboard/': typeof DashboardIndexRoute
   '/invest/': typeof InvestIndexRoute
   '/list/': typeof ListIndexRoute
-  '/owner-admin/': typeof OwnerAdminIndexRoute
   '/properties/': typeof PropertiesIndexRoute
 }
 export interface FileRouteTypes {
@@ -734,6 +734,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/verification'
     | '/wallet'
+    | '/$ownerAdminSlug/banners'
     | '/admin/moderation'
     | '/admin/payments'
     | '/admin/registrations'
@@ -751,8 +752,8 @@ export interface FileRouteTypes {
     | '/invest/$slug'
     | '/list/$listingId'
     | '/listing/$listingId'
-    | '/owner-admin/banners'
     | '/properties/$slug'
+    | '/$ownerAdminSlug/'
     | '/admin/'
     | '/agents/'
     | '/categories/'
@@ -760,7 +761,6 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/invest/'
     | '/list/'
-    | '/owner-admin/'
     | '/properties/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -810,6 +810,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/verification'
     | '/wallet'
+    | '/$ownerAdminSlug/banners'
     | '/admin/moderation'
     | '/admin/payments'
     | '/admin/registrations'
@@ -827,8 +828,8 @@ export interface FileRouteTypes {
     | '/invest/$slug'
     | '/list/$listingId'
     | '/listing/$listingId'
-    | '/owner-admin/banners'
     | '/properties/$slug'
+    | '/$ownerAdminSlug'
     | '/admin'
     | '/agents'
     | '/categories'
@@ -836,7 +837,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/invest'
     | '/list'
-    | '/owner-admin'
     | '/properties'
   id:
     | '__root__'
@@ -886,6 +886,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/verification'
     | '/wallet'
+    | '/$ownerAdminSlug/banners'
     | '/admin/moderation'
     | '/admin/payments'
     | '/admin/registrations'
@@ -903,8 +904,8 @@ export interface FileRouteTypes {
     | '/invest/$slug'
     | '/list/$listingId'
     | '/listing/$listingId'
-    | '/owner-admin/banners'
     | '/properties/$slug'
+    | '/$ownerAdminSlug/'
     | '/admin/'
     | '/agents/'
     | '/categories/'
@@ -912,7 +913,6 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/invest/'
     | '/list/'
-    | '/owner-admin/'
     | '/properties/'
   fileRoutesById: FileRoutesById
 }
@@ -963,6 +963,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   VerificationRoute: typeof VerificationRoute
   WalletRoute: typeof WalletRoute
+  OwnerAdminSlugBannersRoute: typeof OwnerAdminSlugBannersRoute
   AdminModerationRoute: typeof AdminModerationRoute
   AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminRegistrationsRoute: typeof AdminRegistrationsRoute
@@ -980,8 +981,8 @@ export interface RootRouteChildren {
   InvestSlugRoute: typeof InvestSlugRoute
   ListListingIdRoute: typeof ListListingIdRoute
   ListingListingIdRoute: typeof ListingListingIdRoute
-  OwnerAdminBannersRoute: typeof OwnerAdminBannersRoute
   PropertiesSlugRoute: typeof PropertiesSlugRoute
+  OwnerAdminSlugIndexRoute: typeof OwnerAdminSlugIndexRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AgentsIndexRoute: typeof AgentsIndexRoute
   CategoriesIndexRoute: typeof CategoriesIndexRoute
@@ -989,7 +990,6 @@ export interface RootRouteChildren {
   DashboardIndexRoute: typeof DashboardIndexRoute
   InvestIndexRoute: typeof InvestIndexRoute
   ListIndexRoute: typeof ListIndexRoute
-  OwnerAdminIndexRoute: typeof OwnerAdminIndexRoute
   PropertiesIndexRoute: typeof PropertiesIndexRoute
 }
 
@@ -1317,6 +1317,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WalletRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$ownerAdminSlug/': {
+      id: '/$ownerAdminSlug/'
+      path: '/$ownerAdminSlug'
+      fullPath: '/$ownerAdminSlug/'
+      preLoaderRoute: typeof OwnerAdminSlugIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$ownerAdminSlug/banners': {
+      id: '/$ownerAdminSlug/banners'
+      path: '/$ownerAdminSlug/banners'
+      fullPath: '/$ownerAdminSlug/banners'
+      preLoaderRoute: typeof OwnerAdminSlugBannersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/': {
       id: '/admin/'
       path: '/admin'
@@ -1485,20 +1499,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListingListingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/owner-admin/': {
-      id: '/owner-admin/'
-      path: '/owner-admin'
-      fullPath: '/owner-admin/'
-      preLoaderRoute: typeof OwnerAdminIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/owner-admin/banners': {
-      id: '/owner-admin/banners'
-      path: '/owner-admin/banners'
-      fullPath: '/owner-admin/banners'
-      preLoaderRoute: typeof OwnerAdminBannersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/properties/': {
       id: '/properties/'
       path: '/properties'
@@ -1563,6 +1563,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   VerificationRoute: VerificationRoute,
   WalletRoute: WalletRoute,
+  OwnerAdminSlugBannersRoute: OwnerAdminSlugBannersRoute,
   AdminModerationRoute: AdminModerationRoute,
   AdminPaymentsRoute: AdminPaymentsRoute,
   AdminRegistrationsRoute: AdminRegistrationsRoute,
@@ -1580,8 +1581,8 @@ const rootRouteChildren: RootRouteChildren = {
   InvestSlugRoute: InvestSlugRoute,
   ListListingIdRoute: ListListingIdRoute,
   ListingListingIdRoute: ListingListingIdRoute,
-  OwnerAdminBannersRoute: OwnerAdminBannersRoute,
   PropertiesSlugRoute: PropertiesSlugRoute,
+  OwnerAdminSlugIndexRoute: OwnerAdminSlugIndexRoute,
   AdminIndexRoute: AdminIndexRoute,
   AgentsIndexRoute: AgentsIndexRoute,
   CategoriesIndexRoute: CategoriesIndexRoute,
@@ -1589,7 +1590,6 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardIndexRoute: DashboardIndexRoute,
   InvestIndexRoute: InvestIndexRoute,
   ListIndexRoute: ListIndexRoute,
-  OwnerAdminIndexRoute: OwnerAdminIndexRoute,
   PropertiesIndexRoute: PropertiesIndexRoute,
 }
 export const routeTree = rootRouteImport

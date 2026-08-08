@@ -279,6 +279,11 @@ SETTINGS_SCHEMA: dict[str, type] = {
     "otp.expiry_minutes": int,
     "session.expiry_hours": int,
     "search.default_page_size": int,
+    # URL segment for the secret owner-admin panel (frontend `/$ownerAdminSlug`) -- lives here
+    # rather than as a build-time env var so a super-admin can change it from inside the panel
+    # itself, at will, without a redeploy. Never served back verbatim to an unauthenticated
+    # caller (see `verify_owner_admin_slug` in interfaces/routers.py, a yes/no oracle only).
+    "admin.owner_panel_slug": str,
 }
 
 # PLACEHOLDER -- Config Framework Sec 3.17 "a fixed set of named page keys" without enumeration.
