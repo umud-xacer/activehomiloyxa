@@ -39,6 +39,8 @@ import {
   publishNewProduct,
   publishProductUpdate,
   updateOwnerPanelSlug,
+  isValidOwnerPanelSlug,
+  OWNER_PANEL_RESERVED_SLUGS,
   type ConfigHeadDto,
   type ConfigVersionDto,
   type DynamicFieldDraft,
@@ -1167,11 +1169,19 @@ function OwnerPanelSlugCard({ currentSlug }: { currentSlug: string }) {
 
   useEffect(() => setValue(currentSlug), [currentSlug]);
 
-  const trimmed = value.trim();
+  const trimmed = value.trim().toLowerCase();
   const canSave = !saving && trimmed.length > 0 && trimmed !== currentSlug;
 
   const save = async () => {
     if (!canSave) return;
+    if (!isValidOwnerPanelSlug(trimmed)) {
+      setError(
+        OWNER_PANEL_RESERVED_SLUGS.has(trimmed)
+          ? "Bu manzil allaqachon boshqa sahifa uchun band (masalan, /boss login sahifasi). Boshqa nom tanlang."
+          : "Manzil faqat lotin harflari, raqamlar va tire (-) dan iborat bo'lishi kerak.",
+      );
+      return;
+    }
     setSaving(true);
     setError(null);
     try {

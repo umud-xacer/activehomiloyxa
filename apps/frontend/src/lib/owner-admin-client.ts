@@ -392,6 +392,85 @@ const PLATFORM_SETTINGS_CODE = "platform-settings-global";
 const OWNER_PANEL_SLUG_KEY = "admin.owner_panel_slug";
 export const OWNER_PANEL_SLUG_DEFAULT = "owner-admin";
 
+/** Every top-level static route the frontend already owns (files and directories directly under
+ * `src/routes/`), hand-kept in sync with `apps/backend/src/configuration/domain/whitelist.py`'s
+ * `RESERVED_OWNER_PANEL_SLUGS` --
+ * TanStack Router always resolves a static route ahead of the dynamic `/$ownerAdminSlug` one for
+ * the same path, so setting the panel's slug to any of these would make that static page win
+ * forever and silently strand the panel (confirmed incident: set to "boss", permanently shadowed
+ * by the dedicated login route at that exact path). The backend is the real enforcement point
+ * (rejects a save, and self-heals an already-bad stored value back to the default on read) --
+ * this copy only gives instant client-side feedback instead of a round trip.  */
+export const OWNER_PANEL_RESERVED_SLUGS: ReadonlySet<string> = new Set([
+  "about",
+  "ad-rules",
+  "admin",
+  "agents",
+  "ai",
+  "api",
+  "appliances",
+  "auth",
+  "blog",
+  "boss",
+  "categories",
+  "checkout",
+  "companies",
+  "compare",
+  "construction",
+  "contact",
+  "dashboard",
+  "faq",
+  "favorites",
+  "furniture",
+  "health",
+  "hostels",
+  "hotels",
+  "interior",
+  "invest",
+  "jobs",
+  "landscape",
+  "list",
+  "listing",
+  "maintenance",
+  "map",
+  "materials",
+  "messages",
+  "news",
+  "notifications",
+  "offer",
+  "owner-admin",
+  "payments",
+  "pricing",
+  "privacy",
+  "properties",
+  "public-offer",
+  "ready",
+  "recreation",
+  "refund",
+  "refund-policy",
+  "rules",
+  "saved",
+  "search",
+  "security",
+  "security-policy",
+  "services",
+  "settings",
+  "sitemap.xml",
+  "subscriptions",
+  "support",
+  "terms",
+  "verification",
+  "wallet",
+]);
+
+const OWNER_PANEL_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
+
+export function isValidOwnerPanelSlug(value: unknown): value is string {
+  if (typeof value !== "string" || !value) return false;
+  const slug = value.trim().toLowerCase();
+  return OWNER_PANEL_SLUG_PATTERN.test(slug) && !OWNER_PANEL_RESERVED_SLUGS.has(slug);
+}
+
 async function getPlatformSettingsHead(): Promise<ConfigHeadDto | null> {
   const { items } = await listHeads("platform-settings");
   return items.find((h) => h.code === PLATFORM_SETTINGS_CODE) ?? null;
@@ -399,14 +478,16 @@ async function getPlatformSettingsHead(): Promise<ConfigHeadDto | null> {
 
 /** The currently-published owner-admin panel URL segment. Only reachable by an already
  * logged-in super-admin (`config:platform-settings:manage`) -- used by the `/admin` hub to build
- * a working link, and by the panel itself to link between its own pages. */
+ * a working link, and by the panel itself to link between its own pages. Self-heals the same way
+ * the backend's `_current_owner_admin_slug` does: an invalid/reserved stored value is treated as
+ * absent rather than trusted. */
 export async function getOwnerPanelSlug(): Promise<string> {
   const head = await getPlatformSettingsHead();
   if (!head?.currentVersionId) return OWNER_PANEL_SLUG_DEFAULT;
   const version = await getVersion("platform-settings", head.id, head.currentVersionId);
   const settings = (version.snapshot?.settings as Record<string, unknown> | undefined) ?? {};
   const value = settings[OWNER_PANEL_SLUG_KEY];
-  return typeof value === "string" && value ? value : OWNER_PANEL_SLUG_DEFAULT;
+  return isValidOwnerPanelSlug(value) ? value.trim().toLowerCase() : OWNER_PANEL_SLUG_DEFAULT;
 }
 
 /** Changes the owner-admin panel's URL segment. Reads forward from the current *definition* (not

@@ -21,6 +21,8 @@ without touching the generic machinery. See `configuration/README.md` for the fu
 
 from __future__ import annotations
 
+import re
+
 # Frozen at Task P-01 in `configuration/interfaces/dto.py` (`FormField.field_type` Literal),
 # itself derived from DDD Sec 5.4/8.2 and Config Framework Sec 5.1's repeated worked examples.
 FIELD_TYPES: frozenset[str] = frozenset(
@@ -286,6 +288,91 @@ SETTINGS_SCHEMA: dict[str, type] = {
     "admin.owner_panel_slug": str,
 }
 
+# Every top-level static route the frontend already owns (`apps/frontend/src/routes/*.tsx`/`*/`),
+# hand-kept in sync the same way every other vocabulary in this file is (see module docstring) --
+# TanStack Router always resolves a static route ahead of the dynamic `/$ownerAdminSlug` one for
+# the same path, so setting the owner-admin panel's slug to any of these would make that static
+# page win forever and silently strand the panel behind an unreachable URL (confirmed incident:
+# an admin set it to "boss", permanently shadowing the dedicated login route at that path -- ADR
+# owner-admin-panel-access). Checked case-insensitively at both write time (`check_settings_key`
+# below) and read time (`_current_owner_admin_slug` in interfaces/routers.py, so an already-bad
+# stored value self-heals to the default on the very next read instead of staying broken).
+RESERVED_OWNER_PANEL_SLUGS: frozenset[str] = frozenset(
+    {
+        "about",
+        "ad-rules",
+        "admin",
+        "agents",
+        "ai",
+        "api",
+        "appliances",
+        "auth",
+        "blog",
+        "boss",
+        "categories",
+        "checkout",
+        "companies",
+        "compare",
+        "construction",
+        "contact",
+        "dashboard",
+        "faq",
+        "favorites",
+        "furniture",
+        "health",
+        "hostels",
+        "hotels",
+        "interior",
+        "invest",
+        "jobs",
+        "landscape",
+        "list",
+        "listing",
+        "maintenance",
+        "map",
+        "materials",
+        "messages",
+        "news",
+        "notifications",
+        "offer",
+        "owner-admin",
+        "payments",
+        "pricing",
+        "privacy",
+        "properties",
+        "public-offer",
+        "ready",
+        "recreation",
+        "refund",
+        "refund-policy",
+        "rules",
+        "saved",
+        "search",
+        "security",
+        "security-policy",
+        "services",
+        "settings",
+        "sitemap.xml",
+        "subscriptions",
+        "support",
+        "terms",
+        "verification",
+        "wallet",
+    }
+)
+
+_OWNER_PANEL_SLUG_PATTERN = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?")
+
+
+def is_valid_owner_panel_slug(value: object) -> bool:
+    """True only for a lowercase-slug-shaped string that doesn't collide with a reserved route.
+    Shared by the write-side gate check and the read-side self-healing fallback so the two can
+    never drift apart on what counts as safe."""
+    if not isinstance(value, str) or not value:
+        return False
+    slug = value.strip().lower()
+    return bool(_OWNER_PANEL_SLUG_PATTERN.fullmatch(slug)) and slug not in RESERVED_OWNER_PANEL_SLUGS
+
 # PLACEHOLDER -- Config Framework Sec 3.17 "a fixed set of named page keys" without enumeration.
 STATIC_PAGE_KEYS: frozenset[str] = frozenset(
     {"TERMS_OF_SERVICE", "PRIVACY_POLICY", "ABOUT", "CONTACT", "FAQ"}
@@ -364,6 +451,8 @@ class WhitelistRegistry:
                 "SettingsValueType",
                 f"{key}={value!r} (expected {expected_type.__name__})",
             )
+        if key == "admin.owner_panel_slug" and not is_valid_owner_panel_slug(value):
+            raise WhitelistViolationError("OwnerPanelSlug", str(value))
 
     def manage_permission_key(self, entity_type_value: str) -> str:
         return f"config:{entity_type_value}:manage"

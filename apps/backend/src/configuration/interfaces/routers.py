@@ -25,6 +25,7 @@ from configuration.domain import (
     GateResult,
     VersionStatus,
     WhitelistRegistry,
+    is_valid_owner_panel_slug,
 )
 from configuration.interfaces.auth import (
     ActingAdmin,
@@ -260,7 +261,14 @@ _OWNER_ADMIN_SLUG_DEFAULT = "owner-admin"
 async def _current_owner_admin_slug(use_cases: ConfigurationUseCases) -> str:
     """Reads the live `admin.owner_panel_slug` platform setting. Falls back to the historical
     fixed path if the setting was never set (fresh DB before the first seed run, or a published
-    version that predates this key) so the panel never becomes unreachable."""
+    version that predates this key) so the panel never becomes unreachable.
+
+    Also self-heals: `is_valid_owner_panel_slug` re-checks the stored value against the same
+    reserved-route list `check_settings_key` enforces at write time, so a value that was written
+    before that check existed (or somehow got in anyway) is treated as absent rather than shadowing
+    a real route forever -- the incident this guards against actually happened once (an admin set
+    it to "boss", permanently hiding the panel behind the dedicated login route at that exact
+    path) before this check was added."""
     cursor: str | None = None
     while True:
         heads, cursor = await use_cases.list_heads(
@@ -273,7 +281,9 @@ async def _current_owner_admin_slug(use_cases: ConfigurationUseCases) -> str:
                 )
                 settings = (version.snapshot_document or {}).get("settings", {})
                 value = settings.get(_OWNER_ADMIN_SLUG_SETTING_KEY)
-                return str(value) if value else _OWNER_ADMIN_SLUG_DEFAULT
+                if is_valid_owner_panel_slug(value):
+                    return str(value).strip().lower()
+                return _OWNER_ADMIN_SLUG_DEFAULT
         if cursor is None:
             return _OWNER_ADMIN_SLUG_DEFAULT
 

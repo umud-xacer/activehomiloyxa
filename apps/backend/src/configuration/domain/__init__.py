@@ -31,7 +31,11 @@ from configuration.domain.lifecycle import (
 )
 from configuration.domain.permissions import flatten_role_permissions
 from configuration.domain.taxonomy import creates_cycle, would_orphan_listings
-from configuration.domain.whitelist import WhitelistRegistry, WhitelistViolationError
+from configuration.domain.whitelist import (
+    WhitelistRegistry,
+    WhitelistViolationError,
+    is_valid_owner_panel_slug,
+)
 
 __all__ = [
     "CONTROLLED_TRACK_ENTITIES",
@@ -58,6 +62,7 @@ __all__ = [
     "authoring_track",
     "creates_cycle",
     "flatten_role_permissions",
+    "is_valid_owner_panel_slug",
     "requires_super_admin_approval",
     "resolve_configuration_changed_event_type",
     "would_orphan_listings",
