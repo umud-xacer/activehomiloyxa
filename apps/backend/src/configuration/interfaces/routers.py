@@ -223,7 +223,9 @@ async def list_categories(
     use_cases: CategoryReadUseCases = Depends(get_category_read_use_cases),
 ) -> list[Category]:
     snapshots = await use_cases.list_categories(
-        parent_id=parent_id, include_retired=include_retired, include_descendants=include_descendants
+        parent_id=parent_id,
+        include_retired=include_retired,
+        include_descendants=include_descendants,
     )
     return [_category_dto_from_snapshot(s) for s in snapshots]
 

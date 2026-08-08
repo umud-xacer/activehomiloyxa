@@ -384,7 +384,10 @@ def is_valid_owner_panel_slug(value: object) -> bool:
     if not isinstance(value, str) or not value:
         return False
     slug = value.strip().lower()
-    return bool(_OWNER_PANEL_SLUG_PATTERN.fullmatch(slug)) and slug not in RESERVED_OWNER_PANEL_SLUGS
+    return (
+        bool(_OWNER_PANEL_SLUG_PATTERN.fullmatch(slug)) and slug not in RESERVED_OWNER_PANEL_SLUGS
+    )
+
 
 # PLACEHOLDER -- Config Framework Sec 3.17 "a fixed set of named page keys" without enumeration.
 STATIC_PAGE_KEYS: frozenset[str] = frozenset(

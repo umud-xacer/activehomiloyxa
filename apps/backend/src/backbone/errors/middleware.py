@@ -72,7 +72,9 @@ class TraceIdMiddleware:
         await self.app(scope, receive, send_with_trace_id)
 
 
-def _problem_response(problem: Problem, trace_id: str, *, exc: Exception | None = None) -> JSONResponse:
+def _problem_response(
+    problem: Problem, trace_id: str, *, exc: Exception | None = None
+) -> JSONResponse:
     headers = {TRACE_ID_HEADER: trace_id, "Connection": "close"}
     # `retry_after_seconds` is a duck-typed convention, not a `ProblemBuilder`/`Problem` contract
     # field: every 429-mapped exception that carries a wait time already exposes it as a plain
