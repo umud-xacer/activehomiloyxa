@@ -746,6 +746,162 @@ async def _backfill_listing_kind(
         )
 
 
+_TOP_LEVEL_CATEGORY_HERO_THEMES: dict[str, dict[str, str]] = {
+    "qurilish-materiallari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/construction,warehouse",
+        "heroTagline": "Har bir qurilish uchun ishonchli materiallar",
+        "accentColor": "#EA580C",
+    },
+    "ish-orni": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/office,construction",
+        "heroTagline": "Ko'chmas mulk va qurilish sohasidagi eng yaxshi ish o'rinlari",
+        "accentColor": "#2563EB",
+    },
+    "dala-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/countryside,villa",
+        "heroTagline": "Shahar shovqinidan uzoqlashing, tabiat qo'ynida dam oling",
+        "accentColor": "#16A34A",
+    },
+    "uniforma-va-maxsus-kiyimlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/workwear,safety",
+        "heroTagline": "Professional ish uchun ishonchli himoya kiyimlari",
+        "accentColor": "#F59E0B",
+    },
+    "mebel-materiallari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/woodworking,furniture",
+        "heroTagline": "Mebel yaratish uchun sifatli materiallar",
+        "accentColor": "#92400E",
+    },
+    "dam-olish-maskanlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/resort,vacation",
+        "heroTagline": "Eng yaxshi dam olish maskanlarini shu yerdan toping",
+        "accentColor": "#0D9488",
+    },
+    "hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/house,garden",
+        "heroTagline": "O'zingizni uyda his qiladigan hovlingizni toping",
+        "accentColor": "#059669",
+    },
+    "landshaft-dizayni": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/landscape,garden",
+        "heroTagline": "Hovlingizni professional dizayn bilan bezating",
+        "accentColor": "#22C55E",
+    },
+    "kop-qavatli-binolar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/apartment,skyscraper",
+        "heroTagline": "Zamonaviy shahar hayoti uchun yangi uy",
+        "accentColor": "#334155",
+    },
+    "bosh-yerlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/land,aerial",
+        "heroTagline": "Kelajakdagi qurilishingiz uchun ishonchli yer",
+        "accentColor": "#B45309",
+    },
+    "mebel-salonlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/furniture,showroom",
+        "heroTagline": "Uyingiz uchun premium mebel kolleksiyalari",
+        "accentColor": "#7C3AED",
+    },
+    "noturar-binolar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/office,business",
+        "heroTagline": "Biznesingiz uchun professional makon",
+        "accentColor": "#1E3A8A",
+    },
+    "uy-bezaklari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/interior,decor",
+        "heroTagline": "Uyingizga did va zavq qo'shing",
+        "accentColor": "#DB2777",
+    },
+    "hostel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/hostel,travel",
+        "heroTagline": "Qulay va arzon tunash joylarini toping",
+        "accentColor": "#0891B2",
+    },
+    "mexmonxona": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/hotel,luxury",
+        "heroTagline": "Hashamat va qulaylik bir joyda",
+        "accentColor": "#CA8A04",
+    },
+    "xizmat-korsatish": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/repairman,technician",
+        "heroTagline": "Ishonchli ustalar va tezkor xizmat",
+        "accentColor": "#DC2626",
+    },
+    "kotejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/cottage,cabin",
+        "heroTagline": "Tabiat qo'ynidagi hashamatli dam olish",
+        "accentColor": "#15803D",
+    },
+    "maishiy-texnikalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/kitchen,appliances",
+        "heroTagline": "Uyingiz uchun zamonaviy texnikalar",
+        "accentColor": "#0284C7",
+    },
+}
+"""One themed hero per top-level category (Task: category mini-platform redesign) -- images from
+`loremflickr.com` (keyless, topic-tagged real photos, no API key/rate-limit like the Google/
+Mapbox/Yandex-JS-key services this codebase has already deliberately avoided elsewhere, see
+`feedback-technical-preferences` memory). `accentColor` values are spread across the palette so
+no two top-level categories read as visually identical. Consumed by `_backfill_category_theme`
+below, which is the only thing that ever reads this table."""
+
+
+async def _backfill_category_theme(
+    use_cases: ConfigurationUseCases,
+    repo: SqlalchemyConfigHeadRepository,
+    *,
+    code: str,
+    hero_image_url: str,
+    hero_tagline: str,
+    accent_color: str,
+    now: datetime,
+) -> None:
+    """Self-heal for a top-level category seeded before hero content existed (or before this
+    theme table gained an entry for it) -- same publish-a-new-version pattern as
+    `_backfill_listing_kind`, merged into the same `descriptor.metadata` slot the owner-admin
+    panel's own hero-editing form already writes to. No-op once the stored values already match
+    exactly, so this is safe (and cheap) to re-run on every deploy; a super-admin who has since
+    hand-edited a category's hero from the panel keeps their own values only if they happen to
+    match this table -- otherwise this backfill will overwrite them back to the table's defaults
+    on the next deploy, same as `_backfill_listing_kind` already does for `listingKind`."""
+    head = await repo.get_head_by_code(ConfigEntityType.CATEGORY, code)
+    if head is None or head.current_version_id is None:
+        return
+    current = await repo.get_version(ConfigEntityType.CATEGORY, head.id, head.current_version_id)
+    if current is None:
+        return
+    current_descriptor = dict(current.definition_document.get("descriptor") or {})
+    current_metadata = dict(current_descriptor.get("metadata") or {})
+    desired = {
+        "heroImageUrl": hero_image_url,
+        "heroTagline": hero_tagline,
+        "accentColor": accent_color,
+    }
+    if all(current_metadata.get(k) == v for k, v in desired.items()):
+        return
+
+    new_metadata = {**current_metadata, **desired}
+    new_descriptor = {**current_descriptor, "metadata": new_metadata}
+    new_document = {**current.definition_document, "descriptor": new_descriptor}
+
+    new_version = await use_cases.create_version_draft(
+        ConfigEntityType.CATEGORY, head.id, definition=new_document, actor_id=SEED_MAKER_ID, now=now,
+    )
+    manage_key = _registry.manage_permission_key(ConfigEntityType.CATEGORY.value)
+    approve_key = _registry.approve_permission_key(ConfigEntityType.CATEGORY.value)
+    step1 = await use_cases.publish(
+        ConfigEntityType.CATEGORY, head.id, new_version.id,
+        actor_id=SEED_MAKER_ID, actor_permission_keys=frozenset({manage_key}),
+        approval_note="seed: backfill hero theme metadata", now=now,
+    )
+    if step1.status.value == "APPROVAL":
+        await use_cases.publish(
+            ConfigEntityType.CATEGORY, head.id, step1.id,
+            actor_id=SEED_CHECKER_ID, actor_permission_keys=frozenset({manage_key, approve_key}),
+            approval_note="seed: backfill hero theme metadata approval", now=now,
+        )
+
+
 def _slugify(text: str) -> str:
     """Latin-Uzbek-aware slug matching the convention the hand-written codes above already use
     (apostrophes drop rather than transliterate, so "Ko'p qavatli binolar" -> "kop-qavatli-
@@ -1424,6 +1580,15 @@ async def _seed_catalog_taxonomy(
         parent_category_id=services_head_id, form_definition_id=yuk_haydovchi_form_id, now=now,
         listing_kind="SERVICE",
     )
+
+    # -- Every top-level category gets its own themed hero image/tagline/accent color (Task:
+    # category mini-platform redesign) -- idempotent, safe to re-run every deploy.
+    for code, theme in _TOP_LEVEL_CATEGORY_HERO_THEMES.items():
+        await _backfill_category_theme(
+            use_cases, repo, code=code,
+            hero_image_url=theme["heroImageUrl"], hero_tagline=theme["heroTagline"],
+            accent_color=theme["accentColor"], now=now,
+        )
 
 
 async def run_seed() -> None:

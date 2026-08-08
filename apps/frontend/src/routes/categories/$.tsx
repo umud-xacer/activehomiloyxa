@@ -211,10 +211,14 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
       <PageHeader
         eyebrow="Kategoriya"
         title={name}
+        tagline={category.heroTagline}
         description={`${data.total.toLocaleString()} ta e'lon — faqat "${name}" kategoriyasiga tegishli.`}
         crumbs={[
           { label: "Bosh sahifa", to: "/" },
-          ...ancestors.map((a) => ({ label: categoryLabel(a.name, "uz"), to: categoryHref(a.path) })),
+          ...ancestors.map((a) => ({
+            label: categoryLabel(a.name, "uz"),
+            to: categoryHref(a.path),
+          })),
           { label: name },
         ]}
         backgroundImageUrl={category.heroImageUrl}
@@ -392,10 +396,7 @@ function CatalogDirectionView({
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.page.nextCursor,
   });
-  const listings = useMemo(
-    () => listingPages?.pages.flatMap((p) => p.items) ?? [],
-    [listingPages],
-  );
+  const listings = useMemo(() => listingPages?.pages.flatMap((p) => p.items) ?? [], [listingPages]);
 
   const { data: form } = useQuery({
     queryKey: ["catalog", "category-form", category.id],
@@ -417,6 +418,7 @@ function CatalogDirectionView({
       <PageHeader
         eyebrow={KIND_EYEBROW[kind]}
         title={name}
+        tagline={category.heroTagline}
         description={
           kind === "SERVICE"
             ? `Shu yo'nalishdagi xizmat ko'rsatuvchilarning e'lonlari — tajriba, hudud va narx bo'yicha solishtiring.`
@@ -424,7 +426,10 @@ function CatalogDirectionView({
         }
         crumbs={[
           { label: "Bosh sahifa", to: "/" },
-          ...ancestors.map((a) => ({ label: categoryLabel(a.name, "uz"), to: categoryHref(a.path) })),
+          ...ancestors.map((a) => ({
+            label: categoryLabel(a.name, "uz"),
+            to: categoryHref(a.path),
+          })),
           { label: name },
         ]}
         backgroundImageUrl={category.heroImageUrl}

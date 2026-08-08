@@ -11,6 +11,11 @@ export interface Crumb {
 interface Props {
   eyebrow?: string;
   title: string;
+  /** A short, punchy per-category line (`Category.heroTagline`) rendered right under the title,
+   * distinct from `description` (which callers often use for a computed stat like a listing
+   * count) -- this is what gives each category's Hero its own voice ("Har bir qurilish uchun
+   * ishonchli materiallar" vs "Hashamat va qulaylik bir joyda"). */
+  tagline?: string | null;
   description?: string;
   crumbs?: Crumb[];
   actions?: ReactNode;
@@ -27,6 +32,7 @@ interface Props {
 export function PageHeader({
   eyebrow,
   title,
+  tagline,
   description,
   crumbs,
   actions,
@@ -93,8 +99,18 @@ export function PageHeader({
             >
               {title}
             </h1>
+            {tagline && (
+              <p
+                className={`mt-2 max-w-2xl text-lg font-medium ${themed ? "text-white/90" : "text-foreground/80"}`}
+                style={accentColor && !themed ? { color: accentColor } : undefined}
+              >
+                {tagline}
+              </p>
+            )}
             {description && (
-              <p className={`mt-3 max-w-2xl text-base ${themed ? "text-white/80" : "text-muted-foreground"}`}>
+              <p
+                className={`mt-3 max-w-2xl text-base ${themed ? "text-white/80" : "text-muted-foreground"}`}
+              >
                 {description}
               </p>
             )}
