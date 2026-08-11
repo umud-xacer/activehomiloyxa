@@ -250,21 +250,32 @@ async def _backfill_platform_settings_defaults(
         "settings": {**current_settings, **missing, **slug_fix},
     }
     new_version = await use_cases.create_version_draft(
-        ConfigEntityType.PLATFORM_SETTINGS, head.id, definition=new_document,
-        actor_id=SEED_MAKER_ID, now=now,
+        ConfigEntityType.PLATFORM_SETTINGS,
+        head.id,
+        definition=new_document,
+        actor_id=SEED_MAKER_ID,
+        now=now,
     )
     manage_key = _registry.manage_permission_key(ConfigEntityType.PLATFORM_SETTINGS.value)
     approve_key = _registry.approve_permission_key(ConfigEntityType.PLATFORM_SETTINGS.value)
     step1 = await use_cases.publish(
-        ConfigEntityType.PLATFORM_SETTINGS, head.id, new_version.id,
-        actor_id=SEED_MAKER_ID, actor_permission_keys=frozenset({manage_key}),
-        approval_note="seed: backfill missing platform settings defaults", now=now,
+        ConfigEntityType.PLATFORM_SETTINGS,
+        head.id,
+        new_version.id,
+        actor_id=SEED_MAKER_ID,
+        actor_permission_keys=frozenset({manage_key}),
+        approval_note="seed: backfill missing platform settings defaults",
+        now=now,
     )
     if step1.status.value == "APPROVAL":
         await use_cases.publish(
-            ConfigEntityType.PLATFORM_SETTINGS, head.id, step1.id,
-            actor_id=SEED_CHECKER_ID, actor_permission_keys=frozenset({manage_key, approve_key}),
-            approval_note="seed: backfill missing platform settings defaults approval", now=now,
+            ConfigEntityType.PLATFORM_SETTINGS,
+            head.id,
+            step1.id,
+            actor_id=SEED_CHECKER_ID,
+            actor_permission_keys=frozenset({manage_key, approve_key}),
+            approval_note="seed: backfill missing platform settings defaults approval",
+            now=now,
         )
 
 
@@ -428,8 +439,12 @@ async def _seed_furniture_category(
         existing = await repo.get_head_by_code(ConfigEntityType.CATEGORY, code)
         assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
         await _backfill_listing_kind(
-            use_cases, repo, head_id=existing.id, current_version_id=existing.current_version_id,
-            listing_kind="GOODS", now=now,
+            use_cases,
+            repo,
+            head_id=existing.id,
+            current_version_id=existing.current_version_id,
+            listing_kind="GOODS",
+            now=now,
         )
         return existing.id
 
@@ -524,7 +539,9 @@ def _property_fields() -> list[dict[str, object]]:
 
 def _land_fields() -> list[dict[str, object]]:
     return [
-        _field("area_sotix", "asosiy", "Maydon (sotix)", "number", required=True, facet=True, order=1),
+        _field(
+            "area_sotix", "asosiy", "Maydon (sotix)", "number", required=True, facet=True, order=1
+        ),
         _field(
             "land_purpose",
             "asosiy",
@@ -538,7 +555,15 @@ def _land_fields() -> list[dict[str, object]]:
                 ("commercial", "Tijorat"),
             ],
         ),
-        _field("has_documents", "asosiy", "Hujjatlari bor", "boolean", facet=True, order=3, default=False),
+        _field(
+            "has_documents",
+            "asosiy",
+            "Hujjatlari bor",
+            "boolean",
+            facet=True,
+            order=3,
+            default=False,
+        ),
     ]
 
 
@@ -558,7 +583,15 @@ def _goods_fields() -> list[dict[str, object]]:
             options=[("new", "Yangi"), ("used", "Ishlatilgan")],
         ),
         _field("warranty_months", "asosiy", "Kafolat (oy)", "number", order=3),
-        _field("delivery_available", "asosiy", "Yetkazib berish mavjud", "boolean", facet=True, order=4, default=False),
+        _field(
+            "delivery_available",
+            "asosiy",
+            "Yetkazib berish mavjud",
+            "boolean",
+            facet=True,
+            order=4,
+            default=False,
+        ),
     ]
 
 
@@ -646,7 +679,15 @@ def _service_cv_fields(*, extra: list[dict[str, object]] | None = None) -> list[
     Deliberately reuses the existing catalog-listing machinery rather than a bespoke profile/CV
     bounded context -- that would be a real architecture decision (ADR), not this task's."""
     fields = [
-        _field("experience_years", "asosiy", "Tajriba (yil)", "number", required=True, facet=True, order=1),
+        _field(
+            "experience_years",
+            "asosiy",
+            "Tajriba (yil)",
+            "number",
+            required=True,
+            facet=True,
+            order=1,
+        ),
         _field("specialization", "asosiy", "Mutaxassislik", "text", facet=True, order=2),
         _field("service_regions", "asosiy", "Xizmat ko'rsatiladigan hududlar", "text", order=3),
         _field(
@@ -658,7 +699,15 @@ def _service_cv_fields(*, extra: list[dict[str, object]] | None = None) -> list[
             order=4,
             options=[("hourly", "Soatlik"), ("daily", "Kunlik"), ("per_job", "Ish uchun")],
         ),
-        _field("available_now", "asosiy", "Hozir band emas", "boolean", facet=True, order=5, default=True),
+        _field(
+            "available_now",
+            "asosiy",
+            "Hozir band emas",
+            "boolean",
+            facet=True,
+            order=5,
+            default=True,
+        ),
     ]
     if extra:
         fields.extend(extra)
@@ -766,8 +815,12 @@ async def _seed_category(
         existing = await repo.get_head_by_code(ConfigEntityType.CATEGORY, code)
         assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
         await _backfill_listing_kind(
-            use_cases, repo, head_id=existing.id, current_version_id=existing.current_version_id,
-            listing_kind=listing_kind, now=now,
+            use_cases,
+            repo,
+            head_id=existing.id,
+            current_version_id=existing.current_version_id,
+            listing_kind=listing_kind,
+            now=now,
         )
         return existing.id
 
@@ -824,20 +877,32 @@ async def _backfill_listing_kind(
     new_document = {**current.definition_document, "descriptor": new_descriptor}
 
     new_version = await use_cases.create_version_draft(
-        ConfigEntityType.CATEGORY, head_id, definition=new_document, actor_id=SEED_MAKER_ID, now=now,
+        ConfigEntityType.CATEGORY,
+        head_id,
+        definition=new_document,
+        actor_id=SEED_MAKER_ID,
+        now=now,
     )
     manage_key = _registry.manage_permission_key(ConfigEntityType.CATEGORY.value)
     approve_key = _registry.approve_permission_key(ConfigEntityType.CATEGORY.value)
     step1 = await use_cases.publish(
-        ConfigEntityType.CATEGORY, head_id, new_version.id,
-        actor_id=SEED_MAKER_ID, actor_permission_keys=frozenset({manage_key}),
-        approval_note="seed: backfill listingKind metadata", now=now,
+        ConfigEntityType.CATEGORY,
+        head_id,
+        new_version.id,
+        actor_id=SEED_MAKER_ID,
+        actor_permission_keys=frozenset({manage_key}),
+        approval_note="seed: backfill listingKind metadata",
+        now=now,
     )
     if step1.status.value == "APPROVAL":
         await use_cases.publish(
-            ConfigEntityType.CATEGORY, head_id, step1.id,
-            actor_id=SEED_CHECKER_ID, actor_permission_keys=frozenset({manage_key, approve_key}),
-            approval_note="seed: backfill listingKind metadata approval", now=now,
+            ConfigEntityType.CATEGORY,
+            head_id,
+            step1.id,
+            actor_id=SEED_CHECKER_ID,
+            actor_permission_keys=frozenset({manage_key, approve_key}),
+            approval_note="seed: backfill listingKind metadata approval",
+            now=now,
         )
 
 
@@ -997,20 +1062,32 @@ async def _backfill_category_theme(
     new_document = {**current.definition_document, "descriptor": new_descriptor}
 
     new_version = await use_cases.create_version_draft(
-        ConfigEntityType.CATEGORY, head.id, definition=new_document, actor_id=SEED_MAKER_ID, now=now,
+        ConfigEntityType.CATEGORY,
+        head.id,
+        definition=new_document,
+        actor_id=SEED_MAKER_ID,
+        now=now,
     )
     manage_key = _registry.manage_permission_key(ConfigEntityType.CATEGORY.value)
     approve_key = _registry.approve_permission_key(ConfigEntityType.CATEGORY.value)
     step1 = await use_cases.publish(
-        ConfigEntityType.CATEGORY, head.id, new_version.id,
-        actor_id=SEED_MAKER_ID, actor_permission_keys=frozenset({manage_key}),
-        approval_note="seed: backfill hero theme metadata", now=now,
+        ConfigEntityType.CATEGORY,
+        head.id,
+        new_version.id,
+        actor_id=SEED_MAKER_ID,
+        actor_permission_keys=frozenset({manage_key}),
+        approval_note="seed: backfill hero theme metadata",
+        now=now,
     )
     if step1.status.value == "APPROVAL":
         await use_cases.publish(
-            ConfigEntityType.CATEGORY, head.id, step1.id,
-            actor_id=SEED_CHECKER_ID, actor_permission_keys=frozenset({manage_key, approve_key}),
-            approval_note="seed: backfill hero theme metadata approval", now=now,
+            ConfigEntityType.CATEGORY,
+            head.id,
+            step1.id,
+            actor_id=SEED_CHECKER_ID,
+            actor_permission_keys=frozenset({manage_key, approve_key}),
+            approval_note="seed: backfill hero theme metadata approval",
+            now=now,
         )
 
 
@@ -1018,7 +1095,7 @@ def _slugify(text: str) -> str:
     """Latin-Uzbek-aware slug matching the convention the hand-written codes above already use
     (apostrophes drop rather than transliterate, so "Ko'p qavatli binolar" -> "kop-qavatli-
     binolar", same as the existing `kop-qavatli-binolar` top-level code)."""
-    text = text.replace("'", "").replace("’", "").replace("‘", "")
+    text = text.replace("'", "").replace("’", "").replace("‘", "")  # noqa: RUF001
     slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
     return slug
 
@@ -1053,14 +1130,26 @@ async def _seed_subtree(
         path = f"{parent_path}/{_slugify(name)}"
         code = _slugify(path.lstrip("/"))
         head_id = await _seed_category(
-            use_cases, repo, code=code, name=name, path=path,
-            parent_category_id=parent_id, form_definition_id=form_definition_id, now=now,
+            use_cases,
+            repo,
+            code=code,
+            name=name,
+            path=path,
+            parent_category_id=parent_id,
+            form_definition_id=form_definition_id,
+            now=now,
             listing_kind=listing_kind,
         )
         if children:
             await _seed_subtree(
-                use_cases, repo, children, parent_id=head_id, parent_path=path,
-                form_definition_id=form_definition_id, now=now, listing_kind=listing_kind,
+                use_cases,
+                repo,
+                children,
+                parent_id=head_id,
+                parent_path=path,
+                form_definition_id=form_definition_id,
+                now=now,
+                listing_kind=listing_kind,
             )
 
 
@@ -1068,16 +1157,37 @@ def _kop_qavatli_binolar_tree() -> list[Node]:
     return [
         (
             "Yangi qurilishlar",
-            ["1 xonali", "2 xonali", "3 xonali", "4+ xonali", "Family", "Duplex", "Loft", "Smart Apartment"],
+            [
+                "1 xonali",
+                "2 xonali",
+                "3 xonali",
+                "4+ xonali",
+                "Family",
+                "Duplex",
+                "Loft",
+                "Smart Apartment",
+            ],
         ),
         "Ikkilamchi bozor",
-        ("Premium turar joylar", ["Sky Residence", "Penthouse", "Terrace Apartment", "Smart Home", "Designer Interior"]),
+        (
+            "Premium turar joylar",
+            ["Sky Residence", "Penthouse", "Terrace Apartment", "Smart Home", "Designer Interior"],
+        ),
         "Biznes klass",
         "Komfort klass",
         "Ekonom klass",
         "Penthouse",
         "Studio",
-        ("Investitsiya uchun", ["Erta bosqich", "Qurilish jarayonida", "Tayyor loyiha", "Yuqori daromadli", "Tijorat uchun mos"]),
+        (
+            "Investitsiya uchun",
+            [
+                "Erta bosqich",
+                "Qurilish jarayonida",
+                "Tayyor loyiha",
+                "Yuqori daromadli",
+                "Tijorat uchun mos",
+            ],
+        ),
         "Ipotekali uylar",
         "Qurilishi davom etayotgan loyihalar",
         "Tayyor topshirilgan loyihalar",
@@ -1087,9 +1197,15 @@ def _kop_qavatli_binolar_tree() -> list[Node]:
 def _kotejlar_tree() -> list[Node]:
     return [
         ("Oilaviy kotejlar", ["2 xonali", "3 xonali", "5+ xonali", "Bolalar maydonchali kotejlar"]),
-        ("Premium kotejlar", ["Basseynli", "Sauna va SPA'li", "Panoramali", "VIP xizmatli kotejlar"]),
+        (
+            "Premium kotejlar",
+            ["Basseynli", "Sauna va SPA'li", "Panoramali", "VIP xizmatli kotejlar"],
+        ),
         "Luxury Villalar",
-        ("Tog' kotejlari", ["Qishki dam olish uchun", "Yozgi dam olish uchun", "Ekstremal turizm uchun"]),
+        (
+            "Tog' kotejlari",
+            ["Qishki dam olish uchun", "Yozgi dam olish uchun", "Ekstremal turizm uchun"],
+        ),
         "Ko'l bo'yidagi kotejlar",
         "O'rmon hududidagi kotejlar",
         "Shahar tashqarisidagi kotejlar",
@@ -1109,27 +1225,61 @@ def _hovlilar_tree() -> list[Node]:
         "Ijaraga beriladigan hovlilar",
         "Yangi qurilgan hovlilar",
         "Ikkilamchi bozordagi hovlilar",
-        ("Premium hovlilar", ["Zamonaviy villa", "Klassik villa", "Panoramali hovli", "Dizaynerlik interyeriga ega hovlilar"]),
+        (
+            "Premium hovlilar",
+            [
+                "Zamonaviy villa",
+                "Klassik villa",
+                "Panoramali hovli",
+                "Dizaynerlik interyeriga ega hovlilar",
+            ],
+        ),
         "Kottejlar",
         "Townhouse",
-        ("Hovuzli hovlilar", ["Ochiq hovuz", "Yopiq hovuz", "Isitiladigan hovuz", "SPA zonali hovlilar"]),
+        (
+            "Hovuzli hovlilar",
+            ["Ochiq hovuz", "Yopiq hovuz", "Isitiladigan hovuz", "SPA zonali hovlilar"],
+        ),
         "Katta yer maydoniga ega hovlilar",
         "Shahar ichidagi hovlilar",
         "Shahar tashqarisidagi hovlilar",
         "Investitsiya uchun hovlilar",
         "Qurilishi tugallanmagan hovlilar",
-        ("Smart Home hovlilar", ["Avtomatlashtirilgan xavfsizlik tizimi", "Aqlli yoritish", "Aqlli iqlim boshqaruvi"]),
+        (
+            "Smart Home hovlilar",
+            ["Avtomatlashtirilgan xavfsizlik tizimi", "Aqlli yoritish", "Aqlli iqlim boshqaruvi"],
+        ),
     ]
 
 
 def _noturar_binolar_tree() -> list[Node]:
     return [
-        ("Ofis binolari", ["Business Center", "Coworking", "Premium Office", "Open Space", "Alohida ofislar"]),
-        ("Savdo markazlari", ["Butiklar", "Supermarketlar", "Showroomlar", "Savdo pavilyonlari", "Food court joylari"]),
+        (
+            "Ofis binolari",
+            ["Business Center", "Coworking", "Premium Office", "Open Space", "Alohida ofislar"],
+        ),
+        (
+            "Savdo markazlari",
+            [
+                "Butiklar",
+                "Supermarketlar",
+                "Showroomlar",
+                "Savdo pavilyonlari",
+                "Food court joylari",
+            ],
+        ),
         "Do'kon va butiklar",
         "Restoran va kafelar",
         "Mehmonxonalar",
-        ("Omborxonalar", ["Logistika omborlari", "Sovutkich omborlari", "Distribyutor markazlari", "Sanoat omborlari"]),
+        (
+            "Omborxonalar",
+            [
+                "Logistika omborlari",
+                "Sovutkich omborlari",
+                "Distribyutor markazlari",
+                "Sanoat omborlari",
+            ],
+        ),
         "Ishlab chiqarish binolari",
         "Zavod va fabrikalar",
         "Tibbiyot markazlari",
@@ -1147,16 +1297,31 @@ def _dala_hovlilar_tree() -> list[Node]:
         "Ijaraga beriladigan dala hovlilar",
         (
             "Kunlik ijara",
-            ["2 kishilik", "Oilaviy", "Katta guruhlar uchun", "Korporativ dam olish uchun", "Bayram tadbirlari uchun"],
+            [
+                "2 kishilik",
+                "Oilaviy",
+                "Katta guruhlar uchun",
+                "Korporativ dam olish uchun",
+                "Bayram tadbirlari uchun",
+            ],
         ),
         "Haftalik va oylik ijara",
-        ("Premium villalar", ["Smart Home", "VIP villa", "Panoramali villa", "Zamonaviy dizayndagi villalar"]),
+        (
+            "Premium villalar",
+            ["Smart Home", "VIP villa", "Panoramali villa", "Zamonaviy dizayndagi villalar"],
+        ),
         "Oilaviy dam olish hovlilari",
         "Tog' hududidagi dala hovlilar",
         "Ko'l yoki daryo bo'yidagi hovlilar",
         (
             "Hovuzli dala hovlilar",
-            ["Ochiq hovuz", "Yopiq hovuz", "Isitiladigan hovuz", "Bolalar hovuzi", "Premium SPA zonali hovlilar"],
+            [
+                "Ochiq hovuz",
+                "Yopiq hovuz",
+                "Isitiladigan hovuz",
+                "Bolalar hovuzi",
+                "Premium SPA zonali hovlilar",
+            ],
         ),
         "Barbekyu va yozgi oshxonali hovlilar",
         "Investitsiya uchun dala hovlilar",
@@ -1172,10 +1337,19 @@ def _bosh_yerlar_tree() -> list[Node]:
         ),
         (
             "Tijorat maqsadidagi yerlar",
-            ["Savdo markazi uchun", "Ofis binosi uchun", "Omborxona uchun", "Mehmonxona uchun", "Restoran uchun"],
+            [
+                "Savdo markazi uchun",
+                "Ofis binosi uchun",
+                "Omborxona uchun",
+                "Mehmonxona uchun",
+                "Restoran uchun",
+            ],
         ),
         "Sanoat hududlari",
-        ("Qishloq xo'jaligi yerlari", ["Bog'dorchilik", "Issiqxona", "Chorvachilik", "Dehqonchilik"]),
+        (
+            "Qishloq xo'jaligi yerlari",
+            ["Bog'dorchilik", "Issiqxona", "Chorvachilik", "Dehqonchilik"],
+        ),
         "Dala va bog' yerlari",
         "Fermer xo'jaligi yerlari",
         "Investitsiya uchun yerlar",
@@ -1205,7 +1379,10 @@ def _qurilish_materiallari_tree() -> list[Node]:
         ),
         "Pol qoplamalari",
         "Eshik va derazalar",
-        ("Mahkamlash mahsulotlari", ["Mix", "Vint", "Shurup", "Bolt", "Gayka", "Shayba", "Dyubel", "Anker"]),
+        (
+            "Mahkamlash mahsulotlari",
+            ["Mix", "Vint", "Shurup", "Bolt", "Gayka", "Shayba", "Dyubel", "Anker"],
+        ),
         "Qurilish asbob-uskunalari",
         "Maxsus texnika va jihozlar",
     ]
@@ -1213,8 +1390,19 @@ def _qurilish_materiallari_tree() -> list[Node]:
 
 def _maishiy_texnikalar_tree() -> list[Node]:
     return [
-        ("Muzlatgichlar", ["Ikki eshikli", "Side by Side", "Mini muzlatgichlar", "Smart muzlatgichlar"]),
-        ("Kir yuvish mashinalari", ["Avtomatik", "Yarim avtomatik", "Quritish funksiyali", "Sanoat kir yuvish mashinalari"]),
+        (
+            "Muzlatgichlar",
+            ["Ikki eshikli", "Side by Side", "Mini muzlatgichlar", "Smart muzlatgichlar"],
+        ),
+        (
+            "Kir yuvish mashinalari",
+            [
+                "Avtomatik",
+                "Yarim avtomatik",
+                "Quritish funksiyali",
+                "Sanoat kir yuvish mashinalari",
+            ],
+        ),
         "Idish yuvish mashinalari",
         "Gaz plitalari va pechlar",
         "Mikroto'lqinli pechlar",
@@ -1222,7 +1410,10 @@ def _maishiy_texnikalar_tree() -> list[Node]:
         "Konditsionerlar",
         "Televizorlar",
         "Suv isitkichlari",
-        ("Oshxona texnikalari", ["Blenderlar", "Mikserlar", "Kofe mashinalari", "Multivarkalar", "Elektr choynaklar"]),
+        (
+            "Oshxona texnikalari",
+            ["Blenderlar", "Mikserlar", "Kofe mashinalari", "Multivarkalar", "Elektr choynaklar"],
+        ),
         "Kichik maishiy texnikalar",
         "Smart Home qurilmalari",
         "Iqlim texnikalari",
@@ -1234,15 +1425,30 @@ def _uy_bezaklari_tree() -> list[Node]:
     return [
         (
             "Devor bezaklari",
-            ["3D panellar", "Dekorativ yog'och panellar", "Metall dekorlar", "Stikerlar", "Premium devor kompozitsiyalari"],
+            [
+                "3D panellar",
+                "Dekorativ yog'och panellar",
+                "Metall dekorlar",
+                "Stikerlar",
+                "Premium devor kompozitsiyalari",
+            ],
         ),
         "Rasmlar va kartinalar",
         "Ko'zgular",
-        ("Pardalar va jalyuzilar", ["Zamonaviy", "Klassik", "Blackout", "Avtomatik", "Premium kolleksiyalar"]),
+        (
+            "Pardalar va jalyuzilar",
+            ["Zamonaviy", "Klassik", "Blackout", "Avtomatik", "Premium kolleksiyalar"],
+        ),
         "Gilam va pol qoplamalari",
         (
             "Dekorativ yoritish",
-            ["LED yoritish", "Osma chiroqlar", "Tungi lampalar", "Dizayner lampalari", "Aqlli yoritish tizimlari"],
+            [
+                "LED yoritish",
+                "Osma chiroqlar",
+                "Tungi lampalar",
+                "Dizayner lampalari",
+                "Aqlli yoritish tizimlari",
+            ],
         ),
         "Gullar va dekorativ o'simliklar",
         "Vaza va haykallar",
@@ -1257,7 +1463,10 @@ def _uy_bezaklari_tree() -> list[Node]:
 
 def _uniforma_tree() -> list[Node]:
     return [
-        ("Qurilish kiyimlari", ["Kurtka", "Shim", "Kombinezon", "Jilet", "Yomg'ir kiyimi", "Termo kiyimlar"]),
+        (
+            "Qurilish kiyimlari",
+            ["Kurtka", "Shim", "Kombinezon", "Jilet", "Yomg'ir kiyimi", "Termo kiyimlar"],
+        ),
         "Muhandis va texnik kiyimlari",
         "Elektrchilar uchun kiyimlar",
         "Payvandchilar uchun kiyimlar",
@@ -1270,11 +1479,26 @@ def _uniforma_tree() -> list[Node]:
         "Maxsus himoya kiyimlari",
         (
             "Ish poyabzallari",
-            ["Etik", "Botinka", "Yozgi poyabzal", "Qishki poyabzal", "Suv o'tkazmaydigan poyabzal", "Metall burunli poyabzal"],
+            [
+                "Etik",
+                "Botinka",
+                "Yozgi poyabzal",
+                "Qishki poyabzal",
+                "Suv o'tkazmaydigan poyabzal",
+                "Metall burunli poyabzal",
+            ],
         ),
         (
             "Himoya vositalari",
-            ["Kaska", "Qo'lqop", "Ko'zoynak", "Respirator", "Niqob", "Quloqchin", "Xavfsizlik kamarlari"],
+            [
+                "Kaska",
+                "Qo'lqop",
+                "Ko'zoynak",
+                "Respirator",
+                "Niqob",
+                "Quloqchin",
+                "Xavfsizlik kamarlari",
+            ],
         ),
         "Mavsumiy ish kiyimlari",
     ]
@@ -1286,7 +1510,10 @@ def _mebel_materiallari_tree() -> list[Node]:
         "MDF va DSP plitalari",
         "Fanera va laminatlar",
         "Stoleshnitsalar",
-        ("Mebel furnituralari", ["Ilgaklar", "Menteshalar", "Relslar", "Lift tizimlari", "Magnitlar", "Qulflar"]),
+        (
+            "Mebel furnituralari",
+            ["Ilgaklar", "Menteshalar", "Relslar", "Lift tizimlari", "Magnitlar", "Qulflar"],
+        ),
         "Tutqich va aksessuarlar",
         "Sharnir va rels tizimlari",
         "Mebel oyoqlari va tayanchlari",
@@ -1301,12 +1528,33 @@ def _mebel_materiallari_tree() -> list[Node]:
 
 def _mebel_salonlari_tree() -> list[Node]:
     return [
-        ("Oshxona mebellari", ["Zamonaviy", "Klassik", "Minimalistik", "Premium oshxona garniturlari"]),
+        (
+            "Oshxona mebellari",
+            ["Zamonaviy", "Klassik", "Minimalistik", "Premium oshxona garniturlari"],
+        ),
         "Yotoqxona mebellari",
         "Mehmonxona mebellari",
         "Bolalar xonasi mebellari",
-        ("Ofis mebellari", ["Ish stollari", "Ofis stullari", "Konferensiya stollari", "Shkaflar", "Resepsion mebellari"]),
-        ("Yumshoq mebellar", ["Divanlar", "Burchak divanlar", "Kreslolar", "Puflar", "Transformatsiyalanuvchi mebellar"]),
+        (
+            "Ofis mebellari",
+            [
+                "Ish stollari",
+                "Ofis stullari",
+                "Konferensiya stollari",
+                "Shkaflar",
+                "Resepsion mebellari",
+            ],
+        ),
+        (
+            "Yumshoq mebellar",
+            [
+                "Divanlar",
+                "Burchak divanlar",
+                "Kreslolar",
+                "Puflar",
+                "Transformatsiyalanuvchi mebellar",
+            ],
+        ),
         "Premium mebellar",
         "Buyurtma asosida tayyorlanadigan mebellar",
         "Bog' va tashqi mebellar",
@@ -1319,12 +1567,25 @@ def _mebel_salonlari_tree() -> list[Node]:
 
 def _dam_olish_maskanlari_tree() -> list[Node]:
     return [
-        ("Mehmonxonalar", ["3 yulduzli", "4 yulduzli", "5 yulduzli", "Boutique Hotel", "Business Hotel", "Family Hotel"]),
+        (
+            "Mehmonxonalar",
+            [
+                "3 yulduzli",
+                "4 yulduzli",
+                "5 yulduzli",
+                "Boutique Hotel",
+                "Business Hotel",
+                "Family Hotel",
+            ],
+        ),
         "Dala hovlilar",
         "Villalar",
         "Kottejlar",
         "Kurort va sanatoriyalar",
-        ("Hovuz va akvaparklar", ["Ochiq hovuz", "Yopiq hovuz", "Bolalar akvaparki", "VIP zonalar", "Family zonalari"]),
+        (
+            "Hovuz va akvaparklar",
+            ["Ochiq hovuz", "Yopiq hovuz", "Bolalar akvaparki", "VIP zonalar", "Family zonalari"],
+        ),
         (
             "SPA va Wellness markazlari",
             ["Sauna", "Hammom", "Massaj", "Fitnes", "Termal hovuz", "Sog'lomlashtirish xizmatlari"],
@@ -1344,7 +1605,14 @@ def _landshaft_tree() -> list[Node]:
         "Hovli dizayni",
         (
             "Bog' loyihalash",
-            ["Zamonaviy bog'", "Klassik bog'", "Yapon bog'i", "Minimalistik bog'", "Mevali bog'", "Dekorativ bog'"],
+            [
+                "Zamonaviy bog'",
+                "Klassik bog'",
+                "Yapon bog'i",
+                "Minimalistik bog'",
+                "Mevali bog'",
+                "Dekorativ bog'",
+            ],
         ),
         "Park va yashil hududlar",
         "Avtomatik sug'orish tizimlari",
@@ -1354,12 +1622,24 @@ def _landshaft_tree() -> list[Node]:
         "Favvora va sun'iy suv havzalari",
         (
             "Tashqi yoritish tizimlari",
-            ["Quyosh energiyasida ishlovchi chiroqlar", "LED yoritish", "Dekorativ yoritish", "Aqlli yoritish tizimlari"],
+            [
+                "Quyosh energiyasida ishlovchi chiroqlar",
+                "LED yoritish",
+                "Dekorativ yoritish",
+                "Aqlli yoritish tizimlari",
+            ],
         ),
         "Pergola va ayvonlar",
         (
             "Tashqi dam olish zonalari",
-            ["Yozgi oshxona", "Barbekyu zonasi", "Pergola", "Gazebo", "Ochiq terassa", "Bolalar maydonchasi"],
+            [
+                "Yozgi oshxona",
+                "Barbekyu zonasi",
+                "Pergola",
+                "Gazebo",
+                "Ochiq terassa",
+                "Bolalar maydonchasi",
+            ],
         ),
         "Vertikal bog'lar",
         "Tom bog'lari (Roof Garden)",
@@ -1369,8 +1649,21 @@ def _landshaft_tree() -> list[Node]:
 
 def _ish_orni_tree() -> list[Node]:
     return [
-        ("Qurilish ishlari", ["Betonchi", "G'isht teruvchi", "Suvoqchi", "Armaturachi", "Payvandchi", "Tom yopuvchi"]),
-        ("Usta xizmatlari", ["Elektrchi", "Santexnik", "Konditsioner ustasi", "Mebel ustasi", "Bo'yoqchi"]),
+        (
+            "Qurilish ishlari",
+            [
+                "Betonchi",
+                "G'isht teruvchi",
+                "Suvoqchi",
+                "Armaturachi",
+                "Payvandchi",
+                "Tom yopuvchi",
+            ],
+        ),
+        (
+            "Usta xizmatlari",
+            ["Elektrchi", "Santexnik", "Konditsioner ustasi", "Mebel ustasi", "Bo'yoqchi"],
+        ),
         "Muhandislik",
         "Arxitektura va dizayn",
         "Ko'chmas mulk agentlari",
@@ -1382,7 +1675,13 @@ def _ish_orni_tree() -> list[Node]:
         "Tozalash xizmatlari",
         (
             "IT va texnologiyalar",
-            ["Frontend dasturchi", "Backend dasturchi", "Mobil dasturchi", "UI/UX dizayner", "System Administrator"],
+            [
+                "Frontend dasturchi",
+                "Backend dasturchi",
+                "Mobil dasturchi",
+                "UI/UX dizayner",
+                "System Administrator",
+            ],
         ),
         "Moliya va buxgalteriya",
         "Menejment",
@@ -1396,18 +1695,36 @@ def _xizmat_korsatish_tree() -> list[Node]:
     return [
         (
             "Ta'mirlash xizmatlari",
-            ["Kosmetik ta'mirlash", "Kapital ta'mirlash", "Ofis ta'miri", "Kvartira ta'miri", "Fasad ishlari"],
+            [
+                "Kosmetik ta'mirlash",
+                "Kapital ta'mirlash",
+                "Ofis ta'miri",
+                "Kvartira ta'miri",
+                "Fasad ishlari",
+            ],
         ),
         "Usta xizmatlari",
         (
             "Elektrik xizmatlari",
-            ["Sim tortish", "Elektr qalqonlarini o'rnatish", "Yoritish tizimlari", "Smart Home elektr tizimlari", "Avariya xizmatlari"],
+            [
+                "Sim tortish",
+                "Elektr qalqonlarini o'rnatish",
+                "Yoritish tizimlari",
+                "Smart Home elektr tizimlari",
+                "Avariya xizmatlari",
+            ],
         ),
         "Santexnika xizmatlari",
         "Konditsioner va ventilyatsiya",
         (
             "Tozalash xizmatlari",
-            ["Kundalik tozalash", "General tozalash", "Ofis tozalash", "Qurilishdan keyingi tozalash", "Kimyoviy tozalash"],
+            [
+                "Kundalik tozalash",
+                "General tozalash",
+                "Ofis tozalash",
+                "Qurilishdan keyingi tozalash",
+                "Kimyoviy tozalash",
+            ],
         ),
         "Qurilish brigadalari",
         "Mebel yig'ish va o'rnatish",
@@ -1425,7 +1742,14 @@ def _hostel_tree() -> list[Node]:
         "Erkaklar hosteli",
         "Ayollar hosteli",
         "Oilaviy hostellar",
-        ("Talabalar hosteli", ["Universitetlarga yaqin hostellar", "Oylik ijarali hostellar", "Umumiy yashash xonalari"]),
+        (
+            "Talabalar hosteli",
+            [
+                "Universitetlarga yaqin hostellar",
+                "Oylik ijarali hostellar",
+                "Umumiy yashash xonalari",
+            ],
+        ),
         ("Premium hostellar", ["Private Room", "Deluxe Room", "Family Room", "Suite"]),
         ("Kapsula hostellar", ["Standart kapsula", "Premium kapsula", "Smart Capsule"]),
         "Guest House",
@@ -1445,7 +1769,10 @@ def _mexmonxona_tree() -> list[Node]:
         "4 yulduzli mehmonxonalar",
         "5 yulduzli mehmonxonalar",
         "Boutique Hotel",
-        ("Business Hotel", ["Konferensiya zallari", "Coworking zonalari", "Biznes xizmatlariga ega mehmonxonalar"]),
+        (
+            "Business Hotel",
+            ["Konferensiya zallari", "Coworking zonalari", "Biznes xizmatlariga ega mehmonxonalar"],
+        ),
         ("Resort Hotel", ["Beach Resort", "Mountain Resort", "Wellness Resort", "Family Resort"]),
         "Apart Hotel",
         "Family Hotel",
@@ -1475,22 +1802,43 @@ async def _seed_catalog_taxonomy(
     # -- Residential/commercial buildings (a single shared form -- these differ by neighbourhood/
     # type, not by attribute shape).
     re_form_id = await _seed_form(
-        use_cases, repo, code="ko-chmas-mulk-form", name="Ko'chmas mulk", fields=_property_fields(), now=now
+        use_cases,
+        repo,
+        code="ko-chmas-mulk-form",
+        name="Ko'chmas mulk",
+        fields=_property_fields(),
+        now=now,
     )
     for code, name, path, tree in [
-        ("kop-qavatli-binolar", "Ko'p qavatli binolar", "/kop-qavatli-binolar", _kop_qavatli_binolar_tree()),
+        (
+            "kop-qavatli-binolar",
+            "Ko'p qavatli binolar",
+            "/kop-qavatli-binolar",
+            _kop_qavatli_binolar_tree(),
+        ),
         ("kotejlar", "Kotejlar", "/kotejlar", _kotejlar_tree()),
         ("hovlilar", "Hovlilar", "/hovlilar", _hovlilar_tree()),
         ("noturar-binolar", "Noturar binolar", "/noturar-binolar", _noturar_binolar_tree()),
         ("dala-hovlilar", "Dala hovlilar", "/dala-hovlilar", _dala_hovlilar_tree()),
     ]:
         head_id = await _seed_category(
-            use_cases, repo, code=code, name=name, path=path,
-            parent_category_id=None, form_definition_id=re_form_id, now=now,
+            use_cases,
+            repo,
+            code=code,
+            name=name,
+            path=path,
+            parent_category_id=None,
+            form_definition_id=re_form_id,
+            now=now,
         )
         await _seed_subtree(
-            use_cases, repo, tree, parent_id=head_id, parent_path=path,
-            form_definition_id=re_form_id, now=now,
+            use_cases,
+            repo,
+            tree,
+            parent_id=head_id,
+            parent_path=path,
+            form_definition_id=re_form_id,
+            now=now,
         )
 
     # -- Land.
@@ -1498,12 +1846,23 @@ async def _seed_catalog_taxonomy(
         use_cases, repo, code="bosh-yer-form", name="Bo'sh yer", fields=_land_fields(), now=now
     )
     bosh_yerlar_head_id = await _seed_category(
-        use_cases, repo, code="bosh-yerlar", name="Bo'sh yerlar", path="/bosh-yerlar",
-        parent_category_id=None, form_definition_id=land_form_id, now=now,
+        use_cases,
+        repo,
+        code="bosh-yerlar",
+        name="Bo'sh yerlar",
+        path="/bosh-yerlar",
+        parent_category_id=None,
+        form_definition_id=land_form_id,
+        now=now,
     )
     await _seed_subtree(
-        use_cases, repo, _bosh_yerlar_tree(), parent_id=bosh_yerlar_head_id, parent_path="/bosh-yerlar",
-        form_definition_id=land_form_id, now=now,
+        use_cases,
+        repo,
+        _bosh_yerlar_tree(),
+        parent_id=bosh_yerlar_head_id,
+        parent_path="/bosh-yerlar",
+        form_definition_id=land_form_id,
+        now=now,
     )
 
     # -- Goods (physical-unit sales).
@@ -1511,95 +1870,206 @@ async def _seed_catalog_taxonomy(
         use_cases, repo, code="mahsulot-form", name="Mahsulot", fields=_goods_fields(), now=now
     )
     for code, name, path, tree in [
-        ("qurilish-materiallari", "Qurilish materiallari", "/qurilish-materiallari", _qurilish_materiallari_tree()),
-        ("maishiy-texnikalar", "Maishiy texnikalar", "/maishiy-texnikalar", _maishiy_texnikalar_tree()),
+        (
+            "qurilish-materiallari",
+            "Qurilish materiallari",
+            "/qurilish-materiallari",
+            _qurilish_materiallari_tree(),
+        ),
+        (
+            "maishiy-texnikalar",
+            "Maishiy texnikalar",
+            "/maishiy-texnikalar",
+            _maishiy_texnikalar_tree(),
+        ),
         ("uy-bezaklari", "Uy bezaklari", "/uy-bezaklari", _uy_bezaklari_tree()),
-        ("uniforma-va-maxsus-kiyimlar", "Uniforma va maxsus kiyimlar", "/uniforma-va-maxsus-kiyimlar", _uniforma_tree()),
+        (
+            "uniforma-va-maxsus-kiyimlar",
+            "Uniforma va maxsus kiyimlar",
+            "/uniforma-va-maxsus-kiyimlar",
+            _uniforma_tree(),
+        ),
     ]:
         head_id = await _seed_category(
-            use_cases, repo, code=code, name=name, path=path,
-            parent_category_id=None, form_definition_id=goods_form_id, now=now,
+            use_cases,
+            repo,
+            code=code,
+            name=name,
+            path=path,
+            parent_category_id=None,
+            form_definition_id=goods_form_id,
+            now=now,
             listing_kind="GOODS",
         )
         await _seed_subtree(
-            use_cases, repo, tree, parent_id=head_id, parent_path=path,
-            form_definition_id=goods_form_id, now=now, listing_kind="GOODS",
+            use_cases,
+            repo,
+            tree,
+            parent_id=head_id,
+            parent_path=path,
+            form_definition_id=goods_form_id,
+            now=now,
+            listing_kind="GOODS",
         )
 
     # -- Hospitality.
     hosp_form_id = await _seed_form(
-        use_cases, repo, code="mehmonxona-form", name="Mehmonxona/Hostel", fields=_hospitality_fields(), now=now
+        use_cases,
+        repo,
+        code="mehmonxona-form",
+        name="Mehmonxona/Hostel",
+        fields=_hospitality_fields(),
+        now=now,
     )
     for code, name, path, tree in [
         ("hostel", "Hostel", "/hostel", _hostel_tree()),
         ("mexmonxona", "Mexmonxona", "/mexmonxona", _mexmonxona_tree()),
     ]:
         head_id = await _seed_category(
-            use_cases, repo, code=code, name=name, path=path,
-            parent_category_id=None, form_definition_id=hosp_form_id, now=now,
+            use_cases,
+            repo,
+            code=code,
+            name=name,
+            path=path,
+            parent_category_id=None,
+            form_definition_id=hosp_form_id,
+            now=now,
             listing_kind="VENUE",
         )
         await _seed_subtree(
-            use_cases, repo, tree, parent_id=head_id, parent_path=path,
-            form_definition_id=hosp_form_id, now=now, listing_kind="VENUE",
+            use_cases,
+            repo,
+            tree,
+            parent_id=head_id,
+            parent_path=path,
+            form_definition_id=hosp_form_id,
+            now=now,
+            listing_kind="VENUE",
         )
 
     # -- Business directory (showrooms, not units).
     business_form_id = await _seed_form(
-        use_cases, repo, code="biznes-korxona-form", name="Biznes/korxona", fields=_business_fields(), now=now
+        use_cases,
+        repo,
+        code="biznes-korxona-form",
+        name="Biznes/korxona",
+        fields=_business_fields(),
+        now=now,
     )
     mebel_salonlari_head_id = await _seed_category(
-        use_cases, repo, code="mebel-salonlari", name="Mebel salonlari", path="/mebel-salonlari",
-        parent_category_id=None, form_definition_id=business_form_id, now=now,
+        use_cases,
+        repo,
+        code="mebel-salonlari",
+        name="Mebel salonlari",
+        path="/mebel-salonlari",
+        parent_category_id=None,
+        form_definition_id=business_form_id,
+        now=now,
         listing_kind="GOODS",
     )
     await _seed_subtree(
-        use_cases, repo, _mebel_salonlari_tree(), parent_id=mebel_salonlari_head_id, parent_path="/mebel-salonlari",
-        form_definition_id=business_form_id, now=now, listing_kind="GOODS",
+        use_cases,
+        repo,
+        _mebel_salonlari_tree(),
+        parent_id=mebel_salonlari_head_id,
+        parent_path="/mebel-salonlari",
+        form_definition_id=business_form_id,
+        now=now,
+        listing_kind="GOODS",
     )
 
     # -- Recreation venues (new, per this session's request).
     venue_form_id = await _seed_form(
-        use_cases, repo, code="dam-olish-maskani-form", name="Dam olish maskani", fields=_venue_fields(), now=now
+        use_cases,
+        repo,
+        code="dam-olish-maskani-form",
+        name="Dam olish maskani",
+        fields=_venue_fields(),
+        now=now,
     )
     dam_olish_head_id = await _seed_category(
-        use_cases, repo, code="dam-olish-maskanlari", name="Dam olish maskanlari", path="/dam-olish-maskanlari",
-        parent_category_id=None, form_definition_id=venue_form_id, now=now,
+        use_cases,
+        repo,
+        code="dam-olish-maskanlari",
+        name="Dam olish maskanlari",
+        path="/dam-olish-maskanlari",
+        parent_category_id=None,
+        form_definition_id=venue_form_id,
+        now=now,
         listing_kind="VENUE",
     )
     await _seed_subtree(
-        use_cases, repo, _dam_olish_maskanlari_tree(), parent_id=dam_olish_head_id, parent_path="/dam-olish-maskanlari",
-        form_definition_id=venue_form_id, now=now, listing_kind="VENUE",
+        use_cases,
+        repo,
+        _dam_olish_maskanlari_tree(),
+        parent_id=dam_olish_head_id,
+        parent_path="/dam-olish-maskanlari",
+        form_definition_id=venue_form_id,
+        now=now,
+        listing_kind="VENUE",
     )
 
     # -- Landshaft dizayni: a design SERVICE, not goods -- the base CV shape, no trade extras.
     landshaft_form_id = await _seed_form(
-        use_cases, repo, code="landshaft-xizmati-form", name="Landshaft dizayni xizmati",
-        fields=_service_cv_fields(), now=now,
+        use_cases,
+        repo,
+        code="landshaft-xizmati-form",
+        name="Landshaft dizayni xizmati",
+        fields=_service_cv_fields(),
+        now=now,
     )
     landshaft_head_id = await _seed_category(
-        use_cases, repo, code="landshaft-dizayni", name="Landshaft dizayni", path="/landshaft-dizayni",
-        parent_category_id=None, form_definition_id=landshaft_form_id, now=now,
+        use_cases,
+        repo,
+        code="landshaft-dizayni",
+        name="Landshaft dizayni",
+        path="/landshaft-dizayni",
+        parent_category_id=None,
+        form_definition_id=landshaft_form_id,
+        now=now,
         listing_kind="SERVICE",
     )
     await _seed_subtree(
-        use_cases, repo, _landshaft_tree(), parent_id=landshaft_head_id, parent_path="/landshaft-dizayni",
-        form_definition_id=landshaft_form_id, now=now, listing_kind="SERVICE",
+        use_cases,
+        repo,
+        _landshaft_tree(),
+        parent_id=landshaft_head_id,
+        parent_path="/landshaft-dizayni",
+        form_definition_id=landshaft_form_id,
+        now=now,
+        listing_kind="SERVICE",
     )
 
     # -- Ish o'rni (job postings) -- same CV shape; here `specialization`/`experience_years` read
     # as the employer's requirement rather than the applicant's own.
     ish_orni_form_id = await _seed_form(
-        use_cases, repo, code="ish-orni-form", name="Ish o'rni", fields=_service_cv_fields(), now=now
+        use_cases,
+        repo,
+        code="ish-orni-form",
+        name="Ish o'rni",
+        fields=_service_cv_fields(),
+        now=now,
     )
     ish_orni_head_id = await _seed_category(
-        use_cases, repo, code="ish-orni", name="Ish o'rni", path="/ish-orni",
-        parent_category_id=None, form_definition_id=ish_orni_form_id, now=now,
+        use_cases,
+        repo,
+        code="ish-orni",
+        name="Ish o'rni",
+        path="/ish-orni",
+        parent_category_id=None,
+        form_definition_id=ish_orni_form_id,
+        now=now,
         listing_kind="SERVICE",
     )
     await _seed_subtree(
-        use_cases, repo, _ish_orni_tree(), parent_id=ish_orni_head_id, parent_path="/ish-orni",
-        form_definition_id=ish_orni_form_id, now=now, listing_kind="SERVICE",
+        use_cases,
+        repo,
+        _ish_orni_tree(),
+        parent_id=ish_orni_head_id,
+        parent_path="/ish-orni",
+        form_definition_id=ish_orni_form_id,
+        now=now,
+        listing_kind="SERVICE",
     )
 
     # -- Xizmat ko'rsatish: the services directory. A CV-shaped child category per trade so
@@ -1607,24 +2077,50 @@ async def _seed_catalog_taxonomy(
     # category's listings -- new listing = new "CV" entry, searchable by specialization/region/
     # rate via the same `catalogClient.listingsByCategoryPath` every other category already uses.
     services_form_id = await _seed_form(
-        use_cases, repo, code="xizmat-korsatish-form", name="Xizmat ko'rsatish", fields=_service_cv_fields(), now=now
+        use_cases,
+        repo,
+        code="xizmat-korsatish-form",
+        name="Xizmat ko'rsatish",
+        fields=_service_cv_fields(),
+        now=now,
     )
     services_head_id = await _seed_category(
-        use_cases, repo, code="xizmat-korsatish", name="Xizmat ko'rsatish", path="/xizmat-korsatish",
-        parent_category_id=None, form_definition_id=services_form_id, now=now,
+        use_cases,
+        repo,
+        code="xizmat-korsatish",
+        name="Xizmat ko'rsatish",
+        path="/xizmat-korsatish",
+        parent_category_id=None,
+        form_definition_id=services_form_id,
+        now=now,
         listing_kind="SERVICE",
     )
     await _seed_subtree(
-        use_cases, repo, _xizmat_korsatish_tree(), parent_id=services_head_id, parent_path="/xizmat-korsatish",
-        form_definition_id=services_form_id, now=now, listing_kind="SERVICE",
+        use_cases,
+        repo,
+        _xizmat_korsatish_tree(),
+        parent_id=services_head_id,
+        parent_path="/xizmat-korsatish",
+        form_definition_id=services_form_id,
+        now=now,
+        listing_kind="SERVICE",
     )
 
     tamirchi_form_id = await _seed_form(
-        use_cases, repo, code="tamirchi-form", name="Ta'mirchi",
+        use_cases,
+        repo,
+        code="tamirchi-form",
+        name="Ta'mirchi",
         fields=_service_cv_fields(
             extra=[
                 _field(
-                    "trade", "asosiy", "Yo'nalish", "select", required=True, facet=True, order=10,
+                    "trade",
+                    "asosiy",
+                    "Yo'nalish",
+                    "select",
+                    required=True,
+                    facet=True,
+                    order=10,
                     options=[
                         ("santexnik", "Santexnik"),
                         ("elektrik", "Elektrik"),
@@ -1639,42 +2135,83 @@ async def _seed_catalog_taxonomy(
         now=now,
     )
     await _seed_category(
-        use_cases, repo, code="tamirchi-xizmati", name="Ta'mirchi", path="/tamirchi",
-        parent_category_id=services_head_id, form_definition_id=tamirchi_form_id, now=now,
+        use_cases,
+        repo,
+        code="tamirchi-xizmati",
+        name="Ta'mirchi",
+        path="/tamirchi",
+        parent_category_id=services_head_id,
+        form_definition_id=tamirchi_form_id,
+        now=now,
         listing_kind="SERVICE",
     )
 
     haydovchi_form_id = await _seed_form(
-        use_cases, repo, code="haydovchi-form", name="Mashina haydovchisi",
+        use_cases,
+        repo,
+        code="haydovchi-form",
+        name="Mashina haydovchisi",
         fields=_service_cv_fields(
             extra=[
                 _field(
-                    "license_category", "asosiy", "Haydovchilik guvohnomasi toifasi", "select",
-                    required=True, facet=True, order=10,
+                    "license_category",
+                    "asosiy",
+                    "Haydovchilik guvohnomasi toifasi",
+                    "select",
+                    required=True,
+                    facet=True,
+                    order=10,
                     options=[("B", "B"), ("C", "C"), ("D", "D"), ("BE", "BE"), ("CE", "CE")],
                 ),
-                _field("own_vehicle", "asosiy", "O'z avtomobili bor", "boolean", facet=True, order=11, default=False),
+                _field(
+                    "own_vehicle",
+                    "asosiy",
+                    "O'z avtomobili bor",
+                    "boolean",
+                    facet=True,
+                    order=11,
+                    default=False,
+                ),
             ]
         ),
         now=now,
     )
     await _seed_category(
-        use_cases, repo, code="mashina-haydovchisi", name="Mashina haydovchisi", path="/haydovchi",
-        parent_category_id=services_head_id, form_definition_id=haydovchi_form_id, now=now,
+        use_cases,
+        repo,
+        code="mashina-haydovchisi",
+        name="Mashina haydovchisi",
+        path="/haydovchi",
+        parent_category_id=services_head_id,
+        form_definition_id=haydovchi_form_id,
+        now=now,
         listing_kind="SERVICE",
     )
 
     yuk_haydovchi_form_id = await _seed_form(
-        use_cases, repo, code="yuk-haydovchi-form", name="Yuk mashina haydovchisi",
+        use_cases,
+        repo,
+        code="yuk-haydovchi-form",
+        name="Yuk mashina haydovchisi",
         fields=_service_cv_fields(
             extra=[
                 _field(
-                    "license_category", "asosiy", "Haydovchilik guvohnomasi toifasi", "select",
-                    required=True, facet=True, order=10,
+                    "license_category",
+                    "asosiy",
+                    "Haydovchilik guvohnomasi toifasi",
+                    "select",
+                    required=True,
+                    facet=True,
+                    order=10,
                     options=[("C", "C"), ("CE", "CE"), ("D", "D"), ("DE", "DE")],
                 ),
                 _field(
-                    "vehicle_type", "asosiy", "Yuk mashina turi", "select", facet=True, order=11,
+                    "vehicle_type",
+                    "asosiy",
+                    "Yuk mashina turi",
+                    "select",
+                    facet=True,
+                    order=11,
                     options=[
                         ("gazelle", "Gazel / kichik yuk"),
                         ("truck", "Yuk mashina"),
@@ -1682,14 +2219,27 @@ async def _seed_catalog_taxonomy(
                         ("refrigerator", "Refrijerator"),
                     ],
                 ),
-                _field("cargo_capacity_tons", "asosiy", "Yuk ko'tarish sig'imi (tonna)", "number", facet=True, order=12),
+                _field(
+                    "cargo_capacity_tons",
+                    "asosiy",
+                    "Yuk ko'tarish sig'imi (tonna)",
+                    "number",
+                    facet=True,
+                    order=12,
+                ),
             ]
         ),
         now=now,
     )
     await _seed_category(
-        use_cases, repo, code="yuk-mashina-haydovchisi", name="Yuk mashina haydovchisi", path="/yuk-haydovchi",
-        parent_category_id=services_head_id, form_definition_id=yuk_haydovchi_form_id, now=now,
+        use_cases,
+        repo,
+        code="yuk-mashina-haydovchisi",
+        name="Yuk mashina haydovchisi",
+        path="/yuk-haydovchi",
+        parent_category_id=services_head_id,
+        form_definition_id=yuk_haydovchi_form_id,
+        now=now,
         listing_kind="SERVICE",
     )
 
@@ -1697,9 +2247,13 @@ async def _seed_catalog_taxonomy(
     # category mini-platform redesign) -- idempotent, safe to re-run every deploy.
     for code, theme in _TOP_LEVEL_CATEGORY_HERO_THEMES.items():
         await _backfill_category_theme(
-            use_cases, repo, code=code,
-            hero_image_url=theme["heroImageUrl"], hero_tagline=theme["heroTagline"],
-            accent_color=theme["accentColor"], now=now,
+            use_cases,
+            repo,
+            code=code,
+            hero_image_url=theme["heroImageUrl"],
+            hero_tagline=theme["heroTagline"],
+            accent_color=theme["accentColor"],
+            now=now,
         )
 
 
@@ -1739,8 +2293,13 @@ async def run_seed() -> None:
                     use_cases, repo, form_definition_id=furniture_form_id, now=now
                 )
                 await _seed_subtree(
-                    use_cases, repo, _mebel_materiallari_tree(), parent_id=furniture_head_id,
-                    parent_path="/mebel-materiallari", form_definition_id=furniture_form_id, now=now,
+                    use_cases,
+                    repo,
+                    _mebel_materiallari_tree(),
+                    parent_id=furniture_head_id,
+                    parent_path="/mebel-materiallari",
+                    form_definition_id=furniture_form_id,
+                    now=now,
                     listing_kind="GOODS",
                 )
 
