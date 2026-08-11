@@ -1,13 +1,22 @@
 /**
- * Turn-by-turn directions via OSRM's public demo router (router.project-osrm.org) -- free, no
- * API key, no account. Same "keyless by design" constraint as the map tiles themselves (see
- * LeafletMapView's doc comment): the previous Google Maps integration broke because its key
- * belonged to infrastructure the user doesn't control.
+ * Turn-by-turn directions via Yandex's `multiRouter` (part of the same JS API key as the map
+ * itself and the Geocoder -- see `@/lib/yandex-maps`'s doc comment). Replaces the previous
+ * OSRM-based implementation now that every map surface in the app is Yandex-based; adds a real
+ * "masstransit" (public transport) mode, which OSRM's public demo router never had.
  *
- * The demo server is rate-limited and not meant for production traffic at scale, but it's the
- * only zero-setup routing backend available and is sufficient for this app's usage pattern
- * (one route lookup per "Yo'lni boshlash" tap).
+ * Known limitation: Yandex's JS API only localizes its own step instruction text into
+ * `ru_RU`/`en_US`/`uk_UA`/`tr_TR` -- there is no `uz_UZ` output, unlike the old OSRM
+ * implementation, which hand-built Uzbek instructions from OSRM's structured maneuver codes.
+ * Yandex's `multiRouter` segments don't expose an equivalent structured maneuver type/modifier,
+ * only pre-rendered text -- so step instructions here come through as Yandex gives them (`ru_RU`,
+ * see the `lang` param on the script tag in `yandex-maps.ts`) rather than Uzbek. Distance/duration
+ * formatting and the surrounding UI chrome stay Uzbek (`formatDistance`/`formatDuration` below).
  */
+import {
+  loadYandexMaps,
+  type YMapsMultiRouteActiveRoute,
+  type YMapsMultiRouteMode,
+} from "@/lib/yandex-maps";
 
 export interface RouteStep {
   instruction: string;
@@ -25,66 +34,97 @@ export interface RouteResult {
   steps: RouteStep[];
 }
 
-type OsrmStep = {
-  distance: number;
-  duration: number;
-  maneuver: { type: string; modifier?: string; location: [number, number] };
-  name: string;
-};
-
-const MANEUVER_UZ: Record<string, string> = {
-  depart: "Yo'lga chiqing",
-  arrive: "Manzilga yetib keldingiz",
-  turn: "Burilish",
-  "new name": "Davom eting",
-  continue: "To'g'ri davom eting",
-  merge: "Qo'shiling",
-  "on ramp": "Estakadaga chiqing",
-  "off ramp": "Estakadadan tushing",
-  fork: "Ayrilishda tanlang",
-  "end of road": "Yo'l oxirida buriling",
-  roundabout: "Aylanma yo'ldan o'ting",
-  rotary: "Aylanma yo'ldan o'ting",
-  "roundabout turn": "Aylanma yo'ldan buriling",
-  "exit roundabout": "Aylanma yo'ldan chiqing",
-  "exit rotary": "Aylanma yo'ldan chiqing",
-};
-
-const MODIFIER_UZ: Record<string, string> = {
-  uturn: "U-burilish qiling",
-  "sharp right": "keskin o'ngga buriling",
-  right: "o'ngga buriling",
-  "slight right": "biroz o'ngga buriling",
-  straight: "to'g'ri davom eting",
-  "slight left": "biroz chapga buriling",
-  left: "chapga buriling",
-  "sharp left": "keskin chapga buriling",
-};
-
-function describeStep(step: OsrmStep): string {
-  const base = MANEUVER_UZ[step.maneuver.type] ?? "Davom eting";
-  const modifier = step.maneuver.modifier ? MODIFIER_UZ[step.maneuver.modifier] : undefined;
-  const road = step.name ? ` (${step.name})` : "";
-  if (step.maneuver.type === "turn" && modifier) {
-    return `${modifier.charAt(0).toUpperCase()}${modifier.slice(1)}${road}`;
-  }
-  if (modifier && step.maneuver.type !== "depart" && step.maneuver.type !== "arrive") {
-    return `${base}, ${modifier}${road}`;
-  }
-  return `${base}${road}`;
-}
-
 export class RoutingError extends Error {}
 
-export type TravelMode = "driving" | "walking";
+export type TravelMode = "driving" | "walking" | "transit";
 
-/** Both are free, keyless public OSRM demo instances -- the default router.project-osrm.org only
- * mounts the "driving" profile, so walking directions come from the OSM Germany community's
- * public router instead (same non-commercial "light interactive use" policy as Nominatim/OSRM). */
-const ROUTER_HOST: Record<TravelMode, { base: string; profile: string }> = {
-  driving: { base: "https://router.project-osrm.org", profile: "driving" },
-  walking: { base: "https://routing.openstreetmap.de/routed-foot", profile: "foot" },
+const ROUTING_MODE: Record<TravelMode, YMapsMultiRouteMode> = {
+  driving: "auto",
+  walking: "pedestrian",
+  transit: "masstransit",
 };
+
+/** Yandex's `MultiRoute` model starts its request as soon as it's constructed (it does not need
+ * to be added to a map to resolve) -- this wraps that event-based model in a Promise so callers
+ * can `await` a single result the same way the old OSRM `fetch()` call worked. */
+function requestMultiRoute(
+  ymapsNs: Awaited<ReturnType<typeof loadYandexMaps>>,
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number },
+  mode: TravelMode,
+): Promise<YMapsMultiRouteActiveRoute> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const multiRoute = new ymapsNs.multiRouter.MultiRoute(
+      {
+        referencePoints: [
+          [from.lat, from.lng],
+          [to.lat, to.lng],
+        ],
+        params: { routingMode: ROUTING_MODE[mode], results: 1 },
+      },
+      { boundsAutoApply: false },
+    );
+
+    const timeout = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new RoutingError("Marshrutni hisoblash vaqti tugadi. Qayta urinib ko'ring."));
+    }, 12000);
+
+    multiRoute.model.events.add("requestsuccess", () => {
+      if (settled) return;
+      const active = multiRoute.getActiveRoute();
+      settled = true;
+      window.clearTimeout(timeout);
+      if (!active) {
+        reject(new RoutingError("Bu ikki nuqta orasida yo'l topilmadi."));
+        return;
+      }
+      resolve(active);
+    });
+    multiRoute.model.events.add("requestfail", () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      reject(
+        new RoutingError("Marshrutni hisoblab bo'lmadi. Birozdan so'ng qayta urinib ko'ring."),
+      );
+    });
+  });
+}
+
+function readNumberProp(props: { get(key: string): unknown }, key: string): number {
+  const raw = props.get(key) as { value?: number } | number | undefined;
+  if (typeof raw === "number") return raw;
+  if (raw && typeof raw.value === "number") return raw.value;
+  return 0;
+}
+
+function extractSteps(active: YMapsMultiRouteActiveRoute): RouteStep[] {
+  const steps: RouteStep[] = [];
+  try {
+    active.getPaths().each((path) => {
+      path.getSegments().each((segment) => {
+        const text = (segment.properties.get("text") as string | undefined) ?? "Davom eting";
+        const coords = segment.getCoordinates?.() ?? [];
+        const last = coords[coords.length - 1];
+        steps.push({
+          instruction: text,
+          distanceMeters: readNumberProp(segment.properties, "distance"),
+          durationSeconds: readNumberProp(segment.properties, "duration"),
+          maneuverType: "continue",
+          location: last ? { lat: last[0], lng: last[1] } : { lat: 0, lng: 0 },
+        });
+      });
+    });
+  } catch {
+    // Yandex's segment shape is only loosely typed here (no official @types package yet) --
+    // if a field is missing/renamed in a future API revision, fall back to an empty step list
+    // rather than crash the whole route (distance/duration/polyline still render fine without it).
+  }
+  return steps;
+}
 
 /** Fetches a route between two points for the given travel mode. Throws `RoutingError` with a
  * user-facing (Uzbek) message on failure -- callers should catch and show it inline rather than
@@ -94,58 +134,23 @@ export async function fetchRoute(
   to: { lat: number; lng: number },
   mode: TravelMode = "driving",
 ): Promise<RouteResult> {
-  const { base, profile } = ROUTER_HOST[mode];
-  const url =
-    `${base}/route/v1/${profile}/` +
-    `${from.lng},${from.lat};${to.lng},${to.lat}` +
-    `?overview=full&geometries=geojson&steps=true`;
-
-  let res: Response;
+  let ymapsNs;
   try {
-    res = await fetch(url);
+    ymapsNs = await loadYandexMaps();
   } catch {
-    throw new RoutingError("Marshrut xizmatiga ulanib bo'lmadi. Internet aloqasini tekshiring.");
-  }
-  if (!res.ok) {
-    throw new RoutingError("Marshrutni hisoblab bo'lmadi. Birozdan so'ng qayta urinib ko'ring.");
-  }
-  const data = await res.json();
-  if (data.code !== "Ok" || !data.routes?.[0]) {
-    throw new RoutingError("Bu ikki nuqta orasida yo'l topilmadi.");
+    throw new RoutingError("Xarita xizmatiga ulanib bo'lmadi. Internet aloqasini tekshiring.");
   }
 
-  const route = data.routes[0];
-  const coordinates: { lat: number; lng: number }[] = route.geometry.coordinates.map(
-    ([lng, lat]: [number, number]) => ({ lat, lng }),
-  );
+  const active = await requestMultiRoute(ymapsNs, from, to, mode);
 
-  const steps: RouteStep[] = (route.legs?.[0]?.steps ?? []).map((s: OsrmStep) => ({
-    instruction: describeStep(s),
-    distanceMeters: s.distance,
-    durationSeconds: s.duration,
-    maneuverType: s.maneuver.type,
-    maneuverModifier: s.maneuver.modifier,
-    location: { lat: s.maneuver.location[1], lng: s.maneuver.location[0] },
-  }));
+  const coordinates = active.geometry.getCoordinates().map(([lat, lng]) => ({ lat, lng }));
 
   return {
     coordinates,
-    distanceMeters: route.distance,
-    durationSeconds: route.duration,
-    steps,
+    distanceMeters: readNumberProp(active.properties, "distance"),
+    durationSeconds: readNumberProp(active.properties, "duration"),
+    steps: extractSteps(active),
   };
-}
-
-/** There is no free/keyless global public-transit routing API (schedules + transfers need GTFS
- * data and a paid or self-hosted engine) -- so "Jamoat transporti" deep-links out to Yandex Maps'
- * own transit directions instead of faking an embedded result (Yandex's transit/schedule coverage
- * for Uzbekistan and the wider CIS region is also generally stronger than alternatives). Same
- * honest "outbound link, no embed" pattern as the Street View link in `LeafletMapView`. */
-export function transitDirectionsUrl(
-  from: { lat: number; lng: number },
-  to: { lat: number; lng: number },
-): string {
-  return `https://yandex.com/maps/?rtext=${from.lat},${from.lng}~${to.lat},${to.lng}&rtt=mt`;
 }
 
 export function formatDistance(meters: number): string {

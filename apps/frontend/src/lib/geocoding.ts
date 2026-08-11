@@ -1,9 +1,9 @@
 /**
- * Free, keyless place/address search via OpenStreetMap's public Nominatim instance -- same
- * "public demo service, no account" pattern as the OSRM routing helper (`@/lib/routing`) and the
- * OSM/Esri/OpenTopoMap map tiles themselves. Nominatim's usage policy asks for light, interactive
- * (not bulk) traffic, which matches this app's "user types a place, gets suggestions" usage.
+ * Place/address search via the Yandex Geocoder -- part of the same JS API key/script as the map
+ * itself and `routing.ts`'s multiRouter (see `@/lib/yandex-maps`'s doc comment). Replaces the
+ * previous Nominatim-based implementation now that every map surface in the app is Yandex-based.
  */
+import { loadYandexMaps, type YMapsGeocodeResultItem } from "@/lib/yandex-maps";
 
 export interface GeocodeResult {
   id: string;
@@ -15,52 +15,87 @@ export interface GeocodeResult {
   boundingBox?: { south: number; north: number; west: number; east: number };
 }
 
-interface NominatimHit {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
-  type: string;
-  class: string;
-  boundingbox: [string, string, string, string];
+function toGeocodeResult(obj: YMapsGeocodeResultItem): GeocodeResult {
+  const [lat, lng] = obj.geometry.getCoordinates();
+  const fullAddress = obj.getAddressLine();
+  const name = (obj.properties.get("name") as string | undefined) || fullAddress;
+  const secondary =
+    fullAddress && fullAddress !== name
+      ? fullAddress.startsWith(name)
+        ? fullAddress.slice(name.length).replace(/^,\s*/, "")
+        : fullAddress
+      : undefined;
+  const kind = (obj.properties.get("kind") as string | undefined) || "unknown";
+  const bounded = obj.properties.get("boundedBy") as
+    [[number, number], [number, number]] | undefined;
+
+  return {
+    id: `${lat.toFixed(6)},${lng.toFixed(6)}`,
+    label: name,
+    secondary: secondary || undefined,
+    lat,
+    lng,
+    kind,
+    boundingBox: bounded
+      ? { south: bounded[0][0], west: bounded[0][1], north: bounded[1][0], east: bounded[1][1] }
+      : undefined,
+  };
 }
 
-let controller: AbortController | null = null;
+// Yandex's `ymaps.geocode()` returns a plain Promise with no built-in cancellation -- track the
+// latest request so a slow, stale response never clobbers a newer, faster one (same guarantee the
+// old Nominatim/AbortController implementation gave callers who fire this on every keystroke).
+let latestRequestId = 0;
 
-/** Cancels any in-flight search before starting a new one -- callers fire this on every
- * keystroke, so stale slow responses must never clobber a newer, faster one. */
 export async function searchPlaces(query: string, limit = 6): Promise<GeocodeResult[]> {
   const q = query.trim();
   if (q.length < 2) return [];
 
-  controller?.abort();
-  controller = new AbortController();
+  const requestId = ++latestRequestId;
 
-  const url =
-    `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=0&limit=${limit}` +
-    `&q=${encodeURIComponent(q)}`;
-
-  let res: Response;
+  let ymaps;
   try {
-    res = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
-  } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") return [];
+    ymaps = await loadYandexMaps();
+  } catch {
     return [];
   }
-  if (!res.ok) return [];
+  if (requestId !== latestRequestId) return [];
 
-  const hits: NominatimHit[] = await res.json();
-  return hits.map((h) => {
-    const [south, north, west, east] = h.boundingbox.map(Number);
-    const parts = h.display_name.split(",").map((p) => p.trim());
-    return {
-      id: String(h.place_id),
-      label: parts[0] || h.display_name,
-      secondary: parts.slice(1, 4).join(", "),
-      lat: Number(h.lat),
-      lng: Number(h.lon),
-      kind: h.type || h.class,
-      boundingBox: { south, north, west, east },
-    };
-  });
+  let result;
+  try {
+    result = await ymaps.geocode(q, { results: limit });
+  } catch {
+    return [];
+  }
+  if (requestId !== latestRequestId) return [];
+
+  const hits: GeocodeResult[] = [];
+  const length = result.geoObjects.getLength();
+  for (let i = 0; i < length; i += 1) {
+    const obj = result.geoObjects.get(i);
+    if (obj) hits.push(toGeocodeResult(obj));
+  }
+  return hits;
+}
+
+/** Reverse geocoding -- resolves a coordinate to a human-readable address. Used by the
+ * click-to-pin location flows (listing creation, "destination" confirmation before navigation). */
+export async function reverseGeocode(point: {
+  lat: number;
+  lng: number;
+}): Promise<GeocodeResult | null> {
+  let ymaps;
+  try {
+    ymaps = await loadYandexMaps();
+  } catch {
+    return null;
+  }
+  let result;
+  try {
+    result = await ymaps.geocode([point.lat, point.lng], { results: 1 });
+  } catch {
+    return null;
+  }
+  const obj = result.geoObjects.get(0);
+  return obj ? toGeocodeResult(obj) : null;
 }

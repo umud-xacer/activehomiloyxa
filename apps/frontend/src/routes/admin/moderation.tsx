@@ -117,7 +117,9 @@ function CaseRow({ item, index }: { item: ModerationCase; index: number }) {
             <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
               <Icon className="size-3" /> {SUBJECT_LABEL[item.subjectType]}
             </span>
-            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_CLASS[item.status]}`}>
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_CLASS[item.status]}`}
+            >
               {STATUS_LABEL[item.status]}
             </span>
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -221,7 +223,13 @@ function Page() {
         </motion.div>
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard icon={Inbox} label="Ko'rsatilmoqda" value={items.length} accent="primary" index={0} />
+          <StatCard
+            icon={Inbox}
+            label="Ko'rsatilmoqda"
+            value={items.length}
+            accent="primary"
+            index={0}
+          />
           <StatCard
             icon={Flag}
             label="Foydalanuvchi shikoyati"

@@ -222,7 +222,13 @@ function Page() {
         </motion.div>
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard icon={UsersIcon} label="Ko'rsatilmoqda" value={items.length} accent="primary" index={0} />
+          <StatCard
+            icon={UsersIcon}
+            label="Ko'rsatilmoqda"
+            value={items.length}
+            accent="primary"
+            index={0}
+          />
           <StatCard
             icon={Ban}
             label="Bloklangan (shu sahifada)"

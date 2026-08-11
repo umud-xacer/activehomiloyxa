@@ -281,62 +281,12 @@
 }
 
 /* ------------------------------------------------------------------------
- * Leaflet map -- premium overrides (LeafletMapView.tsx)
- * The plugin renders its own DOM outside React's tree, so these are plain
- * CSS rules (not Tailwind utilities) driven by the same design tokens.
+ * Yandex map (YandexMapView.tsx) -- the pin/cluster/puck HTML below is our
+ * own custom overlay markup, styled like any other component. Yandex's own
+ * chrome (zoom control, attribution) renders in its default style; there is
+ * no popup override needed since markers navigate straight to Product
+ * Detail on click instead of opening a Leaflet-style popup.
  * ---------------------------------------------------------------------- */
-
-.leaflet-container {
-  background: var(--surface);
-  font-family: var(--font-sans);
-  outline: none;
-}
-
-.leaflet-popup-content-wrapper {
-  background: var(--card);
-  color: var(--card-foreground);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-elevated);
-  padding: 0;
-}
-.leaflet-popup-content {
-  margin: 12px 14px;
-}
-.leaflet-popup-tip {
-  background: var(--card);
-  border: 1px solid var(--border);
-  box-shadow: none;
-}
-.leaflet-popup-close-button {
-  color: var(--muted-foreground) !important;
-  top: 10px !important;
-  right: 10px !important;
-}
-
-.leaflet-control-zoom {
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius-xl) !important;
-  overflow: hidden;
-  box-shadow: var(--shadow-soft) !important;
-}
-.leaflet-control-zoom a {
-  background: var(--card) !important;
-  color: var(--foreground) !important;
-  border-color: var(--border) !important;
-}
-.leaflet-control-zoom a:hover {
-  background: var(--muted) !important;
-}
-.leaflet-control-attribution {
-  background: color-mix(in oklch, var(--card) 75%, transparent) !important;
-  color: var(--muted-foreground) !important;
-  backdrop-filter: blur(6px);
-  border-radius: var(--radius-md) 0 0 0;
-}
-.leaflet-control-attribution a {
-  color: var(--foreground) !important;
-}
 
 @keyframes ah-pin-drop {
   0% {

@@ -144,6 +144,12 @@ class SqlalchemyFallbackIndexRepository:
         )
         if query.category_id is not None:
             stmt = stmt.where(ListingFallbackDocumentRow.category_id == query.category_id)
+        if query.category_path_prefix is not None:
+            # Subtree match, mirrors the OpenSearch adapter's `prefix` filter -- `.startswith()`
+            # compiles to a properly-escaped `LIKE 'prefix%'`.
+            stmt = stmt.where(
+                ListingFallbackDocumentRow.category_path.startswith(query.category_path_prefix)
+            )
         if query.owner_profile_id is not None:
             stmt = stmt.where(ListingFallbackDocumentRow.owner_profile_id == query.owner_profile_id)
         if query.listing_type is not None:

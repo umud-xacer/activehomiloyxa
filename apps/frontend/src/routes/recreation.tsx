@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { LeafletMapView, type MapMarker } from "@/components/map/LeafletMapView";
+import { YandexMapView, type MapMarker } from "@/components/map/YandexMapView";
 import { catalogClient, formatUzs, type CatalogListing } from "@/lib/catalog-client";
 
 const CATEGORY_PATH = "/dam-olish-maskanlari";
@@ -91,7 +91,7 @@ function VenueCard({ listing }: { listing: CatalogListing }) {
                   <DialogHeader>
                     <DialogTitle className="font-display">{listing.title}</DialogTitle>
                   </DialogHeader>
-                  <LeafletMapView
+                  <YandexMapView
                     markers={[marker]}
                     center={{ lat: marker.lat, lng: marker.lng }}
                     focus={{ id: marker.id, lat: marker.lat, lng: marker.lng, zoom: 14 }}

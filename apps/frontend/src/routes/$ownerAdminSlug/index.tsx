@@ -49,6 +49,7 @@ import {
   type ProductDraftInput,
 } from "@/lib/owner-admin-client";
 import type { FormField as FieldType } from "@/lib/catalog-client";
+import { resolveCategoryIcon, ICON_BY_NAME } from "@/lib/listing-kind";
 
 export const Route = createFileRoute("/$ownerAdminSlug/")({
   beforeLoad: requireOwnerAdminSlug,
@@ -134,6 +135,7 @@ function categoryPageMeta(row: CategoryRow): {
   heroTagline: string;
   accentColor: string | null;
   listingKind: ListingKind;
+  iconName: string | null;
 } {
   const snapshot = (row.version?.snapshot ?? row.version?.definition) as
     | {
@@ -143,6 +145,7 @@ function categoryPageMeta(row: CategoryRow): {
             heroTagline?: string;
             accentColor?: string;
             listingKind?: string;
+            iconName?: string;
           };
         };
       }
@@ -154,6 +157,7 @@ function categoryPageMeta(row: CategoryRow): {
     heroTagline: metadata.heroTagline ?? "",
     accentColor: metadata.accentColor ?? null,
     listingKind: kind === "GOODS" || kind === "SERVICE" || kind === "VENUE" ? kind : "PROPERTY",
+    iconName: metadata.iconName ?? null,
   };
 }
 
@@ -217,6 +221,19 @@ function emptyField(): DynamicFieldDraft {
   return { code: "", label: { uz_latn: "" }, fieldType: "text", required: false, options: [] };
 }
 
+/** Live preview of what `resolveCategoryIcon` will actually render for this draft -- an explicit
+ * name (if it's a real registry entry) wins, otherwise the same keyword match against the
+ * category's own name that the public category pages use, so what the admin sees here is exactly
+ * what visitors will see. */
+function IconPreview({ name, categoryName }: { name: string; categoryName: string }) {
+  const trimmed = name.trim();
+  const Icon = resolveCategoryIcon({
+    name: { uz_latn: categoryName },
+    iconName: trimmed && ICON_BY_NAME[trimmed] ? trimmed : null,
+  });
+  return <Icon className="size-5" />;
+}
+
 interface FormPanelProps {
   editing: CategoryRow | null;
   parentOptions: CategoryRow[];
@@ -251,6 +268,7 @@ function CategoryFormPanel({ editing, parentOptions, onClose, onSaved }: FormPan
   const [heroUploading, setHeroUploading] = useState(false);
   const [heroTagline, setHeroTagline] = useState(existingMeta?.heroTagline ?? "");
   const [accentColor, setAccentColor] = useState(existingMeta?.accentColor ?? "#6366f1");
+  const [iconName, setIconName] = useState(existingMeta?.iconName ?? "");
   const [fields, setFields] = useState<DynamicFieldDraft[]>([emptyField()]);
   const [fieldsLoaded, setFieldsLoaded] = useState(!isEditing);
   const [busy, setBusy] = useState(false);
@@ -347,6 +365,7 @@ function CategoryFormPanel({ editing, parentOptions, onClose, onSaved }: FormPan
           heroTagline: heroTagline.trim() || null,
           accentColor,
           listingKind,
+          iconName: iconName.trim() || null,
         });
       } else {
         const code = slugify(nameUz);
@@ -364,6 +383,7 @@ function CategoryFormPanel({ editing, parentOptions, onClose, onSaved }: FormPan
           heroTagline: heroTagline.trim() || null,
           accentColor,
           listingKind,
+          iconName: iconName.trim() || null,
         });
       }
       onSaved();
@@ -612,6 +632,32 @@ function CategoryFormPanel({ editing, parentOptions, onClose, onSaved }: FormPan
                     </button>
                   )}
                 </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Ikonka nomi (rasm bo'lmaganda ko'rsatiladi)
+                </label>
+                <div className="mt-1 flex items-center gap-3">
+                  <div
+                    className="flex size-10 shrink-0 items-center justify-center rounded-xl"
+                    style={{
+                      background: `linear-gradient(135deg, ${accentColor}26, ${accentColor}0d)`,
+                      color: accentColor,
+                    }}
+                  >
+                    <IconPreview name={iconName} categoryName={nameUz} />
+                  </div>
+                  <input
+                    value={iconName}
+                    onChange={(e) => setIconName(e.target.value)}
+                    placeholder="masalan: wrench (bo'sh qoldirilsa nomi bo'yicha avtomatik tanlanadi)"
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Mavjud nomlar: {Object.keys(ICON_BY_NAME).join(", ")}
+                </p>
               </div>
             </div>
 

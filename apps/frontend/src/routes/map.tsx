@@ -1,17 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MapPinned, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
-import { LeafletMapView, type AreaSearch, type MapMarker } from "@/components/map/LeafletMapView";
+import { YandexMapView, type AreaSearch, type MapMarker } from "@/components/map/YandexMapView";
 import { propertyListOptions } from "@/features/properties/queries";
 import type { Property, PropertyKind } from "@/features/properties/types";
 import { formatPriceWithUnit } from "@/lib/format";
-import { catalogClient, formatUzs } from "@/lib/catalog-client";
-import { distanceMeters } from "@/lib/routing";
+import { formatUzs } from "@/lib/catalog-client";
+import { apiClient } from "@/lib/api-client";
 import type { GeocodeResult } from "@/lib/geocoding";
-import { getDemoMapMarkers, MAP_CATEGORIES } from "@/features/map/demo-data";
+import { MAP_CATEGORIES, categorizeByPath } from "@/features/map/demo-data";
 
 const KIND_TO_CATEGORY: Record<PropertyKind, string> = {
   apartment: "apartment",
@@ -41,43 +41,32 @@ function toMarker(p: Property): MapMarker {
   };
 }
 
-/** Every catalog category with real coordinates -- combined so a location search surfaces
- * everything nearby (homes, materials, recreation venues), not just real-estate listings.
- * There's no separate "company"/"service" catalog category yet (see homepage's Organizations
- * section for those, which is curated content rather than live listings). */
-const NEARBY_CATEGORY_PATHS: { path: string; category: string }[] = [
-  { path: "/dam-olish-maskanlari", category: "recreation" },
-  { path: "/qurilish-mollari", category: "materials" },
-  { path: "/kvartira", category: "apartment" },
-];
-const NEARBY_RADIUS_METERS = 30_000;
+const NEARBY_RADIUS_KM = 30;
 
+/** "Search this place" -- a single real cross-category geo-radius query (`/search`'s `lat`/`lng`/
+ * `radiusKm`, `apiClient.catalog.search`) around the geocoded point, covering every catalog
+ * category at once (not just real estate). Replaces the previous client-side hack that fanned out
+ * to three hardcoded, partly-stale category paths and filtered by distance itself. */
 async function fetchNearbyListings(result: GeocodeResult): Promise<MapMarker[]> {
-  const lists = await Promise.all(
-    NEARBY_CATEGORY_PATHS.map(async ({ path, category }) => {
-      const items = await catalogClient.listingsByCategoryPath(path, 80).catch(() => []);
-      return items.map((listing) => ({ listing, category }));
-    }),
-  );
-  const seen = new Map<string, MapMarker>();
-  for (const { listing, category } of lists.flat()) {
-    if (!listing.location) continue;
-    const point = { lat: listing.location.latitude, lng: listing.location.longitude };
-    if (distanceMeters({ lat: result.lat, lng: result.lng }, point) > NEARBY_RADIUS_METERS)
-      continue;
-    seen.set(listing.id, {
-      id: listing.id,
-      lat: point.lat,
-      lng: point.lng,
-      label: formatUzs(listing.price?.amount),
-      title: listing.title,
-      subtitle: listing.attributes.address ? String(listing.attributes.address) : undefined,
-      href: `/properties/${listing.id}`,
-      category,
-      accent: MAP_CATEGORIES.find((c) => c.key === category)?.accent,
+  const page = await apiClient.catalog
+    .search({ lat: result.lat, lng: result.lng, radiusKm: NEARBY_RADIUS_KM, limit: 100 })
+    .catch(() => ({ items: [] }));
+  return page.items
+    .filter((item) => item.location != null)
+    .map((item) => {
+      const category = categorizeByPath(item.categoryPath);
+      return {
+        id: item.id,
+        lat: item.location!.latitude,
+        lng: item.location!.longitude,
+        label: formatUzs(item.price?.amount) || item.title,
+        title: item.title,
+        image: item.thumbnailUrl,
+        href: `/listing/${item.id}`,
+        category,
+        accent: MAP_CATEGORIES.find((c) => c.key === category)?.accent,
+      } satisfies MapMarker;
     });
-  }
-  return Array.from(seen.values());
 }
 
 export const Route = createFileRoute("/map")({
@@ -148,11 +137,6 @@ function ListingRow({
 function MapPage() {
   const { t } = useTranslation();
   const { data } = useSuspenseQuery(propertyListOptions({ page_size: 120 }));
-  const { data: demoMarkers = [] } = useQuery({
-    queryKey: ["map", "demo-markers"],
-    queryFn: getDemoMapMarkers,
-    staleTime: Infinity,
-  });
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focus, setFocus] = useState<{
@@ -171,11 +155,10 @@ function MapPage() {
 
   const allMarkers = useMemo(() => {
     const byId = new Map<string, MapMarker>();
-    for (const m of demoMarkers) byId.set(m.id, m);
     for (const m of propertyMarkers) byId.set(m.id, m);
     for (const m of areaMarkers) byId.set(m.id, m);
     return Array.from(byId.values());
-  }, [demoMarkers, propertyMarkers, areaMarkers]);
+  }, [propertyMarkers, areaMarkers]);
 
   const markers = useMemo(() => {
     return allMarkers.filter((m) => {
@@ -260,7 +243,7 @@ function MapPage() {
         {/* Map column */}
         <div className="relative">
           <div className="sticky top-20 p-4">
-            <LeafletMapView
+            <YandexMapView
               markers={markers}
               center={{ lat: 41.3111, lng: 69.2797 }}
               zoom={6}

@@ -8,6 +8,7 @@ import { EcosystemGrid } from "@/components/site/EcosystemGrid";
 import { OrganizationsCarousel } from "@/components/site/OrganizationsCarousel";
 import { MapPreview } from "@/components/site/MapPreview";
 import { MissionBand } from "@/components/site/MissionBand";
+import { PlatformStatsBand } from "@/components/site/PlatformStatsBand";
 import { Footer } from "@/components/site/Footer";
 import { AdSlot } from "@/components/site/AdSlot";
 import { PromoBanner } from "@/components/site/PromoBanner";
@@ -36,11 +37,11 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  // Order: Navbar -> Hero (search stays on top) -> Categories (immediately below the search, no
-  // ad banner interrupting, so they're usable right after a search) -> the promo banner ->
-  // Organizations (premium panel, took over Categories' old slot) -> Map -> the 12-process
-  // ecosystem -> CTA/Footer. An AdSlot sits between later sections, plus two fixed sidebar slots
-  // in the side gutters on very wide screens.
+  // Order: Navbar -> Hero (search stays on top) -> Categories (took over the stats strip's old
+  // slot, immediately below the search, no ad banner interrupting) -> AudienceSplit -> the promo
+  // banner -> Organizations -> Map -> the 12-process ecosystem -> MissionBand -> the stats "proof
+  // strip" (its own section now, below MissionBand) -> CTA/Footer. An AdSlot sits between later
+  // sections, plus two fixed sidebar slots in the side gutters on very wide screens.
   return (
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
       <Navbar />
@@ -57,8 +58,8 @@ function Index() {
       </div>
 
       <Hero />
-      <AudienceSplit />
       <CategoryCarousel />
+      <AudienceSplit />
       <PromoBanner
         src={promoUyTamirlash}
         alt="Uy ta'mirlash bosh og'riq emas!"
@@ -71,6 +72,7 @@ function Index() {
       <EcosystemGrid />
       <AdSlot />
       <MissionBand />
+      <PlatformStatsBand />
       <Footer />
     </main>
   );

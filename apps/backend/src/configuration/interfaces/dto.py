@@ -82,6 +82,11 @@ class Category(CamelModel):
     `Literal`) so a stray/legacy metadata value on any one category can never turn into a 500 for
     the whole `listCategories()` response -- the frontend validates/falls back to PROPERTY itself.
     Replaces the frontend's former hardcoded path->kind lookup table."""
+    icon_name: str | None = None
+    """Additive field, sourced from `descriptor.metadata.iconName`. A named entry in the
+    frontend's icon registry (`lib/listing-kind.ts`'s `ICON_BY_NAME`) -- lets every category,
+    including subcategories with no uploaded photo, carry a themed icon rather than a bare
+    fallback. Independent of `icon_url` (a real uploaded image, when an admin has one)."""
 
 
 class FormDefinition(CamelModel):
@@ -221,6 +226,20 @@ class OwnerAdminSlugCheckResult(CamelModel):
     `platform-settings-global` config head) is never included in this response."""
 
     valid: bool
+
+
+class PlatformStatsResult(CamelModel):
+    """Additive, outside the frozen OpenAPI contract (same escape-hatch precedent as
+    `OwnerAdminSlugCheckResult` above) -- backs the public homepage "proof strip". Exposes only
+    these three named `stats.*` settings keys, never the `platform-settings-global` blob
+    wholesale (same narrow-exception shape as `verify_owner_admin_slug`). `activeListings` is
+    deliberately absent: the frontend reads that from `GET /search`'s own `page.total` instead,
+    since it is a real, live count that already has a public source -- duplicating it here as a
+    settings key would let the two drift out of sync."""
+
+    cities: int
+    partners: int
+    satisfaction_percent: int
 
 
 class ConfigValidationResult(CamelModel):

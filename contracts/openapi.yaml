@@ -1316,6 +1316,16 @@ paths:
         schema:
           type: string
           format: uuid
+      - name: categoryPathPrefix
+        in: query
+        description: 'Matches this category''s own listings AND every descendant subcategory''s
+          listings, by `category_path` prefix (e.g. `/kop-qavatli-binolar` also returns
+          `/kop-qavatli-binolar/yangi-qurilishlar/...`). Additive alternative to `categoryId`
+          (which matches only that exact category) -- pass this instead of `categoryId` for a
+          parent category page that should aggregate its whole subtree; keep using `categoryId`
+          for an exact leaf/subcategory match. Ignored if both are supplied.'
+        schema:
+          type: string
       - name: listingType
         in: query
         schema:
@@ -4672,6 +4682,12 @@ components:
           - VENUE
           description: Which listing shape/visual direction this category's page should render as.
             Null defaults to PROPERTY client-side.
+        iconName:
+          type:
+          - string
+          - 'null'
+          description: A named entry in the frontend's icon registry, when the admin has set one.
+            Independent of iconUrl (a real uploaded image).
       additionalProperties: false
     FormDefinition:
       type: object
@@ -4820,6 +4836,10 @@ components:
         categoryId:
           type: string
           format: uuid
+        categoryPathPrefix:
+          type: string
+          description: See GET /search's `categoryPathPrefix` parameter -- subtree match by
+            `category_path` prefix, an additive alternative to the exact-match `categoryId`.
         listingType:
           type: string
           enum:

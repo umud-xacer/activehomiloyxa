@@ -54,10 +54,13 @@ export const adminUsersApi = {
     );
   },
 
-  revokeRole(userId: string, roleDefinitionHeadId: string, actingProfileId?: string | null): Promise<UserAdminView> {
-    return http.delete<UserAdminView>(
-      `/admin/users/${userId}/roles/${roleDefinitionHeadId}`,
-      { params: actingProfileId ? { actingProfileId } : undefined },
-    );
+  revokeRole(
+    userId: string,
+    roleDefinitionHeadId: string,
+    actingProfileId?: string | null,
+  ): Promise<UserAdminView> {
+    return http.delete<UserAdminView>(`/admin/users/${userId}/roles/${roleDefinitionHeadId}`, {
+      params: actingProfileId ? { actingProfileId } : undefined,
+    });
   },
 };

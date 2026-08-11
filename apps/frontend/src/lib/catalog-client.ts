@@ -22,6 +22,9 @@ export interface CategorySummary {
   heroTagline?: string | null;
   accentColor?: string | null;
   listingKind?: string | null;
+  /** A named entry in `lib/listing-kind.ts`'s `ICON_BY_NAME` registry -- gives every category
+   * (including subcategories with no uploaded photo) a themed icon instead of a bare fallback. */
+  iconName?: string | null;
 }
 
 export interface CatalogListing {

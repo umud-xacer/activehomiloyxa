@@ -48,3 +48,9 @@ class SearchQuery:
     sort: SortOption
     cursor: str | None
     limit: int
+    category_path_prefix: str | None = None
+    """Subtree match by `category_path` prefix -- an additive alternative to `category_id`'s
+    exact match, for a parent category page that should aggregate every descendant subcategory's
+    listings too (map + listing feed). Ignored by adapters when `category_id` is also set.
+    Defaulted (and appended last) so every existing `SearchQuery(...)` construction keeps
+    working unchanged."""

@@ -160,6 +160,12 @@ def _build_query_body(query: SearchQuery, *, facet_specs: tuple[FacetSpec, ...])
         )
     if query.category_id is not None:
         filters.append({"term": {"category_id": str(query.category_id)}})
+    if query.category_path_prefix is not None:
+        # `category_path` is a `keyword` field (exact-token, not analyzed) -- `prefix` matches it
+        # like a plain string prefix, no special mapping needed. Subtree aggregation for a parent
+        # category page; independent of (and compatible with, if both happened to be set) the
+        # exact `category_id` filter above.
+        filters.append({"prefix": {"category_path": {"value": query.category_path_prefix}}})
     if query.owner_profile_id is not None:
         filters.append({"term": {"owner_profile_id": str(query.owner_profile_id)}})
     if query.listing_type is not None:

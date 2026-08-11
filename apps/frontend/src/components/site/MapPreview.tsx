@@ -3,35 +3,28 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
-import { LeafletMapView, type MapMarker } from "@/components/map/LeafletMapView";
+import { YandexMapView, type MapMarker } from "@/components/map/YandexMapView";
 import { useQuery } from "@tanstack/react-query";
 import { featuredPropertiesOptions } from "@/features/properties/queries";
 import { formatPriceWithUnit } from "@/lib/format";
-import { getDemoMapMarkers } from "@/features/map/demo-data";
 
 export function MapPreview() {
   const { t } = useTranslation();
   const { data: properties = [] } = useQuery(featuredPropertiesOptions(40));
-  const { data: demoMarkers = [] } = useQuery({
-    queryKey: ["map", "demo-markers"],
-    queryFn: getDemoMapMarkers,
-    staleTime: Infinity,
-  });
-  const markers = useMemo<MapMarker[]>(() => {
-    const fromBackend = properties.map((p) => ({
-      id: p.id,
-      lat: p.location.lat,
-      lng: p.location.lng,
-      label: formatPriceWithUnit(p.price, p.currency, p.listing_type),
-      title: p.title,
-      subtitle: `${p.city}, ${p.country}`,
-      image: p.media[0]?.url,
-      href: `/properties/${p.slug}`,
-    }));
-    const byId = new Map(demoMarkers.map((m) => [m.id, m]));
-    for (const m of fromBackend) byId.set(m.id, m);
-    return Array.from(byId.values());
-  }, [properties, demoMarkers]);
+  const markers = useMemo<MapMarker[]>(
+    () =>
+      properties.map((p) => ({
+        id: p.id,
+        lat: p.location.lat,
+        lng: p.location.lng,
+        label: formatPriceWithUnit(p.price, p.currency, p.listing_type),
+        title: p.title,
+        subtitle: `${p.city}, ${p.country}`,
+        image: p.media[0]?.url,
+        href: `/properties/${p.slug}`,
+      })),
+    [properties],
+  );
 
   return (
     <section className="py-24">
@@ -63,7 +56,7 @@ export function MapPreview() {
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
           className="mt-10"
         >
-          <LeafletMapView
+          <YandexMapView
             markers={markers}
             center={{ lat: 41.3111, lng: 69.2797 }}
             zoom={6}

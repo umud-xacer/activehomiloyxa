@@ -138,6 +138,9 @@ async def _seed_platform_settings(use_cases: ConfigurationUseCases, *, now: date
             "admin.owner_panel_slug": "owner-admin",
             "login_lockout.max_attempts": 4,
             "login_lockout.block_minutes": 15,
+            "stats.cities": 380,
+            "stats.partners": 12500,
+            "stats.satisfaction_percent": 98,
         },
         "homepage_zones": [],
         "navigation_items": [],
@@ -182,6 +185,9 @@ async def _seed_platform_settings(use_cases: ConfigurationUseCases, *, now: date
 _PLATFORM_SETTINGS_ADDITIVE_DEFAULTS: dict[str, object] = {
     "login_lockout.max_attempts": 4,
     "login_lockout.block_minutes": 15,
+    "stats.cities": 380,
+    "stats.partners": 12500,
+    "stats.satisfaction_percent": 98,
 }
 """Settings keys introduced by a task after `_seed_platform_settings` last ran against a given
 database. That function's own `DuplicateCodeError` early-return means it never touches an

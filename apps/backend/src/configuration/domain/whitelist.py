@@ -291,6 +291,15 @@ SETTINGS_SCHEMA: dict[str, type] = {
     # OtpThrottlePolicy's hardcoded thresholds a few lines above this file's sibling constants.
     "login_lockout.max_attempts": int,
     "login_lockout.block_minutes": int,
+    # Homepage "proof strip" marketing numbers (`getPlatformStats`, `interfaces/routers.py`) --
+    # `stats.active_listings` is deliberately absent here: that number is a real, live count
+    # (`GET /search?limit=1`'s own `page.total`, already public), never an admin-typed value, so
+    # it has no settings key at all. These three have no live-computable source (there is no
+    # "city"/"partner"/"satisfaction" concept anywhere else in the domain), so they stay
+    # admin-edited, same rationale as `login_lockout.*` two lines up.
+    "stats.cities": int,
+    "stats.partners": int,
+    "stats.satisfaction_percent": int,
 }
 
 # Every top-level static route the frontend already owns (`apps/frontend/src/routes/*.tsx`/`*/`),

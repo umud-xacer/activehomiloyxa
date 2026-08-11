@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 
@@ -25,8 +25,13 @@ interface Props {
   backgroundImageUrl?: string | null;
   /** Admin-authored per-category accent (`Category.accentColor`, any CSS color value) -- tints
    * the eyebrow pill so a category's Hero reads as its own environment while staying inside the
-   * shared PageHeader template. */
+   * shared PageHeader template. Also tints the no-photo fallback background (below) so a
+   * subcategory with no Hero photo of its own still reads as part of its category family instead
+   * of falling back to one flat generic gray gradient for every category on the site. */
   accentColor?: string | null;
+  /** Large translucent watermark icon shown on the no-photo fallback background, tinted by
+   * `accentColor`. Purely decorative -- omit for a plain tinted gradient. */
+  icon?: LucideIcon;
 }
 
 export function PageHeader({
@@ -38,11 +43,12 @@ export function PageHeader({
   actions,
   backgroundImageUrl,
   accentColor,
+  icon: Icon,
 }: Props) {
   const themed = Boolean(backgroundImageUrl);
   return (
     <section
-      className={`relative isolate overflow-hidden border-b border-border pt-32 pb-12 ${themed ? "text-white" : "bg-card/40"}`}
+      className={`relative isolate overflow-hidden border-b border-border pt-32 pb-12 ${themed ? "text-white" : ""}`}
     >
       {backgroundImageUrl ? (
         <>
@@ -53,9 +59,28 @@ export function PageHeader({
           />
           <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/80 via-black/50 to-black/20" />
         </>
+      ) : accentColor ? (
+        <>
+          <div
+            className="absolute inset-0 -z-10"
+            style={{
+              background: `linear-gradient(135deg, ${accentColor}1f 0%, transparent 55%)`,
+            }}
+            aria-hidden
+          />
+          <div className="gradient-mesh absolute inset-0 -z-10 opacity-40" />
+          {Icon && (
+            <Icon
+              className="pointer-events-none absolute -right-6 -top-6 -z-10 size-56 opacity-[0.06] sm:size-72"
+              style={{ color: accentColor }}
+              aria-hidden
+            />
+          )}
+        </>
       ) : (
         <div className="gradient-mesh absolute inset-0 -z-10 opacity-60" />
       )}
+      {!themed && <div className="absolute inset-0 -z-20 bg-card/40" aria-hidden />}
       <div className="mx-auto max-w-7xl px-6">
         {crumbs && crumbs.length > 0 && (
           <nav

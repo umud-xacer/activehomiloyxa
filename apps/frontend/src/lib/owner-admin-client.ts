@@ -165,6 +165,10 @@ export interface CategoryDraftInput {
   heroTagline?: string | null;
   accentColor?: string | null;
   listingKind?: ListingKind | null;
+  /** A named entry in the frontend's icon registry (`lib/listing-kind.ts`'s `ICON_BY_NAME`) --
+   * gives categories with no uploaded photo (mainly subcategories) a themed icon instead of a
+   * bare fallback. Independent of `iconUrl` (a real image), which always wins when set. */
+  iconName?: string | null;
 }
 
 function categoryDefinition(input: CategoryDraftInput) {
@@ -174,6 +178,7 @@ function categoryDefinition(input: CategoryDraftInput) {
   if (input.heroTagline) metadata.heroTagline = input.heroTagline;
   if (input.accentColor) metadata.accentColor = input.accentColor;
   if (input.listingKind) metadata.listingKind = input.listingKind;
+  if (input.iconName) metadata.iconName = input.iconName;
   return {
     descriptor: {
       name: input.name,

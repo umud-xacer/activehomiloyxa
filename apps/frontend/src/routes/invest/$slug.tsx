@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { LeafletMapView, type MapMarker } from "@/components/map/LeafletMapView";
+import type { MapMarker } from "@/components/map/YandexMapView";
+import { ListingLocationSection } from "@/components/listing/ListingLocationSection";
 import {
   CATEGORY_LABEL,
   formatUzsAmount,
@@ -124,19 +125,7 @@ function Page() {
             </div>
 
             <div>
-              <h2 className="font-display text-xl font-semibold text-foreground">Joylashuv</h2>
-              <div className="mt-4">
-                <LeafletMapView
-                  markers={[marker]}
-                  center={{ lat: o.lat, lng: o.lng }}
-                  focus={{ id: o.slug, lat: o.lat, lng: o.lng, zoom: 13 }}
-                  zoom={13}
-                  height="360px"
-                  showCountBadge={false}
-                  enableDrawTools={false}
-                  enableSearch={false}
-                />
-              </div>
+              <ListingLocationSection marker={marker} address={o.city} height="360px" />
             </div>
           </div>
 

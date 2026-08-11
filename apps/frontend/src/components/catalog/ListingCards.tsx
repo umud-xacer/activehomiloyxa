@@ -41,13 +41,7 @@ function useListingThumbnail(listing: CatalogListing): string | undefined {
   return thumbnail?.url ?? data.url ?? undefined;
 }
 
-function CardThumbnail({
-  listing,
-  Icon,
-}: {
-  listing: CatalogListing;
-  Icon: typeof Sofa;
-}) {
+function CardThumbnail({ listing, Icon }: { listing: CatalogListing; Icon: typeof Sofa }) {
   const thumbnailUrl = useListingThumbnail(listing);
   if (thumbnailUrl) {
     return (

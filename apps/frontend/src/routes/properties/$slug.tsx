@@ -17,7 +17,8 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { PropertyCard } from "@/components/data/PropertyCard";
 import { ErrorState } from "@/components/state/ErrorState";
-import { LeafletMapView, type MapMarker } from "@/components/map/LeafletMapView";
+import type { MapMarker } from "@/components/map/YandexMapView";
+import { ListingLocationSection } from "@/components/listing/ListingLocationSection";
 import { nearbyPropertiesOptions, propertyOptions } from "@/features/properties/queries";
 import { formatArea, formatCurrency, formatPriceWithUnit } from "@/lib/format";
 
@@ -246,35 +247,25 @@ function PropertyDetail() {
               </div>
             </div>
 
-            {/* Map */}
-            <div>
-              <h2 className="font-display text-2xl font-semibold text-foreground">Location</h2>
-              <div className="mt-4">
-                <LeafletMapView
-                  markers={[
-                    {
-                      id: property.id,
-                      lat: property.location.lat,
-                      lng: property.location.lng,
-                      label: formatPriceWithUnit(
-                        property.price,
-                        property.currency,
-                        property.listing_type,
-                      ),
-                      title: property.title,
-                      subtitle: [property.city, property.country].filter(Boolean).join(", "),
-                      image: property.media[0]?.url,
-                    } satisfies MapMarker,
-                  ]}
-                  center={{ lat: property.location.lat, lng: property.location.lng }}
-                  zoom={14}
-                  height="420px"
-                  showCountBadge={false}
-                  enableDrawTools={false}
-                  enableSearch={false}
-                />
-              </div>
-            </div>
+            <ListingLocationSection
+              marker={
+                {
+                  id: property.id,
+                  lat: property.location.lat,
+                  lng: property.location.lng,
+                  label: formatPriceWithUnit(
+                    property.price,
+                    property.currency,
+                    property.listing_type,
+                  ),
+                  title: property.title,
+                  subtitle: [property.city, property.country].filter(Boolean).join(", "),
+                  image: property.media[0]?.url,
+                } satisfies MapMarker
+              }
+              address={property.address}
+              height="420px"
+            />
           </div>
 
           {/* Sidebar */}

@@ -131,6 +131,7 @@ async def search_listings_get(
     request: Request,
     q: str | None = None,
     categoryId: UUID | None = None,
+    categoryPathPrefix: str | None = None,
     ownerProfileId: UUID | None = None,
     listingType: Literal["ADVERTISEMENT", "PRODUCT", "SERVICE"] | None = None,
     priceMin: str | None = None,
@@ -163,6 +164,7 @@ async def search_listings_get(
         sort=SortOption(sort) if sort else SortOption.RELEVANCE,
         cursor=cursor,
         limit=page_limit,
+        category_path_prefix=categoryPathPrefix,
     )
     outcome = await use_cases.search(query)
     return _to_search_result(outcome, limit=page_limit)
@@ -194,6 +196,7 @@ async def search_listings_post(
         sort=SortOption(body.sort) if body.sort else SortOption.RELEVANCE,
         cursor=cursor,
         limit=page_limit,
+        category_path_prefix=body.category_path_prefix,
     )
     outcome = await use_cases.search(query)
     return _to_search_result(outcome, limit=page_limit)

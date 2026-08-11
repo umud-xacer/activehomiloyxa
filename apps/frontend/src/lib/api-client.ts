@@ -401,6 +401,65 @@ export const apiClient = {
       return FALLBACK_AGENT;
     },
   },
+
+  /** Thin `/search` wrapper for map-marker-shaped data (id/title/price/location/thumbnail) --
+   * `catalogClient` (lib/catalog-client.ts) only wraps `/listings` (exact `categoryId` match, no
+   * geo, full `CatalogListing` payload for card rendering). This is the lean counterpart used
+   * where only enough data to place a pin is needed: category/subcategory maps (`categoryPathPrefix`
+   * aggregates a whole subtree, unlike `/listings`' exact match) and the global `/map` page's
+   * "nearby this point" search (`lat`/`lng`/`radiusKm`). */
+  catalog: {
+    async search(params: {
+      categoryId?: string;
+      categoryPathPrefix?: string;
+      q?: string;
+      lat?: number;
+      lng?: number;
+      radiusKm?: number;
+      cursor?: string | null;
+      limit?: number;
+      sort?: "RELEVANCE" | "RECENCY" | "PRICE_ASC" | "PRICE_DESC";
+    }): Promise<{
+      items: Array<{
+        id: string;
+        title: string;
+        categoryPath: string;
+        price?: { amount: string; currency: string };
+        location?: { latitude: number; longitude: number };
+        thumbnailUrl?: string;
+        slug?: string;
+      }>;
+      nextCursor: string | null;
+      total: number | null;
+    }> {
+      const response = await http.get<BackendSearchResult>("/search", {
+        params: {
+          categoryId: params.categoryId,
+          categoryPathPrefix: params.categoryPathPrefix,
+          q: params.q,
+          lat: params.lat,
+          lng: params.lng,
+          radiusKm: params.radiusKm,
+          cursor: params.cursor ?? undefined,
+          limit: params.limit ?? 24,
+          sort: params.sort ?? "RECENCY",
+        },
+      });
+      return {
+        items: response.items.map((item) => ({
+          id: item.listingId,
+          title: item.title,
+          categoryPath: item.categoryPath,
+          price: item.price,
+          location: item.location,
+          thumbnailUrl: item.thumbnailUrl ?? undefined,
+          slug: item.slug,
+        })),
+        nextCursor: response.page.nextCursor,
+        total: response.page.total,
+      };
+    },
+  },
 };
 
 interface BackendListing {

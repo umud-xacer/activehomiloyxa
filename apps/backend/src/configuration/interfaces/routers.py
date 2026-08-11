@@ -53,6 +53,7 @@ from configuration.interfaces.dto import (
     OwnerAdminSlugCheckRequest,
     OwnerAdminSlugCheckResult,
     PageInfo,
+    PlatformStatsResult,
 )
 from contracts.errors import ValidationError
 
@@ -131,6 +132,7 @@ def _category_dto_from_snapshot(snapshot: dict[str, Any]) -> Category:
         hero_tagline=metadata.get("heroTagline"),
         accent_color=metadata.get("accentColor"),
         listing_kind=metadata.get("listingKind"),
+        icon_name=metadata.get("iconName"),
     )
 
 
@@ -308,6 +310,47 @@ async def verify_owner_admin_slug(
     bundle (Task: owner-admin panel access, runtime-configurable slug)."""
     real_slug = await _current_owner_admin_slug(use_cases)
     return OwnerAdminSlugCheckResult(valid=body.slug == real_slug)
+
+
+_STATS_CITIES_KEY = "stats.cities"
+_STATS_PARTNERS_KEY = "stats.partners"
+_STATS_SATISFACTION_KEY = "stats.satisfaction_percent"
+
+
+async def _current_platform_settings(use_cases: ConfigurationUseCases) -> dict[str, Any]:
+    """Same head-lookup shape as `_current_owner_admin_slug` above, generalized to return the
+    whole `settings` dict instead of one key -- `get_platform_stats` below reads three keys off
+    it in one pass rather than re-paginating `list_heads` per key."""
+    cursor: str | None = None
+    while True:
+        heads, cursor = await use_cases.list_heads(
+            ConfigEntityType.PLATFORM_SETTINGS, cursor=cursor, limit=50
+        )
+        for head in heads:
+            if head.code == _PLATFORM_SETTINGS_GLOBAL_CODE and head.current_version_id is not None:
+                version = await use_cases.get_version(
+                    ConfigEntityType.PLATFORM_SETTINGS, head.id, head.current_version_id
+                )
+                settings: dict[str, Any] = (version.snapshot_document or {}).get("settings", {})
+                return settings
+        if cursor is None:
+            return {}
+
+
+@owner_admin_access_router.get("/public/platform-stats", operation_id="getPlatformStats")
+async def get_platform_stats(
+    use_cases: ConfigurationUseCases = Depends(get_configuration_use_cases),
+) -> PlatformStatsResult:
+    """Second deliberate exception to "no public read of `platform-settings`" -- backs the
+    homepage proof strip. Exposes only the three named `stats.*` keys, never the settings blob
+    wholesale (same shape as `verify_owner_admin_slug` above). Defaults to 0 for a fresh DB that
+    hasn't run the seed backfill yet, rather than 500ing."""
+    settings = await _current_platform_settings(use_cases)
+    return PlatformStatsResult(
+        cities=int(settings.get(_STATS_CITIES_KEY) or 0),
+        partners=int(settings.get(_STATS_PARTNERS_KEY) or 0),
+        satisfaction_percent=int(settings.get(_STATS_SATISFACTION_KEY) or 0),
+    )
 
 
 # -- admin: Configuration (Admin) ------------------------------------------------------------------

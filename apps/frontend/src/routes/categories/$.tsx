@@ -16,13 +16,14 @@ import {
   BadgePercent,
 } from "lucide-react";
 import { CategoryHub, type HubOption } from "@/components/catalog/CategoryHub";
+import { CategoryTile } from "@/components/catalog/CategoryTile";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PropertyCard } from "@/components/data/PropertyCard";
 import { PropertyGridSkeleton } from "@/components/data/PropertyCardSkeleton";
 import { EmptyState } from "@/components/state/EmptyState";
 import { ErrorState } from "@/components/state/ErrorState";
-import { LeafletMapView, type MapMarker } from "@/components/map/LeafletMapView";
+import { YandexMapView, type MapMarker } from "@/components/map/YandexMapView";
 import { GoodsCard, ServiceCard, VenueCard } from "@/components/catalog/ListingCards";
 import {
   CategoryFiltersSheet,
@@ -31,6 +32,7 @@ import {
   type ListingFilterState,
 } from "@/components/catalog/CategoryFilters";
 import { TopCompanies, useTopCompanies } from "@/components/catalog/TopCompanies";
+import { apiClient } from "@/lib/api-client";
 import { propertyListOptions } from "@/features/properties/queries";
 import type { Property, PropertyQuery } from "@/features/properties/types";
 import {
@@ -43,6 +45,8 @@ import { categoryLabel } from "@/components/site/CategoryCarousel";
 import { formatPriceWithUnit } from "@/lib/format";
 import {
   resolveListingKind,
+  resolveAccentColor,
+  resolveCategoryIcon,
   KIND_EYEBROW,
   KIND_ICON,
   KIND_THEME,
@@ -108,24 +112,50 @@ function categoryHref(path: string): string {
   return `/categories/${path.replace(/^\//, "")}`;
 }
 
-function ChildrenPills({ children }: { children: CategorySummary[] }) {
+function ChildrenGrid({
+  children,
+  byId,
+}: {
+  children: CategorySummary[];
+  byId: Map<string, CategorySummary>;
+}) {
   if (children.length === 0) return null;
   return (
     <div className="mx-auto max-w-7xl px-6 pt-8">
-      <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+      <div className="mb-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
         <Layers className="size-4" />
         Bo'lim ichidagi kichik kategoriyalar
+        <span className="opacity-60">· {children.length}</span>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {children.map((child) => (
-          <Link
-            key={child.id}
-            to={categoryHref(child.path)}
-            className="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/80 transition hover:border-primary/40 hover:text-foreground"
-          >
-            {categoryLabel(child.name, "uz")}
-          </Link>
-        ))}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+        {children.map((child, i) => {
+          const accent = resolveAccentColor(child, byId);
+          const icon = resolveCategoryIcon(child);
+          return (
+            <motion.div
+              key={child.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(i, 12) * 0.03, duration: 0.3 }}
+            >
+              <Link
+                to={categoryHref(child.path)}
+                className="group flex h-full flex-col items-center gap-3 rounded-2xl border border-border bg-card p-4 text-center shadow-soft transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-elevated"
+              >
+                <CategoryTile
+                  imageUrl={child.iconUrl}
+                  icon={icon}
+                  accentColor={accent}
+                  size="md"
+                  className="transition-transform duration-300 group-hover:scale-105"
+                />
+                <span className="line-clamp-2 text-xs font-medium leading-snug text-foreground/85">
+                  {categoryLabel(child.name, "uz")}
+                </span>
+              </Link>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );
@@ -151,7 +181,7 @@ function useCategoryTree(categoryId: string, parentId: string | null) {
     cursor = cursor.parentId ? byId.get(cursor.parentId) : undefined;
   }
 
-  return { children, parent, ancestors };
+  return { children, parent, ancestors, byId };
 }
 
 /* ---------------------------------------------------------------------------------------------
@@ -182,7 +212,7 @@ const PROPERTY_HUB_OPTIONS: HubOption<PropertyQuery["sort"] & string>[] = [
 function PropertyDirectionView({ category }: { category: CategorySummary }) {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const { children, ancestors } = useCategoryTree(category.id, category.parentId);
+  const { children, ancestors, byId } = useCategoryTree(category.id, category.parentId);
   const [featuredOnly, setFeaturedOnly] = useState(false);
 
   const query: PropertyQuery = {
@@ -222,10 +252,11 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
           { label: name },
         ]}
         backgroundImageUrl={category.heroImageUrl}
-        accentColor={category.accentColor}
+        accentColor={resolveAccentColor(category, byId)}
+        icon={resolveCategoryIcon(category)}
       />
 
-      <ChildrenPills children={children} />
+      <ChildrenGrid children={children} byId={byId} />
 
       <div className="mx-auto max-w-7xl px-6 pt-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -296,7 +327,7 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
             transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
             className="mt-10"
           >
-            <LeafletMapView
+            <YandexMapView
               markers={markers}
               center={mapCenter}
               zoom={markers.length > 0 ? 7 : 6}
@@ -316,22 +347,33 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
  * use), three card renderings depending on `kind`.
  * ------------------------------------------------------------------------------------------- */
 
-/** Builds map markers straight from catalog listings' own `location` (lat/lng) -- the same
- * `LeafletMapView` the PROPERTY direction already uses, so goods/service/venue categories get map
- * parity without a second map implementation (and without the API-key dependency an embedded
- * Yandex Maps widget would need -- see `LeafletMapView`'s own docstring on why this app stays on
- * keyless tiles after that exact failure mode took down a previous Google Maps integration).
- * Listings with no `location` are simply omitted -- not every goods/service listing carries one. */
-function buildCatalogMarkers(listings: CatalogListing[]): MapMarker[] {
-  return listings
-    .filter((l) => l.location != null)
-    .map((l) => ({
-      id: l.id,
-      lat: l.location!.latitude,
-      lng: l.location!.longitude,
-      label: formatUzs(l.price?.amount) || l.title,
-      title: l.title,
-      href: `/listing/${l.id}`,
+interface CatalogSearchHit {
+  id: string;
+  title: string;
+  categoryPath: string;
+  price?: { amount: string; currency: string };
+  location?: { latitude: number; longitude: number };
+  thumbnailUrl?: string;
+  slug?: string;
+}
+
+/** Builds map markers from `/search` hits (`apiClient.catalog.search`) -- richer than a bare
+ * `/listings` row (image + price come free on the hit), and, via `categoryPathPrefix`, already
+ * scoped to exactly this category's own subtree (a parent category's map aggregates every
+ * descendant subcategory's listings; a leaf subcategory's map only ever gets its own, since
+ * nothing sits deeper than it in the path). Listings with no `location` are simply omitted -- not
+ * every goods/service listing carries one. */
+function buildCatalogMarkers(hits: CatalogSearchHit[]): MapMarker[] {
+  return hits
+    .filter((h) => h.location != null)
+    .map((h) => ({
+      id: h.id,
+      lat: h.location!.latitude,
+      lng: h.location!.longitude,
+      label: formatUzs(h.price?.amount) || h.title,
+      title: h.title,
+      image: h.thumbnailUrl,
+      href: `/listing/${h.id}`,
     }));
 }
 
@@ -375,7 +417,7 @@ function CatalogDirectionView({
   category: CategorySummary;
   kind: Exclude<ListingKind, "PROPERTY">;
 }) {
-  const { children, ancestors } = useCategoryTree(category.id, category.parentId);
+  const { children, ancestors, byId } = useCategoryTree(category.id, category.parentId);
   const name = categoryLabel(category.name, "uz");
   const Icon = KIND_ICON[kind];
   const theme = KIND_THEME[kind];
@@ -410,8 +452,23 @@ function CatalogDirectionView({
     [filtered, selectedCompanyId],
   );
   const sorted = useMemo(() => sortListings(byCompany, sort), [byCompany, sort]);
-  const markers = useMemo(() => buildCatalogMarkers(sorted), [sorted]);
   const companies = useTopCompanies(filtered);
+
+  // Map markers come from a separate, subtree-aware `/search` query (`categoryPathPrefix`) rather
+  // than the card feed's exact-match `listingsPageByCategoryId` above -- a parent category's map
+  // should show every descendant subcategory's listings even though its own card grid (deliberately
+  // unchanged here) only ever lists items tagged exactly to it.
+  const { data: markerHits = [] } = useQuery({
+    queryKey: ["catalog", "search", "map", category.path],
+    queryFn: async () => {
+      const page = await apiClient.catalog.search({
+        categoryPathPrefix: category.path,
+        limit: 200,
+      });
+      return page.items;
+    },
+  });
+  const markers = useMemo(() => buildCatalogMarkers(markerHits), [markerHits]);
 
   return (
     <AppShell>
@@ -433,10 +490,11 @@ function CatalogDirectionView({
           { label: name },
         ]}
         backgroundImageUrl={category.heroImageUrl}
-        accentColor={category.accentColor}
+        accentColor={resolveAccentColor(category, byId)}
+        icon={resolveCategoryIcon(category)}
       />
 
-      <ChildrenPills children={children} />
+      <ChildrenGrid children={children} byId={byId} />
 
       <div className="mx-auto max-w-7xl px-4 pt-8 lg:px-8">
         <CategoryHub options={CATALOG_HUB_OPTIONS} value={sort} onChange={setSort} />
@@ -537,7 +595,7 @@ function CatalogDirectionView({
               </p>
             </div>
             <div className="mt-8">
-              <LeafletMapView markers={markers} zoom={11} height="480px" enableDrawTools={false} />
+              <YandexMapView markers={markers} zoom={11} height="480px" enableDrawTools={false} />
             </div>
           </div>
         </section>

@@ -15,7 +15,8 @@ import { motion } from "framer-motion";
 import { Loader2, MapPin, MessageCircle, ImageOff, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ErrorState } from "@/components/state/ErrorState";
-import { LeafletMapView, type MapMarker } from "@/components/map/LeafletMapView";
+import type { MapMarker } from "@/components/map/YandexMapView";
+import { ListingLocationSection } from "@/components/listing/ListingLocationSection";
 import { GoodsCard, ServiceCard, VenueCard } from "@/components/catalog/ListingCards";
 import {
   catalogClient,
@@ -190,6 +191,8 @@ function Page() {
     : "GOODS";
   const catalogKind = kind === "PROPERTY" ? "GOODS" : kind;
   const KindIcon = KIND_ICON[catalogKind];
+  const address =
+    listing.attributes.address != null ? String(listing.attributes.address) : undefined;
   const marker: MapMarker | null = listing.location
     ? {
         id: listing.id,
@@ -197,6 +200,7 @@ function Page() {
         lng: listing.location.longitude,
         label: formatUzs(listing.price?.amount) || listing.title,
         title: listing.title,
+        subtitle: address,
       }
     : null;
 
@@ -283,22 +287,7 @@ function Page() {
               )}
             </motion.div>
 
-            {marker && (
-              <section className="mt-10">
-                <h2 className="font-display mb-4 text-lg font-semibold text-foreground">
-                  Joylashuvi
-                </h2>
-                <LeafletMapView
-                  markers={[marker]}
-                  center={{ lat: marker.lat, lng: marker.lng }}
-                  zoom={13}
-                  height="360px"
-                  enableDrawTools={false}
-                  enableSearch={false}
-                  showCountBadge={false}
-                />
-              </section>
-            )}
+            {marker && <ListingLocationSection marker={marker} address={address} />}
           </div>
 
           {/* Contact sidebar */}

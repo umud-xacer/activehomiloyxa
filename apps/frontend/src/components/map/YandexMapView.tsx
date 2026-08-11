@@ -1,36 +1,23 @@
 /**
- * Premium, keyless map surface for ActiveHome — OpenStreetMap tiles via Leaflet.
+ * The one map surface every part of the app uses -- category/subcategory listing maps, product
+ * detail mini-maps, the global `/map` search page, and the full-screen "Marshrut" navigation
+ * experience all render through this component. Built on the Yandex Maps JS API v2.1
+ * (`@/lib/yandex-maps`'s `loadYandexMaps()`), which also backs `@/lib/routing` (multiRouter) and
+ * `@/lib/geocoding` (Geocoder) -- one `VITE_YANDEX_MAPS_API_KEY` covers all three.
  *
- * Replaces `GoogleMapView`/`MapView` (Mapbox): both needed accounts/keys this app doesn't own
- * (the Google Maps browser key belonged to Lovable-managed infra with a `RefererNotAllowedMapError`
- * nobody here can fix; Mapbox GL JS requires an access token for its hosted styles). Leaflet +
- * OSM/Esri/OpenTopoMap tiles and OSRM's public routing demo (`@/lib/routing`) need no key and no
- * allow-listed referrer at all.
+ * When the key is unset (or the script fails to load), this renders a calm "Xarita sozlanmagan"
+ * placeholder instead of crashing the page -- see `YandexMapsKeyMissingError`. This mirrors the
+ * project's established stance on map-provider keys (see git history / CLAUDE.md): a missing or
+ * misconfigured key is an expected, recoverable state during setup, never a hard crash.
  *
- * Generic `MapMarker` API (not tied to any one domain type) so the same component drives the
- * global /map search, the homepage preview, a single property's location card, and a recreation
- * venue's booking modal.
- *
- * Feature set:
- *  - Street / Satellite / Terrain tile layers, plus a "Street View" entry that deep-links to
- *    Yandex Maps' own panorama viewer for the focused point (no embed, no key -- just a normal
- *    outbound link, the same way a "open in Yandex Maps" button would work). Yandex's own JS API
- *    would need a registered API key (the exact problem that took down the old Google Maps
- *    integration) so the embedded map itself stays on keyless OSM/Esri/OpenTopoMap tiles.
- *  - Marker clustering (leaflet.markercluster) with a custom premium bubble icon.
- *  - `focus` prop flies/zooms the map to a marker (revealing it out of a cluster if needed) --
- *    this is what makes "select a listing -> map jumps to it" actually work; the previous version
- *    only read `center`/`zoom` at mount time and silently ignored later prop changes.
- *  - "Yo'lni boshlash": real turn-by-turn navigation via OSRM, with live position tracking
- *    (geolocation watch), a step list that auto-advances as the user nears each maneuver, and a
- *    animated location puck.
- *  - Hand-rolled polygon/radius area-search tools (unchanged from the previous version).
+ * Clicking a marker navigates straight to its `href` (the listing's Product Detail page) -- there
+ * is no more "start navigation from the map popup" shortcut. Navigation now starts from the
+ * detail page's own "Marshrut" button, which sets the `navigateTarget` prop here to open the
+ * full-screen turn-by-turn experience (mode switcher, live position tracking, mode-specific
+ * marker) directly.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ClientOnly } from "@tanstack/react-router";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import "leaflet.markercluster/dist/MarkerCluster.css";
+import { ClientOnly, useNavigate } from "@tanstack/react-router";
 import {
   Layers,
   Navigation,
@@ -42,65 +29,53 @@ import {
   LocateFixed,
   ExternalLink,
   X,
-  Flag,
-  RotateCw,
-  CornerUpRight,
-  CornerUpLeft,
-  CornerDownRight,
-  CornerDownLeft,
-  ArrowUp,
-  ArrowUpRight as ArrowUpRightIcon,
-  ArrowUpLeft,
-  Undo2,
   Loader2,
   Map as MapIcon,
   Satellite,
-  Mountain,
+  Globe2,
   Search,
   MapPin,
   Car,
   Footprints,
   Bus,
+  AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
+import {
+  loadYandexMaps,
+  getYandexMapsApiKey,
+  YandexMapsKeyMissingError,
+  type YMapsMap,
+  type YMapsClusterer,
+  type YMapsPlacemark,
+  type YMapsPolygon,
+  type YMapsCircle,
+  type YMapsPolyline,
+  type YMapsNamespace,
+} from "@/lib/yandex-maps";
 import {
   fetchRoute,
   formatDistance,
   formatDuration,
   distanceMeters,
-  transitDirectionsUrl,
   RoutingError,
   type RouteResult,
-  type RouteStep,
   type TravelMode,
 } from "@/lib/routing";
 import { searchPlaces, type GeocodeResult } from "@/lib/geocoding";
 
-type StyleKey = "street" | "satellite" | "terrain";
+type StyleKey = "street" | "satellite" | "hybrid";
 
-const TILE_LAYERS: Record<StyleKey, { url: string; attribution: string; maxZoom: number }> = {
-  street: {
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 19,
-  },
-  satellite: {
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution: "Tiles &copy; Esri",
-    maxZoom: 19,
-  },
-  terrain: {
-    url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-    attribution:
-      '&copy; OpenStreetMap contributors, SRTM | &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
-    maxZoom: 17,
-  },
+const YANDEX_MAP_TYPE: Record<StyleKey, string> = {
+  street: "yandex#map",
+  satellite: "yandex#satellite",
+  hybrid: "yandex#hybrid",
 };
 
 const STYLE_META: Record<StyleKey, { label: string; Icon: LucideIcon }> = {
   street: { label: "Standart", Icon: MapIcon },
   satellite: { label: "Sun'iy yo'ldosh", Icon: Satellite },
-  terrain: { label: "Relyef", Icon: Mountain },
+  hybrid: { label: "Aralash", Icon: Globe2 },
 };
 
 export interface MapMarker {
@@ -112,11 +87,9 @@ export interface MapMarker {
   title: string;
   subtitle?: string;
   image?: string;
+  /** Product Detail page path -- clicking the marker navigates here directly. */
   href?: string;
-  /** Drives the filter chip bar (`filterOptions`/`activeFilterKeys`) -- purely a grouping key, the
-   * map doesn't attach any meaning to it. */
   category?: string;
-  /** Hex color tinting this pin when unselected (falls back to the theme default when unset). */
   accent?: string;
 }
 
@@ -152,7 +125,7 @@ interface NavState {
   mode: TravelMode;
   phase: "locating" | "routing" | "active" | "error";
   route?: RouteResult;
-  activeStep: number;
+  activeStepIndex: number;
   error?: string;
   userPos?: { lat: number; lng: number; heading?: number | null };
 }
@@ -160,35 +133,43 @@ interface NavState {
 const MODE_META: Record<TravelMode, { label: string; Icon: LucideIcon }> = {
   driving: { label: "Avtomobil", Icon: Car },
   walking: { label: "Piyoda", Icon: Footprints },
+  transit: { label: "Jamoat transporti", Icon: Bus },
+};
+
+// Small hand-rolled inline glyphs for the live position "puck" -- kept intentionally simple
+// (single filled path each) so the mode-specific marker doesn't depend on rendering a React
+// icon tree into a raw HTML string, which Yandex's custom placemark layout requires.
+const MODE_GLYPH: Record<TravelMode, string> = {
+  driving:
+    '<svg viewBox="0 0 24 24" width="10" height="10" fill="white"><path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11v6a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H8v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-6zm2.5.5h9l-1-3h-7l-1 3zM7 14a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm10 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>',
+  walking:
+    '<svg viewBox="0 0 24 24" width="10" height="10" fill="white"><circle cx="13" cy="4" r="2"/><path d="M9 8.5 5 10l1 2.2 3-1.1v3.4L6 19l2 1 3.2-4.6L14 18l2 1 1-2-2.8-4.4L14 8h3V6h-4.5A3 3 0 0 0 9 8.5z"/></svg>',
+  transit:
+    '<svg viewBox="0 0 24 24" width="10" height="10" fill="white"><path d="M6 5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5zm2 11a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm8 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM7 8h10V6H7v2zm0 4h10v-2H7v2z"/></svg>',
 };
 
 interface Props {
   markers: MapMarker[];
   center?: { lat: number; lng: number };
   zoom?: number;
-  /** Set (to a new object) whenever the caller wants the map to jump to a point -- e.g. the user
-   * clicked a listing in a side list. Unlike `center`/`zoom`, this is read on every change, not
-   * just at mount. */
+  /** Set (to a new object) whenever the caller wants the map to jump to a point. */
   focus?: FocusTarget | null;
   height?: string;
   className?: string;
   onSelect?: (m: MapMarker) => void;
   onAreaSearch?: (area: AreaSearch) => void;
-  /** Fired when the user picks a place from the location search box -- e.g. the /map page uses
-   * this to fetch and show every listing (across categories) near the searched place. */
   onPlaceSearch?: (result: GeocodeResult) => void;
   showCountBadge?: boolean;
-  /** Hides the polygon/radius area-search dock -- off for single-marker embeds (property page,
-   * recreation venue modal) where "search this area" makes no sense. */
   enableDrawTools?: boolean;
-  /** Hides the location search box -- on by default, off for tight single-marker embeds. */
   enableSearch?: boolean;
-  /** Category chip bar rendered inside the search panel. The map only renders the chips and
-   * reports the active key set back up -- filtering the `markers` array by category is the
-   * caller's job (the map itself has no idea what a "category" means). */
   filterOptions?: FilterOption[];
   activeFilterKeys?: string[];
   onFilterKeysChange?: (keys: string[]) => void;
+  /** Set from a "Marshrut" button (Product Detail page) to open the full-screen turn-by-turn
+   * navigation experience straight to this marker. Call `onNavigateHandled` once consumed so the
+   * caller can clear the trigger and avoid re-opening on unrelated re-renders. */
+  navigateTarget?: MapMarker | null;
+  onNavigateHandled?: () => void;
 }
 
 function escapeHtml(s: string): string {
@@ -198,78 +179,36 @@ function escapeHtml(s: string): string {
   );
 }
 
-function pinIcon(marker: MapMarker, selected: boolean): L.DivIcon {
+function pinHtml(marker: MapMarker, selected: boolean): string {
   const accentStyle =
     !selected && marker.accent
       ? ` style="background:${marker.accent};border-color:${marker.accent};color:#fff"`
       : "";
-  return L.divIcon({
-    className: "",
-    html: `<div class="ah-pin${selected ? " ah-pin--selected" : ""}"${accentStyle}>${escapeHtml(marker.label)}</div>`,
-    iconSize: [0, 0],
-  });
+  return `<div class="ah-pin${selected ? " ah-pin--selected" : ""}"${accentStyle}>${escapeHtml(marker.label)}</div>`;
 }
 
-function popupHtml(m: MapMarker): string {
-  return `
-    <div style="font-family:var(--font-sans);min-width:200px;max-width:240px">
-      ${m.image ? `<img src="${m.image}" alt="" style="width:100%;height:110px;object-fit:cover;border-radius:10px;margin-bottom:8px"/>` : ""}
-      <div style="font-weight:700;font-size:13px;color:var(--foreground);line-height:1.3">${escapeHtml(m.title)}</div>
-      ${m.subtitle ? `<div style="font-size:11px;color:var(--muted-foreground);margin-top:2px">${escapeHtml(m.subtitle)}</div>` : ""}
-      <div style="font-size:14px;font-weight:700;color:var(--primary);margin-top:6px">${escapeHtml(m.label)}</div>
-      <div style="display:flex;gap:6px;margin-top:10px">
-        <button data-ah-action="navigate" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;border-radius:999px;background:var(--primary);color:var(--primary-foreground);font-size:12px;font-weight:600;padding:7px 10px;border:none;cursor:pointer">Yo'lni boshlash</button>
-        ${m.href ? `<a href="${m.href}" style="display:inline-flex;align-items:center;justify-content:center;border-radius:999px;border:1px solid var(--border);color:var(--foreground);font-size:12px;font-weight:600;padding:7px 12px;text-decoration:none;white-space:nowrap">Batafsil</a>` : ""}
-      </div>
-    </div>`;
+function bboxFromCorners(sw: [number, number], ne: [number, number]): BoundsBox {
+  return { south: sw[0], west: sw[1], north: ne[0], east: ne[1] };
 }
 
-function bboxFromLatLngBounds(bounds: L.LatLngBounds): BoundsBox {
-  return {
-    west: bounds.getWest(),
-    south: bounds.getSouth(),
-    east: bounds.getEast(),
-    north: bounds.getNorth(),
-  };
-}
-
-/** Deep-links to Yandex Maps' own panorama viewer for the point -- no embed, no key, just an
- * outbound link (same as the old Google Street View button, swapped per product direction). */
+/** Deep-links to Yandex Maps' own panorama viewer for the point -- a normal outbound link, no
+ * embed needed (Yandex's panorama coverage is queried by point, not by a separate API key). */
 function streetViewUrl(lat: number, lng: number): string {
   return `https://yandex.com/maps/?panorama%5Bpoint%5D=${lng},${lat}&panorama%5Bdirection%5D=180,0&z=17`;
 }
 
-function stepIcon(step: RouteStep): LucideIcon {
-  if (step.maneuverType === "arrive") return Flag;
-  if (step.maneuverType === "depart") return Navigation;
-  if (step.maneuverType.includes("roundabout") || step.maneuverType.includes("rotary"))
-    return RotateCw;
-  switch (step.maneuverModifier) {
-    case "uturn":
-      return Undo2;
-    case "sharp left":
-      return CornerDownLeft;
-    case "left":
-      return CornerUpLeft;
-    case "slight left":
-      return ArrowUpLeft;
-    case "sharp right":
-      return CornerDownRight;
-    case "right":
-      return CornerUpRight;
-    case "slight right":
-      return ArrowUpRightIcon;
-    default:
-      return ArrowUp;
-  }
+/** Outbound fallback if Yandex's in-app "masstransit" mode returns no route for this area (its
+ * schedule/transfer coverage is strongest in Russia/CIS metro areas and may be thin elsewhere). */
+function transitFallbackUrl(from: { lat: number; lng: number }, to: { lat: number; lng: number }) {
+  return `https://yandex.com/maps/?rtext=${from.lat},${from.lng}~${to.lat},${to.lng}&rtt=mt`;
 }
 
-export function LeafletMapView(props: Props) {
+export function YandexMapView(props: Props) {
   return (
     <ClientOnly
       fallback={<MapSkeleton height={props.height ?? "70vh"} className={props.className} />}
     >
-      <LeafletMapViewClient {...props} />
+      <YandexMapViewClient {...props} />
     </ClientOnly>
   );
 }
@@ -285,7 +224,25 @@ function MapSkeleton({ height, className = "" }: { height: string; className?: s
   );
 }
 
-function LeafletMapViewClient({
+function MapKeyMissing({ height, className = "" }: { height: string; className?: string }) {
+  return (
+    <div
+      className={`relative flex items-center justify-center overflow-hidden rounded-3xl border border-dashed border-border bg-card/60 ${className}`}
+      style={{ height }}
+    >
+      <div className="flex max-w-xs flex-col items-center gap-2 px-6 text-center">
+        <AlertTriangle className="size-6 text-muted-foreground" />
+        <div className="text-sm font-semibold text-foreground">Xarita sozlanmagan</div>
+        <p className="text-xs text-muted-foreground">
+          `VITE_YANDEX_MAPS_API_KEY` topilmadi. Kalitni `.env` fayliga qo'shgach, xarita avtomatik
+          ishga tushadi.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function YandexMapViewClient({
   markers,
   center = { lat: 41.3111, lng: 69.2797 },
   zoom = 3,
@@ -301,24 +258,35 @@ function LeafletMapViewClient({
   filterOptions,
   activeFilterKeys,
   onFilterKeysChange,
+  navigateTarget = null,
+  onNavigateHandled,
 }: Props) {
+  const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
-  const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
-  const markersByIdRef = useRef<Map<string, L.Marker>>(new Map());
-  const overlaysRef = useRef<Array<L.Polygon | L.Circle>>([]);
-  const routeLayersRef = useRef<{ casing: L.Polyline; line: L.Polyline } | null>(null);
-  const puckRef = useRef<L.Marker | null>(null);
-  const searchMarkerRef = useRef<L.Marker | null>(null);
+  const ymapsRef = useRef<YMapsNamespace | null>(null);
+  const mapRef = useRef<YMapsMap | null>(null);
+  const clustererRef = useRef<YMapsClusterer | null>(null);
+  const markersByIdRef = useRef<Map<string, YMapsPlacemark>>(new Map());
+  const overlaysRef = useRef<Array<YMapsPolygon | YMapsCircle>>([]);
+  const routeLayersRef = useRef<{ casing: YMapsPolyline; line: YMapsPolyline } | null>(null);
+  const puckRef = useRef<YMapsPlacemark | null>(null);
+  const myLocationMarkerRef = useRef<YMapsPlacemark | null>(null);
+  const searchMarkerRef = useRef<YMapsPlacemark | null>(null);
   const routeFittedRef = useRef<string | null>(null);
+  const pinLayoutRef = useRef<unknown>(null);
+  const clusterLayoutRef = useRef<unknown>(null);
+  const puckLayoutRef = useRef<unknown>(null);
   const drawStateRef = useRef<{
     mode: "none" | "polygon" | "circle";
-    points: L.LatLng[];
-    tempLayer: L.Polygon | L.Circle | L.Polyline | null;
-    circleCenter: L.LatLng | null;
+    points: [number, number][];
+    tempLayer: YMapsPolygon | YMapsCircle | YMapsPolyline | null;
+    circleCenter: [number, number] | null;
     dragging: boolean;
   }>({ mode: "none", points: [], tempLayer: null, circleCenter: null, dragging: false });
+
+  const [mapReady, setMapReady] = useState(false);
+  const [keyMissing, setKeyMissing] = useState(!getYandexMapsApiKey());
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const [style, setStyle] = useState<StyleKey>("street");
   const [layersOpen, setLayersOpen] = useState(false);
@@ -327,6 +295,8 @@ function LeafletMapViewClient({
   const [fullscreen, setFullscreen] = useState(false);
   const [nav, setNav] = useState<NavState | null>(null);
   const [navCollapsed, setNavCollapsed] = useState(false);
+  const [geolocating, setGeolocating] = useState(false);
+  const [geolocateError, setGeolocateError] = useState<string | null>(null);
   const stepListRef = useRef<HTMLDivElement | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -334,7 +304,13 @@ function LeafletMapViewClient({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
 
-  // Debounced Nominatim lookup -- fires ~350ms after the user stops typing.
+  useEffect(() => {
+    if (!geolocateError) return;
+    const timer = setTimeout(() => setGeolocateError(null), 4000);
+    return () => clearTimeout(timer);
+  }, [geolocateError]);
+
+  // Debounced Yandex Geocoder lookup -- fires ~350ms after the user stops typing.
   useEffect(() => {
     if (!enableSearch) return;
     const q = searchQuery.trim();
@@ -355,101 +331,107 @@ function LeafletMapViewClient({
   const selectPlace = useCallback(
     (result: GeocodeResult) => {
       const map = mapRef.current;
+      const ymapsNs = ymapsRef.current;
       setSearchQuery(result.label);
       setSearchOpen(false);
-      if (map) {
+      if (map && ymapsNs) {
         if (result.boundingBox) {
-          map.flyToBounds(
+          map.setBounds(
             [
               [result.boundingBox.south, result.boundingBox.west],
               [result.boundingBox.north, result.boundingBox.east],
             ],
-            { duration: 1, padding: [40, 40] },
+            { checkZoomRange: true, duration: 400 },
           );
         } else {
-          map.flyTo([result.lat, result.lng], 14, { duration: 1 });
+          void map.setCenter([result.lat, result.lng], 14, { duration: 400 });
         }
-        searchMarkerRef.current?.remove();
-        searchMarkerRef.current = L.marker([result.lat, result.lng], {
-          icon: L.divIcon({
-            className: "",
-            html: `<div class="ah-search-pin"></div>`,
-            iconSize: [0, 0],
-          }),
-        }).addTo(map);
+        searchMarkerRef.current?.geometry.setCoordinates([result.lat, result.lng]);
+        if (!searchMarkerRef.current) {
+          searchMarkerRef.current = new ymapsNs.Placemark(
+            [result.lat, result.lng],
+            {},
+            {
+              iconLayout: "default#image",
+              iconImageHref:
+                "data:image/svg+xml;utf8," +
+                encodeURIComponent(
+                  '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30"><path d="M15 2c-6 0-11 4.6-11 11 0 8 11 15 11 15s11-7 11-15c0-6.4-5-11-11-11z" fill="#e5484d" stroke="white" stroke-width="2"/></svg>',
+                ),
+              iconImageSize: [30, 30],
+              iconImageOffset: [-15, -30],
+            },
+          );
+          map.geoObjects.add(searchMarkerRef.current);
+        }
       }
       onPlaceSearch?.(result);
     },
     [onPlaceSearch],
   );
 
-  // Init map once. `leaflet.markercluster` is dynamically imported (not a static top-level
-  // import) because its UMD build reaches for a global `L` that doesn't exist during SSR --
-  // ClientOnly defers *rendering* this component server-side, but a static side-effect import
-  // still gets evaluated during SSR module loading regardless, which crashed the route.
-  const [mapReady, setMapReady] = useState(false);
+  // Init map once.
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     let cancelled = false;
 
-    (async () => {
-      await import("leaflet.markercluster");
-      if (cancelled || !containerRef.current || mapRef.current) return;
+    loadYandexMaps()
+      .then((ymapsNs) => {
+        if (cancelled || !containerRef.current || mapRef.current) return;
+        ymapsRef.current = ymapsNs;
 
-      const map = L.map(containerRef.current, {
-        center: [center.lat, center.lng],
-        zoom,
-        zoomControl: true,
-        attributionControl: true,
+        pinLayoutRef.current = ymapsNs.templateLayoutFactory.createClass(
+          '<div style="position:relative">$[properties.iconContent]</div>',
+        );
+        clusterLayoutRef.current = ymapsNs.templateLayoutFactory.createClass(
+          '<div class="ah-cluster" style="width:42px;height:42px;position:relative;left:-21px;top:-21px">$[properties.geoObjects.length]</div>',
+        );
+
+        const map = new ymapsNs.Map(
+          containerRef.current,
+          { center: [center.lat, center.lng], zoom, type: YANDEX_MAP_TYPE.street, controls: [] },
+          { suppressMapOpenBlock: true, yandexMapDisablePoiInteractivity: true },
+        );
+        map.controls.add("zoomControl", { position: { right: 12, bottom: 90 } });
+        mapRef.current = map;
+
+        const cluster = new ymapsNs.Clusterer({
+          preset: "islands#invertedBlueClusterIcons",
+          clusterIconLayout: clusterLayoutRef.current,
+          clusterIconShape: { type: "Circle", coordinates: [0, 0], radius: 21 },
+          groupByCoordinates: false,
+          clusterDisableClickZoom: false,
+          gridSize: 64,
+        });
+        map.geoObjects.add(cluster as unknown as never);
+        clustererRef.current = cluster;
+        setMapReady(true);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof YandexMapsKeyMissingError) {
+          setKeyMissing(true);
+        } else {
+          setLoadFailed(true);
+        }
       });
-      map.zoomControl.setPosition("bottomright");
-
-      const layer = TILE_LAYERS.street;
-      tileLayerRef.current = L.tileLayer(layer.url, {
-        attribution: layer.attribution,
-        maxZoom: layer.maxZoom,
-      }).addTo(map);
-
-      const cluster = L.markerClusterGroup({
-        maxClusterRadius: 56,
-        spiderfyOnMaxZoom: true,
-        showCoverageOnHover: false,
-        iconCreateFunction: (c) =>
-          L.divIcon({
-            className: "",
-            html: `<div class="ah-cluster">${c.getChildCount()}</div>`,
-            iconSize: [42, 42],
-          }),
-      });
-      cluster.addTo(map);
-      clusterRef.current = cluster;
-      mapRef.current = map;
-      setMapReady(true);
-    })();
 
     return () => {
       cancelled = true;
-      mapRef.current?.remove();
+      mapRef.current?.destroy();
       mapRef.current = null;
-      tileLayerRef.current = null;
-      clusterRef.current = null;
+      clustererRef.current = null;
       markersByIdRef.current.clear();
       searchMarkerRef.current = null;
+      myLocationMarkerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Style switching.
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    tileLayerRef.current?.remove();
-    const layer = TILE_LAYERS[style];
-    tileLayerRef.current = L.tileLayer(layer.url, {
-      attribution: layer.attribution,
-      maxZoom: layer.maxZoom,
-    }).addTo(map);
-  }, [style]);
+    mapRef.current?.setType(YANDEX_MAP_TYPE[style]);
+  }, [style, mapReady]);
 
   const routeTo = useCallback(
     async (userPos: { lat: number; lng: number }, target: MapMarker, mode: TravelMode) => {
@@ -457,7 +439,7 @@ function LeafletMapViewClient({
       try {
         const route = await fetchRoute(userPos, { lat: target.lat, lng: target.lng }, mode);
         setNav((n) =>
-          n && n.target.id === target.id ? { ...n, phase: "active", route, activeStep: 0 } : n,
+          n && n.target.id === target.id ? { ...n, phase: "active", route, activeStepIndex: 0 } : n,
         );
       } catch (err) {
         setNav((n) =>
@@ -476,7 +458,8 @@ function LeafletMapViewClient({
 
   const startNavigation = useCallback(
     (target: MapMarker) => {
-      setNav({ target, mode: "driving", phase: "locating", activeStep: 0 });
+      setNav({ target, mode: "driving", phase: "locating", activeStepIndex: 0 });
+      setFullscreen(true);
       if (!navigator.geolocation) {
         setNav((n) =>
           n ? { ...n, phase: "error", error: "Brauzeringiz joylashuvni aniqlay olmaydi." } : n,
@@ -502,6 +485,14 @@ function LeafletMapViewClient({
     [routeTo],
   );
 
+  // "Marshrut" trigger from a caller (e.g. Product Detail's route button).
+  useEffect(() => {
+    if (!navigateTarget) return;
+    startNavigation(navigateTarget);
+    onNavigateHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigateTarget]);
+
   const stopNavigation = useCallback(() => {
     setNav(null);
     routeFittedRef.current = null;
@@ -518,177 +509,203 @@ function LeafletMapViewClient({
     [routeTo],
   );
 
-  const openTransit = useCallback(() => {
-    setNav((n) => {
-      if (!n?.userPos) return n;
-      window.open(
-        transitDirectionsUrl(n.userPos, { lat: n.target.lat, lng: n.target.lng }),
-        "_blank",
-        "noopener,noreferrer",
-      );
-      return n;
-    });
-  }, []);
-
-  // Markers (clustered). Popup wires a raw <button> via a delegated `popupopen` listener since
-  // Leaflet popups are plain HTML strings, not React trees.
+  // Markers (clustered). Click navigates straight to the listing's Product Detail page.
   useEffect(() => {
-    const cluster = clusterRef.current;
-    if (!cluster) return;
+    const cluster = clustererRef.current;
+    const ymapsNs = ymapsRef.current;
+    if (!cluster || !ymapsNs) return;
 
-    cluster.clearLayers();
+    cluster.removeAll();
     markersByIdRef.current.clear();
 
-    const leafletMarkers = markers.map((m) => {
-      const marker = L.marker([m.lat, m.lng], { icon: pinIcon(m, false) });
-      marker.bindPopup(popupHtml(m), { closeButton: true, maxWidth: 260 });
-      marker.on("popupopen", (e) => {
-        const el = (e.popup as L.Popup).getElement();
-        const btn = el?.querySelector<HTMLButtonElement>('[data-ah-action="navigate"]');
-        btn?.addEventListener("click", () => startNavigation(m));
-      });
-      marker.on("click", () => {
-        markersByIdRef.current.forEach((mk, id) => {
+    const placemarks = markers.map((m) => {
+      const placemark = new ymapsNs.Placemark(
+        [m.lat, m.lng],
+        { iconContent: pinHtml(m, false), hintContent: m.title },
+        {
+          iconLayout: pinLayoutRef.current,
+          iconShape: {
+            type: "Rectangle",
+            coordinates: [
+              [-45, -46],
+              [45, 6],
+            ],
+          },
+        },
+      );
+      placemark.events.add("click", () => {
+        markersByIdRef.current.forEach((pm, id) => {
           const src = markers.find((mm) => mm.id === id);
-          if (src) mk.setIcon(pinIcon(src, id === m.id));
+          if (src) pm.properties.set("iconContent", pinHtml(src, id === m.id));
         });
-        onSelect?.(m);
+        if (m.href) {
+          navigate({ to: m.href });
+        } else {
+          onSelect?.(m);
+        }
       });
-      markersByIdRef.current.set(m.id, marker);
-      return marker;
+      markersByIdRef.current.set(m.id, placemark);
+      return placemark;
     });
 
-    cluster.addLayers(leafletMarkers);
+    cluster.add(placemarks);
 
     return () => {
-      cluster.clearLayers();
+      cluster.removeAll();
       markersByIdRef.current.clear();
     };
-  }, [markers, onSelect, startNavigation, mapReady]);
+  }, [markers, onSelect, navigate, mapReady]);
 
-  // Focus -- flies to (and reveals out of a cluster, if needed) a specific point on demand.
+  // Focus -- flies to a specific point on demand (re-clustering naturally resolves the target
+  // pin out of any cluster once zoomed in, so there's no separate "reveal from cluster" step).
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !focus) return;
-    const marker = focus.id ? markersByIdRef.current.get(focus.id) : undefined;
-    if (marker && clusterRef.current) {
-      clusterRef.current.zoomToShowLayer(marker, () => {
-        map.flyTo([focus.lat, focus.lng], focus.zoom ?? Math.max(map.getZoom(), 14), {
-          duration: 0.9,
-        });
-        marker.openPopup();
-      });
-    } else {
-      map.flyTo([focus.lat, focus.lng], focus.zoom ?? 14, { duration: 1.1 });
-    }
+    void map.setCenter([focus.lat, focus.lng], focus.zoom ?? Math.max(map.getZoom(), 14), {
+      duration: 500,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.id, focus?.lat, focus?.lng, focus?.zoom, mapReady]);
 
-  // Drawing tools -- hand-rolled on Leaflet's own mouse events (no plugin dependency).
+  // Drawing tools -- hand-rolled on the map's own mouse events (mirrors the previous Leaflet
+  // implementation; Yandex's map event names/coords shape are close enough to be a direct port).
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    const ymapsNs = ymapsRef.current;
+    if (!map || !ymapsNs) return;
     const state = drawStateRef.current;
     state.mode = drawMode;
     state.points = [];
     state.circleCenter = null;
     state.dragging = false;
     if (state.tempLayer) {
-      state.tempLayer.remove();
+      map.geoObjects.remove(state.tempLayer as unknown as never);
       state.tempLayer = null;
     }
     if (drawMode === "none") {
-      map.dragging.enable();
+      map.behaviors.enable("drag");
       return;
     }
-    map.dragging.disable();
+    map.behaviors.disable("drag");
 
     const finishPolygon = () => {
       if (state.points.length >= 3) {
-        const poly = L.polygon(state.points, {
-          color: "var(--primary)",
-          weight: 2,
-          fillColor: "var(--primary)",
-          fillOpacity: 0.15,
-        }).addTo(map);
+        const poly = new ymapsNs.Polygon(
+          [state.points],
+          {},
+          {
+            fillColor: "var(--primary)",
+            fillOpacity: 0.15,
+            strokeColor: "var(--primary)",
+            strokeWidth: 2,
+          },
+        );
+        map.geoObjects.add(poly as unknown as never);
         overlaysRef.current.push(poly);
         setOverlayCount(overlaysRef.current.length);
-        onAreaSearch?.({ kind: "polygon", bbox: bboxFromLatLngBounds(poly.getBounds()) });
+        const lats = state.points.map((p) => p[0]);
+        const lngs = state.points.map((p) => p[1]);
+        onAreaSearch?.({
+          kind: "polygon",
+          bbox: {
+            south: Math.min(...lats),
+            north: Math.max(...lats),
+            west: Math.min(...lngs),
+            east: Math.max(...lngs),
+          },
+        });
       }
-      state.tempLayer?.remove();
+      if (state.tempLayer) map.geoObjects.remove(state.tempLayer as unknown as never);
       state.tempLayer = null;
       state.points = [];
       setDrawMode("none");
     };
 
-    const onClick = (e: L.LeafletMouseEvent) => {
+    const onClick = (e: { get<T>(key: string): T }) => {
       if (state.mode !== "polygon") return;
-      state.points.push(e.latlng);
-      state.tempLayer?.remove();
-      state.tempLayer = L.polyline(state.points, {
-        color: "var(--primary)",
-        weight: 2,
-        dashArray: "4 4",
-      }).addTo(map);
+      const coords = e.get<[number, number]>("coords");
+      state.points.push(coords);
+      if (state.tempLayer) map.geoObjects.remove(state.tempLayer as unknown as never);
+      state.tempLayer = new ymapsNs.Polyline(
+        state.points,
+        {},
+        { strokeColor: "var(--primary)", strokeWidth: 2, strokeStyle: "shortdash" },
+      );
+      map.geoObjects.add(state.tempLayer as unknown as never);
     };
-    const onDblClick = (e: L.LeafletMouseEvent) => {
+    const onDblClick = (e: { get<T>(key: string): T; preventDefault?: () => void }) => {
       if (state.mode !== "polygon") return;
-      L.DomEvent.stop(e);
+      e.preventDefault?.();
       finishPolygon();
     };
-    const onMouseDown = (e: L.LeafletMouseEvent) => {
+    const onMouseDown = (e: { get<T>(key: string): T }) => {
       if (state.mode !== "circle") return;
-      state.circleCenter = e.latlng;
+      const coords = e.get<[number, number]>("coords");
+      state.circleCenter = coords;
       state.dragging = true;
-      state.tempLayer = L.circle(e.latlng, {
-        radius: 1,
-        color: "var(--primary)",
-        weight: 2,
-        fillColor: "var(--primary)",
-        fillOpacity: 0.12,
-      }).addTo(map);
+      state.tempLayer = new ymapsNs.Circle(
+        [coords, 1],
+        {},
+        {
+          fillColor: "var(--primary)",
+          fillOpacity: 0.12,
+          strokeColor: "var(--primary)",
+          strokeWidth: 2,
+        },
+      );
+      map.geoObjects.add(state.tempLayer as unknown as never);
     };
-    const onMouseMove = (e: L.LeafletMouseEvent) => {
+    const onMouseMove = (e: { get<T>(key: string): T }) => {
       if (state.mode !== "circle" || !state.dragging || !state.circleCenter) return;
-      const radius = state.circleCenter.distanceTo(e.latlng);
-      (state.tempLayer as L.Circle | null)?.setRadius(radius);
+      const coords = e.get<[number, number]>("coords");
+      const radius = distanceMeters(
+        { lat: state.circleCenter[0], lng: state.circleCenter[1] },
+        { lat: coords[0], lng: coords[1] },
+      );
+      (state.tempLayer as YMapsCircle | null)?.geometry.setRadius(radius);
     };
     const onMouseUp = () => {
       if (state.mode !== "circle" || !state.dragging || !state.circleCenter) return;
       state.dragging = false;
-      const circle = state.tempLayer as L.Circle | null;
+      const circle = state.tempLayer as YMapsCircle | null;
       state.tempLayer = null;
-      if (circle && circle.getRadius() > 20) {
+      const radius = circle?.geometry.getRadius() ?? 0;
+      if (circle && radius > 20) {
         overlaysRef.current.push(circle);
         setOverlayCount(overlaysRef.current.length);
-        const c = circle.getLatLng();
+        const [lat, lng] = state.circleCenter;
         onAreaSearch?.({
           kind: "circle",
-          bbox: bboxFromLatLngBounds(circle.getBounds()),
-          center: { lat: c.lat, lng: c.lng },
-          radiusMeters: circle.getRadius(),
+          bbox: {
+            south: lat - radius / 111320,
+            north: lat + radius / 111320,
+            west: lng - radius / (111320 * Math.cos((lat * Math.PI) / 180)),
+            east: lng + radius / (111320 * Math.cos((lat * Math.PI) / 180)),
+          },
+          center: { lat, lng },
+          radiusMeters: radius,
         });
-      } else {
-        circle?.remove();
+      } else if (circle) {
+        map.geoObjects.remove(circle as unknown as never);
       }
       setDrawMode("none");
     };
 
-    map.on("click", onClick);
-    map.on("dblclick", onDblClick);
-    map.on("mousedown", onMouseDown);
-    map.on("mousemove", onMouseMove);
-    map.on("mouseup", onMouseUp);
+    map.events.add("click", onClick);
+    map.events.add("dblclick", onDblClick);
+    map.events.add("mousedown", onMouseDown);
+    map.events.add("mousemove", onMouseMove);
+    map.events.add("mouseup", onMouseUp);
 
     return () => {
-      map.off("click", onClick);
-      map.off("dblclick", onDblClick);
-      map.off("mousedown", onMouseDown);
-      map.off("mousemove", onMouseMove);
-      map.off("mouseup", onMouseUp);
-      map.dragging.enable();
+      map.events.remove("click", onClick);
+      map.events.remove("dblclick", onDblClick);
+      map.events.remove("mousedown", onMouseDown);
+      map.events.remove("mousemove", onMouseMove);
+      map.events.remove("mouseup", onMouseUp);
+      map.behaviors.enable("drag");
     };
-  }, [drawMode, onAreaSearch]);
+  }, [drawMode, onAreaSearch, mapReady]);
 
   // Live position tracking for the active navigation session.
   const navTargetId = nav?.target.id ?? null;
@@ -703,10 +720,10 @@ function LeafletMapViewClient({
         };
         setNav((n) => {
           if (!n) return n;
-          let activeStep = n.activeStep;
-          const nextStep = n.route?.steps[activeStep + 1];
-          if (nextStep && distanceMeters(p, nextStep.location) < 40) activeStep += 1;
-          return { ...n, userPos: p, activeStep };
+          let activeStepIndex = n.activeStepIndex;
+          const nextStep = n.route?.steps[activeStepIndex + 1];
+          if (nextStep && distanceMeters(p, nextStep.location) < 40) activeStepIndex += 1;
+          return { ...n, userPos: p, activeStepIndex };
         });
       },
       (err) => console.warn("[nav watch]", err.message),
@@ -715,100 +732,158 @@ function LeafletMapViewClient({
     return () => navigator.geolocation.clearWatch(id);
   }, [navTargetId]);
 
-  // Route polyline (casing + colored line) + one-time fitBounds when a route first arrives.
+  // Route polyline (casing + colored line) + one-time bounds fit when a route first arrives.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
-    routeLayersRef.current?.casing.remove();
-    routeLayersRef.current?.line.remove();
-    routeLayersRef.current = null;
+    const ymapsNs = ymapsRef.current;
+    if (!map || !ymapsNs) return;
+    if (routeLayersRef.current) {
+      map.geoObjects.remove(routeLayersRef.current.casing as unknown as never);
+      map.geoObjects.remove(routeLayersRef.current.line as unknown as never);
+      routeLayersRef.current = null;
+    }
 
     if (!nav?.route) return;
-    const latlngs = nav.route.coordinates.map((c) => [c.lat, c.lng] as [number, number]);
-    const casing = L.polyline(latlngs, {
-      color: "#0b0e2b",
-      weight: 8,
-      opacity: 0.35,
-      lineCap: "round",
-    }).addTo(map);
-    const line = L.polyline(latlngs, {
-      color: "var(--primary)",
-      weight: 5,
-      opacity: 0.95,
-      lineCap: "round",
-    }).addTo(map);
+    const coords = nav.route.coordinates.map((c) => [c.lat, c.lng] as [number, number]);
+    const casing = new ymapsNs.Polyline(
+      coords,
+      {},
+      { strokeColor: "#0b0e2bAA", strokeWidth: 8, strokeLineCap: "round" },
+    );
+    const line = new ymapsNs.Polyline(
+      coords,
+      {},
+      { strokeColor: "var(--primary)", strokeWidth: 5, strokeLineCap: "round" },
+    );
+    map.geoObjects.add(casing as unknown as never);
+    map.geoObjects.add(line as unknown as never);
     routeLayersRef.current = { casing, line };
 
     const fitKey = `${nav.target.id}:${nav.mode}`;
-    if (routeFittedRef.current !== fitKey) {
-      map.fitBounds(line.getBounds(), { padding: [64, 64] });
+    if (routeFittedRef.current !== fitKey && coords.length > 0) {
+      const lats = coords.map((c) => c[0]);
+      const lngs = coords.map((c) => c[1]);
+      void map.setBounds(
+        [
+          [Math.min(...lats), Math.min(...lngs)],
+          [Math.max(...lats), Math.max(...lngs)],
+        ],
+        { checkZoomRange: true, zoomMargin: 64, duration: 500 },
+      );
       routeFittedRef.current = fitKey;
     }
 
     return () => {
-      casing.remove();
-      line.remove();
+      map.geoObjects.remove(casing as unknown as never);
+      map.geoObjects.remove(line as unknown as never);
     };
   }, [nav?.route, nav?.target.id, nav?.mode]);
 
-  // Live location puck.
+  // Live location puck -- glyph matches the currently selected travel mode.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !nav?.userPos) {
-      puckRef.current?.remove();
+    const ymapsNs = ymapsRef.current;
+    if (!map || !ymapsNs || !nav?.userPos) {
+      if (puckRef.current) map?.geoObjects.remove(puckRef.current as unknown as never);
       puckRef.current = null;
       return;
     }
-    const { lat, lng, heading } = nav.userPos;
-    const rotation = typeof heading === "number" && !Number.isNaN(heading) ? heading : 0;
-    const icon = L.divIcon({
-      className: "",
-      html: `<div class="ah-puck" style="transform:rotate(${rotation}deg)"><span class="ah-puck__cone"></span><span class="ah-puck__ring"></span><span class="ah-puck__dot"></span></div>`,
-      iconSize: [18, 18],
-      iconAnchor: [9, 9],
-    });
-    if (puckRef.current) {
-      puckRef.current.setLatLng([lat, lng]);
-      puckRef.current.setIcon(icon);
-    } else {
-      puckRef.current = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(map);
+    const { lat, lng } = nav.userPos;
+    if (!puckLayoutRef.current) {
+      puckLayoutRef.current = ymapsNs.templateLayoutFactory.createClass(
+        '<div class="ah-puck" style="position:relative;left:-9px;top:-9px">' +
+          '<span class="ah-puck__ring"></span>' +
+          '<span class="ah-puck__dot" style="display:flex;align-items:center;justify-content:center">$[properties.glyph]</span>' +
+          "</div>",
+      );
     }
-  }, [nav?.userPos]);
+    if (puckRef.current) {
+      puckRef.current.geometry.setCoordinates([lat, lng]);
+      puckRef.current.properties.set("glyph", MODE_GLYPH[nav.mode]);
+    } else {
+      puckRef.current = new ymapsNs.Placemark(
+        [lat, lng],
+        { glyph: MODE_GLYPH[nav.mode] },
+        {
+          iconLayout: puckLayoutRef.current,
+          iconShape: { type: "Circle", coordinates: [0, 0], radius: 9 },
+        },
+      );
+      map.geoObjects.add(puckRef.current as unknown as never);
+    }
+  }, [nav?.userPos, nav?.mode]);
 
   // Auto-scroll the step list to keep the active step in view.
   useEffect(() => {
     if (!nav || nav.phase !== "active") return;
     const container = stepListRef.current;
-    const activeEl = container?.querySelector<HTMLElement>(`[data-step="${nav.activeStep}"]`);
+    const activeEl = container?.querySelector<HTMLElement>(`[data-step="${nav.activeStepIndex}"]`);
     activeEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [nav?.activeStep, nav?.phase]);
+  }, [nav?.activeStepIndex, nav?.phase]);
 
   const recenterOnUser = () => {
     if (!nav?.userPos || !mapRef.current) return;
-    mapRef.current.flyTo([nav.userPos.lat, nav.userPos.lng], 17, { duration: 0.8 });
+    void mapRef.current.setCenter([nav.userPos.lat, nav.userPos.lng], 17, { duration: 400 });
   };
 
   const clearOverlays = () => {
-    overlaysRef.current.forEach((o) => o.remove());
+    const map = mapRef.current;
+    overlaysRef.current.forEach((o) => map?.geoObjects.remove(o as unknown as never));
     overlaysRef.current = [];
     setOverlayCount(0);
   };
 
   const geolocate = () => {
-    if (!navigator.geolocation || !mapRef.current) return;
+    setGeolocateError(null);
+    const map = mapRef.current;
+    const ymapsNs = ymapsRef.current;
+    if (!navigator.geolocation || !map || !ymapsNs) {
+      setGeolocateError("Brauzeringiz joylashuvni aniqlay olmaydi.");
+      return;
+    }
+    setGeolocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        mapRef.current?.flyTo([pos.coords.latitude, pos.coords.longitude], 13, { duration: 1 });
+        setGeolocating(false);
+        const { latitude, longitude } = pos.coords;
+        void map.setCenter([latitude, longitude], 15, { duration: 500 });
+        if (!puckLayoutRef.current) {
+          puckLayoutRef.current = ymapsNs.templateLayoutFactory.createClass(
+            '<div class="ah-puck" style="position:relative;left:-9px;top:-9px">' +
+              '<span class="ah-puck__ring"></span><span class="ah-puck__dot"></span></div>',
+          );
+        }
+        if (myLocationMarkerRef.current) {
+          myLocationMarkerRef.current.geometry.setCoordinates([latitude, longitude]);
+        } else {
+          myLocationMarkerRef.current = new ymapsNs.Placemark(
+            [latitude, longitude],
+            {},
+            {
+              iconLayout: puckLayoutRef.current,
+              iconShape: { type: "Circle", coordinates: [0, 0], radius: 9 },
+            },
+          );
+          map.geoObjects.add(myLocationMarkerRef.current as unknown as never);
+        }
       },
-      (err) => console.warn("[geolocation]", err.message),
+      (err) => {
+        setGeolocating(false);
+        setGeolocateError(
+          err.code === err.PERMISSION_DENIED
+            ? "Joylashuvga ruxsat berilmadi."
+            : "Joylashuvni aniqlab bo'lmadi.",
+        );
+        console.warn("[geolocation]", err.message);
+      },
       { enableHighAccuracy: true, timeout: 8000 },
     );
   };
 
   const openStreetView = () => {
     const map = mapRef.current;
-    const c = map ? map.getCenter() : center;
-    window.open(streetViewUrl(c.lat, c.lng), "_blank", "noopener,noreferrer");
+    const c = map ? map.getCenter() : [center.lat, center.lng];
+    window.open(streetViewUrl(c[0], c[1]), "_blank", "noopener,noreferrer");
   };
 
   const containerStyle = useMemo(
@@ -816,14 +891,25 @@ function LeafletMapViewClient({
     [height, fullscreen],
   );
 
+  if (keyMissing) return <MapKeyMissing height={height} className={className} />;
+  if (loadFailed) {
+    return (
+      <div
+        className={`relative flex items-center justify-center overflow-hidden rounded-3xl border border-border bg-card ${className}`}
+        style={{ height }}
+      >
+        <p className="max-w-xs px-6 text-center text-xs text-muted-foreground">
+          Xaritani yuklab bo'lmadi. Internet aloqasini tekshirib, sahifani yangilang.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`relative transition-[border-radius] ${fullscreen ? "fixed inset-0 z-[999]" : className}`}
       style={containerStyle}
     >
-      {/* The rounded/clipped map surface lives in its own layer so overlay UI (search results,
-       * the layers menu, the nav panel) can extend past its bounds without being cut off by the
-       * `overflow-hidden` that crops the Leaflet tiles into rounded corners. */}
       <div
         className={`absolute inset-0 overflow-hidden border border-border bg-card shadow-elevated ${
           fullscreen ? "rounded-none" : "rounded-3xl"
@@ -832,11 +918,7 @@ function LeafletMapViewClient({
         <div ref={containerRef} className="absolute inset-0" />
       </div>
 
-      {/* Top overlay row: layer switcher, search, and the tool dock all live in one flex row so
-       * they always share the available width and never overlap each other, at any viewport size. */}
       <div className="absolute inset-x-0 top-0 z-[500] flex items-start justify-between gap-2 p-3 sm:p-4">
-        {/* Layer switcher -- an icon trigger (matches the tool dock's own buttons) with a dropdown
-         * panel, so it never needs its own reserved width on narrow screens. */}
         <div className="relative shrink-0">
           <ToolButton
             active={layersOpen}
@@ -882,9 +964,6 @@ function LeafletMapViewClient({
           )}
         </div>
 
-        {/* Location search -- flexible middle column, so it takes exactly whatever width is left
-         * over between the layer switcher and the tool dock instead of a fixed/centered width
-         * that could collide with either at in-between viewport sizes. */}
         {enableSearch ? (
           <div className="glass min-w-0 max-w-md flex-1 overflow-hidden rounded-2xl shadow-soft">
             <div className="flex items-center gap-2 px-3 py-2.5">
@@ -972,18 +1051,30 @@ function LeafletMapViewClient({
           <div className="flex-1" aria-hidden />
         )}
 
-        {/* Right-side tool dock */}
         <div className="flex shrink-0 flex-col gap-2">
           <ToolButton
             onClick={() => setFullscreen((v) => !v)}
             label={fullscreen ? "Kichraytirish" : "To'liq ekran"}
             icon={fullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
           />
-          <ToolButton
-            onClick={geolocate}
-            label="Mening joylashuvim"
-            icon={<LocateFixed className="size-4" />}
-          />
+          <div className="relative">
+            <ToolButton
+              onClick={geolocate}
+              label="Mening joylashuvim"
+              icon={
+                geolocating ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <LocateFixed className="size-4" />
+                )
+              }
+            />
+            {geolocateError && (
+              <div className="glass absolute right-full top-1/2 mr-2 w-max max-w-[200px] -translate-y-1/2 rounded-xl px-3 py-2 text-[11px] font-medium text-destructive shadow-soft">
+                {geolocateError}
+              </div>
+            )}
+          </div>
           {enableDrawTools && (
             <>
               <ToolButton
@@ -1010,7 +1101,6 @@ function LeafletMapViewClient({
         </div>
       </div>
 
-      {/* Count badge */}
       {showCountBadge && !nav && (
         <div className="glass absolute bottom-4 left-4 z-[500] rounded-2xl px-3 py-2 text-xs text-foreground/85 shadow-soft">
           <span className="font-semibold text-foreground">{markers.length.toLocaleString()}</span>{" "}
@@ -1018,7 +1108,6 @@ function LeafletMapViewClient({
         </div>
       )}
 
-      {/* Navigation panel */}
       {nav && (
         <div className="absolute inset-x-0 bottom-0 z-[600] flex justify-center px-3 pb-3 sm:px-4 sm:pb-4">
           <div className="glass w-full max-w-xl overflow-hidden rounded-3xl shadow-elevated">
@@ -1090,25 +1179,30 @@ function LeafletMapViewClient({
                     </button>
                   );
                 })}
-                <button
-                  onClick={openTransit}
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold text-foreground/70 transition hover:bg-muted"
-                >
-                  <Bus className="size-3.5" />
-                  Jamoat transporti
-                  <ExternalLink className="size-3 opacity-60" />
-                </button>
               </div>
             )}
 
             {nav.phase === "error" && (
-              <div className="border-t border-border/60 px-4 py-3">
+              <div className="flex flex-wrap items-center gap-2 border-t border-border/60 px-4 py-3">
                 <button
                   onClick={() => startNavigation(nav.target)}
                   className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-soft hover:shadow-glow"
                 >
                   Qayta urinish
                 </button>
+                {nav.mode === "transit" && nav.userPos && (
+                  <a
+                    href={transitFallbackUrl(nav.userPos, {
+                      lat: nav.target.lat,
+                      lng: nav.target.lng,
+                    })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-2 text-xs font-semibold text-foreground/70 transition hover:bg-muted"
+                  >
+                    Yandex Maps'da ochish <ExternalLink className="size-3" />
+                  </a>
+                )}
               </div>
             )}
 
@@ -1118,8 +1212,7 @@ function LeafletMapViewClient({
                 className="max-h-52 overflow-y-auto border-t border-border/60 px-2 py-2"
               >
                 {nav.route.steps.map((step, i) => {
-                  const StepIcon = stepIcon(step);
-                  const active = i === nav.activeStep;
+                  const active = i === nav.activeStepIndex;
                   return (
                     <div
                       key={i}
@@ -1135,7 +1228,7 @@ function LeafletMapViewClient({
                             : "bg-muted text-foreground/60"
                         }`}
                       >
-                        <StepIcon className="size-3.5" />
+                        <Navigation className="size-3.5" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div

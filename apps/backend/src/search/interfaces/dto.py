@@ -84,6 +84,9 @@ class SearchRequest(CamelModel):
     q: str | None = None
     """Free text; matched cross-script (Latin↔Cyrillic)."""
     category_id: UUID | None = None
+    category_path_prefix: str | None = None
+    """Subtree match by `category_path` prefix -- see `search.domain.query.SearchQuery.
+    category_path_prefix`'s own docstring."""
     owner_profile_id: UUID | None = None
     """Monetization/B2B-directory task: a business profile's own listings (see `search.domain.
     query.SearchQuery.owner_profile_id`'s own docstring)."""
