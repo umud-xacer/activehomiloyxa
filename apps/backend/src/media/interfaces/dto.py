@@ -22,7 +22,9 @@ class MediaAsset(CamelModel):
         Literal["LISTING", "PROFILE_PORTFOLIO", "VERIFICATION_DOCUMENT", "BANNER_CREATIVE"] | None
     ) = None
     owner_context_id: UUID | None = None
-    content_type: Literal["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm"]
+    content_type: Literal[
+        "image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4", "video/webm"
+    ]
     """Image/video whitelist; anything else is rejected at intake."""
     size_bytes: int | None = None
     scan_status: Literal["PENDING", "CLEAN", "QUARANTINED"]
@@ -45,7 +47,9 @@ class MediaAssetVariants(CamelModel):
 class MediaUploadInitRequest(CamelModel):
     """Request a presigned direct-upload target. Images and video only."""
 
-    content_type: Literal["image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm"]
+    content_type: Literal[
+        "image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4", "video/webm"
+    ]
     size_bytes: int
     """Max 1.2 MB per image, max 30 MB per video (ADR-0008)."""
     owner_context_type: Literal[

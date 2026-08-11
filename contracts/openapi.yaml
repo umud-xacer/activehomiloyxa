@@ -1492,12 +1492,14 @@ paths:
       description: 'Validates the intended type/size/context and returns a **presigned MinIO URL**;
         the client
 
-        then PUTs the bytes directly. **Images and video only** — `image/jpeg|png|webp`,
-        `video/mp4|webm` (DEC-10, widened by ADR-0008); PDF and any other type are rejected 422
-        `UNSUPPORTED_MEDIA_TYPE`. Images are capped at 1.2 MB, video at 30 MB (ADR-0008). After
+        then PUTs the bytes directly. **Images, GIF, and video only** — `image/jpeg|png|webp`,
+        `image/gif`, `video/mp4|webm` (DEC-10, widened by ADR-0008, later widened again to admit
+        GIF); PDF and any other type are rejected 422 `UNSUPPORTED_MEDIA_TYPE`. Images are capped
+        at 1.2 MB, GIF at 5 MB, video at 30 MB. After
         upload the asset is scanned for malware; images are additionally EXIF/GPS-stripped and
-        get THUMBNAIL/OPTIMIZED variants before delivery (I-20) — video has no server-side
-        transcoding pipeline, so a clean video asset becomes deliverable with no variants, and
+        get THUMBNAIL/OPTIMIZED variants before delivery (I-20) — video and GIF have no
+        server-side transcoding, so a clean video/GIF asset becomes deliverable unchanged with no
+        variants (preserving GIF animation, which re-encoding would collapse to one frame), and
         processing is non-blocking either way (QR-05).
 
         '
@@ -5017,6 +5019,7 @@ components:
           - image/jpeg
           - image/png
           - image/webp
+          - image/gif
           - video/mp4
           - video/webm
           description: Image/video whitelist; anything else is rejected at intake.
@@ -5081,13 +5084,14 @@ components:
           - image/jpeg
           - image/png
           - image/webp
+          - image/gif
           - video/mp4
           - video/webm
         sizeBytes:
           type: integer
           minimum: 1
           maximum: 31457280
-          description: Max 1.2 MB per image, max 30 MB per video (ADR-0008).
+          description: Max 1.2 MB per image, max 5 MB per GIF, max 30 MB per video.
         ownerContextType:
           type: string
           enum:
@@ -5655,7 +5659,6 @@ components:
       required:
       - slotKey
       - creativeMediaAssetId
-      - entitlementId
       - scheduleStart
       - scheduleEnd
       - priority
@@ -5666,8 +5669,12 @@ components:
           type: string
           format: uuid
         entitlementId:
-          type: string
+          type:
+          - string
+          - 'null'
           format: uuid
+          description: Additive relaxation — no longer required. Omitted/null auto-provisions an
+            owner-direct-placement entitlement (see CampaignUseCases.create_campaign).
         scheduleStart:
           type: string
           format: date-time

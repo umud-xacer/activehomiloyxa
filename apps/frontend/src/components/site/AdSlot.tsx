@@ -61,8 +61,11 @@ export function AdSlot({
   );
 
   if (variant === "sidebar") {
+    // Fixed-width gutter (only ever shown on 2xl+ screens, see routes/index.tsx), but the
+    // creative itself still scales fluidly to whatever height that width implies via
+    // aspect-ratio rather than a hardcoded px height fighting an arbitrary upload's own ratio.
     return (
-      <div className="h-[420px] w-[160px] overflow-hidden rounded-2xl border border-border/70 bg-card/30">
+      <div className="aspect-[160/420] w-[160px] overflow-hidden rounded-2xl border border-border/70 bg-card/30">
         {banner.targetUrl ? (
           <a href={banner.targetUrl} target="_blank" rel="noopener noreferrer" onClick={onClick}>
             {image}
@@ -76,7 +79,7 @@ export function AdSlot({
 
   return (
     <div className="px-6">
-      <div className="mx-auto h-24 max-w-7xl overflow-hidden rounded-2xl border border-border/70 bg-card/30 sm:h-28">
+      <div className="mx-auto aspect-[16/3] max-w-7xl overflow-hidden rounded-2xl border border-border/70 bg-card/30">
         {banner.targetUrl ? (
           <a href={banner.targetUrl} target="_blank" rel="noopener noreferrer" onClick={onClick}>
             {image}

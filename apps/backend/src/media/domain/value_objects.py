@@ -18,16 +18,25 @@ MAX_VIDEO_SIZE_BYTES = 30 * 1024 * 1024
 transcoding/variant generation (no ffmpeg pipeline exists), so this bounds storage/bandwidth
 cost directly rather than a processing cost."""
 
+MAX_GIF_SIZE_BYTES = 5 * 1024 * 1024
+"""Widens intake to animated GIF (banner-creative use case: a short looping clip without a real
+video pipeline). Same "no processing, cap bounds cost directly" reasoning as video -- an animated
+GIF re-encoded through `ImageProcessingPort`'s single-frame strip-and-reencode technique would
+lose its animation, so `PillowImageProcessingAdapter` deliberately omits it from
+`_PIL_FORMAT_BY_CONTENT_TYPE`, passing it through unchanged (same treatment as video). Capped
+smaller than video since a "short" GIF is the explicit intent, not a long clip."""
+
 
 class ContentType(StrEnum):
     """DDD Sec 5.6 VO `ContentType`. Originally "image whitelist only" (BRULE-11, DEC-10);
-    ADR-0008 widens it to also admit two video formats. Exactly the values
-    `contracts/openapi.yaml`'s `MediaAsset.contentType`/`MediaUploadInitRequest.contentType` enum
-    lists; not a general MIME-type VO."""
+    ADR-0008 widens it to also admit two video formats, later widened again to admit GIF. Exactly
+    the values `contracts/openapi.yaml`'s `MediaAsset.contentType`/`MediaUploadInitRequest.
+    contentType` enum lists; not a general MIME-type VO."""
 
     JPEG = "image/jpeg"
     PNG = "image/png"
     WEBP = "image/webp"
+    GIF = "image/gif"
     MP4 = "video/mp4"
     WEBM = "video/webm"
 
@@ -40,6 +49,8 @@ def is_video(content_type: ContentType) -> bool:
 
 
 def max_size_bytes_for(content_type: ContentType) -> int:
+    if content_type is ContentType.GIF:
+        return MAX_GIF_SIZE_BYTES
     return MAX_VIDEO_SIZE_BYTES if is_video(content_type) else MAX_IMAGE_SIZE_BYTES
 
 
@@ -86,6 +97,7 @@ EXTENSION_BY_CONTENT_TYPE: dict[ContentType, str] = {
     ContentType.JPEG: ".jpg",
     ContentType.PNG: ".png",
     ContentType.WEBP: ".webp",
+    ContentType.GIF: ".gif",
     ContentType.MP4: ".mp4",
     ContentType.WEBM: ".webm",
 }

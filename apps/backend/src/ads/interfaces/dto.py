@@ -62,13 +62,15 @@ class BannerCampaignPage(CamelModel):
 class BannerCampaignCreateRequest(CamelModel):
     slot_key: str
     creative_media_asset_id: UUID
-    entitlement_id: UUID
     schedule_start: datetime
     schedule_end: datetime
     priority: int
     targeting: Targeting = Targeting()
     target_url: str | None = None
     """Additive: optional click-through destination."""
+    entitlement_id: UUID | None = None
+    """Additive relaxation: was required, now optional. `None` triggers the owner-direct-placement
+    entitlement auto-provisioning in `CampaignUseCases.create_campaign` -- see its own docstring."""
 
 
 class BannerCampaignUpdateRequest(CamelModel):

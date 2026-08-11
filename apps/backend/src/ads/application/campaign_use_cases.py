@@ -18,6 +18,7 @@ from ads.application.ports import (
     BannerCampaignRepository,
     CreativeReaderPort,
     EntitlementProjectionRepository,
+    EntitlementSnapshot,
     PlacementSlotReaderPort,
 )
 from ads.domain import (
@@ -53,24 +54,44 @@ class CampaignUseCases:
         *,
         slot_key: str,
         creative_media_asset_id: UUID,
-        entitlement_id: UUID,
         schedule_start: datetime,
         schedule_end: datetime,
         priority: int,
         targeting: Targeting,
         operator_account_id: UUID,
         now: datetime,
+        entitlement_id: UUID | None = None,
         target_url: str | None = None,
     ) -> BannerCampaign:
         """FR-BANNER-002/003. Resolves the slot (FR-BANNER-001's own configuration-authored
         inventory) and the creative's current scan status synchronously -- both are low-frequency
         admin actions, not the hot `serveBanner` path, so a cross-module read here is acceptable
         (X-06's own "synchronous interface" half, not the "never blocks" constraint that applies
-        only to serving)."""
+        only to serving).
+
+        `entitlement_id=None` is a deliberate escape hatch for an owner placing their own/a
+        partner's banner directly, without a paid self-checkout flow existing yet (same spirit as
+        `configuration`'s `publish-solo` bypass for the solo-admin maker-checker case) -- synthesizes
+        a locally-owned, ACTIVE `EntitlementSnapshot` scoped to exactly this campaign's own slot and
+        schedule window rather than requiring a real billing `BANNER_SLOT_BOOKING` order first.
+        Only ads' own local projection cache is touched (never billing's real ledger), and it's
+        gated behind the same `ads:campaign:manage` permission `get_acting_operator` already
+        requires to reach this use case at all."""
         slot = await self._slots.get_slot_by_key(slot_key)
         if slot is None:
             raise SlotNotFoundError(slot_key)
         creative_status = await self._creatives.get_creative_status(creative_media_asset_id)
+        if entitlement_id is None:
+            entitlement_id = uuid4()
+            await self._entitlements.upsert(
+                EntitlementSnapshot(
+                    entitlement_id=entitlement_id,
+                    target_id=slot.head_id,
+                    valid_from=schedule_start,
+                    valid_until=schedule_end,
+                    activation_state="ACTIVE",
+                )
+            )
         campaign = BannerCampaign.create(
             campaign_id=uuid4(),
             placement_slot_id=slot.head_id,

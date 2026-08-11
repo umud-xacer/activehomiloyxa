@@ -350,6 +350,26 @@ function fromLocalInputValue(value: string): string {
 
 // -- campaign create/edit panel ------------------------------------------------------------------
 
+/** The 5 slotKeys `routes/index.tsx`'s `AdSlot` placements actually query -- picking one of
+ * these means "put it live on the homepage" with zero manual code/pageZone/width/height typing.
+ * A placement slot for the chosen key is auto-created behind the scenes on submit if it doesn't
+ * exist yet (see `ensureSlotExists` in `CampaignFormPanel`). An admin who needs a non-homepage
+ * placement (category page, search results, etc.) still uses the "Banner joylari" section above
+ * to hand-create a custom slot, then it appears in the "Boshqa joy" group of the dropdown below. */
+const KNOWN_HOMEPAGE_SLOTS: { slotKey: string; label: string }[] = [
+  { slotKey: "HOMEPAGE_BANNER_1", label: "Bosh sahifa banner 1 (kategoriyalardan keyin)" },
+  { slotKey: "HOMEPAGE_BANNER_2", label: "Bosh sahifa banner 2 (xarita oldidan)" },
+  { slotKey: "HOMEPAGE_BANNER_3", label: "Bosh sahifa banner 3 (ekotizimdan keyin)" },
+  { slotKey: "HOMEPAGE_SIDEBAR_LEFT", label: "Chap yon panel (katta ekranlarda)" },
+  { slotKey: "HOMEPAGE_SIDEBAR_RIGHT", label: "O'ng yon panel (katta ekranlarda)" },
+];
+
+function defaultScheduleEnd(): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + 1);
+  return d.toISOString();
+}
+
 interface CampaignPanelProps {
   editing: BannerCampaign | null;
   slots: SlotRow[];
@@ -358,25 +378,47 @@ interface CampaignPanelProps {
 }
 
 function CampaignFormPanel({ editing, slots, onClose, onSaved }: CampaignPanelProps) {
+  const queryClient = useQueryClient();
   const isEditing = editing !== null;
-  const [slotKey, setSlotKey] = useState(editing?.slotKey ?? (slots[0] ? slotKeyOf(slots[0]) : ""));
+  const knownSlotKeys = new Set(KNOWN_HOMEPAGE_SLOTS.map((s) => s.slotKey));
+  const customSlots = slots.filter((s) => !knownSlotKeys.has(slotKeyOf(s)));
+  const [slotKey, setSlotKey] = useState(
+    editing?.slotKey ?? KNOWN_HOMEPAGE_SLOTS[0].slotKey,
+  );
   const [creativeMediaAssetId, setCreativeMediaAssetId] = useState(
     editing?.creativeMediaAssetId ?? "",
   );
   const [creativePreview, setCreativePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [entitlementId, setEntitlementId] = useState(editing?.entitlementId ?? "");
   const [scheduleStart, setScheduleStart] = useState(
-    editing ? toLocalInputValue(editing.scheduleStart) : "",
+    editing ? toLocalInputValue(editing.scheduleStart) : toLocalInputValue(new Date().toISOString()),
   );
   const [scheduleEnd, setScheduleEnd] = useState(
-    editing ? toLocalInputValue(editing.scheduleEnd) : "",
+    editing ? toLocalInputValue(editing.scheduleEnd) : toLocalInputValue(defaultScheduleEnd()),
   );
   const [priority, setPriority] = useState(editing?.priority ?? 0);
   const [geo, setGeo] = useState(editing?.targeting?.geo ?? "");
   const [targetUrl, setTargetUrl] = useState(editing?.targetUrl ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /** Publishes a placement slot for `slotKey` if none exists yet -- lets the campaign form work
+   * for a known homepage placement with zero prior setup in "Banner joylari". A no-op (skips the
+   * extra round trip) when the slot is already there, whether from a prior quick-add or a
+   * hand-created custom one. */
+  const ensureSlotExists = async (key: string) => {
+    if (slots.some((s) => slotKeyOf(s) === key)) return;
+    const known = KNOWN_HOMEPAGE_SLOTS.find((s) => s.slotKey === key);
+    await publishNewPlacementSlot({
+      code: key.toLowerCase().replace(/_/g, "-"),
+      name: { uz_latn: known?.label ?? key },
+      slotKey: key,
+      pageZone: "HOMEPAGE_BANNER",
+      widthPx: null,
+      heightPx: null,
+    });
+    queryClient.invalidateQueries({ queryKey: ["owner-admin", "placement-slots"] });
+  };
 
   const handleCreativeChange = async (file: File | undefined) => {
     if (!file) return;
@@ -396,7 +438,6 @@ function CampaignFormPanel({ editing, slots, onClose, onSaved }: CampaignPanelPr
   const canSubmit =
     slotKey.trim().length > 0 &&
     creativeMediaAssetId.trim().length > 0 &&
-    entitlementId.trim().length > 0 &&
     scheduleStart.length > 0 &&
     scheduleEnd.length > 0;
 
@@ -408,7 +449,6 @@ function CampaignFormPanel({ editing, slots, onClose, onSaved }: CampaignPanelPr
       const input: BannerCampaignCreateInput = {
         slotKey,
         creativeMediaAssetId,
-        entitlementId,
         scheduleStart: fromLocalInputValue(scheduleStart),
         scheduleEnd: fromLocalInputValue(scheduleEnd),
         priority,
@@ -418,7 +458,6 @@ function CampaignFormPanel({ editing, slots, onClose, onSaved }: CampaignPanelPr
       if (isEditing) {
         await updateCampaign(editing.id, {
           creativeMediaAssetId: input.creativeMediaAssetId,
-          entitlementId: input.entitlementId,
           scheduleStart: input.scheduleStart,
           scheduleEnd: input.scheduleEnd,
           priority: input.priority,
@@ -426,7 +465,12 @@ function CampaignFormPanel({ editing, slots, onClose, onSaved }: CampaignPanelPr
           targetUrl: input.targetUrl,
         });
       } else {
-        await createCampaign(input);
+        await ensureSlotExists(slotKey);
+        const created = await createCampaign(input);
+        // Quick-add path -- go straight to SCHEDULED/RUNNING so the admin doesn't need a second
+        // click; a failure here just leaves it as a real, retryable DRAFT (the campaign list's
+        // own "Rejalashtirish" action), never a lost/duplicated campaign.
+        await scheduleCampaign(created.id).catch(() => {});
       }
       onSaved();
     } catch (err) {
@@ -479,17 +523,33 @@ function CampaignFormPanel({ editing, slots, onClose, onSaved }: CampaignPanelPr
               disabled={isEditing}
               className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm disabled:opacity-60"
             >
-              {slots.length === 0 && <option value="">— Avval joy yarating —</option>}
-              {slots.map((s) => (
-                <option key={s.head.id} value={slotKeyOf(s)}>
-                  {slotName(s)} ({slotKeyOf(s)})
-                </option>
-              ))}
+              <optgroup label="Bosh sahifa">
+                {KNOWN_HOMEPAGE_SLOTS.map((s) => (
+                  <option key={s.slotKey} value={s.slotKey}>
+                    {s.label}
+                  </option>
+                ))}
+              </optgroup>
+              {customSlots.length > 0 && (
+                <optgroup label="Boshqa joy">
+                  {customSlots.map((s) => (
+                    <option key={s.head.id} value={slotKeyOf(s)}>
+                      {slotName(s)} ({slotKeyOf(s)})
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Bosh sahifa joylari avtomatik tayyorlanadi — alohida joy yaratish shart emas. Boshqa
+              sahifa uchun avval yuqoridagi "Banner joylari" bo'limida joy yarating.
+            </p>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Kreativ (rasm) *</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Kreativ (rasm yoki GIF) *
+            </label>
             <div className="mt-1 flex items-center gap-3">
               <div className="flex h-16 w-28 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-border bg-muted">
                 {uploading ? (
@@ -504,7 +564,7 @@ function CampaignFormPanel({ editing, slots, onClose, onSaved }: CampaignPanelPr
                 Rasm tanlash
                 <input
                   type="file"
-                  accept="image/png,image/jpeg,image/webp"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
                   className="hidden"
                   onChange={(e) => handleCreativeChange(e.target.files?.[0])}
                 />
@@ -513,23 +573,6 @@ function CampaignFormPanel({ editing, slots, onClose, onSaved }: CampaignPanelPr
                 <span className="text-xs text-muted-foreground">Kreativ biriktirilgan</span>
               )}
             </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">
-              Entitlement ID (billing) *
-            </label>
-            <input
-              value={entitlementId}
-              onChange={(e) => setEntitlementId(e.target.value)}
-              placeholder="Faol BANNER_PLACEMENT entitlement UUID'i"
-              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-mono"
-            />
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Biznes "Admin → To'lovlarni tasdiqlash" orqali BANNER_PLACEMENT tarifi uchun to'lovini
-              tasdiqlagach faollashadigan entitlement identifikatori. Hozircha uni qo'lda kiriting —
-              entitlementlarni qidiruvchi alohida ekran hali yo'q.
-            </p>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -613,7 +656,7 @@ function CampaignFormPanel({ editing, slots, onClose, onSaved }: CampaignPanelPr
               className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
             >
               {busy && <Loader2 className="size-4 animate-spin" />}
-              {isEditing ? "Saqlash" : "Qoralama sifatida yaratish"}
+              {isEditing ? "Saqlash" : "Joylashtirish"}
             </button>
           </div>
         </div>
@@ -776,7 +819,6 @@ function CampaignsSection({ slots }: { slots: SlotRow[] }) {
         action={
           <button
             type="button"
-            disabled={slots.length === 0}
             onClick={() => {
               setEditingCampaign(null);
               setPanelOpen(true);
@@ -808,11 +850,7 @@ function CampaignsSection({ slots }: { slots: SlotRow[] }) {
             <EmptyState
               icon={Megaphone}
               title="Hozircha kampaniya yo'q"
-              description={
-                slots.length === 0
-                  ? "Avval yuqorida kamida bitta banner joyi yarating."
-                  : "Birinchi banner kampaniyangizni yarating."
-              }
+              description="Birinchi banner kampaniyangizni yarating."
             />
           </div>
         )}

@@ -32,7 +32,9 @@ export interface BannerCampaign {
 export interface BannerCampaignCreateInput {
   slotKey: string;
   creativeMediaAssetId: string;
-  entitlementId: string;
+  /** Omitted/null auto-provisions an owner-direct-placement entitlement server-side -- only
+   * needed when binding to a real billing `BANNER_SLOT_BOOKING` order. */
+  entitlementId?: string | null;
   scheduleStart: string;
   scheduleEnd: string;
   priority: number;

@@ -9,31 +9,41 @@
 import { http } from "@/lib/http";
 
 export const MAX_IMAGE_SIZE_BYTES = 1.2 * 1024 * 1024;
+export const MAX_GIF_SIZE_BYTES = 5 * 1024 * 1024;
 export const MAX_VIDEO_SIZE_BYTES = 30 * 1024 * 1024;
 
 export type MediaOwnerContextType =
   "LISTING" | "PROFILE_PORTFOLIO" | "VERIFICATION_DOCUMENT" | "BANNER_CREATIVE";
 
 const IMAGE_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const GIF_CONTENT_TYPE = "image/gif";
 const VIDEO_CONTENT_TYPES = new Set(["video/mp4", "video/webm"]);
 
 export function isVideoFile(file: File): boolean {
   return VIDEO_CONTENT_TYPES.has(file.type);
 }
 
+export function isGifFile(file: File): boolean {
+  return file.type === GIF_CONTENT_TYPE;
+}
+
 export function isSupportedMediaFile(file: File): boolean {
-  return IMAGE_CONTENT_TYPES.has(file.type) || VIDEO_CONTENT_TYPES.has(file.type);
+  return IMAGE_CONTENT_TYPES.has(file.type) || isGifFile(file) || VIDEO_CONTENT_TYPES.has(file.type);
 }
 
 /** Client-side pre-check only -- the real cap is enforced server-side (`MediaAsset.initiate`);
  * this just avoids a wasted round trip and gives the user an immediate, specific message. */
 export function mediaSizeError(file: File): string | null {
   if (!isSupportedMediaFile(file)) {
-    return "Faqat JPEG, PNG, WEBP rasm yoki MP4, WEBM video fayllar qabul qilinadi.";
+    return "Faqat JPEG, PNG, WEBP, GIF rasm yoki MP4, WEBM video fayllar qabul qilinadi.";
   }
-  const max = isVideoFile(file) ? MAX_VIDEO_SIZE_BYTES : MAX_IMAGE_SIZE_BYTES;
+  const max = isVideoFile(file)
+    ? MAX_VIDEO_SIZE_BYTES
+    : isGifFile(file)
+      ? MAX_GIF_SIZE_BYTES
+      : MAX_IMAGE_SIZE_BYTES;
   if (file.size > max) {
-    const maxLabel = isVideoFile(file) ? "30 MB" : "1.2 MB";
+    const maxLabel = isVideoFile(file) ? "30 MB" : isGifFile(file) ? "5 MB" : "1.2 MB";
     return `Fayl juda katta (maksimal ${maxLabel}).`;
   }
   return null;
