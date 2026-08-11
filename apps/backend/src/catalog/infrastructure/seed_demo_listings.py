@@ -55,6 +55,7 @@ from catalog.infrastructure.persistence.repository import (
     SqlalchemySubscriptionSnapshotRepository,
 )
 from configuration.application.category_read import CategoryReadUseCases
+from configuration.application.exceptions import ConfigVersionNotFoundError
 from configuration.domain import ConfigEntityType
 from configuration.infrastructure.cache.redis_snapshot_cache import RedisSnapshotCache
 from configuration.infrastructure.persistence.repository import SqlalchemyConfigHeadRepository
@@ -538,12 +539,12 @@ def _default_for_field(field: dict[str, object]) -> object:
     shapes; a required field this script has no opinion about must still get *something*, not
     fail the whole listing."""
     field_type = field.get("field_type")
-    options = field.get("options") or []
+    options = field.get("options")
     if field_type == "boolean":
         return "false"
     if field_type == "number":
         return "1"
-    if field_type in ("select", "multiselect") and options:
+    if field_type in ("select", "multiselect") and isinstance(options, list) and options:
         first = options[0]
         value = first.get("value") if isinstance(first, dict) else first
         return [value] if field_type == "multiselect" else value
@@ -611,6 +612,8 @@ class _ConfigurationBridge:
         async with self._session_factory() as session:
             repo = SqlalchemyConfigHeadRepository(session)
             version = await repo.get_version(ConfigEntityType(entity_type), head_id, version_id)
+            if version is None:
+                raise ConfigVersionNotFoundError(entity_type, str(head_id), str(version_id))
             return _version_to_dto(version)
 
 
@@ -828,7 +831,8 @@ async def seed_demo_listings() -> None:
             media_asset_id = media_asset_by_image[demo.image_id]
 
             form_snapshot = await category_reader.get_category_form(category_id)
-            form_fields = list(form_snapshot.get("fields", [])) if form_snapshot else []
+            fields_raw = form_snapshot.get("fields") if form_snapshot else None
+            form_fields = list(fields_raw) if isinstance(fields_raw, list) else []
             attributes = _resolve_attributes(form_fields, demo.attributes)
 
             async with session_factory() as session:
