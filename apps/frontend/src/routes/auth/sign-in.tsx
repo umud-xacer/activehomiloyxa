@@ -9,12 +9,9 @@ import {
   Loader2,
   ArrowRight,
   AlertCircle,
-  Home,
-  Hammer,
-  Wrench,
-  TrendingUp,
-  CalendarCheck,
   Sparkles,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { authApi, type Account } from "@/lib/auth-client";
 import { ApiError } from "@/lib/http";
@@ -51,8 +48,8 @@ function SignInPage() {
 
   return (
     <AuthShell side="Xush kelibsiz">
-      <h1 className="font-display text-3xl font-semibold tracking-tight">Sign in</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Continue to your ActiveHome workspace.</p>
+      <h1 className="font-display text-3xl font-semibold tracking-tight">Xush kelibsiz</h1>
+      <p className="mt-2 text-sm text-muted-foreground">Active Home hisobingizga kiring.</p>
 
       <div className="mt-6 inline-flex rounded-full border border-border bg-card p-1 text-xs font-semibold">
         <button
@@ -71,7 +68,7 @@ function SignInPage() {
             mode === "phone" ? "bg-primary text-primary-foreground" : "text-foreground/70"
           }`}
         >
-          Phone (OTP)
+          Telefon (OTP)
         </button>
       </div>
 
@@ -82,9 +79,9 @@ function SignInPage() {
       )}
 
       <p className="mt-6 text-center text-xs text-muted-foreground">
-        New here?{" "}
+        Hisobingiz yo'qmi?{" "}
         <Link to="/auth/sign-up" className="font-semibold text-primary hover:underline">
-          Create an account
+          Ro'yxatdan o'ting
         </Link>
       </p>
     </AuthShell>
@@ -105,7 +102,7 @@ function EmailSignIn({ onSuccess }: { onSuccess: (account: Account) => void }) {
       const result = await authApi.loginEmail(email, password);
       onSuccess(result.account);
     } catch (err) {
-      setError(errorMessage(err, "Unable to sign in. Check your email and password."));
+      setError(errorMessage(err, "Kirib bo'lmadi. Email va parolni tekshiring."));
     } finally {
       setLoading(false);
     }
@@ -119,22 +116,33 @@ function EmailSignIn({ onSuccess }: { onSuccess: (account: Account) => void }) {
         label="Email"
         value={email}
         onChange={setEmail}
-        placeholder="you@activehome.io"
+        placeholder="siz@activehome.uz"
         autoComplete="email"
         required
       />
-      <Field
-        icon={Lock}
-        type="password"
-        label="Password"
-        value={password}
-        onChange={setPassword}
-        placeholder="••••••••"
-        autoComplete="current-password"
-        required
-      />
+      <div>
+        <Field
+          icon={Lock}
+          type="password"
+          label="Parol"
+          value={password}
+          onChange={setPassword}
+          placeholder="••••••••"
+          autoComplete="current-password"
+          required
+          toggleablePassword
+        />
+        <div className="mt-1.5 text-right">
+          <Link
+            to="/auth/reset"
+            className="text-xs font-semibold text-muted-foreground hover:text-primary"
+          >
+            Parolni unutdingizmi?
+          </Link>
+        </div>
+      </div>
       {error && <ErrorBanner message={error} />}
-      <SubmitButton loading={loading} label="Sign in" loadingLabel="Signing in…" />
+      <SubmitButton loading={loading} label="Kirish" loadingLabel="Kirilmoqda…" />
     </form>
   );
 }
@@ -154,7 +162,7 @@ function PhoneOtpSignIn({ onSuccess }: { onSuccess: (account: Account) => void }
       await authApi.requestOtp(phoneNumber, "LOGIN");
       setStep("code");
     } catch (err) {
-      setError(errorMessage(err, "Unable to send the code. Check the phone number and try again."));
+      setError(errorMessage(err, "Kod yuborilmadi. Telefon raqamini tekshirib qayta urining."));
     } finally {
       setLoading(false);
     }
@@ -168,7 +176,7 @@ function PhoneOtpSignIn({ onSuccess }: { onSuccess: (account: Account) => void }
       const result = await authApi.verifyOtp(phoneNumber, code, "LOGIN");
       onSuccess(result.account);
     } catch (err) {
-      setError(errorMessage(err, "That code didn't work. Check it and try again."));
+      setError(errorMessage(err, "Kod noto'g'ri. Tekshirib qayta urining."));
     } finally {
       setLoading(false);
     }
@@ -180,7 +188,7 @@ function PhoneOtpSignIn({ onSuccess }: { onSuccess: (account: Account) => void }
         <Field
           icon={Phone}
           type="tel"
-          label="Phone number"
+          label="Telefon raqami"
           value={phoneNumber}
           onChange={setPhoneNumber}
           placeholder="+998901234567"
@@ -188,7 +196,7 @@ function PhoneOtpSignIn({ onSuccess }: { onSuccess: (account: Account) => void }
           required
         />
         {error && <ErrorBanner message={error} />}
-        <SubmitButton loading={loading} label="Send code" loadingLabel="Sending…" />
+        <SubmitButton loading={loading} label="Kod yuborish" loadingLabel="Yuborilmoqda…" />
       </form>
     );
   }
@@ -196,12 +204,13 @@ function PhoneOtpSignIn({ onSuccess }: { onSuccess: (account: Account) => void }
   return (
     <form onSubmit={verifyCode} className="mt-8 space-y-4">
       <p className="text-xs text-muted-foreground">
-        We sent a code to <span className="font-semibold text-foreground">{phoneNumber}</span>.
+        <span className="font-semibold text-foreground">{phoneNumber}</span> raqamiga kod
+        yuborildi.
       </p>
       <Field
         icon={KeyRound}
         type="text"
-        label="Verification code"
+        label="Tasdiqlash kodi"
         value={code}
         onChange={setCode}
         placeholder="123456"
@@ -209,7 +218,7 @@ function PhoneOtpSignIn({ onSuccess }: { onSuccess: (account: Account) => void }
         required
       />
       {error && <ErrorBanner message={error} />}
-      <SubmitButton loading={loading} label="Verify & sign in" loadingLabel="Verifying…" />
+      <SubmitButton loading={loading} label="Tasdiqlash va kirish" loadingLabel="Tekshirilmoqda…" />
       <button
         type="button"
         onClick={() => {
@@ -219,7 +228,7 @@ function PhoneOtpSignIn({ onSuccess }: { onSuccess: (account: Account) => void }
         }}
         className="w-full text-center text-xs font-semibold text-muted-foreground hover:text-foreground"
       >
-        Use a different number
+        Boshqa raqam ishlatish
       </button>
     </form>
   );
@@ -254,107 +263,71 @@ function SubmitButton({
   );
 }
 
-const BRAND_PILLARS = [
-  { Icon: Home, label: "Ko'chmas mulk" },
-  { Icon: TrendingUp, label: "Investorlar" },
-  { Icon: Hammer, label: "Qurilish" },
-  { Icon: Wrench, label: "Xizmatlar" },
-  { Icon: CalendarCheck, label: "Bron qilish" },
-];
+/** Real, keyless architecture/residential photo -- same loremflickr convention already used for
+ * per-category hero backgrounds (see `__root.tsx`'s preconnect hint, which already warms this
+ * connection up site-wide). `lock` pins one specific photo instead of a new random one per
+ * visit/reload, which would otherwise make the "slow zoom" animation jarring on navigation. */
+const AUTH_VISUAL_URL =
+  "https://loremflickr.com/1600/2000/architecture,modernbuilding,residential/all?lock=8823";
 
-const shellFadeUp = {
-  hidden: { opacity: 0, y: 16 },
-  show: (i = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] as const },
-  }),
-};
+function AuthVisual({ compact = false }: { compact?: boolean }) {
+  return (
+    <div
+      className={`hero-dark relative isolate overflow-hidden ${compact ? "h-56 sm:h-64" : "h-full"}`}
+    >
+      <motion.div
+        className="absolute inset-0 -z-20 bg-cover bg-center"
+        style={{ backgroundImage: `url(${AUTH_VISUAL_URL})` }}
+        initial={{ scale: 1 }}
+        animate={{ scale: 1.08 }}
+        transition={{ duration: 24, ease: "linear", repeat: Infinity, repeatType: "reverse" }}
+        aria-hidden
+      />
+      {/* Same dark-overlay-for-legibility treatment as PageHeader's category hero photos --
+          strong enough for white text/logo to sit on any photo, not so strong the building
+          disappears. */}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/85 via-black/45 to-black/20" />
+      <div className="gradient-mesh absolute inset-0 -z-10 opacity-30" />
+
+      <div
+        className={`relative flex h-full flex-col text-primary-foreground ${compact ? "justify-between p-6" : "justify-between p-10"}`}
+      >
+        <Link to="/" className="inline-flex w-fit items-center gap-2">
+          <Logo className={`w-auto brightness-0 invert ${compact ? "h-7" : "h-8"}`} />
+        </Link>
+
+        {!compact && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-sm font-medium backdrop-blur"
+          >
+            <Sparkles className="size-3.5" />
+            Yashash joyingiz uchun barchasi.
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function AuthShell({ children, side }: { children: React.ReactNode; side: string }) {
+  void side; // kept for call-site compatibility; the visual panel now speaks for itself via photo + tagline
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      {/* Visual panel -- brand first impression, icon-led, no long copy */}
-      <div className="relative hidden overflow-hidden lg:block">
-        <div className="absolute inset-0 gradient-brand" />
-        <div className="gradient-mesh absolute inset-0 opacity-60" />
-        <div className="absolute inset-x-0 top-0 h-[55%] bg-[radial-gradient(ellipse_at_top,oklch(0.8_0.14_275_/_0.3),transparent_65%)]" />
-
-        <motion.div
-          initial="hidden"
-          animate="show"
-          variants={{ show: { transition: { staggerChildren: 0.07 } } }}
-          className="relative flex h-full flex-col p-10 text-primary-foreground"
-        >
-          <motion.div variants={shellFadeUp} custom={0}>
-            <Link to="/" className="inline-flex items-center gap-2">
-              <Logo className="h-8 brightness-0 invert" />
-            </Link>
-          </motion.div>
-
-          <div className="my-auto max-w-md">
-            <motion.div
-              variants={shellFadeUp}
-              custom={1}
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur"
-            >
-              <Sparkles className="size-3" />
-              {side}
-            </motion.div>
-
-            <motion.h2
-              variants={shellFadeUp}
-              custom={2}
-              className="font-display mt-4 text-4xl font-semibold leading-[1.1] tracking-tight"
-            >
-              Uy va qurilish bilan bog'liq hamma narsa — bitta platformada.
-            </motion.h2>
-
-            <motion.div variants={shellFadeUp} custom={3} className="mt-8 grid grid-cols-2 gap-3">
-              {BRAND_PILLARS.map(({ Icon, label }, i) => (
-                <div
-                  key={label}
-                  className={`flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 p-3.5 backdrop-blur transition-colors hover:bg-white/15 ${
-                    i === 4 ? "col-span-2" : ""
-                  }`}
-                >
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
-                    <Icon className="size-[18px]" />
-                  </div>
-                  <div className="font-display text-sm font-semibold">{label}</div>
-                </div>
-              ))}
-            </motion.div>
-
-            <motion.div
-              variants={shellFadeUp}
-              custom={4}
-              className="mt-8 flex flex-wrap items-baseline gap-x-8 gap-y-2 border-t border-white/15 pt-6"
-            >
-              {[
-                { value: "1,240,000+", label: "e'lon" },
-                { value: "380+", label: "shahar" },
-                { value: "12,500+", label: "hamkor" },
-              ].map((s) => (
-                <div key={s.label} className="flex items-baseline gap-1.5">
-                  <span className="font-display text-lg font-semibold tracking-tight">
-                    {s.value}
-                  </span>
-                  <span className="text-[11px] uppercase tracking-wider opacity-70">{s.label}</span>
-                </div>
-              ))}
-            </motion.div>
-          </div>
-
-          <motion.div variants={shellFadeUp} custom={5} className="text-[11px] opacity-70">
-            © ActiveHome — Uy va bino super-ilovasi
-          </motion.div>
-        </motion.div>
+    <div className="min-h-screen lg:grid lg:grid-cols-[45%_55%]">
+      {/* Mobile/tablet (< lg): compact visual band on top, form below -- not the desktop split
+          squeezed down, its own composition. Desktop (lg+): full-height visual panel. */}
+      <div className="lg:hidden">
+        <AuthVisual compact />
+      </div>
+      <div className="relative hidden lg:block">
+        <AuthVisual />
       </div>
 
       {/* Form panel */}
-      <div className="relative flex min-h-screen items-center justify-center bg-background px-6 py-12">
-        <div className="absolute right-6 top-6 flex items-center gap-2">
+      <div className="relative flex min-h-[calc(100vh-14rem)] items-center justify-center bg-background px-6 py-10 sm:px-10 lg:min-h-screen lg:py-12">
+        <div className="absolute right-4 top-4 flex items-center gap-2 sm:right-6 sm:top-6">
           <LanguageSwitcher />
           <ThemeToggle />
         </div>
@@ -362,7 +335,7 @@ export function AuthShell({ children, side }: { children: React.ReactNode; side:
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-sm rounded-3xl border border-border bg-card/60 p-8 shadow-elevated backdrop-blur-xl lg:bg-card/40"
+          className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 shadow-elevated sm:p-8"
         >
           {children}
         </motion.div>
@@ -380,20 +353,43 @@ interface FieldProps {
   placeholder?: string;
   autoComplete?: string;
   required?: boolean;
+  /** Adds a show/hide toggle inside the field and flips `type` between "password" and "text"
+   * locally -- purely a display affordance, never touches how the value itself is submitted. */
+  toggleablePassword?: boolean;
 }
-function Field({ icon: Icon, type, label, value, onChange, ...rest }: FieldProps) {
+function Field({
+  icon: Icon,
+  type,
+  label,
+  value,
+  onChange,
+  toggleablePassword,
+  ...rest
+}: FieldProps) {
+  const [revealed, setRevealed] = useState(false);
+  const resolvedType = toggleablePassword ? (revealed ? "text" : "password") : type;
   return (
     <label className="block">
       <span className="text-xs font-semibold text-foreground/80">{label}</span>
-      <div className="mt-1.5 flex items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2.5 focus-within:ring-2 focus-within:ring-primary/30">
-        <Icon className="size-4 text-muted-foreground" />
+      <div className="mt-1.5 flex items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2.5 transition focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/30">
+        <Icon className="size-4 shrink-0 text-muted-foreground" />
         <input
           {...rest}
-          type={type}
+          type={resolvedType}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          className="w-full min-w-0 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
         />
+        {toggleablePassword && (
+          <button
+            type="button"
+            onClick={() => setRevealed((v) => !v)}
+            aria-label={revealed ? "Parolni yashirish" : "Parolni ko'rsatish"}
+            className="shrink-0 text-muted-foreground transition hover:text-foreground"
+          >
+            {revealed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        )}
       </div>
     </label>
   );

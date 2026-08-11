@@ -13,6 +13,8 @@ import {
   UserRound,
   Building2,
   Clock3,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { authApi, type AccountKind, type Anketa } from "@/lib/auth-client";
@@ -401,6 +403,7 @@ function EmailSignUp({
         placeholder="Kamida 8 ta belgi"
         autoComplete="new-password"
         required
+        toggleablePassword
       />
       {error && <ErrorBanner message={error} />}
       <SubmitButton loading={loading} label="Akkaunt yaratish" loadingLabel="Yaratilmoqda…" />
@@ -553,6 +556,7 @@ function FieldRow({
   label,
   value,
   onChange,
+  toggleablePassword,
   ...rest
 }: {
   icon: React.ComponentType<{ className?: string }>;
@@ -563,19 +567,34 @@ function FieldRow({
   placeholder?: string;
   autoComplete?: string;
   required?: boolean;
+  /** Adds a show/hide toggle inside the field and flips `type` between "password" and "text"
+   * locally -- purely a display affordance, never touches how the value itself is submitted. */
+  toggleablePassword?: boolean;
 }) {
+  const [revealed, setRevealed] = useState(false);
+  const resolvedType = toggleablePassword ? (revealed ? "text" : "password") : type;
   return (
     <label className="block">
       <span className="text-xs font-semibold text-foreground/80">{label}</span>
-      <div className="mt-1.5 flex items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2.5 focus-within:ring-2 focus-within:ring-primary/30">
-        <Icon className="size-4 text-muted-foreground" />
+      <div className="mt-1.5 flex items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2.5 transition focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/30">
+        <Icon className="size-4 shrink-0 text-muted-foreground" />
         <input
           {...rest}
-          type={type}
+          type={resolvedType}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          className="w-full min-w-0 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
         />
+        {toggleablePassword && (
+          <button
+            type="button"
+            onClick={() => setRevealed((v) => !v)}
+            aria-label={revealed ? "Parolni yashirish" : "Parolni ko'rsatish"}
+            className="shrink-0 text-muted-foreground transition hover:text-foreground"
+          >
+            {revealed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        )}
       </div>
     </label>
   );
