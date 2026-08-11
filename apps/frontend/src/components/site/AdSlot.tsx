@@ -26,6 +26,14 @@ function useServedBanner(slotKey: string): ResolvedBanner | null {
     let cancelled = false;
     setBanner(null);
     (async () => {
+      // Every AdSlot on a page mounts within the same tick, so without this all `/banners/serve`
+      // calls fire in the same millisecond -- observed live to trip an edge-network burst
+      // heuristic (Cloudflare) that 503s the whole batch even though the origin itself answers
+      // every one of them fine (confirmed via origin access logs during a live repro: origin
+      // logged 204 for all 5 at the exact moment the browser saw 503). A small random spread
+      // is enough to stop the requests from reading as a single suspicious burst.
+      await new Promise((r) => setTimeout(r, Math.random() * 400));
+      if (cancelled) return;
       const served = await serveBanner(slotKey).catch(() => null);
       if (!served || cancelled) return;
       const imageUrl = await getMediaAssetUrl(served.creativeMediaAssetId);

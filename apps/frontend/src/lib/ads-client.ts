@@ -4,7 +4,7 @@
  * contract's own `createCampaign` description) — this client does not resolve or validate those
  * identifiers, it just carries them through to the backend, which enforces I-20/I-21 itself.
  */
-import { http } from "@/lib/http";
+import { http, ApiError } from "@/lib/http";
 
 export type CampaignStatus = "DRAFT" | "SCHEDULED" | "RUNNING" | "PAUSED" | "ENDED";
 
@@ -104,9 +104,24 @@ export interface BannerServeView {
 
 /** `GET /banners/serve` -- 204 (no eligible campaign for this slot right now) surfaces as `null`,
  * never an error, so a caller can render nothing rather than an error state for the ordinary
- * "no active campaign" case. */
+ * "no active campaign" case.
+ *
+ * One retry on 503 specifically: live production testing found every homepage load firing all 5
+ * slot requests in the same tick occasionally gets the whole burst 503'd at the edge (Cloudflare)
+ * even though the origin answers every one of them fine -- confirmed via origin access logs
+ * during a live repro (origin logged 204 for all 5 at the exact moment the browser saw 503). A
+ * 503 is by definition meant to be transient/retryable, so a short single retry is the correct
+ * client-side response regardless of the edge-layer cause. */
 export async function serveBanner(slotKey: string): Promise<BannerServeView | null> {
-  return http.get<BannerServeView | null>("/banners/serve", { params: { slotKey } });
+  try {
+    return await http.get<BannerServeView | null>("/banners/serve", { params: { slotKey } });
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 503) {
+      await new Promise((r) => setTimeout(r, 500 + Math.random() * 500));
+      return http.get<BannerServeView | null>("/banners/serve", { params: { slotKey } });
+    }
+    throw err;
+  }
 }
 
 /** Fire-and-forget engagement capture -- failures are swallowed so a metrics hiccup never breaks
