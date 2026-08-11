@@ -9,6 +9,11 @@ import {
   Loader2,
   ArrowRight,
   AlertCircle,
+  Home,
+  Hammer,
+  Wrench,
+  TrendingUp,
+  CalendarCheck,
   Sparkles,
   Eye,
   EyeOff,
@@ -263,71 +268,109 @@ function SubmitButton({
   );
 }
 
-/** Real, keyless architecture/residential photo -- same loremflickr convention already used for
- * per-category hero backgrounds (see `__root.tsx`'s preconnect hint, which already warms this
- * connection up site-wide). `lock` pins one specific photo instead of a new random one per
- * visit/reload, which would otherwise make the "slow zoom" animation jarring on navigation. */
-const AUTH_VISUAL_URL =
-  "https://loremflickr.com/1600/2000/architecture,modernbuilding,residential/all?lock=8823";
+const BRAND_PILLARS = [
+  { Icon: Home, label: "Ko'chmas mulk" },
+  { Icon: TrendingUp, label: "Investorlar" },
+  { Icon: Hammer, label: "Qurilish" },
+  { Icon: Wrench, label: "Xizmatlar" },
+  { Icon: CalendarCheck, label: "Bron qilish" },
+];
 
-function AuthVisual({ compact = false }: { compact?: boolean }) {
-  return (
-    <div
-      className={`hero-dark relative isolate overflow-hidden ${compact ? "h-56 sm:h-64" : "h-full"}`}
-    >
-      <motion.div
-        className="absolute inset-0 -z-20 bg-cover bg-center"
-        style={{ backgroundImage: `url(${AUTH_VISUAL_URL})` }}
-        initial={{ scale: 1 }}
-        animate={{ scale: 1.08 }}
-        transition={{ duration: 24, ease: "linear", repeat: Infinity, repeatType: "reverse" }}
-        aria-hidden
-      />
-      {/* Same dark-overlay-for-legibility treatment as PageHeader's category hero photos --
-          strong enough for white text/logo to sit on any photo, not so strong the building
-          disappears. */}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/85 via-black/45 to-black/20" />
-      <div className="gradient-mesh absolute inset-0 -z-10 opacity-30" />
-
-      <div
-        className={`relative flex h-full flex-col text-primary-foreground ${compact ? "justify-between p-6" : "justify-between p-10"}`}
-      >
-        <Link to="/" className="inline-flex w-fit items-center gap-2">
-          <Logo className={`w-auto brightness-0 invert ${compact ? "h-7" : "h-8"}`} />
-        </Link>
-
-        {!compact && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-sm font-medium backdrop-blur"
-          >
-            <Sparkles className="size-3.5" />
-            Yashash joyingiz uchun barchasi.
-          </motion.div>
-        )}
-      </div>
-    </div>
-  );
-}
+const shellFadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  show: (i = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, delay: i * 0.07, ease: [0.22, 1, 0.36, 1] as const },
+  }),
+};
 
 export function AuthShell({ children, side }: { children: React.ReactNode; side: string }) {
-  void side; // kept for call-site compatibility; the visual panel now speaks for itself via photo + tagline
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[45%_55%]">
-      {/* Mobile/tablet (< lg): compact visual band on top, form below -- not the desktop split
-          squeezed down, its own composition. Desktop (lg+): full-height visual panel. */}
-      <div className="lg:hidden">
-        <AuthVisual compact />
-      </div>
-      <div className="relative hidden lg:block">
-        <AuthVisual />
+    <div className="grid min-h-screen lg:grid-cols-2">
+      {/* Visual panel -- brand first impression, icon-led, no long copy */}
+      <div className="relative hidden overflow-hidden lg:block">
+        <div className="absolute inset-0 gradient-brand" />
+        <div className="gradient-mesh absolute inset-0 opacity-60" />
+        <div className="absolute inset-x-0 top-0 h-[55%] bg-[radial-gradient(ellipse_at_top,oklch(0.8_0.14_275_/_0.3),transparent_65%)]" />
+
+        <motion.div
+          initial="hidden"
+          animate="show"
+          variants={{ show: { transition: { staggerChildren: 0.07 } } }}
+          className="relative flex h-full flex-col p-10 text-primary-foreground"
+        >
+          <motion.div variants={shellFadeUp} custom={0}>
+            <Link to="/" className="inline-flex items-center gap-2">
+              <Logo className="h-8 brightness-0 invert" />
+            </Link>
+          </motion.div>
+
+          <div className="my-auto max-w-md">
+            <motion.div
+              variants={shellFadeUp}
+              custom={1}
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur"
+            >
+              <Sparkles className="size-3" />
+              {side}
+            </motion.div>
+
+            <motion.h2
+              variants={shellFadeUp}
+              custom={2}
+              className="font-display mt-4 text-4xl font-semibold leading-[1.1] tracking-tight"
+            >
+              Uy va qurilish bilan bog'liq hamma narsa — bitta platformada.
+            </motion.h2>
+
+            <motion.div variants={shellFadeUp} custom={3} className="mt-8 grid grid-cols-2 gap-3">
+              {BRAND_PILLARS.map(({ Icon, label }, i) => (
+                <div
+                  key={label}
+                  className={`flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 p-3.5 backdrop-blur transition-colors hover:bg-white/15 ${
+                    i === 4 ? "col-span-2" : ""
+                  }`}
+                >
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                    <Icon className="size-[18px]" />
+                  </div>
+                  <div className="font-display text-sm font-semibold">{label}</div>
+                </div>
+              ))}
+            </motion.div>
+
+            <motion.div
+              variants={shellFadeUp}
+              custom={4}
+              className="mt-8 flex flex-wrap items-baseline gap-x-8 gap-y-2 border-t border-white/15 pt-6"
+            >
+              {[
+                { value: "1,240,000+", label: "e'lon" },
+                { value: "380+", label: "shahar" },
+                { value: "12,500+", label: "hamkor" },
+              ].map((s) => (
+                <div key={s.label} className="flex items-baseline gap-1.5">
+                  <span className="font-display text-lg font-semibold tracking-tight">
+                    {s.value}
+                  </span>
+                  <span className="text-[11px] uppercase tracking-wider opacity-70">
+                    {s.label}
+                  </span>
+                </div>
+              ))}
+            </motion.div>
+          </div>
+
+          <motion.div variants={shellFadeUp} custom={5} className="text-[11px] opacity-70">
+            © ActiveHome — Uy va bino super-ilovasi
+          </motion.div>
+        </motion.div>
       </div>
 
       {/* Form panel */}
-      <div className="relative flex min-h-[calc(100vh-14rem)] items-center justify-center bg-background px-6 py-10 sm:px-10 lg:min-h-screen lg:py-12">
-        <div className="absolute right-4 top-4 flex items-center gap-2 sm:right-6 sm:top-6">
+      <div className="relative flex min-h-screen items-center justify-center bg-background px-6 py-12">
+        <div className="absolute right-6 top-6 flex items-center gap-2">
           <LanguageSwitcher />
           <ThemeToggle />
         </div>
@@ -335,7 +378,7 @@ export function AuthShell({ children, side }: { children: React.ReactNode; side:
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 shadow-elevated sm:p-8"
+          className="w-full max-w-sm rounded-3xl border border-border bg-card/60 p-8 shadow-elevated backdrop-blur-xl lg:bg-card/40"
         >
           {children}
         </motion.div>
