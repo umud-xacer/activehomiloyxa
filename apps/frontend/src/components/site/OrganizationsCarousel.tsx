@@ -25,9 +25,9 @@ function OrgAvatar({ org, index }: { org: Organization; index: number }) {
         to={org.to}
         className="group flex flex-col items-center gap-3 rounded-2xl px-3 py-2 text-center transition-all hover:-translate-y-1"
       >
-        <div className="relative flex size-[76px] items-center justify-center overflow-hidden rounded-full border border-border bg-white p-1.5 shadow-soft grayscale transition-all duration-300 group-hover:grayscale-0 group-hover:shadow-glow sm:size-20">
-          <div className="absolute inset-0 rounded-full opacity-0 ring-2 ring-primary/40 transition-opacity duration-300 group-hover:opacity-100" />
-          <img src={org.logo} alt={org.name} className="size-full rounded-full object-cover" />
+        <div className="relative flex size-[76px] items-center justify-center overflow-hidden rounded-2xl border border-border bg-white p-1.5 shadow-soft grayscale transition-all duration-300 group-hover:grayscale-0 group-hover:shadow-glow sm:size-20">
+          <div className="absolute inset-0 rounded-2xl opacity-0 ring-2 ring-primary/40 transition-opacity duration-300 group-hover:opacity-100" />
+          <img src={org.logo} alt={org.name} className="size-full rounded-xl object-cover" />
         </div>
         <div>
           <div className="max-w-[100px] truncate font-display text-[13px] font-semibold text-foreground/80 group-hover:text-foreground">
