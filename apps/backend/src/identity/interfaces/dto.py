@@ -143,6 +143,29 @@ class GoogleSignInRequest(CamelModel):
     redirect_uri: str
 
 
+class AppleSignInRequest(CamelModel):
+    """OpenAPI `AppleSignInRequest`. Mirrors `GoogleSignInRequest`."""
+
+    authorization_code: str
+    """Apple authorization-code from the client flow."""
+    redirect_uri: str
+
+
+class PhoneLinkRequest(CamelModel):
+    """OpenAPI `PhoneLinkRequest`. Requests an OTP to attach a phone to the *authenticated*
+    account -- distinct from `OtpRequest`, which is anonymous/pre-auth and never accepts
+    LINK_PHONE as a purpose."""
+
+    phone_number: str
+
+
+class PhoneLinkVerifyRequest(CamelModel):
+    """OpenAPI `PhoneLinkVerifyRequest`."""
+
+    phone_number: str
+    code: str
+
+
 class RegisterEmailRequest(CamelModel):
     """OpenAPI `RegisterEmailRequest`."""
 

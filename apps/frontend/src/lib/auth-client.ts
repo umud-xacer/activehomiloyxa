@@ -117,6 +117,11 @@ export const authApi = {
     return http.post<SessionEstablished>("/auth/login/google", { authorizationCode, redirectUri });
   },
 
+  /** POST /auth/login/apple — exchanges a Sign in with Apple authorization code for a session. */
+  loginApple(authorizationCode: string, redirectUri: string): Promise<SessionEstablished> {
+    return http.post<SessionEstablished>("/auth/login/apple", { authorizationCode, redirectUri });
+  },
+
   /** POST /auth/logout — revokes the current session; clears the cookie. */
   logout(): Promise<void> {
     return http.post<void>("/auth/logout");
@@ -170,6 +175,17 @@ export const authApi = {
   /** DELETE /me/sessions/{id} — revokes a specific session (remote logout). */
   revokeSession(sessionId: string): Promise<void> {
     return http.delete<void>(`/me/sessions/${sessionId}`);
+  },
+
+  /** POST /me/phone/otp — sends an OTP to prove ownership of a phone before attaching it to the
+   * signed-in account (distinct from the anonymous /auth/otp -- this one requires a session). */
+  requestPhoneLinkOtp(phoneNumber: string): Promise<void> {
+    return http.post<void>("/me/phone/otp", { phoneNumber });
+  },
+
+  /** POST /me/phone/otp/verify — verifies the code and attaches the phone to the account. */
+  confirmPhoneLink(phoneNumber: string, code: string): Promise<Account> {
+    return http.post<Account>("/me/phone/otp/verify", { phoneNumber, code }, { idempotent: true });
   },
 };
 

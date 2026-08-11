@@ -227,6 +227,40 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+  /auth/login/apple:
+    post:
+      tags:
+      - Authentication
+      operationId: loginApple
+      summary: Federated sign-in with Apple
+      description: 'Exchanges a Sign in with Apple authorization code, then links (by verified email) or
+        creates the
+        account and issues a first-party session, mirroring loginGoogle. Apple is a sign-in provider
+        only; no
+        Apple token is exposed to the client afterwards.
+
+        '
+      security:
+      - appleOAuth:
+        - name
+        - email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppleSignInRequest'
+      responses:
+        '200':
+          description: Session established (account linked or created).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionEstablished'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
   /auth/logout:
     post:
       tags:
@@ -334,6 +368,59 @@ paths:
           description: Password changed.
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /me/phone/otp:
+    post:
+      tags:
+      - Users
+      operationId: requestPhoneLinkOtp
+      summary: Request an OTP to link a phone number to the authenticated account
+      description: 'Issues a single-use, expiring OTP via SMS to prove ownership of a candidate phone
+        number for the *authenticated* caller -- distinct from the anonymous `/auth/otp` (never accepts
+        this purpose). Same throttling as `requestOtp` (NFR-SEC-004).
+
+        '
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneLinkRequest'
+      responses:
+        '202':
+          description: OTP dispatched.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /me/phone/otp/verify:
+    post:
+      tags:
+      - Users
+      operationId: confirmPhoneLink
+      summary: Verify the OTP and attach the phone number to the authenticated account
+      description: Attaches the phone (now usable for phone-based sign-in and account recovery) to the
+        caller's own account. 409 if that phone already belongs to a different account (I-09).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneLinkVerifyRequest'
+      responses:
+        '200':
+          description: Phone linked; updated account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
   /me/preferences:
@@ -3314,6 +3401,20 @@ components:
             openid: OpenID Connect sign-in
             email: Verified email (used to link, never duplicate, an existing account)
             profile: Basic profile
+    appleOAuth:
+      type: oauth2
+      description: 'Sign in with Apple, mirrors `googleOAuth`: a federated **sign-in** identity provider
+        only (authorization-code flow). Active Home links or creates the account by verified email and
+        issues its own first-party session; no Apple token is exposed to the client afterwards.
+
+        '
+      flows:
+        authorizationCode:
+          authorizationUrl: https://appleid.apple.com/auth/authorize
+          tokenUrl: https://appleid.apple.com/auth/token
+          scopes:
+            name: Full name (only ever sent on the very first authorization)
+            email: Verified email (used to link, never duplicate, an existing account)
   parameters:
     Cursor:
       name: cursor
@@ -4040,6 +4141,39 @@ components:
         redirectUri:
           type: string
           format: uri
+      additionalProperties: false
+    AppleSignInRequest:
+      type: object
+      required:
+      - authorizationCode
+      - redirectUri
+      properties:
+        authorizationCode:
+          type: string
+          writeOnly: true
+          description: Apple authorization-code from the client flow.
+        redirectUri:
+          type: string
+          format: uri
+      additionalProperties: false
+    PhoneLinkRequest:
+      type: object
+      required:
+      - phoneNumber
+      properties:
+        phoneNumber:
+          type: string
+      additionalProperties: false
+    PhoneLinkVerifyRequest:
+      type: object
+      required:
+      - phoneNumber
+      - code
+      properties:
+        phoneNumber:
+          type: string
+        code:
+          type: string
       additionalProperties: false
     SessionEstablished:
       type: object

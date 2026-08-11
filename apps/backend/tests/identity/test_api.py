@@ -28,6 +28,7 @@ from identity.interfaces.di import (
 from main import create_app
 
 from .conftest import (
+    FakeAppleOAuthProvider,
     FakeEmailProvider,
     FakeGoogleOAuthProvider,
     FakeLoginAttemptTracker,
@@ -70,6 +71,7 @@ def client(
             otp_sms_provider=FakeOtpSmsProvider(),
             email_provider=FakeEmailProvider(),
             google_provider=FakeGoogleOAuthProvider(),
+            apple_provider=FakeAppleOAuthProvider(),
             password_hasher=password_hasher,
             otp_code_generator=FakeOtpCodeGenerator(),
             session_token_generator=token_generator,

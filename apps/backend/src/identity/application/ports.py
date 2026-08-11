@@ -160,6 +160,28 @@ class GoogleOAuthProviderPort(Protocol):
     ) -> GoogleIdentity: ...
 
 
+@dataclass(frozen=True)
+class AppleIdentity:
+    """Result of exchanging a Sign in with Apple authorization code -- provider-agnostic, mirrors
+    `GoogleIdentity`. `display_name` is near-always `None`: Apple only ever includes the user's
+    name in the very first authorization for a given app, and only if requested via the `name`
+    scope on the client-side `AppleID.auth.signIn()` call, never on any later re-auth."""
+
+    subject: str
+    email: str
+    email_verified: bool
+    display_name: str | None
+
+
+class AppleOAuthProviderPort(Protocol):
+    """Sign in with Apple behind a provider port, same shape/intent as `GoogleOAuthProviderPort`:
+    no Apple token crosses this boundary outward, only the plain `AppleIdentity`."""
+
+    async def exchange_authorization_code(
+        self, *, authorization_code: str, redirect_uri: str
+    ) -> AppleIdentity: ...
+
+
 class PasswordHasherPort(Protocol):
     """Argon2id (Security Sec 3.1). Domain never sees a plaintext password past this boundary."""
 

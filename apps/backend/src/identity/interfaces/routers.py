@@ -22,8 +22,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Cookie, Depends, Header, Request, Response
+from fastapi import APIRouter, Cookie, Depends, Form, Header, Request, Response
+from fastapi.responses import RedirectResponse
 
+from backbone.persistence.env import required_env
 from identity.application import AccountUseCases, AdminIdentityUseCases, AuthenticationUseCases
 from identity.domain import (
     AccountKind,
@@ -49,6 +51,7 @@ from identity.interfaces.di import (
 )
 from identity.interfaces.dto import (
     Account,
+    AppleSignInRequest,
     GoogleSignInRequest,
     LoginEmailRequest,
     NotificationPreferences,
@@ -56,6 +59,8 @@ from identity.interfaces.dto import (
     OtpVerifyRequest,
     PageInfo,
     PasswordChangeRequest,
+    PhoneLinkRequest,
+    PhoneLinkVerifyRequest,
     PrivacySettings,
     RecoveryStartRequest,
     RegisterEmailRequest,
@@ -291,6 +296,45 @@ async def login_google(
     )
 
 
+@auth_router.post("/auth/login/apple", operation_id="loginApple")
+async def login_apple(
+    body: AppleSignInRequest,
+    request: Request,
+    response: Response,
+    use_cases: AuthenticationUseCases = Depends(get_authentication_use_cases),
+) -> SessionEstablished:
+    account, session, raw_token = await use_cases.login_apple(
+        authorization_code=body.authorization_code,
+        redirect_uri=body.redirect_uri,
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+        now=datetime.now(UTC),
+    )
+    _set_session_cookie(response, raw_token, session)
+    return SessionEstablished(
+        account=_account_to_dto(account),
+        session=_session_to_dto(session, current_session_id=session.id),
+        session_token=raw_token,
+    )
+
+
+@auth_router.post("/auth/callback/apple", include_in_schema=False)
+async def apple_form_post_relay(
+    code: str = Form(...), state: str | None = Form(default=None)
+) -> RedirectResponse:
+    """Not a contracts/openapi.yaml operation (`include_in_schema=False`, excluded from QG-06 the
+    same way `/health`/`/ready` already are) -- Apple's own OAuth wire protocol, not this app's
+    JSON API. Sign in with Apple mandates `response_mode=form_post` whenever any scope (email,
+    here) is requested: Apple POSTs `code`/`state`/etc as form fields straight to this
+    `redirect_uri`, which a SPA route cannot receive directly (no server to catch the POST). This
+    relay's only job is picking `code` back out and 302-ing to the real frontend callback route as
+    an ordinary query string GET, which `/auth/callback/apple` (frontend) can consume like any
+    other client-side OAuth redirect -- `loginApple` itself still does the real token exchange."""
+    site_url = required_env("PUBLIC_SITE_URL").rstrip("/")
+    query = f"code={code}" + (f"&state={state}" if state else "")
+    return RedirectResponse(url=f"{site_url}/auth/callback/apple?{query}", status_code=302)
+
+
 @auth_router.post("/auth/logout", operation_id="logout", status_code=204)
 async def logout(
     response: Response,
@@ -365,6 +409,36 @@ async def change_password(
         new_password=body.new_password,
         now=datetime.now(UTC),
     )
+
+
+@users_router.post("/me/phone/otp", operation_id="requestPhoneLinkOtp", status_code=202)
+async def request_phone_link_otp(
+    body: PhoneLinkRequest,
+    request: Request,
+    authenticated: AuthenticatedRequest = Depends(get_authenticated_request),
+    use_cases: AuthenticationUseCases = Depends(get_authentication_use_cases),
+) -> None:
+    await use_cases.request_otp(
+        phone=PhoneNumber(body.phone_number),
+        purpose=OtpPurpose.LINK_PHONE,
+        ip_address=_client_ip(request),
+        now=datetime.now(UTC),
+    )
+
+
+@users_router.post("/me/phone/otp/verify", operation_id="confirmPhoneLink")
+async def confirm_phone_link_otp(
+    body: PhoneLinkVerifyRequest,
+    authenticated: AuthenticatedRequest = Depends(get_authenticated_request),
+    use_cases: AuthenticationUseCases = Depends(get_authentication_use_cases),
+) -> Account:
+    account = await use_cases.confirm_phone_link(
+        account_id=authenticated.account.id,
+        phone=PhoneNumber(body.phone_number),
+        code=body.code,
+        now=datetime.now(UTC),
+    )
+    return _account_to_dto(account)
 
 
 @users_router.put("/me/preferences", operation_id="updatePreferences")

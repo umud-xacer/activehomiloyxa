@@ -17,6 +17,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from identity.application.ports import (
+    AppleIdentity,
     GoogleIdentity,
     IdentityPlatformSettings,
     ResolvedRoleDefinition,
@@ -199,6 +200,20 @@ class FakeGoogleOAuthProvider:
         return self.identity
 
 
+class FakeAppleOAuthProvider:
+    def __init__(self, identity: AppleIdentity | None = None) -> None:
+        self.identity = identity
+        self.calls: list[tuple[str, str]] = []
+
+    async def exchange_authorization_code(
+        self, *, authorization_code: str, redirect_uri: str
+    ) -> AppleIdentity:
+        self.calls.append((authorization_code, redirect_uri))
+        if self.identity is None:
+            raise AssertionError("FakeAppleOAuthProvider.identity not configured for this test")
+        return self.identity
+
+
 class FakePasswordHasher:
     """Not real Argon2id -- deterministic and fast, since these are pure application-layer
     unit tests exercising business logic, not the crypto primitive itself (that is exercised by
@@ -368,6 +383,11 @@ def fake_google_provider() -> FakeGoogleOAuthProvider:
 
 
 @pytest.fixture
+def fake_apple_provider() -> FakeAppleOAuthProvider:
+    return FakeAppleOAuthProvider()
+
+
+@pytest.fixture
 def auth_use_cases(
     fake_accounts: FakeUserAccountRepository,
     fake_sessions: FakeSessionRepository,
@@ -378,6 +398,7 @@ def auth_use_cases(
     fake_otp_sms_provider: FakeOtpSmsProvider,
     fake_email_provider: FakeEmailProvider,
     fake_google_provider: FakeGoogleOAuthProvider,
+    fake_apple_provider: FakeAppleOAuthProvider,
     fake_login_attempts: FakeLoginAttemptTracker,
 ) -> AuthenticationUseCases:
     from identity.application import AuthenticationUseCases
@@ -391,6 +412,7 @@ def auth_use_cases(
         otp_sms_provider=fake_otp_sms_provider,
         email_provider=fake_email_provider,
         google_provider=fake_google_provider,
+        apple_provider=fake_apple_provider,
         password_hasher=FakePasswordHasher(),
         otp_code_generator=FakeOtpCodeGenerator(),
         session_token_generator=FakeSessionTokenGenerator(),

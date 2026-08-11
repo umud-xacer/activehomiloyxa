@@ -159,6 +159,7 @@ from identity.application import (
 )
 from identity.domain import AuthorizationService, IdentityDomainError, UserAccount
 from identity.infrastructure import (
+    AppleOAuthProviderAdapter,
     Argon2PasswordHasherAdapter,
     ConfigurationPlatformSettingsAdapter,
     ConfigurationRoleDefinitionAdapter,
@@ -436,6 +437,11 @@ def _google_provider() -> GoogleOAuthProviderAdapter:
 
 
 @lru_cache(maxsize=1)
+def _apple_provider() -> AppleOAuthProviderAdapter:
+    return AppleOAuthProviderAdapter()
+
+
+@lru_cache(maxsize=1)
 def _password_hasher() -> Argon2PasswordHasherAdapter:
     return Argon2PasswordHasherAdapter()
 
@@ -468,6 +474,7 @@ async def provide_authentication_use_cases() -> AsyncIterator[AuthenticationUseC
             otp_sms_provider=_eskiz_provider(),
             email_provider=_email_provider(),
             google_provider=_google_provider(),
+            apple_provider=_apple_provider(),
             password_hasher=_password_hasher(),
             otp_code_generator=_otp_code_generator(),
             session_token_generator=_session_token_generator(),

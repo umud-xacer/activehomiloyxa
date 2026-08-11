@@ -39,6 +39,12 @@ class InvalidGoogleCredentialError(IdentityApplicationError):
     is not verified (Security Sec 3.1: "email-verified claim required before linking")."""
 
 
+class InvalidAppleCredentialError(IdentityApplicationError):
+    """The Apple authorization code could not be exchanged, the id_token failed signature/claim
+    verification, or the resulting identity's email is not verified -- mirrors
+    `InvalidGoogleCredentialError`."""
+
+
 class RoleDefinitionNotFoundError(IdentityApplicationError):
     def __init__(self, code: str) -> None:
         self.code = code

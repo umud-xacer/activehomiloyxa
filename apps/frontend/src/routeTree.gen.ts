@@ -83,6 +83,8 @@ import { Route as ListListingIdRouteImport } from './routes/list/$listingId'
 import { Route as ListingListingIdRouteImport } from './routes/listing/$listingId'
 import { Route as PropertiesIndexRouteImport } from './routes/properties/index'
 import { Route as PropertiesSlugRouteImport } from './routes/properties/$slug'
+import { Route as AuthCallbackAppleRouteImport } from './routes/auth/callback/apple'
+import { Route as AuthCallbackGoogleRouteImport } from './routes/auth/callback/google'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -455,6 +457,16 @@ const PropertiesSlugRoute = PropertiesSlugRouteImport.update({
   path: '/properties/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthCallbackAppleRoute = AuthCallbackAppleRouteImport.update({
+  id: '/auth/callback/apple',
+  path: '/auth/callback/apple',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackGoogleRoute = AuthCallbackGoogleRouteImport.update({
+  id: '/auth/callback/google',
+  path: '/auth/callback/google',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -531,6 +543,8 @@ export interface FileRoutesByFullPath {
   '/invest/': typeof InvestIndexRoute
   '/list/': typeof ListIndexRoute
   '/properties/': typeof PropertiesIndexRoute
+  '/auth/callback/apple': typeof AuthCallbackAppleRoute
+  '/auth/callback/google': typeof AuthCallbackGoogleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -607,6 +621,8 @@ export interface FileRoutesByTo {
   '/invest': typeof InvestIndexRoute
   '/list': typeof ListIndexRoute
   '/properties': typeof PropertiesIndexRoute
+  '/auth/callback/apple': typeof AuthCallbackAppleRoute
+  '/auth/callback/google': typeof AuthCallbackGoogleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -684,6 +700,8 @@ export interface FileRoutesById {
   '/invest/': typeof InvestIndexRoute
   '/list/': typeof ListIndexRoute
   '/properties/': typeof PropertiesIndexRoute
+  '/auth/callback/apple': typeof AuthCallbackAppleRoute
+  '/auth/callback/google': typeof AuthCallbackGoogleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -762,6 +780,8 @@ export interface FileRouteTypes {
     | '/invest/'
     | '/list/'
     | '/properties/'
+    | '/auth/callback/apple'
+    | '/auth/callback/google'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -838,6 +858,8 @@ export interface FileRouteTypes {
     | '/invest'
     | '/list'
     | '/properties'
+    | '/auth/callback/apple'
+    | '/auth/callback/google'
   id:
     | '__root__'
     | '/'
@@ -914,6 +936,8 @@ export interface FileRouteTypes {
     | '/invest/'
     | '/list/'
     | '/properties/'
+    | '/auth/callback/apple'
+    | '/auth/callback/google'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -991,6 +1015,8 @@ export interface RootRouteChildren {
   InvestIndexRoute: typeof InvestIndexRoute
   ListIndexRoute: typeof ListIndexRoute
   PropertiesIndexRoute: typeof PropertiesIndexRoute
+  AuthCallbackAppleRoute: typeof AuthCallbackAppleRoute
+  AuthCallbackGoogleRoute: typeof AuthCallbackGoogleRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1513,6 +1539,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PropertiesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/callback/apple': {
+      id: '/auth/callback/apple'
+      path: '/auth/callback/apple'
+      fullPath: '/auth/callback/apple'
+      preLoaderRoute: typeof AuthCallbackAppleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback/google': {
+      id: '/auth/callback/google'
+      path: '/auth/callback/google'
+      fullPath: '/auth/callback/google'
+      preLoaderRoute: typeof AuthCallbackGoogleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1591,6 +1631,8 @@ const rootRouteChildren: RootRouteChildren = {
   InvestIndexRoute: InvestIndexRoute,
   ListIndexRoute: ListIndexRoute,
   PropertiesIndexRoute: PropertiesIndexRoute,
+  AuthCallbackAppleRoute: AuthCallbackAppleRoute,
+  AuthCallbackGoogleRoute: AuthCallbackGoogleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

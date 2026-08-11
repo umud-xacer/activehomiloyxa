@@ -1,7 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { UserRound, Lock, Bell, Monitor, Trash2, Loader2, Save, LogOut } from "lucide-react";
+import {
+  UserRound,
+  Lock,
+  Bell,
+  Monitor,
+  Trash2,
+  Loader2,
+  Save,
+  LogOut,
+  Phone,
+  ShieldCheck,
+} from "lucide-react";
 import { requireAuth } from "@/lib/require-auth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -38,6 +49,7 @@ function Page() {
           email={account.email ?? ""}
           onSaved={invalidateAuth}
         />
+        <PhoneSection phoneNumber={account.phoneNumber} onSaved={invalidateAuth} />
         <PasswordSection />
         <PreferencesSection
           emailPref={account.notificationPreferences?.email ?? true}
@@ -113,6 +125,136 @@ function ProfileSection({
           Saqlash
         </button>
       </form>
+    </SectionCard>
+  );
+}
+
+function PhoneSection({
+  phoneNumber,
+  onSaved,
+}: {
+  phoneNumber: string | null;
+  onSaved: () => void;
+}) {
+  const [step, setStep] = useState<"phone" | "code">("phone");
+  const [phone, setPhone] = useState("+998");
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const requestCode = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await authApi.requestPhoneLinkOtp(phone);
+      setStep("code");
+    } catch (err) {
+      setError(errorMessage(err, "Kod yuborilmadi. Raqamni tekshiring."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmCode = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await authApi.confirmPhoneLink(phone, code);
+      onSaved();
+      setStep("phone");
+      setCode("");
+    } catch (err) {
+      setError(errorMessage(err, "Kod noto'g'ri. Qayta urinib ko'ring."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (phoneNumber) {
+    return (
+      <SectionCard title="Telefon raqami" icon={Phone}>
+        <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/50 px-3 py-2.5 text-sm text-foreground">
+          <ShieldCheck className="size-4 text-success" />
+          {phoneNumber}
+          <span className="ml-auto text-[11px] font-semibold text-success">Tasdiqlangan</span>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Bu raqam parolni unutganingizda tizimga kirish uchun ham ishlatiladi.
+        </p>
+      </SectionCard>
+    );
+  }
+
+  return (
+    <SectionCard title="Telefon raqami" icon={Phone}>
+      <p className="mb-4 text-xs text-muted-foreground">
+        Telefon raqamingizni biriktiring — parolni unutganingizda shu raqam orqali tizimga
+        kirasiz.
+      </p>
+      {step === "phone" ? (
+        <form onSubmit={requestCode} className="space-y-4">
+          <label className="block">
+            <span className="text-xs font-semibold text-foreground/80">Telefon raqami</span>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+998901234567"
+              required
+              className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </label>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <button
+            type="submit"
+            disabled={busy}
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:shadow-glow disabled:opacity-60"
+          >
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
+            Kod yuborish
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={confirmCode} className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">{phone}</span> raqamiga kod yuborildi.
+          </p>
+          <label className="block">
+            <span className="text-xs font-semibold text-foreground/80">Tasdiqlash kodi</span>
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="123456"
+              required
+              className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </label>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:shadow-glow disabled:opacity-60"
+            >
+              {busy ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              Tasdiqlash
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStep("phone");
+                setCode("");
+                setError(null);
+              }}
+              className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+            >
+              Boshqa raqam
+            </button>
+          </div>
+        </form>
+      )}
     </SectionCard>
   );
 }

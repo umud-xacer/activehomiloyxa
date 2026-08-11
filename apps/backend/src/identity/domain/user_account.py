@@ -241,6 +241,87 @@ class UserAccount:
             self, authentication_methods=(*self.authentication_methods, method), updated_at=now
         )
 
+    @staticmethod
+    def register_via_apple(
+        *,
+        account_id: UserId,
+        email: EmailAddress,
+        apple_subject: str,
+        display_name: str | None,
+        now: datetime,
+        account_kind: AccountKind = AccountKind.INDIVIDUAL,
+        anketa: dict[str, object] | None = None,
+    ) -> UserAccount:
+        """Sign in with Apple, mirrors `register_via_google` exactly -- same FR-AUTH-003-style
+        federated-identity shape, only the provider differs. Only called when the caller's
+        repository lookup found no existing account with this verified email (I-09: link, never
+        duplicate; `link_apple_identity` handles the existing-account case)."""
+        method = AuthenticationMethod(
+            method_type=AuthMethodType.APPLE,
+            identifier=apple_subject,
+            verified_at=now,
+            added_at=now,
+        )
+        return UserAccount(
+            id=account_id,
+            phone=None,
+            email=email,
+            display_name=display_name,
+            status=AccountStatus.ACTIVE,
+            privacy_settings=PrivacySettings(),
+            notification_preferences=NotificationPreferences(),
+            owned_profile_ids=(),
+            authentication_methods=(method,),
+            role_assignments=(),
+            created_at=now,
+            updated_at=now,
+            account_kind=account_kind,
+            anketa=dict(anketa) if anketa else {},
+            review_status=RegistrationReviewStatus.PENDING,
+        )
+
+    def link_apple_identity(self, *, apple_subject: str, now: datetime) -> UserAccount:
+        """I-09, mirrors `link_google_identity`: adds an APPLE authentication method to this
+        existing (matched-by-verified-email) account instead of creating a new one."""
+        if any(m.method_type is AuthMethodType.APPLE for m in self.authentication_methods):
+            return self
+        method = AuthenticationMethod(
+            method_type=AuthMethodType.APPLE,
+            identifier=apple_subject,
+            verified_at=now,
+            added_at=now,
+        )
+        return replace(
+            self, authentication_methods=(*self.authentication_methods, method), updated_at=now
+        )
+
+    def link_phone(self, *, phone: PhoneNumber, now: datetime) -> UserAccount:
+        """Attaches a verified phone number to an account that didn't register with one (e.g. an
+        email/Google/Apple signup) -- the OTP has already been verified by the caller (mirrors
+        `register_via_phone`'s own "verified before this runs" contract) against the candidate
+        phone's ownership, not this account's identity, so uniqueness (one phone -> one account)
+        is the calling use case's job via the repository (I-09), same division of responsibility
+        as every other duplicate-contact check in this module. A no-op if this exact phone is
+        already the account's own linked number (idempotent from the caller's perspective, same
+        shape as `link_google_identity`)."""
+        if self.phone == phone and self.has_authentication_method(AuthMethodType.PHONE_OTP):
+            return self
+        method = AuthenticationMethod(
+            method_type=AuthMethodType.PHONE_OTP,
+            identifier=phone.value,
+            verified_at=now,
+            added_at=now,
+        )
+        methods = tuple(
+            m for m in self.authentication_methods if m.method_type != AuthMethodType.PHONE_OTP
+        )
+        return replace(
+            self,
+            phone=phone,
+            authentication_methods=(*methods, method),
+            updated_at=now,
+        )
+
     # --- authentication method lookups ------------------------------------------------------
 
     def authentication_method(self, method_type: AuthMethodType) -> AuthenticationMethod:

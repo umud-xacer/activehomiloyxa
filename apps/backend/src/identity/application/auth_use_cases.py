@@ -14,11 +14,14 @@ from uuid import uuid4
 
 from contracts.events.identity import UserRegistered
 from identity.application.exceptions import (
+    AccountNotFoundError,
+    InvalidAppleCredentialError,
     InvalidGoogleCredentialError,
     OtpChallengeNotFoundError,
     RecoveryTargetRequiredError,
 )
 from identity.application.ports import (
+    AppleOAuthProviderPort,
     EmailProviderPort,
     GoogleOAuthProviderPort,
     LoginAttemptTrackerPort,
@@ -66,6 +69,7 @@ class AuthenticationUseCases:
         otp_sms_provider: OtpSmsProviderPort,
         email_provider: EmailProviderPort,
         google_provider: GoogleOAuthProviderPort,
+        apple_provider: AppleOAuthProviderPort,
         password_hasher: PasswordHasherPort,
         otp_code_generator: OtpCodeGeneratorPort,
         session_token_generator: SessionTokenGeneratorPort,
@@ -81,6 +85,7 @@ class AuthenticationUseCases:
         self._otp_sms_provider = otp_sms_provider
         self._email_provider = email_provider
         self._google_provider = google_provider
+        self._apple_provider = apple_provider
         self._password_hasher = password_hasher
         self._otp_code_generator = otp_code_generator
         self._session_token_generator = session_token_generator
@@ -334,6 +339,46 @@ class AuthenticationUseCases:
         )
         return account, session, raw_token
 
+    async def login_apple(
+        self,
+        *,
+        authorization_code: str,
+        redirect_uri: str,
+        ip_address: str | None,
+        user_agent: str | None,
+        now: datetime,
+    ) -> tuple[UserAccount, Session, str]:
+        """loginApple. Mirrors `login_google` exactly -- links by verified email if an account
+        already exists, otherwise creates one (I-09: link, never duplicate)."""
+        identity = await self._apple_provider.exchange_authorization_code(
+            authorization_code=authorization_code, redirect_uri=redirect_uri
+        )
+        if not identity.email_verified:
+            raise InvalidAppleCredentialError()
+
+        email = EmailAddress(identity.email)
+        account = await self._accounts.get_by_email(email)
+        if account is not None:
+            account = account.link_apple_identity(apple_subject=identity.subject, now=now)
+            account.require_active()
+            await self._accounts.save(account)
+        else:
+            account_id = UserId(value=uuid4())
+            account = UserAccount.register_via_apple(
+                account_id=account_id,
+                email=email,
+                apple_subject=identity.subject,
+                display_name=identity.display_name,
+                now=now,
+            )
+            await self._accounts.add(account)
+            await self._publish_user_registered(account, now=now)
+
+        session, raw_token = await self._issue_session(
+            account=account, ip_address=ip_address, user_agent=user_agent, now=now
+        )
+        return account, session, raw_token
+
     # --- FR-AUTH-005: logout -------------------------------------------------------------------
 
     async def logout(self, *, raw_token: str, now: datetime) -> None:
@@ -375,6 +420,43 @@ class AuthenticationUseCases:
             account = await self._accounts.get_by_email(email)
             if account is not None:
                 await self._email_provider.send_recovery_notice(email=email)
+
+    # --- authenticated phone linking (profile) --------------------------------------------------
+
+    async def confirm_phone_link(
+        self,
+        *,
+        account_id: UserId,
+        phone: PhoneNumber,
+        code: str,
+        now: datetime,
+    ) -> UserAccount:
+        """confirmPhoneLink. The OTP itself is requested through the existing, purpose-generic
+        `request_otp(purpose=LINK_PHONE)` -- this only handles the verify+link half, which is
+        genuinely different from `verify_otp`: LINK_PHONE proves ownership of a phone for an
+        *already-authenticated* account (`account_id` from the session), never resolves identity
+        by looking the phone up, and must reject (409, I-09) a phone another account already
+        owns rather than silently authenticating into it."""
+        challenge = await self._otp_challenges.get_active_for_phone(phone, OtpPurpose.LINK_PHONE)
+        if challenge is None:
+            raise OtpChallengeNotFoundError()
+
+        candidate_hash = self._otp_code_generator.hash_code(code)
+        outcome = challenge.verify(candidate_code_hash=candidate_hash, now=now)
+        await self._otp_challenges.save(outcome.challenge)
+        if not outcome.matched:
+            raise OtpCodeMismatchError()
+
+        existing = await self._accounts.get_by_phone(phone)
+        if existing is not None and existing.id != account_id:
+            raise DuplicateContactError("phone", phone.value)
+
+        account = await self._accounts.get_by_id(account_id)
+        if account is None:
+            raise AccountNotFoundError(account_id.value)
+        account = account.link_phone(phone=phone, now=now)
+        await self._accounts.save(account)
+        return account
 
     # --- shared helpers -------------------------------------------------------------------
 

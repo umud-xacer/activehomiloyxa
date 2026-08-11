@@ -4,11 +4,15 @@ contracts/openapi.yaml -- CI fails on drift instead of the two silently divergin
 failure here: modules land incrementally, so "not implemented yet" is expected for most of the
 spec's operations until each bounded-context task lands its router.
 
-Two categories of registered route are not contract drift and are excluded from the diff:
+Three categories of registered route are not contract drift and are excluded from the diff:
 - FastAPI's own introspection endpoints (/openapi.json, /docs, /docs/oauth2-redirect, /redoc).
 - The infra-level liveness/readiness endpoints (/health, /ready) -- sanctioned by the
   Infrastructure & Deployment Architecture document (Sec 6), not part of the `/api/v1` business
   contract, the same way a container orchestrator's own probes always sit outside it.
+- /auth/callback/apple -- Apple's own Sign in with Apple wire protocol (a form-urlencoded
+  POST + 302 redirect, mandated by Apple whenever any scope is requested), not a JSON operation
+  this app defines; it exists purely to hand the authorization code to the real `loginApple`
+  JSON operation the same way a webhook receiver sits outside a REST resource contract.
 
 Usage: python tools/check_contract_drift.py contracts/openapi.yaml
 """
@@ -27,6 +31,7 @@ NON_CONTRACT_PATHS = {
     "/redoc",
     "/health",
     "/ready",
+    "/auth/callback/apple",
 }
 
 

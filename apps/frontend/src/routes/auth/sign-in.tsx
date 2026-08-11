@@ -25,6 +25,12 @@ import { dashboardPathForAccount } from "@/lib/require-auth";
 import { Logo } from "@/components/site/Logo";
 import { LanguageSwitcher } from "@/components/site/LanguageSwitcher";
 import { ThemeToggle } from "@/components/site/ThemeToggle";
+import {
+  getGoogleClientId,
+  getAppleClientId,
+  buildGoogleAuthorizeUrl,
+  buildAppleAuthorizeUrl,
+} from "@/lib/social-auth";
 
 export const Route = createFileRoute("/auth/sign-in")({
   head: () => ({
@@ -39,6 +45,81 @@ export const Route = createFileRoute("/auth/sign-in")({
 function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError) return error.message || fallback;
   return fallback;
+}
+
+function GoogleGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
+      <path
+        fill="#4285F4"
+        d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.47a5.53 5.53 0 0 1-2.4 3.63v3h3.88c2.27-2.09 3.57-5.17 3.57-8.82Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 24c3.24 0 5.96-1.07 7.95-2.91l-3.88-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.26v3.11A12 12 0 0 0 12 24Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.27 14.28A7.2 7.2 0 0 1 4.89 12c0-.79.14-1.56.38-2.28V6.61H1.26A12 12 0 0 0 0 12c0 1.94.46 3.77 1.26 5.39l4.01-3.11Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 4.76c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.26 6.61l4.01 3.11C6.22 6.87 8.87 4.76 12 4.76Z"
+      />
+    </svg>
+  );
+}
+
+function AppleGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4 fill-current" aria-hidden>
+      <path d="M16.36 1.43c0 1.14-.42 2.2-1.24 3.05-.86.9-2.13 1.6-3.28 1.5-.14-1.1.42-2.28 1.2-3.06.85-.87 2.24-1.53 3.32-1.49Zm3.6 16.6c-.5 1.14-.74 1.65-1.38 2.66-.9 1.4-2.16 3.15-3.73 3.16-1.39.02-1.75-.9-3.64-.89-1.88.01-2.28.9-3.68.88-1.57-.02-2.76-1.6-3.66-3-2.5-3.9-2.77-8.48-1.22-10.92 1.1-1.74 2.84-2.76 4.47-2.76 1.67 0 2.72.92 4.1.92 1.34 0 2.15-.92 4.09-.92 1.45 0 3 .8 4.09 2.17-3.6 1.98-3.01 7.13.56 8.7Z" />
+    </svg>
+  );
+}
+
+function SocialSignInButtons() {
+  const [notice, setNotice] = useState<"google" | "apple" | null>(null);
+  const googleClientId = getGoogleClientId();
+  const appleClientId = getAppleClientId();
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center gap-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        <span className="h-px flex-1 bg-border" /> yoki
+        <span className="h-px flex-1 bg-border" />
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() =>
+            googleClientId
+              ? (window.location.href = buildGoogleAuthorizeUrl(googleClientId))
+              : setNotice("google")
+          }
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-soft transition hover:bg-muted"
+        >
+          <GoogleGlyph /> Google
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            appleClientId
+              ? (window.location.href = buildAppleAuthorizeUrl(appleClientId))
+              : setNotice("apple")
+          }
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-soft transition hover:bg-muted"
+        >
+          <AppleGlyph /> Apple
+        </button>
+      </div>
+      {notice && (
+        <p className="mt-3 text-center text-[11px] text-muted-foreground">
+          {notice === "google" ? "Google" : "Apple"} bilan kirish hali sozlanmagan.
+        </p>
+      )}
+    </div>
+  );
 }
 
 function SignInPage() {
@@ -82,6 +163,8 @@ function SignInPage() {
       ) : (
         <PhoneOtpSignIn onSuccess={onSuccess} />
       )}
+
+      <SocialSignInButtons />
 
       <p className="mt-6 text-center text-xs text-muted-foreground">
         Hisobingiz yo'qmi?{" "}

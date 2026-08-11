@@ -27,6 +27,7 @@ dependencies = [
     "httpx==0.28.1",
     "Pillow==12.3.0",
     "pywebpush==2.3.0",
+    "PyJWT[crypto]==2.10.1",
     "active-home-shared",
     "active-home-contracts",
 ]
@@ -44,7 +45,11 @@ dependencies = [
 # standard library has neither the ECDSA signing nor the payload encryption; this is the
 # de-facto standard Python library for it (pulls in `cryptography`/`http-ece`/`py-vapid`
 # transitively). Confined entirely to `notifications/infrastructure/providers/web_push.py`
-# (DEC-18: no provider SDK type crosses the `infrastructure/` boundary).
+# (DEC-18: no provider SDK type crosses the `infrastructure/` boundary). PyJWT[crypto]: Sign in
+# with Apple's OAuth token endpoint requires a JWT `client_secret` (ES256, signed with the
+# developer's Apple-issued private key) instead of a static string like Google's, and the
+# `id_token` it returns must be verified (RS256) against Apple's published JWKS before its claims
+# are trusted -- confined entirely to `identity/infrastructure/providers/apple_oauth.py`.
 
 # STATUS: interface stubs only (Task P-01). No aggregates, use cases, or migrations yet -- see
 # src/<module>/README.md per module. active-home-shared and active-home-contracts are path

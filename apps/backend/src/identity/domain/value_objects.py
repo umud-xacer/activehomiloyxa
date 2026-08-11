@@ -128,14 +128,20 @@ class AuthMethodType(StrEnum):
     PHONE_OTP = "PHONE_OTP"
     EMAIL = "EMAIL"
     GOOGLE = "GOOGLE"
+    APPLE = "APPLE"
 
 
 class OtpPurpose(StrEnum):
-    """Matches `OtpRequest.purpose` / `OtpVerifyRequest.purpose` (contracts/openapi.yaml)."""
+    """Matches `OtpRequest.purpose` / `OtpVerifyRequest.purpose` (contracts/openapi.yaml).
+    LINK_PHONE is the one authenticated exception -- REGISTRATION/LOGIN/RECOVERY are all pre-auth,
+    resolved purely from the phone; LINK_PHONE proves ownership of a phone for an *already
+    signed-in* account (see `/me/phone/otp*`), so it's issued/consumed against an account_id, not
+    a `get_by_phone` lookup."""
 
     REGISTRATION = "REGISTRATION"
     LOGIN = "LOGIN"
     RECOVERY = "RECOVERY"
+    LINK_PHONE = "LINK_PHONE"
 
 
 @dataclass(frozen=True)

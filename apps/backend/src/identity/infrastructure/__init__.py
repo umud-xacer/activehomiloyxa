@@ -17,6 +17,7 @@ from identity.infrastructure.persistence import (
     SqlalchemyOtpChallengeUnitOfWork,
     SqlalchemyUserAccountRepository,
 )
+from identity.infrastructure.providers.apple_oauth import AppleOAuthProviderAdapter
 from identity.infrastructure.providers.email import SmtpEmailProviderAdapter
 from identity.infrastructure.providers.eskiz import EskizSmsProviderAdapter
 from identity.infrastructure.providers.google_oauth import GoogleOAuthProviderAdapter
@@ -32,6 +33,7 @@ from identity.infrastructure.security import (
 from identity.infrastructure.session_store import RedisSessionRepository
 
 __all__ = [
+    "AppleOAuthProviderAdapter",
     "Argon2PasswordHasherAdapter",
     "AuthorizationPortAdapter",
     "ConfigurationPlatformSettingsAdapter",

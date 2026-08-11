@@ -19,6 +19,7 @@ from __future__ import annotations
 from backbone.errors import ExceptionMapper, simple_problem_builder
 from identity.application.exceptions import (
     AccountNotFoundError,
+    InvalidAppleCredentialError,
     InvalidGoogleCredentialError,
     InvalidSessionTokenError,
     OtpChallengeNotFoundError,
@@ -61,6 +62,12 @@ def register_identity_exception_mappings(mapper: ExceptionMapper) -> None:
         InvalidGoogleCredentialError,
         simple_problem_builder(
             status=401, code="AUTHENTICATION_INVALID", title="Invalid Google credential"
+        ),
+    )
+    mapper.register(
+        InvalidAppleCredentialError,
+        simple_problem_builder(
+            status=401, code="AUTHENTICATION_INVALID", title="Invalid Apple credential"
         ),
     )
     mapper.register(
