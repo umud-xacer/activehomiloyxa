@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
 import { Sparkles, Search } from "lucide-react";
 import worldMapBg from "@/assets/hero-bg-navy-map.jpg";
+import { CategoryCarousel } from "./CategoryCarousel";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -107,6 +108,10 @@ export function Hero() {
           </motion.div>
         </motion.div>
       </div>
+
+      {/* Categories live inside Hero's own dark band -- continues the same navy gradient rather
+          than handing off to a separate white section right below the search box. */}
+      <CategoryCarousel />
     </section>
   );
 }

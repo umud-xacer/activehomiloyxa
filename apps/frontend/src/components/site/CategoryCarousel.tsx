@@ -241,7 +241,7 @@ export function CategoryCarousel() {
   };
 
   return (
-    <section className="relative py-14">
+    <section className="relative pt-8">
       <div className="mx-auto max-w-7xl px-6">
         <div className="flex items-center justify-end gap-4">
           {/* Desktop scroll arrows -- mobile relies on native swipe */}
