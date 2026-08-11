@@ -28,7 +28,9 @@ export function isGifFile(file: File): boolean {
 }
 
 export function isSupportedMediaFile(file: File): boolean {
-  return IMAGE_CONTENT_TYPES.has(file.type) || isGifFile(file) || VIDEO_CONTENT_TYPES.has(file.type);
+  return (
+    IMAGE_CONTENT_TYPES.has(file.type) || isGifFile(file) || VIDEO_CONTENT_TYPES.has(file.type)
+  );
 }
 
 /** Client-side pre-check only -- the real cap is enforced server-side (`MediaAsset.initiate`);

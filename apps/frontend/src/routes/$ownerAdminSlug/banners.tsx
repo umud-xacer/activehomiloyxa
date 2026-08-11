@@ -382,16 +382,16 @@ function CampaignFormPanel({ editing, slots, onClose, onSaved }: CampaignPanelPr
   const isEditing = editing !== null;
   const knownSlotKeys = new Set(KNOWN_HOMEPAGE_SLOTS.map((s) => s.slotKey));
   const customSlots = slots.filter((s) => !knownSlotKeys.has(slotKeyOf(s)));
-  const [slotKey, setSlotKey] = useState(
-    editing?.slotKey ?? KNOWN_HOMEPAGE_SLOTS[0].slotKey,
-  );
+  const [slotKey, setSlotKey] = useState(editing?.slotKey ?? KNOWN_HOMEPAGE_SLOTS[0].slotKey);
   const [creativeMediaAssetId, setCreativeMediaAssetId] = useState(
     editing?.creativeMediaAssetId ?? "",
   );
   const [creativePreview, setCreativePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [scheduleStart, setScheduleStart] = useState(
-    editing ? toLocalInputValue(editing.scheduleStart) : toLocalInputValue(new Date().toISOString()),
+    editing
+      ? toLocalInputValue(editing.scheduleStart)
+      : toLocalInputValue(new Date().toISOString()),
   );
   const [scheduleEnd, setScheduleEnd] = useState(
     editing ? toLocalInputValue(editing.scheduleEnd) : toLocalInputValue(defaultScheduleEnd()),

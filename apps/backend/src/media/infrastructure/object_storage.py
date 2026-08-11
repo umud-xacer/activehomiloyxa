@@ -38,13 +38,31 @@ class MinioStorageAdapter:
             config=Config(signature_version="s3v4"),
             region_name="us-east-1",
         )
+        # `MINIO_ENDPOINT` (127.0.0.1:9000 in production) is correct for every server-side call
+        # in this class -- but a presigned PUT url is handed to a *browser*, which cannot reach
+        # the server's own loopback address. `MINIO_PUBLIC_ENDPOINT_URL` is a full base URL
+        # (scheme included, e.g. https://activehome.uz/media-upload -- an nginx passthrough
+        # proxying straight to MinIO, mirroring MEDIA_CDN_BASE_URL's own "public URL for
+        # something MinIO-backed" role for downloads) reachable from outside. Real bug found live:
+        # every upload from an actual external browser was silently failing in production (only
+        # server-seeded demo data, uploaded from inside the server's own network, ever worked) --
+        # this was never caught locally because 127.0.0.1 legitimately IS reachable from a
+        # developer's own browser when MinIO also runs on their own machine.
+        self._presign_client = client or boto3.client(
+            "s3",
+            endpoint_url=required_env("MINIO_PUBLIC_ENDPOINT_URL"),
+            aws_access_key_id=required_env("MINIO_ROOT_USER"),
+            aws_secret_access_key=required_env("MINIO_ROOT_PASSWORD"),
+            config=Config(signature_version="s3v4"),
+            region_name="us-east-1",
+        )
         self._ensured_bucket = False
 
     async def generate_presigned_upload(
         self, *, storage_key: str, content_type: str, expires_in_seconds: int
     ) -> PresignedUpload:
         await self._ensure_bucket()
-        url = self._client.generate_presigned_url(
+        url = self._presign_client.generate_presigned_url(
             "put_object",
             Params={"Bucket": self._bucket, "Key": storage_key, "ContentType": content_type},
             ExpiresIn=expires_in_seconds,
