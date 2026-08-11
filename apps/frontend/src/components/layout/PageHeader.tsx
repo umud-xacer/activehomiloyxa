@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
+import { Container } from "./Container";
 
 export interface Crumb {
   label: string;
@@ -81,7 +82,7 @@ export function PageHeader({
         <div className="gradient-mesh absolute inset-0 -z-10 opacity-60" />
       )}
       {!themed && <div className="absolute inset-0 -z-20 bg-card/40" aria-hidden />}
-      <div className="mx-auto max-w-7xl px-6">
+      <Container>
         {crumbs && crumbs.length > 0 && (
           <nav
             className={`mb-4 flex items-center gap-1 text-xs ${themed ? "text-white/70" : "text-muted-foreground"}`}
@@ -120,7 +121,7 @@ export function PageHeader({
               </div>
             )}
             <h1
-              className={`font-display mt-4 text-4xl font-semibold tracking-tight sm:text-5xl ${themed ? "text-white" : "text-foreground"}`}
+              className={`font-display text-hero mt-4 font-semibold ${themed ? "text-white" : "text-foreground"}`}
             >
               {title}
             </h1>
@@ -142,7 +143,7 @@ export function PageHeader({
           </div>
           {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
         </motion.div>
-      </div>
+      </Container>
     </section>
   );
 }

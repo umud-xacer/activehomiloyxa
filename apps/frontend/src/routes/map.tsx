@@ -138,6 +138,11 @@ function MapPage() {
   const { t } = useTranslation();
   const { data } = useSuspenseQuery(propertyListOptions({ page_size: 120 }));
 
+  // Below `lg` (1024px) the sidebar list and map can't sit side-by-side, so without a toggle a
+  // mobile/tablet visitor would have to scroll past up to 40 listing cards before ever reaching
+  // the map -- the exact gap this route exists to avoid. Airbnb/Booking-style segmented switch
+  // keeps both one tap away. Defaults to "map" since that's this route's whole purpose.
+  const [mobileView, setMobileView] = useState<"list" | "map">("map");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focus, setFocus] = useState<{
     id: string;
@@ -197,10 +202,58 @@ function MapPage() {
 
   return (
     <AppShell>
-      <div className="grid min-h-screen pt-20 lg:grid-cols-[420px_1fr]">
+      <div className="pt-20 lg:grid lg:min-h-screen lg:grid-cols-[420px_1fr]">
+        {/* Mobile/tablet-only: list<->map segmented toggle, sticky above whichever panel is
+            showing. Hidden at `lg`+ where both panels sit side-by-side and no toggle is needed. */}
+        <div className="sticky top-20 z-20 flex items-center justify-between gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur lg:hidden">
+          <div className="min-w-0">
+            <div className="font-display truncate text-sm font-semibold text-foreground">
+              {markers.length.toLocaleString()} {t("mapPage.listings", "e'lon")}
+            </div>
+            {polygonIds && (
+              <button
+                onClick={() => setPolygonIds(null)}
+                className="mt-0.5 text-[11px] font-medium text-primary"
+              >
+                {t("mapPage.clearArea", "Hududni tozalash")}
+              </button>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-1 rounded-full border border-border bg-card p-1">
+            <button
+              type="button"
+              onClick={() => setMobileView("list")}
+              aria-pressed={mobileView === "list"}
+              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                mobileView === "list"
+                  ? "bg-primary text-primary-foreground shadow-soft"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {t("mapPage.listView", "Ro'yxat")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileView("map")}
+              aria-pressed={mobileView === "map"}
+              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                mobileView === "map"
+                  ? "bg-primary text-primary-foreground shadow-soft"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {t("mapPage.mapView", "Xarita")}
+            </button>
+          </div>
+        </div>
+
         {/* Sidebar list */}
-        <aside className="border-r border-border bg-background">
-          <div className="sticky top-20 border-b border-border bg-background/95 px-6 py-5 backdrop-blur">
+        <aside
+          className={`border-r border-border bg-background ${
+            mobileView === "map" ? "hidden lg:block" : ""
+          }`}
+        >
+          <div className="sticky top-20 hidden border-b border-border bg-background/95 px-6 py-5 backdrop-blur lg:block">
             <div className="text-xs uppercase tracking-widest text-muted-foreground">
               {t("mapPage.eyebrow", "Xarita bo'yicha qidiruv")}
             </div>
@@ -228,27 +281,33 @@ function MapPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2 lg:grid-cols-1">
+          <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-1 lg:p-6">
             {markers.slice(0, 40).map((m) => (
               <ListingRow
                 key={m.id}
                 marker={m}
                 selected={selectedId === m.id}
-                onFocus={() => focusOn(m)}
+                onFocus={() => {
+                  focusOn(m);
+                  setMobileView("map");
+                }}
               />
             ))}
           </div>
         </aside>
 
         {/* Map column */}
-        <div className="relative">
-          <div className="sticky top-20 p-4">
+        <div className={`relative ${mobileView === "list" ? "hidden lg:block" : ""}`}>
+          {/* Explicit height here (rather than on YandexMapView's own `height` prop) so it can
+              vary responsively: mobile/tablet lose extra vertical space to the sticky toggle bar
+              above, `lg`+ doesn't have that bar at all. */}
+          <div className="h-[calc(100dvh-10.5rem)] p-4 lg:sticky lg:top-20 lg:h-[calc(100vh-7rem)]">
             <YandexMapView
               markers={markers}
               center={{ lat: 41.3111, lng: 69.2797 }}
               zoom={6}
               focus={focus}
-              height="calc(100vh - 7rem)"
+              height="100%"
               onSelect={(m) => setSelectedId(m.id)}
               onAreaSearch={onAreaSearch}
               onPlaceSearch={onPlaceSearch}

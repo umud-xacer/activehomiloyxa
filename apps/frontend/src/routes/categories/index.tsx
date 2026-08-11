@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/state/EmptyState";
 import { catalogClient, type CategorySummary } from "@/lib/catalog-client";
 import { categoryLabel } from "@/components/site/CategoryCarousel";
+import { Container } from "@/components/layout/Container";
 
 function categoryHref(path: string): string {
   return `/categories/${path.replace(/^\//, "")}`;
@@ -79,7 +80,7 @@ function Page() {
         crumbs={[{ label: "Bosh sahifa", to: "/" }, { label: "Kategoriyalar" }]}
       />
 
-      <div className="mx-auto max-w-7xl px-6 py-10">
+      <Container wide className="py-10">
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" /> Kategoriyalar yuklanmoqda…
@@ -89,7 +90,7 @@ function Page() {
         ) : (
           <CategoryGrid categories={topLevel} allCategories={allCategories} />
         )}
-      </div>
+      </Container>
     </AppShell>
   );
 }

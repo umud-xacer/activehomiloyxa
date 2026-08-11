@@ -41,6 +41,16 @@ export function ChatAssistant() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  // Lets other components (e.g. MobileMenu's "AI Yordamchi" item) open this
+  // widget without needing to lift its state -- it's a self-positioned
+  // singleton rendered once from Navbar, so a DOM event is simpler than
+  // plumbing a shared store through every caller.
+  useEffect(() => {
+    const openHandler = () => setOpen(true);
+    window.addEventListener("activehome:open-chat", openHandler);
+    return () => window.removeEventListener("activehome:open-chat", openHandler);
+  }, []);
+
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, typing]);

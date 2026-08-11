@@ -1,6 +1,7 @@
 import { Building2, Home, Wrench, HardHat, ShieldCheck, Handshake } from "lucide-react";
 import aboutBrand from "@/assets/about-brand.png.asset.json";
 import bgMap from "@/assets/bg-worldmap-logo.png.asset.json";
+import { Container } from "@/components/layout/Container";
 
 const pillars = [
   { icon: Home, title: "Ko'chmas mulk", desc: "Sotish, sotib olish va vositachilik." },
@@ -26,7 +27,7 @@ export function BrandAbout() {
         aria-hidden
       />
 
-      <div className="mx-auto max-w-7xl px-6">
+      <Container>
         <div className="grid items-stretch gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
           {/* Brand card with provided image */}
           <div className="relative overflow-hidden rounded-3xl border border-glass-border bg-gradient-to-br from-primary via-primary to-primary-glow p-6 shadow-elevated md:p-8">
@@ -130,7 +131,7 @@ export function BrandAbout() {
             </div>
           </div>
         </div>
-      </div>
+      </Container>
     </section>
   );
 }

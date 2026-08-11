@@ -83,7 +83,9 @@ function Page() {
         title="Xizmatlar va kompaniyalar"
         description="Qurilish materiallari, pudratchilar, dizaynerlar va xizmat ko'rsatuvchilarning tasdiqlangan katalogi."
       />
-      <div className="mx-auto max-w-6xl px-6 py-16">
+      {/* Narrower max-w-6xl base preserved on purpose (3-col directory grid reads better a bit
+          tighter than the site's default 7xl) -- just extended so 1440px+ doesn't flatline. */}
+      <div className="mx-auto max-w-6xl px-6 py-16 2xl:max-w-[1320px] 3xl:max-w-[1480px] 4xl:max-w-[1600px]">
         {isLoading && (
           <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
             <Loader2 className="size-5 animate-spin" /> Yuklanmoqda…

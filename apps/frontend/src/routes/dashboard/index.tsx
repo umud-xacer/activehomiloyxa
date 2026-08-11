@@ -19,6 +19,7 @@ import {
   Plus,
 } from "lucide-react";
 import { DashboardShell } from "@/components/layout/DashboardShell";
+import { Container } from "@/components/layout/Container";
 import { ReviewGate } from "@/components/auth/ReviewGate";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -71,7 +72,7 @@ function DashboardPage() {
   return (
     <DashboardShell account={account}>
       <ReviewGate account={account}>
-        <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 lg:px-8">
+        <Container wide className="space-y-8 py-8">
           {/* Hero */}
           <motion.section
             initial={{ opacity: 0, y: 16 }}
@@ -248,7 +249,7 @@ function DashboardPage() {
               </div>
             )}
           </SectionCard>
-        </div>
+        </Container>
       </ReviewGate>
     </DashboardShell>
   );

@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Link } from "@tanstack/react-router";
 import { Heart, MapPin, BedDouble, Bath, Square, Sparkles, ArrowRight } from "lucide-react";
+import { Container } from "@/components/layout/Container";
 
 type Prop = {
   title: string;
@@ -54,7 +55,7 @@ export function FeaturedProperties() {
   const { t } = useTranslation();
   return (
     <section className="py-24">
-      <div className="mx-auto max-w-7xl px-6">
+      <Container>
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div className="max-w-xl">
             <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl">
@@ -146,7 +147,7 @@ export function FeaturedProperties() {
             </motion.article>
           ))}
         </div>
-      </div>
+      </Container>
     </section>
   );
 }

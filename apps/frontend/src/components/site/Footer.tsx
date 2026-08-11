@@ -4,6 +4,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { QrCode } from "lucide-react";
 import { Logo } from "./Logo";
 import { SocialIconsExpanded } from "./SocialIcons";
+import { Container } from "@/components/layout/Container";
 import logoMark from "@/assets/logo-mark.png";
 
 /** Every link points at a real route. `null` means no page exists yet for that label (Terms,
@@ -59,8 +60,11 @@ export function Footer() {
   ];
   return (
     <footer className="border-t border-border bg-background">
-      <div className="mx-auto max-w-7xl px-6 py-20">
-        <div className="grid gap-x-10 gap-y-14 md:grid-cols-[1.3fr_0.8fr_0.8fr_0.9fr_0.9fr]">
+      <Container className="py-20">
+        {/* `sm`/`md` (tablet) get a 2-column step instead of jumping straight from 1 to the full
+            5-column asymmetric layout -- at ~768px, 5 fractional columns squeeze the two legal
+            groups down to ~95px each, wrapping every link label. Full layout only from `lg`+. */}
+        <div className="grid gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-[1.3fr_0.8fr_0.8fr_0.9fr_0.9fr] lg:gap-x-10">
           <div>
             <Logo className="h-9" />
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">{t("footer.tagline")}</p>
@@ -151,7 +155,7 @@ export function Footer() {
             © {new Date().getFullYear()} ActiveHome. {t("footer.rights")}
           </div>
         </div>
-      </div>
+      </Container>
     </footer>
   );
 }

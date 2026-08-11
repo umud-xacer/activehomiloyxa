@@ -7,6 +7,7 @@ import { YandexMapView, type MapMarker } from "@/components/map/YandexMapView";
 import { useQuery } from "@tanstack/react-query";
 import { featuredPropertiesOptions } from "@/features/properties/queries";
 import { formatPriceWithUnit } from "@/lib/format";
+import { Container } from "@/components/layout/Container";
 
 export function MapPreview() {
   const { t } = useTranslation();
@@ -28,7 +29,7 @@ export function MapPreview() {
 
   return (
     <section className="py-24">
-      <div className="mx-auto max-w-7xl px-6">
+      <Container>
         <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end">
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-foreground/70 backdrop-blur">
@@ -64,7 +65,7 @@ export function MapPreview() {
             enableDrawTools={false}
           />
         </motion.div>
-      </div>
+      </Container>
     </section>
   );
 }

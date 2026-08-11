@@ -5,6 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Sparkles, Search } from "lucide-react";
 import worldMapBg from "@/assets/hero-bg-navy-map.jpg";
 import { CategoryCarousel } from "./CategoryCarousel";
+import { Container } from "@/components/layout/Container";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -38,7 +39,7 @@ export function Hero() {
       <div className="gradient-mesh absolute inset-0 -z-10" />
       <div className="absolute inset-x-0 top-0 -z-10 h-[50vh] bg-[radial-gradient(ellipse_at_top,oklch(0.75_0.16_275_/_0.25),transparent_60%)]" />
 
-      <div className="mx-auto max-w-7xl px-6">
+      <Container>
         <motion.div
           initial="hidden"
           animate="show"
@@ -57,7 +58,7 @@ export function Hero() {
           <motion.h1
             variants={fadeUp}
             custom={1}
-            className="font-display mt-5 text-balance text-4xl font-semibold leading-[1.08] tracking-tight text-foreground sm:text-5xl md:text-[3.4rem]"
+            className="font-display text-hero mt-5 text-balance font-semibold tracking-tight text-foreground"
           >
             {t("hero.title").split(".")[0]}.
             <br />
@@ -107,7 +108,7 @@ export function Hero() {
             </div>
           </motion.div>
         </motion.div>
-      </div>
+      </Container>
 
       {/* Categories live inside Hero's own dark band -- continues the same navy gradient rather
           than handing off to a separate white section right below the search box. */}

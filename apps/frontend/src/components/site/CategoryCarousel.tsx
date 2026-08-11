@@ -17,6 +17,7 @@ import { motion } from "framer-motion";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Tag, Trees, type LucideIcon } from "lucide-react";
 import { catalogClient, type CategorySummary } from "@/lib/catalog-client";
+import { Container } from "@/components/layout/Container";
 
 import iconKopQavatli from "@/assets/categories/Artboard_1_rtGKuRl.png";
 import iconKotej from "@/assets/categories/Artboard_1_copy_2_2QY3FEr.png";
@@ -242,7 +243,7 @@ export function CategoryCarousel() {
 
   return (
     <section className="relative pt-8">
-      <div className="mx-auto max-w-7xl px-6">
+      <Container>
         <div className="flex items-center justify-end gap-4">
           {/* Desktop scroll arrows -- mobile relies on native swipe */}
           <div className="hidden items-center gap-2 sm:flex">
@@ -281,7 +282,7 @@ export function CategoryCarousel() {
             ))}
           </div>
         </div>
-      </div>
+      </Container>
     </section>
   );
 }

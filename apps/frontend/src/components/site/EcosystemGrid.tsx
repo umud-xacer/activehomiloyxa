@@ -16,6 +16,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { Container } from "@/components/layout/Container";
 
 /** The 12 workflows the ecosystem's own subtitle promises -- previously 12 separate apps,
  * now 12 cards in one place. */
@@ -39,7 +40,7 @@ export function EcosystemGrid() {
   return (
     <section className="relative py-24">
       <div className="gradient-mesh pointer-events-none absolute inset-0 -z-10 opacity-50" />
-      <div className="mx-auto max-w-7xl px-6">
+      <Container>
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl">
             {t("ecosystem.title")}
@@ -76,7 +77,7 @@ export function EcosystemGrid() {
             </motion.div>
           ))}
         </div>
-      </div>
+      </Container>
     </section>
   );
 }

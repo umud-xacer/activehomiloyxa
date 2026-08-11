@@ -13,6 +13,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { Container } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
   CATEGORY_LABEL,
@@ -161,7 +162,7 @@ function Page() {
         }
       />
 
-      <div className="mx-auto max-w-7xl px-4 pb-24 pt-10 lg:px-8">
+      <Container wide className="pb-24 pt-10">
         {/* Stats band */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
@@ -245,7 +246,7 @@ function Page() {
             ))}
           </div>
         </div>
-      </div>
+      </Container>
     </AppShell>
   );
 }

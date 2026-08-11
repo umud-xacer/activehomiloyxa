@@ -15,6 +15,7 @@ import {
   Mail,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { Container } from "@/components/layout/Container";
 import { PropertyCard } from "@/components/data/PropertyCard";
 import { ErrorState } from "@/components/state/ErrorState";
 import type { MapMarker } from "@/components/map/YandexMapView";
@@ -121,7 +122,7 @@ function PropertyDetail() {
     <AppShell>
       {/* Gallery */}
       <section className="relative pt-28">
-        <div className="mx-auto max-w-7xl px-6">
+        <Container wide>
           <nav className="mb-4 flex items-center gap-1 text-xs text-muted-foreground">
             <Link to="/" className="hover:text-foreground">
               Home
@@ -156,7 +157,7 @@ function PropertyDetail() {
               />
             ))}
           </motion.div>
-        </div>
+        </Container>
       </section>
 
       {/* Body */}
@@ -338,7 +339,7 @@ function PropertyDetail() {
       {/* Nearby */}
       {nearby.length > 0 && (
         <section className="border-t border-border bg-card/40 py-16">
-          <div className="mx-auto max-w-7xl px-6">
+          <Container wide>
             <h2 className="font-display text-2xl font-semibold text-foreground sm:text-3xl">
               Similar nearby
             </h2>
@@ -347,7 +348,7 @@ function PropertyDetail() {
                 <PropertyCard key={p.id} property={p} index={i} />
               ))}
             </div>
-          </div>
+          </Container>
         </section>
       )}
     </AppShell>

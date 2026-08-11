@@ -13,6 +13,7 @@ import {
 import { TrendingUp, Wallet, MapPin, Info, Layers, ArrowUpRight } from "lucide-react";
 import { requireAuth } from "@/lib/require-auth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
+import { Container } from "@/components/layout/Container";
 import { ReviewGate } from "@/components/auth/ReviewGate";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -79,7 +80,7 @@ function Page() {
   return (
     <DashboardShell account={account}>
       <ReviewGate account={account}>
-        <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 lg:px-8">
+        <Container wide className="space-y-8 py-8">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -247,7 +248,7 @@ function Page() {
             </Link>{" "}
             xizmatiga murojaat qiling.
           </p>
-        </div>
+        </Container>
       </ReviewGate>
     </DashboardShell>
   );

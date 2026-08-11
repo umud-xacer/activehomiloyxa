@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/state/EmptyState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { propertyListOptions } from "@/features/properties/queries";
 import type { PropertyQuery } from "@/features/properties/types";
+import { Container } from "@/components/layout/Container";
 
 const searchSchema = z.object({
   q: fallback(z.string(), "").default(""),
@@ -59,9 +60,9 @@ function PropertiesPending() {
         title="Properties"
         description="Loading premium listings..."
       />
-      <div className="mx-auto max-w-7xl px-6 py-12">
+      <Container wide className="py-12">
         <PropertyGridSkeleton />
-      </div>
+      </Container>
     </AppShell>
   );
 }
@@ -106,7 +107,7 @@ function PropertiesPage() {
         }
       />
 
-      <div className="mx-auto max-w-7xl px-6 py-10">
+      <Container wide className="py-10">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div className="inline-flex rounded-full border border-border bg-card p-1">
             {tabs.map((tab) => (
@@ -158,7 +159,7 @@ function PropertiesPage() {
             ))}
           </div>
         )}
-      </div>
+      </Container>
     </AppShell>
   );
 }

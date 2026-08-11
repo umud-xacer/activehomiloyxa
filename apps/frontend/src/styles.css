@@ -16,6 +16,34 @@
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Space Grotesk Variable", "Inter Variable", sans-serif;
 
+  /*
+   * Responsive breakpoint scale -- matches the platform's 7-tier target
+   * (mobile / tablet / small-laptop / standard-desktop / large-desktop /
+   * large-monitor / ultra-wide+4K) exactly, so `md:`/`lg:`/`xl:`/`2xl:`/
+   * `3xl:`/`4xl:` map 1:1 onto those tiers instead of Tailwind's generic
+   * defaults. `2xl` moves from the 1536px default to 1440px on purpose.
+   */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1440px;
+  --breakpoint-3xl: 1920px;
+  --breakpoint-4xl: 2560px;
+
+  /*
+   * Fluid heading scale -- grows smoothly with viewport width instead of
+   * jumping between fixed text-4xl/5xl steps and then flatlining past
+   * `md`. Capped well below "huge" so 1920px+/2560px+ screens stay
+   * premium rather than oversized.
+   */
+  --text-hero: clamp(2.25rem, 1.65rem + 2.6vw, 3.75rem);
+  --text-hero--line-height: 1.05;
+  --text-hero--letter-spacing: -0.02em;
+  --text-section-title: clamp(1.75rem, 1.5rem + 1.1vw, 2.75rem);
+  --text-section-title--line-height: 1.15;
+  --text-section-title--letter-spacing: -0.01em;
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

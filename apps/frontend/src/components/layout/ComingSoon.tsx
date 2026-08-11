@@ -1,6 +1,7 @@
 import { Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { PropertyGridSkeleton } from "@/components/data/PropertyCardSkeleton";
+import { Container } from "./Container";
 
 interface Props {
   wave: 1 | 2 | 3 | 4 | 5;
@@ -9,7 +10,7 @@ interface Props {
 
 export function ComingSoon({ wave, page }: Props) {
   return (
-    <section className="mx-auto max-w-7xl px-6 py-16">
+    <Container as="section" className="py-16">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -30,6 +31,6 @@ export function ComingSoon({ wave, page }: Props) {
         </p>
       </motion.div>
       <PropertyGridSkeleton count={8} />
-    </section>
+    </Container>
   );
 }

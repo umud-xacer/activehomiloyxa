@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { requireAuth } from "@/lib/require-auth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
+import { Container } from "@/components/layout/Container";
 import { ReviewGate } from "@/components/auth/ReviewGate";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -198,7 +199,7 @@ function SellerContent({ account }: { account: NonNullable<ReturnType<typeof use
   const primaryProfile = profiles?.[0];
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 px-4 py-8 lg:px-8">
+    <Container wide className="space-y-8 py-8">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -303,6 +304,6 @@ function SellerContent({ account }: { account: NonNullable<ReturnType<typeof use
           <ArrowUpRight className="size-4 text-foreground/30 transition group-hover:text-primary" />
         </Link>
       </div>
-    </div>
+    </Container>
   );
 }

@@ -2,12 +2,22 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Plus, UserRound, LayoutDashboard, Heart, Settings, Building2, LogOut } from "lucide-react";
+import {
+  Plus,
+  Search,
+  UserRound,
+  LayoutDashboard,
+  Heart,
+  Settings,
+  Building2,
+  LogOut,
+} from "lucide-react";
 import { Logo } from "./Logo";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
 import { SocialIconsRow } from "./SocialIcons";
 import { ChatAssistant } from "./ChatAssistant";
+import { MobileMenu } from "./MobileMenu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -81,23 +91,37 @@ export function Navbar() {
           scrolled ? "gap-1 px-3.5 py-2 shadow-elevated" : "gap-1.5 px-4 py-2.5 shadow-soft"
         }`}
       >
-        <Link
-          to="/"
-          className="flex shrink-0 items-center gap-2 pl-1 transition-transform duration-300 hover:scale-[1.03] active:scale-[0.98]"
-        >
-          <Logo className={`w-auto transition-all duration-[400ms] ${scrolled ? "h-7" : "h-8"}`} />
-        </Link>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <MobileMenu account={account} onLogout={onLogout} />
+          <Link
+            to="/"
+            className="flex shrink-0 items-center gap-2 pl-1 transition-transform duration-300 hover:scale-[1.03] active:scale-[0.98]"
+          >
+            <Logo className={`w-auto transition-all duration-[400ms] ${scrolled ? "h-7" : "h-8"}`} />
+          </Link>
+        </div>
 
         <div className="flex items-center gap-1">
           <SocialIconsRow className="hidden xl:flex" />
           <Divider className="hidden xl:block" />
 
-          <div className="flex items-center gap-1.5">
+          {/* `lg:` (not `md:`) on purpose -- tablet (768-1023px) has the same "no room for a
+              full chrome row" constraint as mobile and gets the same MobileMenu drawer for
+              secondary functions; only small-laptop-and-up (1024px+) shows the full row inline. */}
+          <div className="hidden items-center gap-1.5 lg:flex">
             <LanguageSwitcher />
             <ThemeToggle />
           </div>
 
-          <Divider className="hidden sm:block" />
+          <Divider className="hidden lg:block" />
+
+          <Link
+            to="/properties"
+            aria-label={t("nav.search", "Qidiruv")}
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-foreground/75 transition hover:bg-secondary hover:text-foreground lg:hidden"
+          >
+            <Search className="size-4.5" />
+          </Link>
 
           {!isLegalEntity && (
             <Link

@@ -13,6 +13,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
+import { Container } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
 import type { MapMarker } from "@/components/map/YandexMapView";
 import { ListingLocationSection } from "@/components/listing/ListingLocationSection";
@@ -81,7 +82,7 @@ function Page() {
         description={o.city}
       />
 
-      <div className="mx-auto max-w-7xl px-4 pb-24 pt-10 lg:px-8">
+      <Container wide className="pb-24 pt-10">
         <Link
           to="/invest"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition hover:text-foreground"
@@ -210,7 +211,7 @@ function Page() {
             </div>
           </div>
         )}
-      </div>
+      </Container>
     </AppShell>
   );
 }
