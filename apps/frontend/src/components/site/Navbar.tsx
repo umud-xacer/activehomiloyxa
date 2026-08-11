@@ -1,19 +1,33 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
-import { Link } from "@tanstack/react-router";
-import { Plus, UserRound } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Plus, UserRound, LayoutDashboard, Heart, Settings, Building2, LogOut } from "lucide-react";
 import { Logo } from "./Logo";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
 import { SocialIconsRow } from "./SocialIcons";
 import { ChatAssistant } from "./ChatAssistant";
-import { useMe } from "@/features/auth/useAuth";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useMe, useInvalidateAuth } from "@/features/auth/useAuth";
+import { authApi } from "@/lib/auth-client";
 import { dashboardPathForAccount } from "@/lib/require-auth";
 
-/* No category-style or section links here by design -- Categories, Organizations and Investors
- * are all one scroll (or one tap) away on the home page itself. The navbar's only job is global
- * chrome: brand, channel presence, locale/theme, and the two account actions.
+/* Amazon/OLX-style clean chrome: brand on the left, everything account-related collapses into a
+ * single profile menu on the right instead of a row of loose links -- the previous layout put a
+ * bare "dashboard" text link next to "sign in" with no real menu at all, which read as unfinished
+ * next to any large marketplace's navbar. The one exception is "E'lon joylash" (post an ad),
+ * which stays a standalone pill CTA for individual/investor accounts -- posting is the single
+ * highest-value action on the whole site and deserves to stay one click away, not buried a menu
+ * level deep, the same reasoning Amazon/OLX apply to "sell"/"e'lon joylash" buttons of their own.
  *
  * Always a soft frosted-glass strip, never fully invisible -- Navbar floats over whatever a page
  * puts at its very top (the homepage's dark Hero, or a plain light page background elsewhere via
@@ -25,8 +39,10 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 
 export function Navbar() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const { data: account } = useMe();
+  const invalidateAuth = useInvalidateAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -34,6 +50,22 @@ export function Navbar() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  const onLogout = async () => {
+    await authApi.logout();
+    invalidateAuth();
+    navigate({ to: "/auth/sign-in" });
+  };
+
+  // ADR-0007: a LEGAL_ENTITY account advertises its own company rather than listing individual
+  // items for sale, so the marketing-site navbar's headline action for them is editing that
+  // company profile, not posting an ad -- the standalone "E'lon joylash" pill is reserved for
+  // INDIVIDUAL/INVESTOR accounts (and signed-out visitors, who get routed through sign-in first).
+  const isLegalEntity = account?.accountKind === "LEGAL_ENTITY";
+  const initials = (account?.displayName || account?.email || "AH")
+    .trim()
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <motion.header
@@ -67,25 +99,92 @@ export function Navbar() {
 
           <Divider className="hidden sm:block" />
 
-          <Link
-            to="/list"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow sm:px-3.5"
-          >
-            <Plus className="size-3.5" />
-            <span className="hidden sm:inline">{t("nav.postAd", "E'lon joylash")}</span>
-          </Link>
+          {!isLegalEntity && (
+            <Link
+              to="/list"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow sm:px-3.5"
+            >
+              <Plus className="size-3.5" />
+              <span className="hidden sm:inline">{t("nav.postAd", "E'lon joylash")}</span>
+            </Link>
+          )}
 
           {account ? (
-            <Link
-              to={dashboardPathForAccount(account)}
-              aria-label={t("nav.dashboard", "Boshqaruv paneli")}
-              className="inline-flex items-center gap-2 rounded-full py-1 pl-1 pr-1 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground sm:pr-3.5"
-            >
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
-                {(account.displayName || account.email || "AH").trim().slice(0, 2).toUpperCase()}
-              </span>
-              <span className="hidden sm:inline">{t("nav.dashboard", "Boshqaruv paneli")}</span>
-            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  aria-label={t("nav.account", "Mening hisobim")}
+                  className="ml-0.5 flex items-center gap-2 rounded-full py-1 pl-1 pr-1 transition hover:bg-card/60 sm:pr-2.5"
+                >
+                  <Avatar className="size-7">
+                    <AvatarFallback className="bg-primary text-[11px] font-semibold text-primary-foreground">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="hidden max-w-[8rem] truncate text-sm font-medium text-foreground/85 sm:inline">
+                    {account.displayName || account.email || t("nav.account", "Hisobim")}
+                  </span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel className="flex items-center gap-2">
+                  <UserRound className="size-3.5" />
+                  <span className="truncate">{account.displayName || account.email}</span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {isLegalEntity ? (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link to="/dashboard/business-profile">
+                        <Building2 className="mr-2 size-4" />
+                        Kompaniya ma'lumotlarini tahrirlash
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to={dashboardPathForAccount(account)}>
+                        <LayoutDashboard className="mr-2 size-4" />
+                        Boshqaruv paneli
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/list">
+                        <Plus className="mr-2 size-4" />
+                        E'lon joylash
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link to={dashboardPathForAccount(account)}>
+                        <LayoutDashboard className="mr-2 size-4" />
+                        Boshqaruv paneli
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/favorites">
+                        <Heart className="mr-2 size-4" />
+                        Saqlanganlar
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuItem asChild>
+                  <Link to="/settings">
+                    <Settings className="mr-2 size-4" />
+                    Sozlamalar
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={onLogout}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <LogOut className="mr-2 size-4" />
+                  Chiqish
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Link
               to="/auth/sign-in"
@@ -97,9 +196,10 @@ export function Navbar() {
               <span className="pointer-events-none absolute inset-x-3.5 bottom-1.5 hidden h-px origin-center scale-x-0 bg-foreground/40 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100 sm:block" />
             </Link>
           )}
-          <ChatAssistant />
         </div>
       </div>
+
+      <ChatAssistant />
     </motion.header>
   );
 }
