@@ -114,16 +114,13 @@ export function Navbar() {
               <DropdownMenuTrigger asChild>
                 <button
                   aria-label={t("nav.account", "Mening hisobim")}
-                  className="ml-0.5 flex items-center gap-2 rounded-full py-1 pl-1 pr-1 transition hover:bg-card/60 sm:pr-2.5"
+                  className="ml-0.5 flex items-center justify-center rounded-full transition hover:scale-[1.05] active:scale-[0.97]"
                 >
-                  <Avatar className="size-7">
-                    <AvatarFallback className="bg-primary text-[11px] font-semibold text-primary-foreground">
+                  <Avatar className="size-9 ring-2 ring-transparent transition hover:ring-primary/40">
+                    <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="hidden max-w-[8rem] truncate text-sm font-medium text-foreground/85 sm:inline">
-                    {account.displayName || account.email || t("nav.account", "Hisobim")}
-                  </span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64">

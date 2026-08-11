@@ -185,9 +185,9 @@ function CategoryPill({ cat, index }: { cat: Cat; index: number }) {
         to={cat.to}
         className="group flex w-24 shrink-0 flex-col items-center gap-2.5 rounded-2xl border border-transparent px-2 py-3 text-center transition-all hover:border-border hover:bg-card hover:shadow-soft sm:w-28"
       >
-        <div className="flex size-16 items-center justify-center rounded-2xl bg-card-foreground/5 p-1.5 transition-transform group-hover:-translate-y-0.5 group-hover:scale-105 sm:size-20">
+        <div className="relative flex size-16 items-center justify-center overflow-hidden rounded-full border border-border bg-white p-2 shadow-soft transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-glow sm:size-20">
           {cat.image ? (
-            <img src={cat.image} alt="" className="size-full object-contain" />
+            <img src={cat.image} alt="" className="size-full rounded-full object-contain" />
           ) : Icon ? (
             <Icon className="size-5 text-muted-foreground sm:size-[22px]" />
           ) : null}
