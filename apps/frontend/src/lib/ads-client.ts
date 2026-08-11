@@ -102,25 +102,30 @@ export interface BannerServeView {
   targetUrl?: string | null;
 }
 
+const RETRY_DELAYS_MS = [400, 1000, 2000, 4000];
+
 /** `GET /banners/serve` -- 204 (no eligible campaign for this slot right now) surfaces as `null`,
  * never an error, so a caller can render nothing rather than an error state for the ordinary
  * "no active campaign" case.
  *
- * One retry on 503 specifically: live production testing found every homepage load firing all 5
- * slot requests in the same tick occasionally gets the whole burst 503'd at the edge (Cloudflare)
- * even though the origin answers every one of them fine -- confirmed via origin access logs
- * during a live repro (origin logged 204 for all 5 at the exact moment the browser saw 503). A
- * 503 is by definition meant to be transient/retryable, so a short single retry is the correct
- * client-side response regardless of the edge-layer cause. */
+ * Retries with backoff on 503 specifically: live production testing traced this to something
+ * edge-layer (Cloudflare) 503ing this exact call from a real page load with total reliability --
+ * confirmed the origin answers every one of these with a clean 204 every single time (direct
+ * uvicorn access-log correlation during a live repro), and confirmed the identical request
+ * (same path, same query, same headers, same credentials) always succeeds when re-issued a
+ * moment later. Neither request staggering nor waiting for the page to go fully idle changed the
+ * outcome, so rather than chase the exact edge-side trigger further, retry with backoff until
+ * one attempt lands outside whatever window it is. A 503 is transient by definition, so retrying
+ * is the correct response regardless of the precise cause. */
 export async function serveBanner(slotKey: string): Promise<BannerServeView | null> {
-  try {
-    return await http.get<BannerServeView | null>("/banners/serve", { params: { slotKey } });
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 503) {
-      await new Promise((r) => setTimeout(r, 500 + Math.random() * 500));
-      return http.get<BannerServeView | null>("/banners/serve", { params: { slotKey } });
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await http.get<BannerServeView | null>("/banners/serve", { params: { slotKey } });
+    } catch (err) {
+      const delay = RETRY_DELAYS_MS[attempt];
+      if (!(err instanceof ApiError) || err.status !== 503 || delay === undefined) throw err;
+      await new Promise((r) => setTimeout(r, delay));
     }
-    throw err;
   }
 }
 
