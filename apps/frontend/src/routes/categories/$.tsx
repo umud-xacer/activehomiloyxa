@@ -32,6 +32,7 @@ import {
   type ListingFilterState,
 } from "@/components/catalog/CategoryFilters";
 import { TopCompanies, useTopCompanies } from "@/components/catalog/TopCompanies";
+import { Container } from "@/components/layout/Container";
 import { apiClient } from "@/lib/api-client";
 import { propertyListOptions } from "@/features/properties/queries";
 import type { Property, PropertyQuery } from "@/features/properties/types";
@@ -47,6 +48,7 @@ import {
   resolveListingKind,
   resolveAccentColor,
   resolveCategoryIcon,
+  resolveHeroImage,
   KIND_EYEBROW,
   KIND_ICON,
   KIND_THEME,
@@ -101,9 +103,9 @@ function CategoryPending() {
   return (
     <AppShell>
       <PageHeader eyebrow="Kategoriya" title="Yuklanmoqda..." />
-      <div className="mx-auto max-w-7xl px-6 py-12">
+      <Container wide className="py-12">
         <PropertyGridSkeleton />
-      </div>
+      </Container>
     </AppShell>
   );
 }
@@ -121,7 +123,7 @@ function ChildrenGrid({
 }) {
   if (children.length === 0) return null;
   return (
-    <div className="mx-auto max-w-7xl px-6 pt-8">
+    <Container wide className="pt-8">
       <div className="mb-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
         <Layers className="size-4" />
         Bo'lim ichidagi kichik kategoriyalar
@@ -157,7 +159,7 @@ function ChildrenGrid({
           );
         })}
       </div>
-    </div>
+    </Container>
   );
 }
 
@@ -214,6 +216,7 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
   const navigate = useNavigate({ from: Route.fullPath });
   const { children, ancestors, byId } = useCategoryTree(category.id, category.parentId);
   const [featuredOnly, setFeaturedOnly] = useState(false);
+  const hero = resolveHeroImage(category, byId);
 
   const query: PropertyQuery = {
     category_id: category.id,
@@ -241,7 +244,7 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
       <PageHeader
         eyebrow="Kategoriya"
         title={name}
-        tagline={category.heroTagline}
+        tagline={hero.heroTagline}
         description={`${data.total.toLocaleString()} ta e'lon — faqat "${name}" kategoriyasiga tegishli.`}
         crumbs={[
           { label: "Bosh sahifa", to: "/" },
@@ -251,14 +254,14 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
           })),
           { label: name },
         ]}
-        backgroundImageUrl={category.heroImageUrl}
+        backgroundImageUrl={hero.heroImageUrl}
         accentColor={resolveAccentColor(category, byId)}
         icon={resolveCategoryIcon(category)}
       />
 
       <ChildrenGrid children={children} byId={byId} />
 
-      <div className="mx-auto max-w-7xl px-6 pt-8">
+      <Container wide className="pt-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CategoryHub
             options={PROPERTY_HUB_OPTIONS}
@@ -280,9 +283,9 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
             Chegirmadagilar
           </button>
         </div>
-      </div>
+      </Container>
 
-      <div className="mx-auto max-w-7xl px-6 py-10">
+      <Container wide className="py-10">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/70">
             <Tag className="size-4" />
@@ -303,10 +306,10 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
             ))}
           </div>
         )}
-      </div>
+      </Container>
 
       <section className="py-16">
-        <div className="mx-auto max-w-7xl px-6">
+        <Container wide>
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-foreground/70 backdrop-blur">
               <MapIcon className="size-3.5" />
@@ -335,7 +338,7 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
               enableDrawTools={false}
             />
           </motion.div>
-        </div>
+        </Container>
       </section>
     </AppShell>
   );
@@ -418,6 +421,7 @@ function CatalogDirectionView({
   kind: Exclude<ListingKind, "PROPERTY">;
 }) {
   const { children, ancestors, byId } = useCategoryTree(category.id, category.parentId);
+  const hero = resolveHeroImage(category, byId);
   const name = categoryLabel(category.name, "uz");
   const Icon = KIND_ICON[kind];
   const theme = KIND_THEME[kind];
@@ -475,7 +479,7 @@ function CatalogDirectionView({
       <PageHeader
         eyebrow={KIND_EYEBROW[kind]}
         title={name}
-        tagline={category.heroTagline}
+        tagline={hero.heroTagline}
         description={
           kind === "SERVICE"
             ? `Shu yo'nalishdagi xizmat ko'rsatuvchilarning e'lonlari — tajriba, hudud va narx bo'yicha solishtiring.`
@@ -489,18 +493,18 @@ function CatalogDirectionView({
           })),
           { label: name },
         ]}
-        backgroundImageUrl={category.heroImageUrl}
+        backgroundImageUrl={hero.heroImageUrl}
         accentColor={resolveAccentColor(category, byId)}
         icon={resolveCategoryIcon(category)}
       />
 
       <ChildrenGrid children={children} byId={byId} />
 
-      <div className="mx-auto max-w-7xl px-4 pt-8 lg:px-8">
+      <Container wide className="pt-8">
         <CategoryHub options={CATALOG_HUB_OPTIONS} value={sort} onChange={setSort} />
-      </div>
+      </Container>
 
-      <div className="mx-auto max-w-7xl px-4 py-10 pb-24 lg:px-8">
+      <Container wide className="py-10 pb-24">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
           <div
             className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ${theme.badge}`}
@@ -577,11 +581,11 @@ function CatalogDirectionView({
           selectedId={selectedCompanyId}
           onSelect={setSelectedCompanyId}
         />
-      </div>
+      </Container>
 
       {markers.length > 0 && (
         <section className="pb-20">
-          <div className="mx-auto max-w-7xl px-4 lg:px-8">
+          <Container wide>
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-foreground/70 backdrop-blur">
                 <MapIcon className="size-3.5" />
@@ -597,7 +601,7 @@ function CatalogDirectionView({
             <div className="mt-8">
               <YandexMapView markers={markers} zoom={11} height="480px" enableDrawTools={false} />
             </div>
-          </div>
+          </Container>
         </section>
       )}
     </AppShell>

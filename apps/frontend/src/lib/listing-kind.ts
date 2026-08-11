@@ -328,3 +328,38 @@ export function resolveAccentColor(
   }
   return DEFAULT_ACCENT;
 }
+
+/** Same ancestor-walk shape as `resolveAccentColor` -- only the ~18 top-level and ~250
+ * second-level categories are hand-themed with a real `heroImageUrl` (Task: category background
+ * images); every deeper node inherits its nearest themed ancestor's photo + tagline together
+ * (never mixing one ancestor's image with a different ancestor's caption) rather than falling
+ * back to `PageHeader`'s plain icon-watermark gradient. Returns `{}` (both undefined) only if no
+ * ancestor up to the root has one set yet -- `PageHeader` already handles that gracefully. */
+export function resolveHeroImage(
+  category: {
+    id: string;
+    parentId: string | null;
+    heroImageUrl?: string | null;
+    heroTagline?: string | null;
+  },
+  byId: Map<
+    string,
+    {
+      id: string;
+      parentId: string | null;
+      heroImageUrl?: string | null;
+      heroTagline?: string | null;
+    }
+  >,
+): { heroImageUrl?: string; heroTagline?: string } {
+  let current: typeof category | undefined = category;
+  const seen = new Set<string>();
+  while (current && !seen.has(current.id)) {
+    if (current.heroImageUrl) {
+      return { heroImageUrl: current.heroImageUrl, heroTagline: current.heroTagline ?? undefined };
+    }
+    seen.add(current.id);
+    current = current.parentId ? byId.get(current.parentId) : undefined;
+  }
+  return {};
+}

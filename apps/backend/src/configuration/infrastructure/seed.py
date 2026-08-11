@@ -957,17 +957,24 @@ async def _backfill_category_theme(
     code: str,
     hero_image_url: str,
     hero_tagline: str,
-    accent_color: str,
+    accent_color: str | None = None,
     now: datetime,
 ) -> None:
-    """Self-heal for a top-level category seeded before hero content existed (or before this
-    theme table gained an entry for it) -- same publish-a-new-version pattern as
-    `_backfill_listing_kind`, merged into the same `descriptor.metadata` slot the owner-admin
-    panel's own hero-editing form already writes to. No-op once the stored values already match
-    exactly, so this is safe (and cheap) to re-run on every deploy; a super-admin who has since
-    hand-edited a category's hero from the panel keeps their own values only if they happen to
-    match this table -- otherwise this backfill will overwrite them back to the table's defaults
-    on the next deploy, same as `_backfill_listing_kind` already does for `listingKind`."""
+    """Self-heal for a category seeded before hero content existed (or before this theme table
+    gained an entry for it) -- same publish-a-new-version pattern as `_backfill_listing_kind`,
+    merged into the same `descriptor.metadata` slot the owner-admin panel's own hero-editing form
+    already writes to. No-op once the stored values already match exactly, so this is safe (and
+    cheap) to re-run on every deploy; a super-admin who has since hand-edited a category's hero
+    from the panel keeps their own values only if they happen to match this table -- otherwise
+    this backfill will overwrite them back to the table's defaults on the next deploy, same as
+    `_backfill_listing_kind` already does for `listingKind`.
+
+    `accent_color` is optional (unlike every top-level category, which gets one so no two of the
+    18 read as visually identical) -- second-level-and-deeper categories deliberately omit it so
+    `resolveAccentColor`'s ancestor-walk (`lib/listing-kind.ts`) keeps inheriting the nearest
+    themed ancestor's color, the same "whole category family reads as one visual family" behavior
+    that already existed before hero images reached this deep; only `heroImageUrl`/`heroTagline`
+    are new at this depth."""
     head = await repo.get_head_by_code(ConfigEntityType.CATEGORY, code)
     if head is None or head.current_version_id is None:
         return
@@ -979,8 +986,9 @@ async def _backfill_category_theme(
     desired = {
         "heroImageUrl": hero_image_url,
         "heroTagline": hero_tagline,
-        "accentColor": accent_color,
     }
+    if accent_color is not None:
+        desired["accentColor"] = accent_color
     if all(current_metadata.get(k) == v for k, v in desired.items()):
         return
 
