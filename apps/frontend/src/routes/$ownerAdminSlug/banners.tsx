@@ -374,6 +374,7 @@ function CampaignFormPanel({ editing, slots, onClose, onSaved }: CampaignPanelPr
   );
   const [priority, setPriority] = useState(editing?.priority ?? 0);
   const [geo, setGeo] = useState(editing?.targeting?.geo ?? "");
+  const [targetUrl, setTargetUrl] = useState(editing?.targetUrl ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -412,6 +413,7 @@ function CampaignFormPanel({ editing, slots, onClose, onSaved }: CampaignPanelPr
         scheduleEnd: fromLocalInputValue(scheduleEnd),
         priority,
         targeting: { geo: geo || null },
+        targetUrl: targetUrl.trim() || null,
       };
       if (isEditing) {
         await updateCampaign(editing.id, {
@@ -421,6 +423,7 @@ function CampaignFormPanel({ editing, slots, onClose, onSaved }: CampaignPanelPr
           scheduleEnd: input.scheduleEnd,
           priority: input.priority,
           targeting: input.targeting,
+          targetUrl: input.targetUrl,
         });
       } else {
         await createCampaign(input);
@@ -572,6 +575,21 @@ function CampaignFormPanel({ editing, slots, onClose, onSaved }: CampaignPanelPr
                 className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">
+              Havola (bosilganda ochiladigan sahifa, ixtiyoriy)
+            </label>
+            <input
+              value={targetUrl}
+              onChange={(e) => setTargetUrl(e.target.value)}
+              placeholder="https://..."
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Bo'sh qoldirilsa, banner bosilmaydigan oddiy rasm sifatida ko'rinadi.
+            </p>
           </div>
 
           {error && (

@@ -46,6 +46,9 @@ class BannerCampaign(CamelModel):
     status: Literal["DRAFT", "SCHEDULED", "RUNNING", "PAUSED", "ENDED"]
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    target_url: str | None = None
+    """Additive: optional click-through destination. `None` renders the creative as a plain,
+    non-anchor image."""
 
 
 class BannerCampaignPage(CamelModel):
@@ -64,6 +67,8 @@ class BannerCampaignCreateRequest(CamelModel):
     schedule_end: datetime
     priority: int
     targeting: Targeting = Targeting()
+    target_url: str | None = None
+    """Additive: optional click-through destination."""
 
 
 class BannerCampaignUpdateRequest(CamelModel):
@@ -74,6 +79,8 @@ class BannerCampaignUpdateRequest(CamelModel):
     schedule_end: datetime | None = None
     priority: int | None = None
     targeting: Targeting | None = None
+    target_url: str | None = None
+    """Additive: optional click-through destination."""
 
 
 class BannerServeView(CamelModel):
@@ -83,3 +90,5 @@ class BannerServeView(CamelModel):
     campaign_id: UUID
     slot_key: str
     creative_media_asset_id: UUID
+    target_url: str | None = None
+    """Additive: optional click-through destination for the served creative."""

@@ -50,6 +50,9 @@ class BannerCampaign:
     status: CampaignStatus
     created_at: datetime
     updated_at: datetime
+    target_url: str | None = None
+    """Optional click-through destination -- `None` renders the creative as a plain, non-anchor
+    image (a purely decorative banner is still a legitimate campaign, not an error state)."""
     lock_version: int = 0
 
     @staticmethod
@@ -65,6 +68,7 @@ class BannerCampaign:
         schedule: Schedule,
         targeting: Targeting,
         now: datetime,
+        target_url: str | None = None,
     ) -> BannerCampaign:
         """FR-BANNER-002/003: create in `DRAFT`. `creative_status` is passed in already-resolved
         (the application layer read it from `CreativeReaderPort` synchronously at this admin
@@ -86,6 +90,7 @@ class BannerCampaign:
             status=CampaignStatus.DRAFT,
             created_at=now,
             updated_at=now,
+            target_url=target_url,
         )
 
     def update(
@@ -95,6 +100,7 @@ class BannerCampaign:
         creative_status: CreativeStatus | None = None,
         schedule: Schedule | None = None,
         targeting: Targeting | None = None,
+        target_url: str | None = None,
         now: datetime,
     ) -> BannerCampaign:
         """Mutates schedule/targeting/creative while still `DRAFT` only -- once scheduled, a
@@ -108,6 +114,7 @@ class BannerCampaign:
             creative_status=creative_status or self.creative_status,
             schedule=schedule or self.schedule,
             targeting=targeting if targeting is not None else self.targeting,
+            target_url=target_url if target_url is not None else self.target_url,
             updated_at=now,
         )
 

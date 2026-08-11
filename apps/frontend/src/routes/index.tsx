@@ -3,7 +3,6 @@ import "@/lib/i18n";
 import { Navbar } from "@/components/site/Navbar";
 import { Hero } from "@/components/site/Hero";
 import { AudienceSplit } from "@/components/site/AudienceSplit";
-import { CategoryCarousel } from "@/components/site/CategoryCarousel";
 import { EcosystemGrid } from "@/components/site/EcosystemGrid";
 import { OrganizationsCarousel } from "@/components/site/OrganizationsCarousel";
 import { MapPreview } from "@/components/site/MapPreview";
@@ -37,28 +36,28 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  // Order: Navbar -> Hero (search stays on top) -> Categories (took over the stats strip's old
-  // slot, immediately below the search, no ad banner interrupting) -> AudienceSplit -> the promo
-  // banner -> Organizations -> Map -> the 12-process ecosystem -> MissionBand -> the stats "proof
-  // strip" (its own section now, below MissionBand) -> CTA/Footer. An AdSlot sits between later
-  // sections, plus two fixed sidebar slots in the side gutters on very wide screens.
+  // Order: Navbar -> Hero (search + Categories both live inside Hero's own dark band now, so
+  // there's no separate white "categories" section handing off from the search box) ->
+  // AudienceSplit -> the promo banner -> Organizations -> Map -> the 12-process ecosystem ->
+  // MissionBand -> the stats "proof strip" (its own section, below MissionBand) -> CTA/Footer.
+  // An AdSlot sits between later sections, plus two fixed sidebar slots in the side gutters on
+  // very wide screens.
   return (
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
       <Navbar />
 
       <div className="pointer-events-none fixed inset-y-0 left-0 z-20 hidden w-[200px] justify-center pt-32 2xl:flex">
         <div className="pointer-events-auto sticky top-32">
-          <AdSlot variant="sidebar" />
+          <AdSlot slotKey="HOMEPAGE_SIDEBAR_LEFT" variant="sidebar" />
         </div>
       </div>
       <div className="pointer-events-none fixed inset-y-0 right-0 z-20 hidden w-[200px] justify-center pt-32 2xl:flex">
         <div className="pointer-events-auto sticky top-32">
-          <AdSlot variant="sidebar" />
+          <AdSlot slotKey="HOMEPAGE_SIDEBAR_RIGHT" variant="sidebar" />
         </div>
       </div>
 
       <Hero />
-      <CategoryCarousel />
       <AudienceSplit />
       <PromoBanner
         src={promoUyTamirlash}
@@ -66,11 +65,11 @@ function Index() {
         aspect="aspect-[16/5]"
       />
       <OrganizationsCarousel />
-      <AdSlot />
+      <AdSlot slotKey="HOMEPAGE_BANNER_1" />
       <MapPreview />
-      <AdSlot />
+      <AdSlot slotKey="HOMEPAGE_BANNER_2" />
       <EcosystemGrid />
-      <AdSlot />
+      <AdSlot slotKey="HOMEPAGE_BANNER_3" />
       <MissionBand />
       <PlatformStatsBand />
       <Footer />

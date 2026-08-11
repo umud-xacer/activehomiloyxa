@@ -5643,6 +5643,12 @@ components:
           type: string
           format: date-time
           readOnly: true
+        targetUrl:
+          type:
+          - string
+          - 'null'
+          description: Additive. Optional click-through destination — null renders the creative as
+            a plain, non-anchor image.
       additionalProperties: false
     BannerCampaignCreateRequest:
       type: object
@@ -5693,6 +5699,11 @@ components:
                 - ru
                 - en
           additionalProperties: false
+        targetUrl:
+          type:
+          - string
+          - 'null'
+          description: Additive. Optional click-through destination.
       additionalProperties: false
     BannerCampaignUpdateRequest:
       type: object
@@ -5733,6 +5744,11 @@ components:
                 - ru
                 - en
           additionalProperties: false
+        targetUrl:
+          type:
+          - string
+          - 'null'
+          description: Additive. Optional click-through destination.
       additionalProperties: false
     BannerServeView:
       type: object
@@ -5751,6 +5767,11 @@ components:
         creativeMediaAssetId:
           type: string
           format: uuid
+        targetUrl:
+          type:
+          - string
+          - 'null'
+          description: Additive. Optional click-through destination for the served creative.
       additionalProperties: false
     ConfigurationHead:
       type: object

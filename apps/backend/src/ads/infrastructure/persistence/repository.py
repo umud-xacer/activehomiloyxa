@@ -50,6 +50,7 @@ def _campaign_to_domain(row: BannerCampaignRow) -> BannerCampaign:
         status=CampaignStatus(row.status),
         created_at=row.created_at,
         updated_at=row.updated_at,
+        target_url=row.target_url,
         lock_version=row.lock_version,
     )
 
@@ -71,6 +72,7 @@ def _campaign_row_kwargs(campaign: BannerCampaign) -> dict[str, object]:
             "languages": list(campaign.targeting.languages),
         },
         "status": campaign.status.value,
+        "target_url": campaign.target_url,
     }
 
 

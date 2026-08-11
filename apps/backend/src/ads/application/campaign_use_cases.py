@@ -60,6 +60,7 @@ class CampaignUseCases:
         targeting: Targeting,
         operator_account_id: UUID,
         now: datetime,
+        target_url: str | None = None,
     ) -> BannerCampaign:
         """FR-BANNER-002/003. Resolves the slot (FR-BANNER-001's own configuration-authored
         inventory) and the creative's current scan status synchronously -- both are low-frequency
@@ -81,6 +82,7 @@ class CampaignUseCases:
             schedule=Schedule(start=schedule_start, end=schedule_end, priority=priority),
             targeting=targeting,
             now=now,
+            target_url=target_url,
         )
         await self._campaigns.add(campaign)
         return campaign
@@ -113,6 +115,7 @@ class CampaignUseCases:
         priority: int | None,
         targeting: Targeting | None,
         now: datetime,
+        target_url: str | None = None,
     ) -> BannerCampaign:
         """DRAFT only (`BannerCampaign.update`'s own guard raises `IllegalCampaignStateTransitionError`
         otherwise)."""
@@ -132,6 +135,7 @@ class CampaignUseCases:
             creative_status=creative_status,
             schedule=new_schedule,
             targeting=targeting,
+            target_url=target_url,
             now=now,
         )
         return await self._campaigns.save(updated)

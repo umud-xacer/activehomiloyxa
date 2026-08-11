@@ -64,6 +64,7 @@ def _to_campaign_dto(campaign: BannerCampaignDomain) -> BannerCampaign:
         status=campaign.status.value,
         created_at=campaign.created_at,
         updated_at=campaign.updated_at,
+        target_url=campaign.target_url,
     )
 
 
@@ -108,6 +109,7 @@ async def create_campaign(
         targeting=_to_targeting_domain(body.targeting),
         operator_account_id=operator.account_id.value,
         now=datetime.now(UTC),
+        target_url=body.target_url,
     )
     return _to_campaign_dto(campaign)
 
@@ -137,6 +139,7 @@ async def update_campaign(
         priority=body.priority,
         targeting=_to_targeting_domain(body.targeting) if body.targeting is not None else None,
         now=datetime.now(UTC),
+        target_url=body.target_url,
     )
     return _to_campaign_dto(campaign)
 
@@ -211,6 +214,7 @@ async def serve_banner(
         campaign_id=campaign.id,
         slot_key=campaign.slot_key,
         creative_media_asset_id=campaign.creative_media_asset_id,
+        target_url=campaign.target_url,
     )
 
 

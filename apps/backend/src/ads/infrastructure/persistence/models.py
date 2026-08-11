@@ -47,6 +47,9 @@ class BannerCampaignRow(AdsBase, AggregateMixin):  # type: ignore[misc,valid-typ
     priority: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     targeting: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="DRAFT")
+    target_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    """Optional click-through destination -- `NULL` means the creative renders as a plain,
+    non-anchor image (added additively; see migration 469c4814d059)."""
 
     __table_args__ = (
         CheckConstraint(f"status IN {_CAMPAIGN_STATUSES}", name="ck_banner_campaign_status"),
