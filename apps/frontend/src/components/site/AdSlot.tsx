@@ -26,13 +26,20 @@ function useServedBanner(slotKey: string): ResolvedBanner | null {
     let cancelled = false;
     setBanner(null);
     (async () => {
-      // Every AdSlot on a page mounts within the same tick, so without this all `/banners/serve`
-      // calls fire in the same millisecond -- observed live to trip an edge-network burst
-      // heuristic (Cloudflare) that 503s the whole batch even though the origin itself answers
-      // every one of them fine (confirmed via origin access logs during a live repro: origin
-      // logged 204 for all 5 at the exact moment the browser saw 503). A small random spread
-      // is enough to stop the requests from reading as a single suspicious burst.
-      await new Promise((r) => setTimeout(r, Math.random() * 400));
+      // Live repro + origin access-log correlation: every `/banners/serve` call made during the
+      // initial page-load burst (while ~90 other asset/API requests are in flight on the same
+      // freshly-opened connection) comes back 503 at the edge, even though uvicorn logs 204 for
+      // the exact same request at the exact same timestamp -- the origin never sees a problem.
+      // A 0-400ms stagger between the 5 slots alone did not fix it (still 503'd, just spread
+      // out), so the trigger isn't slot-to-slot collision -- it's "early in a busy connection."
+      // Waiting for the page to go fully idle (load event + a settle margin) before firing any
+      // of them moves the request off that busy window entirely.
+      if (document.readyState !== "complete") {
+        await new Promise<void>((resolve) => {
+          window.addEventListener("load", () => resolve(), { once: true });
+        });
+      }
+      await new Promise((r) => setTimeout(r, 1200 + Math.random() * 400));
       if (cancelled) return;
       const served = await serveBanner(slotKey).catch(() => null);
       if (!served || cancelled) return;
