@@ -26,7 +26,7 @@ export function CategoryHub<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-2.5">
+    <div className="scrollbar-none -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
       {options.map((opt, i) => {
         const Icon = opt.icon;
         const active = opt.value === value;
@@ -38,7 +38,7 @@ export function CategoryHub<T extends string>({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.04, duration: 0.35 }}
             onClick={() => onChange(opt.value)}
-            className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium shadow-soft transition ${
+            className={`inline-flex shrink-0 snap-start items-center gap-2 whitespace-nowrap rounded-2xl border px-4 py-2.5 text-sm font-medium shadow-soft transition ${
               active
                 ? "border-primary bg-primary text-primary-foreground shadow-elevated"
                 : "border-border bg-card text-foreground/80 hover:border-primary/40 hover:text-foreground"

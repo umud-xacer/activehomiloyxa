@@ -261,19 +261,17 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
 
       <ChildrenGrid children={children} byId={byId} />
 
-      <Container wide className="pt-8">
+      <Container wide className="pt-8 pb-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CategoryHub
-            options={PROPERTY_HUB_OPTIONS}
-            value={search.sort}
-            onChange={(sort) =>
-              navigate({ search: (prev: typeof search) => ({ ...prev, sort, page: 1 }) })
-            }
-          />
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/70">
+            <Tag className="size-4" />
+            {name}
+            <span className="opacity-70">· {items.length} ta e'lon</span>
+          </div>
           <button
             type="button"
             onClick={() => setFeaturedOnly((v) => !v)}
-            className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium shadow-soft transition ${
+            className={`inline-flex shrink-0 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium shadow-soft transition ${
               featuredOnly
                 ? "border-warning bg-warning/10 text-warning"
                 : "border-border bg-card text-foreground/80 hover:border-warning/40"
@@ -283,17 +281,18 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
             Chegirmadagilar
           </button>
         </div>
+        <div className="mt-4">
+          <CategoryHub
+            options={PROPERTY_HUB_OPTIONS}
+            value={search.sort}
+            onChange={(sort) =>
+              navigate({ search: (prev: typeof search) => ({ ...prev, sort, page: 1 }) })
+            }
+          />
+        </div>
       </Container>
 
-      <Container wide className="py-10">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/70">
-            <Tag className="size-4" />
-            {name}
-            <span className="opacity-70">· {items.length} ta e'lon</span>
-          </div>
-        </div>
-
+      <Container wide className="py-8">
         {items.length === 0 ? (
           <EmptyState
             title="Bu kategoriyada hali e'lon yo'q"
@@ -500,12 +499,8 @@ function CatalogDirectionView({
 
       <ChildrenGrid children={children} byId={byId} />
 
-      <Container wide className="pt-8">
-        <CategoryHub options={CATALOG_HUB_OPTIONS} value={sort} onChange={setSort} />
-      </Container>
-
-      <Container wide className="py-10 pb-24">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+      <Container wide className="pt-8 pb-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div
             className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ${theme.badge}`}
           >
@@ -513,18 +508,21 @@ function CatalogDirectionView({
             {name}
             {!isLoading && <span className="opacity-70">· {sorted.length} ta e'lon</span>}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {form && form.sections.length > 0 && (
-              <CategoryFiltersSheet
-                fields={form.sections.flatMap((s) => s.fields)}
-                state={filters}
-                onChange={setFilters}
-                resultCount={filtered.length}
-              />
-            )}
-          </div>
+          {form && form.sections.length > 0 && (
+            <CategoryFiltersSheet
+              fields={form.sections.flatMap((s) => s.fields)}
+              state={filters}
+              onChange={setFilters}
+              resultCount={filtered.length}
+            />
+          )}
         </div>
+        <div className="mt-4">
+          <CategoryHub options={CATALOG_HUB_OPTIONS} value={sort} onChange={setSort} />
+        </div>
+      </Container>
 
+      <Container wide className="py-8 pb-24">
         {isLoading && (
           <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" /> Yuklanmoqda…
