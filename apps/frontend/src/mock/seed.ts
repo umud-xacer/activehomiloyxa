@@ -168,6 +168,7 @@ function makeProperty(i: number): Property {
 
   return {
     id: `prop_${i.toString().padStart(5, "0")}`,
+    owner_user_id: `agent_${(i % 40).toString().padStart(3, "0")}`,
     slug: faker.helpers.slugify(`${title}-${i}`).toLowerCase(),
     title,
     description: faker.lorem.paragraphs({ min: 2, max: 4 }, "\n\n"),

@@ -67,6 +67,17 @@ export const Route = createFileRoute("/categories/$")({
   validateSearch: zodValidator(searchSchema),
   loaderDeps: ({ search }) => ({ sort: search.sort, page: search.page }),
   loader: async ({ context, params, deps }) => {
+    // NOTE: `allCategories` is deliberately NOT seeded into `context.queryClient` here (e.g. via
+    // `ensureQueryData`) even though `useCategoryTree` below re-fetches the same data client-side
+    // with a plain `useQuery` -- this app's router has no SSR/client query-cache dehydration
+    // wiring (no `@tanstack/react-router-ssr-query`, no manual dehydrate/hydrate), so a
+    // server-only-seeded plain `useQuery` renders full content in the SSR HTML but empty/loading
+    // content on the client's first hydration pass, which is a genuine React hydration-mismatch
+    // crash (confirmed live: reproducible on every category page load), not just a cosmetic
+    // flash. `propertyListOptions` below gets away with the equivalent seed only because it's
+    // read via `useSuspenseQuery`, which *suspends* instead of mismatching when the client cache
+    // is empty (React's selective hydration treats a Suspense boundary pausing as expected, not
+    // an error) -- `useCategoryTree`'s plain `useQuery` has no such protection.
     const [category, allCategories] = await Promise.all([
       catalogClient.categoryByPath(`/${params._splat}`),
       catalogClient.listCategories(),
@@ -293,17 +304,32 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
       </Container>
 
       <Container wide className="py-8">
-        {items.length === 0 ? (
+        {items.length === 0 && data.total === 0 ? (
           <EmptyState
             title="Bu kategoriyada hali e'lon yo'q"
             description="Tez orada shu kategoriyaga tegishli yangi e'lonlar paydo bo'ladi."
           />
+        ) : items.length === 0 ? (
+          <EmptyState
+            title="Filtrga mos e'lon topilmadi"
+            description="Boshqa sahifada yoki filtrsiz qidirib ko'ring."
+          />
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {items.map((p, i) => (
-              <PropertyCard key={p.id} property={p} index={i} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {items.map((p, i) => (
+                <PropertyCard key={p.id} property={p} index={i} />
+              ))}
+            </div>
+            <PropertyPager
+              page={search.page}
+              pageSize={data.page_size}
+              total={data.total}
+              onPageChange={(page) =>
+                navigate({ search: (prev: typeof search) => ({ ...prev, page }) })
+              }
+            />
+          </>
         )}
       </Container>
 
@@ -340,6 +366,45 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
         </Container>
       </section>
     </AppShell>
+  );
+}
+
+function PropertyPager({
+  page,
+  pageSize,
+  total,
+  onPageChange,
+}: {
+  page: number;
+  pageSize: number;
+  total: number;
+  onPageChange: (page: number) => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="mt-10 flex items-center justify-center gap-3">
+      <button
+        type="button"
+        disabled={page <= 1}
+        onClick={() => onPageChange(page - 1)}
+        className="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground disabled:opacity-40"
+      >
+        Oldingi
+      </button>
+      <span className="text-sm text-muted-foreground">
+        {page} / {totalPages}
+      </span>
+      <button
+        type="button"
+        disabled={page >= totalPages}
+        onClick={() => onPageChange(page + 1)}
+        className="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground disabled:opacity-40"
+      >
+        Keyingi
+      </button>
+    </div>
   );
 }
 
@@ -534,14 +599,20 @@ function CatalogDirectionView({
             title={
               listings.length > 0
                 ? "Filtrga mos e'lon topilmadi"
-                : "Bu kategoriyada hali e'lon yo'q"
+                : "Bu kategoriyada to'g'ridan-to'g'ri e'lon yo'q"
             }
             description={
               listings.length > 0
                 ? "Filtrlarni o'zgartirib qayta urinib ko'ring."
-                : kind === "SERVICE"
-                  ? "Tez orada bu yo'nalishda xizmat ko'rsatuvchilar ro'yxatdan o'tadi."
-                  : "Tez orada shu kategoriyaga tegishli yangi e'lonlar paydo bo'ladi."
+                : markers.length > 0
+                  ? // Contradicts a populated map otherwise: `markers` is a subtree search
+                    // (categoryPathPrefix) while `listings`/`sorted` are exact-category-only, so
+                    // a parent with only subcategory listings would say "nothing here" right
+                    // above a map full of pins.
+                    "Lekin quyidagi bo'limlarda (pastdagi xaritada) tegishli e'lonlar mavjud."
+                  : kind === "SERVICE"
+                    ? "Tez orada bu yo'nalishda xizmat ko'rsatuvchilar ro'yxatdan o'tadi."
+                    : "Tez orada shu kategoriyaga tegishli yangi e'lonlar paydo bo'ladi."
             }
           />
         )}
@@ -608,6 +679,10 @@ function CatalogDirectionView({
 
 function CategoryPage() {
   const { category, kind } = Route.useLoaderData();
-  if (kind === "PROPERTY") return <PropertyDirectionView category={category} />;
-  return <CatalogDirectionView category={category} kind={kind} />;
+  // `key={category.id}` forces a remount on every category-to-category navigation -- without
+  // it, TanStack Router reuses the same component instance (same as React Router) and each
+  // view's local `useState` (filters, sort, selectedCompanyId, featuredOnly) silently survives
+  // into the new category, applying the previous category's filter state to it.
+  if (kind === "PROPERTY") return <PropertyDirectionView category={category} key={category.id} />;
+  return <CatalogDirectionView category={category} kind={kind} key={category.id} />;
 }

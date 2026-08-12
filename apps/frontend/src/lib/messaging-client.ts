@@ -2,7 +2,7 @@
  * Messaging API client — matches contracts/openapi.yaml's conversation/message paths
  * (`/conversations`, `/conversations/{id}/messages`, `/conversations/{id}/phone-reveal`).
  */
-import { http } from "@/lib/http";
+import { http, ApiError } from "@/lib/http";
 
 export interface Conversation {
   id: string;
@@ -55,3 +55,26 @@ export const messagingApi = {
     return http.post(`/conversations/${conversationId}/phone-reveal`);
   },
 };
+
+/**
+ * `startConversation` is one-per-(listing, initiator) on the backend (409 `DUPLICATE_KEY` on a
+ * repeat call) -- the Problem envelope never carries the existing conversation's id back inline,
+ * so on a 409 the only way to recover it is to list and match by `listingId`. Without this, a
+ * caller who already has a conversation for a listing (came back, or double-clicked) gets a raw
+ * "conversation already exists" error instead of being taken to their existing thread.
+ */
+export async function ensureConversationForListing(
+  listingId: string,
+  message: string,
+): Promise<Conversation> {
+  try {
+    return await messagingApi.startConversation(listingId, message);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409) {
+      const { items } = await messagingApi.listConversations();
+      const existing = items.find((c) => c.listingId === listingId);
+      if (existing) return existing;
+    }
+    throw err;
+  }
+}

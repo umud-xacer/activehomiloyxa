@@ -162,6 +162,7 @@ function createPropertyFromBackend(
 
   return {
     id: listing.id,
+    owner_user_id: listing.ownerUserId ?? "",
     slug: listing.slug,
     title: listing.title,
     description: listing.description ?? "",
@@ -477,6 +478,7 @@ interface BackendListing {
   images?: BackendListingImage[];
   createdAt: string;
   updatedAt: string;
+  ownerUserId?: string | null;
   ownerProfileId?: string | null;
 }
 

@@ -1,6 +1,7 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { type FormEvent, useState } from "react";
 import {
   BedDouble,
   Bath,
@@ -13,6 +14,7 @@ import {
   Star,
   Phone,
   Mail,
+  Loader2,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Container } from "@/components/layout/Container";
@@ -22,6 +24,9 @@ import type { MapMarker } from "@/components/map/YandexMapView";
 import { ListingLocationSection } from "@/components/listing/ListingLocationSection";
 import { nearbyPropertiesOptions, propertyOptions } from "@/features/properties/queries";
 import { formatArea, formatCurrency, formatPriceWithUnit } from "@/lib/format";
+import { useMe } from "@/features/auth/useAuth";
+import { messagingApi, ensureConversationForListing } from "@/lib/messaging-client";
+import { ApiError } from "@/lib/http";
 
 export const Route = createFileRoute("/properties/$slug")({
   loader: async ({ context, params }) => {
@@ -305,14 +310,11 @@ function PropertyDetail() {
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-2">
-                  <button className="inline-flex items-center justify-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:shadow-glow">
-                    <Phone className="size-4" /> Call agent
-                  </button>
-                  <button className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted">
-                    <Mail className="size-4" /> Send message
-                  </button>
-                </div>
+                <ContactSellerActions
+                  listingId={property.id}
+                  ownerUserId={property.owner_user_id}
+                  listingTitle={property.title}
+                />
 
                 <div className="mt-4 grid grid-cols-3 gap-2 border-t border-border pt-4 text-center text-xs">
                   <div>
@@ -352,5 +354,137 @@ function PropertyDetail() {
         </section>
       )}
     </AppShell>
+  );
+}
+
+function ContactSellerActions({
+  listingId,
+  ownerUserId,
+  listingTitle,
+}: {
+  listingId: string;
+  ownerUserId: string;
+  listingTitle: string;
+}) {
+  const navigate = useNavigate();
+  const { data: account } = useMe();
+  const [composing, setComposing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [revealing, setRevealing] = useState(false);
+  const [phone, setPhone] = useState<{ allowed: boolean; phoneNumber: string | null } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  if (account && ownerUserId && account.id === ownerUserId) return null;
+
+  const requireAuth = (run: () => void) => {
+    if (!account) {
+      navigate({
+        to: "/auth/sign-in",
+        search: { redirect: typeof window !== "undefined" ? window.location.href : undefined },
+      });
+      return;
+    }
+    run();
+  };
+
+  const handleCall = () =>
+    requireAuth(async () => {
+      setRevealing(true);
+      setError(null);
+      try {
+        const conversation = await ensureConversationForListing(
+          listingId,
+          `Salom! "${listingTitle}" e'loni bo'yicha qiziqib qoldim.`,
+        );
+        setPhone(await messagingApi.revealPhone(conversation.id));
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Bog'lanib bo'lmadi.");
+      } finally {
+        setRevealing(false);
+      }
+    });
+
+  const handleSend = (e: FormEvent) => {
+    e.preventDefault();
+    const body = draft.trim();
+    if (!body) return;
+    setSending(true);
+    setError(null);
+    ensureConversationForListing(listingId, body)
+      .then((conversation) => {
+        navigate({ to: "/messages", search: { conversationId: conversation.id } });
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof ApiError ? err.message : "Yuborilmadi.");
+      })
+      .finally(() => setSending(false));
+  };
+
+  return (
+    <div className="mt-4 grid gap-2">
+      <button
+        type="button"
+        onClick={handleCall}
+        disabled={revealing}
+        className="inline-flex items-center justify-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:shadow-glow disabled:opacity-60"
+      >
+        {revealing ? <Loader2 className="size-4 animate-spin" /> : <Phone className="size-4" />}
+        {phone
+          ? phone.allowed
+            ? phone.phoneNumber
+            : "Telefon yashirilgan"
+          : revealing
+            ? "Yuklanmoqda…"
+            : "Qo'ng'iroq qilish"}
+      </button>
+      {phone?.allowed && phone.phoneNumber && (
+        <a
+          href={`tel:${phone.phoneNumber}`}
+          className="text-center text-xs font-medium text-primary hover:underline"
+        >
+          {phone.phoneNumber} raqamiga qo'ng'iroq qilish
+        </a>
+      )}
+
+      {!composing ? (
+        <button
+          type="button"
+          onClick={() => requireAuth(() => setComposing(true))}
+          className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted"
+        >
+          <Mail className="size-4" /> Xabar yuborish
+        </button>
+      ) : (
+        <form onSubmit={handleSend} className="space-y-2">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Xabaringizni yozing…"
+            rows={3}
+            autoFocus
+            className="w-full rounded-2xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+          />
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={sending || !draft.trim()}
+              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:shadow-glow disabled:opacity-60"
+            >
+              {sending ? <Loader2 className="size-4 animate-spin" /> : "Yuborish"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setComposing(false)}
+              className="rounded-full border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted"
+            >
+              Bekor qilish
+            </button>
+          </div>
+        </form>
+      )}
+
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
   );
 }

@@ -12,6 +12,9 @@ import { ApiError } from "@/lib/http";
 
 export const Route = createFileRoute("/messages")({
   beforeLoad: requireAuth,
+  validateSearch: (search: Record<string, unknown>): { conversationId?: string } => ({
+    conversationId: typeof search.conversationId === "string" ? search.conversationId : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Xabarlar — ActiveHome" },
@@ -23,7 +26,8 @@ export const Route = createFileRoute("/messages")({
 
 function Page() {
   const { data: account } = useMe();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { conversationId } = Route.useSearch();
+  const [selectedId, setSelectedId] = useState<string | null>(conversationId ?? null);
 
   const { data: conversations = [], isLoading } = useQuery({
     queryKey: ["conversations"],

@@ -39,6 +39,9 @@ export interface CatalogListing {
    * just not previously declared on this frontend type. Drives the "Top kompaniyalar" section
    * (`components/catalog/TopCompanies.tsx`) -- no backend change needed for that feature. */
   ownerProfileId?: string | null;
+  /** The account that posted this listing -- always present on the backend DTO (`owner_user_id`,
+   * required), used to hide the "contact seller" actions on a viewer's own listing. */
+  ownerUserId?: string;
   attributes: Record<string, unknown>;
   price: { amount: string; currency: string } | null;
   location: { latitude: number; longitude: number } | null;
@@ -166,7 +169,10 @@ export const catalogClient = {
 
   async categoryByPath(path: string): Promise<CategorySummary | null> {
     const categories = await fetchCategories();
-    return categories.find((c) => c.path === path) ?? null;
+    // Trailing-slash URLs (bookmarks, external links, copy-paste) must still resolve -- stored
+    // paths never carry one, so a bare `===` would 404 an otherwise-valid category.
+    const normalized = path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
+    return categories.find((c) => c.path === normalized) ?? null;
   },
 
   async listingsByCategoryPath(path: string, limit = 20): Promise<CatalogListing[]> {

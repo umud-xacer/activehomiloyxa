@@ -12,7 +12,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Loader2, MapPin, MessageCircle, ImageOff, ChevronRight } from "lucide-react";
+import { Loader2, MapPin, MessageCircle, Phone, ImageOff, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ErrorState } from "@/components/state/ErrorState";
 import type { MapMarker } from "@/components/map/YandexMapView";
@@ -25,7 +25,7 @@ import {
   type FormField,
 } from "@/lib/catalog-client";
 import { getMediaAssetUrl } from "@/lib/media-client";
-import { messagingApi } from "@/lib/messaging-client";
+import { messagingApi, ensureConversationForListing } from "@/lib/messaging-client";
 import { useMe } from "@/features/auth/useAuth";
 import { ApiError } from "@/lib/http";
 import { categoryLabel } from "@/components/site/CategoryCarousel";
@@ -150,6 +150,12 @@ function Page() {
 
   const [contactBusy, setContactBusy] = useState(false);
   const [contactError, setContactError] = useState<string | null>(null);
+  const [revealing, setRevealing] = useState(false);
+  const [phone, setPhone] = useState<{ allowed: boolean; phoneNumber: string | null } | null>(null);
+
+  const isOwnListing = Boolean(
+    account && listing?.ownerUserId && account.id === listing.ownerUserId,
+  );
 
   const contactSeller = async () => {
     if (!listing) return;
@@ -160,15 +166,36 @@ function Page() {
     setContactBusy(true);
     setContactError(null);
     try {
-      await messagingApi.startConversation(
+      const conversation = await ensureConversationForListing(
         listing.id,
         `Salom! "${listing.title}" e'loni haqida qiziqyapman.`,
       );
-      navigate({ to: "/messages" });
+      navigate({ to: "/messages", search: { conversationId: conversation.id } });
     } catch (err) {
       setContactError(err instanceof ApiError ? err.message : "Xabar yuborib bo'lmadi.");
     } finally {
       setContactBusy(false);
+    }
+  };
+
+  const revealSellerPhone = async () => {
+    if (!listing) return;
+    if (!account) {
+      navigate({ to: "/auth/sign-in" });
+      return;
+    }
+    setRevealing(true);
+    setContactError(null);
+    try {
+      const conversation = await ensureConversationForListing(
+        listing.id,
+        `Salom! "${listing.title}" e'loni haqida qiziqyapman.`,
+      );
+      setPhone(await messagingApi.revealPhone(conversation.id));
+    } catch (err) {
+      setContactError(err instanceof ApiError ? err.message : "Bog'lanib bo'lmadi.");
+    } finally {
+      setRevealing(false);
     }
   };
 
@@ -291,36 +318,65 @@ function Page() {
           </div>
 
           {/* Contact sidebar */}
-          <div>
-            <div className="sticky top-28 rounded-3xl border border-border bg-card p-6 shadow-soft">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <MessageCircle className="size-4 text-primary" />
-                E'lon egasi bilan bog'lanish
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Xabar yuborsangiz, suhbat "Xabarlar" bo'limida ochiladi.
-              </p>
-              {contactError && (
-                <p className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                  {contactError}
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={contactSeller}
-                disabled={contactBusy}
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow disabled:opacity-60"
-              >
-                {contactBusy && <Loader2 className="size-4 animate-spin" />}
-                Xabar yozish
-              </button>
-              {listing.location && (
-                <div className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <MapPin className="size-3.5" /> Xaritada joylashuvi mavjud
+          {!isOwnListing && (
+            <div>
+              <div className="sticky top-28 rounded-3xl border border-border bg-card p-6 shadow-soft">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <MessageCircle className="size-4 text-primary" />
+                  E'lon egasi bilan bog'lanish
                 </div>
-              )}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Xabar yuborsangiz, suhbat "Xabarlar" bo'limida ochiladi.
+                </p>
+                {contactError && (
+                  <p className="mt-3 rounded-xl bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {contactError}
+                  </p>
+                )}
+                <div className="mt-4 grid gap-2">
+                  <button
+                    type="button"
+                    onClick={revealSellerPhone}
+                    disabled={revealing}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-soft transition hover:bg-muted disabled:opacity-60"
+                  >
+                    {revealing ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Phone className="size-4" />
+                    )}
+                    {phone
+                      ? phone.allowed
+                        ? phone.phoneNumber
+                        : "Telefon yashirilgan"
+                      : "Qo'ng'iroq qilish"}
+                  </button>
+                  {phone?.allowed && phone.phoneNumber && (
+                    <a
+                      href={`tel:${phone.phoneNumber}`}
+                      className="text-center text-xs font-medium text-primary hover:underline"
+                    >
+                      {phone.phoneNumber} raqamiga qo'ng'iroq qilish
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={contactSeller}
+                    disabled={contactBusy}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow disabled:opacity-60"
+                  >
+                    {contactBusy && <Loader2 className="size-4 animate-spin" />}
+                    Xabar yozish
+                  </button>
+                </div>
+                {listing.location && (
+                  <div className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <MapPin className="size-3.5" /> Xaritada joylashuvi mavjud
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {category && (

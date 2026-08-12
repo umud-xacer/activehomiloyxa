@@ -51,6 +51,7 @@ export interface Review {
 
 export interface Property {
   id: string;
+  owner_user_id: string;
   slug: string;
   title: string;
   description: string;
