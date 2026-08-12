@@ -17,17 +17,20 @@ const WELCOME: ChatMessage = {
   text: "Assalomu alaykum! Men Active Home yordamchisiman. Sizga qanday yordam bera olaman? Uy va mulk, xizmatlar, investorlar, bron qilish yoki kompaniyalar haqida so'rashingiz mumkin.",
 };
 
+const AUTO_OPEN_SEEN_KEY = "ah:chat-auto-opened";
+
 /**
  * Global "AI Chat Assistant" -- a self-positioned floating widget (not part of the navbar's own
  * layout flow, so the navbar redesign doesn't have to make room for it) rendered once from
- * `Navbar.tsx`, which itself renders on every page (`routes/index.tsx` and `AppShell.tsx`). Opens
- * itself shortly after mount -- since neither of those two Navbar call sites sits inside one
- * shared persistent root layout, every full navigation between them remounts this component too,
- * so the panel greets the visitor again each time they land on a fresh page, not just on a hard
- * refresh. Always closable (X button) and always reachable again via the floating bubble that
- * remains once closed. Answering logic lives in `features/assistant/knowledge-base.ts` --
- * deliberately keyless/on-topic-by-construction rather than a general LLM call (see that file's
- * header).
+ * `Navbar.tsx`, which itself renders on every page (`routes/index.tsx` and `AppShell.tsx`).
+ * Greets the visitor with the welcome message exactly once per browser -- a `localStorage` flag
+ * (not `sessionStorage`: a returning visitor a week later shouldn't be re-greeted either) blocks
+ * every later auto-open, since neither of the two Navbar call sites sits inside one shared
+ * persistent root layout and every full navigation between them remounts this component (so a
+ * plain "opened this render" flag alone would re-pop on every page, not just the first visit).
+ * Always closable (X button) and always reachable again via the floating bubble that remains once
+ * closed. Answering logic lives in `features/assistant/knowledge-base.ts` -- deliberately
+ * keyless/on-topic-by-construction rather than a general LLM call (see that file's header).
  */
 export function ChatAssistant() {
   const [open, setOpen] = useState(false);
@@ -36,8 +39,16 @@ export function ChatAssistant() {
   const [typing, setTyping] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
+  // Auto-opens with the greeting exactly once per browser (persisted in localStorage, not
+  // sessionStorage -- a returning visitor a week later shouldn't be greeted again either).
+  // Every later page load/navigation leaves the bubble closed by default; the floating bubble
+  // (always rendered below) still opens it on demand at any time.
   useEffect(() => {
-    const timer = window.setTimeout(() => setOpen(true), 700);
+    if (window.localStorage.getItem(AUTO_OPEN_SEEN_KEY)) return;
+    const timer = window.setTimeout(() => {
+      setOpen(true);
+      window.localStorage.setItem(AUTO_OPEN_SEEN_KEY, "1");
+    }, 700);
     return () => window.clearTimeout(timer);
   }, []);
 

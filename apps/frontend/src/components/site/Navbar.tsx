@@ -78,150 +78,160 @@ export function Navbar() {
     .toUpperCase();
 
   return (
-    <motion.header
-      initial={{ y: -24, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.7, ease: EASE }}
-      className={`fixed inset-x-0 top-0 z-50 px-4 transition-[padding] duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
-        scrolled ? "pt-2.5" : "pt-4"
-      }`}
-    >
-      <div
-        className={`glass mx-auto flex max-w-7xl items-center justify-between rounded-full transition-all duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
-          scrolled ? "gap-1 px-3.5 py-2 shadow-elevated" : "gap-1.5 px-4 py-2.5 shadow-soft"
+    // Fragment, not a single root -- `ChatAssistant` renders its own `position: fixed` bubble
+    // and panel, which MUST live outside `motion.header`: any CSS `transform` on an ancestor
+    // (framer-motion keeps one applied on `motion.header` even at rest) creates a new containing
+    // block for `fixed` descendants, so the widget would position itself relative to the ~70px
+    // header bar instead of the real viewport -- confirmed live (the bubble rendered at
+    // `top: -30px`, off-screen, instead of anywhere near the bottom-right corner it's styled for).
+    <>
+      <motion.header
+        initial={{ y: -24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.7, ease: EASE }}
+        className={`fixed inset-x-0 top-0 z-50 px-4 transition-[padding] duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          scrolled ? "pt-2.5" : "pt-4"
         }`}
       >
-        <div className="flex shrink-0 items-center gap-0.5">
-          <MobileMenu account={account} onLogout={onLogout} />
-          <Link
-            to="/"
-            className="flex shrink-0 items-center gap-2 pl-1 transition-transform duration-300 hover:scale-[1.03] active:scale-[0.98]"
-          >
-            <Logo className={`w-auto transition-all duration-[400ms] ${scrolled ? "h-7" : "h-8"}`} />
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <SocialIconsRow className="hidden xl:flex" />
-          <Divider className="hidden xl:block" />
-
-          {/* `lg:` (not `md:`) on purpose -- tablet (768-1023px) has the same "no room for a
-              full chrome row" constraint as mobile and gets the same MobileMenu drawer for
-              secondary functions; only small-laptop-and-up (1024px+) shows the full row inline. */}
-          <div className="hidden items-center gap-1.5 lg:flex">
-            <LanguageSwitcher />
-            <ThemeToggle />
+        <div
+          className={`glass mx-auto flex max-w-7xl items-center justify-between rounded-full transition-all duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+            scrolled ? "gap-1 px-3.5 py-2 shadow-elevated" : "gap-1.5 px-4 py-2.5 shadow-soft"
+          }`}
+        >
+          <div className="flex shrink-0 items-center gap-0.5">
+            <MobileMenu account={account} onLogout={onLogout} />
+            <Link
+              to="/"
+              className="flex shrink-0 items-center gap-2 pl-1 transition-transform duration-300 hover:scale-[1.03] active:scale-[0.98]"
+            >
+              <Logo
+                className={`w-auto transition-all duration-[400ms] ${scrolled ? "h-7" : "h-8"}`}
+              />
+            </Link>
           </div>
 
-          <Divider className="hidden lg:block" />
+          <div className="flex items-center gap-1">
+            <SocialIconsRow className="hidden xl:flex" />
+            <Divider className="hidden xl:block" />
 
-          <Link
-            to="/properties"
-            aria-label={t("nav.search", "Qidiruv")}
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-foreground/75 transition hover:bg-secondary hover:text-foreground lg:hidden"
-          >
-            <Search className="size-4.5" />
-          </Link>
+            {/* `lg:` (not `md:`) on purpose -- tablet (768-1023px) has the same "no room for a
+              full chrome row" constraint as mobile and gets the same MobileMenu drawer for
+              secondary functions; only small-laptop-and-up (1024px+) shows the full row inline. */}
+            <div className="hidden items-center gap-1.5 lg:flex">
+              <LanguageSwitcher />
+              <ThemeToggle />
+            </div>
 
-          {!isLegalEntity && (
+            <Divider className="hidden lg:block" />
+
             <Link
-              to="/list"
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow sm:px-3.5"
+              to="/properties"
+              aria-label={t("nav.search", "Qidiruv")}
+              className="flex size-9 shrink-0 items-center justify-center rounded-full text-foreground/75 transition hover:bg-secondary hover:text-foreground lg:hidden"
             >
-              <Plus className="size-3.5" />
-              <span className="hidden sm:inline">{t("nav.postAd", "E'lon joylash")}</span>
+              <Search className="size-4.5" />
             </Link>
-          )}
 
-          {account ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  aria-label={t("nav.account", "Mening hisobim")}
-                  className="ml-0.5 flex items-center justify-center rounded-full transition hover:scale-[1.05] active:scale-[0.97]"
-                >
-                  <Avatar className="size-9 ring-2 ring-transparent transition hover:ring-primary/40">
-                    <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel className="flex items-center gap-2">
-                  <UserRound className="size-3.5" />
-                  <span className="truncate">{account.displayName || account.email}</span>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {isLegalEntity ? (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link to="/dashboard/business-profile">
-                        <Building2 className="mr-2 size-4" />
-                        Kompaniya ma'lumotlarini tahrirlash
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to={dashboardPathForAccount(account)}>
-                        <LayoutDashboard className="mr-2 size-4" />
-                        Boshqaruv paneli
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/list">
-                        <Plus className="mr-2 size-4" />
-                        E'lon joylash
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
-                ) : (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link to={dashboardPathForAccount(account)}>
-                        <LayoutDashboard className="mr-2 size-4" />
-                        Boshqaruv paneli
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link to="/favorites">
-                        <Heart className="mr-2 size-4" />
-                        Saqlanganlar
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuItem asChild>
-                  <Link to="/settings">
-                    <Settings className="mr-2 size-4" />
-                    Sozlamalar
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={onLogout}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <LogOut className="mr-2 size-4" />
-                  Chiqish
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Link
-              to="/auth/sign-in"
-              aria-label={t("nav.signin")}
-              className="group relative inline-flex items-center rounded-full px-2.5 py-1.5 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground sm:px-3.5"
-            >
-              <UserRound className="size-4 sm:hidden" />
-              <span className="hidden sm:inline">{t("nav.signin")}</span>
-              <span className="pointer-events-none absolute inset-x-3.5 bottom-1.5 hidden h-px origin-center scale-x-0 bg-foreground/40 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100 sm:block" />
-            </Link>
-          )}
+            {!isLegalEntity && (
+              <Link
+                to="/list"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow sm:px-3.5"
+              >
+                <Plus className="size-3.5" />
+                <span className="hidden sm:inline">{t("nav.postAd", "E'lon joylash")}</span>
+              </Link>
+            )}
+
+            {account ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    aria-label={t("nav.account", "Mening hisobim")}
+                    className="ml-0.5 flex items-center justify-center rounded-full transition hover:scale-[1.05] active:scale-[0.97]"
+                  >
+                    <Avatar className="size-9 ring-2 ring-transparent transition hover:ring-primary/40">
+                      <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel className="flex items-center gap-2">
+                    <UserRound className="size-3.5" />
+                    <span className="truncate">{account.displayName || account.email}</span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {isLegalEntity ? (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/dashboard/business-profile">
+                          <Building2 className="mr-2 size-4" />
+                          Kompaniya ma'lumotlarini tahrirlash
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to={dashboardPathForAccount(account)}>
+                          <LayoutDashboard className="mr-2 size-4" />
+                          Boshqaruv paneli
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/list">
+                          <Plus className="mr-2 size-4" />
+                          E'lon joylash
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to={dashboardPathForAccount(account)}>
+                          <LayoutDashboard className="mr-2 size-4" />
+                          Boshqaruv paneli
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/favorites">
+                          <Heart className="mr-2 size-4" />
+                          Saqlanganlar
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuItem asChild>
+                    <Link to="/settings">
+                      <Settings className="mr-2 size-4" />
+                      Sozlamalar
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={onLogout}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <LogOut className="mr-2 size-4" />
+                    Chiqish
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link
+                to="/auth/sign-in"
+                aria-label={t("nav.signin")}
+                className="group relative inline-flex items-center rounded-full px-2.5 py-1.5 text-sm font-medium text-foreground/75 transition-colors duration-200 hover:text-foreground sm:px-3.5"
+              >
+                <UserRound className="size-4 sm:hidden" />
+                <span className="hidden sm:inline">{t("nav.signin")}</span>
+                <span className="pointer-events-none absolute inset-x-3.5 bottom-1.5 hidden h-px origin-center scale-x-0 bg-foreground/40 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100 sm:block" />
+              </Link>
+            )}
+          </div>
         </div>
-      </div>
+      </motion.header>
 
       <ChatAssistant />
-    </motion.header>
+    </>
   );
 }
 
