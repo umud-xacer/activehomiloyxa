@@ -15,6 +15,7 @@ from configuration.application.exceptions import (
     ConfigVersionNotFoundError,
     GateFailedError,
     InvalidDraftRequestError,
+    OwnerAdminAccessLockedOutError,
     VersionNotPublishableError,
 )
 from configuration.domain import (
@@ -128,5 +129,13 @@ def register_configuration_exception_mappings(mapper: ExceptionMapper) -> None:
             status=422,
             code="VALIDATION_FAILED",
             title="Invalid configuration draft request",
+        ),
+    )
+    mapper.register(
+        OwnerAdminAccessLockedOutError,
+        simple_problem_builder(
+            status=429,
+            code="RATE_LIMITED",
+            title="Too many failed owner-admin-access attempts, try again later",
         ),
     )

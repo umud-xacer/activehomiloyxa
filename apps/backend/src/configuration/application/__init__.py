@@ -9,9 +9,14 @@ from configuration.application.exceptions import (
     ConfigVersionNotFoundError,
     GateFailedError,
     InvalidDraftRequestError,
+    OwnerAdminAccessLockedOutError,
     VersionNotPublishableError,
 )
-from configuration.application.ports import ConfigHeadRepository, SnapshotCachePort
+from configuration.application.ports import (
+    ConfigHeadRepository,
+    OwnerAdminLockoutPort,
+    SnapshotCachePort,
+)
 from configuration.application.use_cases import ConfigurationUseCases
 
 __all__ = [
@@ -22,6 +27,8 @@ __all__ = [
     "ConfigurationUseCases",
     "GateFailedError",
     "InvalidDraftRequestError",
+    "OwnerAdminAccessLockedOutError",
+    "OwnerAdminLockoutPort",
     "SnapshotCachePort",
     "VersionNotPublishableError",
 ]

@@ -14,6 +14,7 @@ import pytest
 from apps.backend.tests.configuration.conftest import (
     FakeConfigHeadRepository,
     FakeOutbox,
+    FakeOwnerAdminLockoutCounter,
     FakeSnapshotCache,
 )
 from fastapi import Header
@@ -25,6 +26,7 @@ from configuration.interfaces.auth import ActingAdmin, get_acting_admin
 from configuration.interfaces.di import (
     get_category_read_use_cases,
     get_configuration_use_cases,
+    get_owner_admin_lockout_counter,
 )
 from main import create_app
 
@@ -62,6 +64,7 @@ def client(
     fake_repo: FakeConfigHeadRepository,
     fake_cache: FakeSnapshotCache,
     fake_outbox: FakeOutbox,
+    fake_owner_admin_lockout: FakeOwnerAdminLockoutCounter,
 ) -> Iterator[TestClient]:
     app = create_app()
     app.dependency_overrides[get_configuration_use_cases] = lambda: ConfigurationUseCases(
@@ -71,6 +74,7 @@ def client(
         fake_repo, fake_cache
     )
     app.dependency_overrides[get_acting_admin] = _acting_admin_from_headers
+    app.dependency_overrides[get_owner_admin_lockout_counter] = lambda: fake_owner_admin_lockout
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
 
@@ -341,3 +345,48 @@ def test_public_categories_endpoints_need_no_auth(client: TestClient) -> None:
 
     missing = client.get(f"/api/v1/categories/{uuid4()}")
     assert missing.status_code == 404
+
+
+# --- verifyOwnerAdminSlug + its IP-scoped lockout -------------------------------------------
+
+
+def test_verify_owner_admin_slug_correct_guess_is_valid(client: TestClient) -> None:
+    """No `platform-settings-global` head exists in `fake_repo` by default, so the real slug is
+    the built-in default (`interfaces/routers.py`'s `_OWNER_ADMIN_SLUG_DEFAULT`)."""
+    response = client.post("/api/v1/public/owner-admin-access/verify", json={"slug": "owner-admin"})
+    assert response.status_code == 200
+    assert response.json() == {"valid": True}
+
+
+def test_verify_owner_admin_slug_wrong_guess_is_invalid(client: TestClient) -> None:
+    response = client.post("/api/v1/public/owner-admin-access/verify", json={"slug": "not-it"})
+    assert response.status_code == 200
+    assert response.json() == {"valid": False}
+
+
+def test_verify_owner_admin_slug_locks_out_after_repeated_wrong_guesses(
+    client: TestClient,
+) -> None:
+    for _ in range(5):
+        response = client.post("/api/v1/public/owner-admin-access/verify", json={"slug": "not-it"})
+        assert response.status_code == 200
+
+    locked = client.post("/api/v1/public/owner-admin-access/verify", json={"slug": "not-it"})
+    assert locked.status_code == 429
+    assert locked.json()["code"] == "RATE_LIMITED"
+    assert "retry-after" in locked.headers
+
+    # A correct guess is refused too while locked out -- the oracle answers nothing at all once
+    # the caller has been rate-limited, not even a true "valid": True.
+    still_locked = client.post(
+        "/api/v1/public/owner-admin-access/verify", json={"slug": "owner-admin"}
+    )
+    assert still_locked.status_code == 429
+
+
+def test_verify_owner_admin_slug_correct_guess_resets_the_lockout_counter(
+    client: TestClient, fake_owner_admin_lockout: FakeOwnerAdminLockoutCounter
+) -> None:
+    client.post("/api/v1/public/owner-admin-access/verify", json={"slug": "not-it"})
+    client.post("/api/v1/public/owner-admin-access/verify", json={"slug": "owner-admin"})
+    assert fake_owner_admin_lockout.counts == {}

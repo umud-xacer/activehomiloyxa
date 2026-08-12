@@ -52,3 +52,16 @@ class InvalidDraftRequestError(ValueError):
 
     def __init__(self, reason: str) -> None:
         super().__init__(reason)
+
+
+class OwnerAdminAccessLockedOutError(RuntimeError):
+    """Too many consecutive wrong-guess calls to `verifyOwnerAdminSlug` from this IP within the
+    lockout window (`interfaces/routers.py`'s `_OWNER_ADMIN_LOCKOUT_*` constants). Same shape as
+    `identity.domain.exceptions.LoginLockedOutError` -- `retry_after_seconds` is read generically
+    by `backbone.errors.middleware`'s duck-typed `Retry-After` header convention."""
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        self.retry_after_seconds = retry_after_seconds
+        super().__init__(
+            f"owner-admin-access oracle locked out, retry after {retry_after_seconds}s"
+        )

@@ -194,6 +194,28 @@ class FakeOutbox:
         self.events.append(event)
 
 
+@dataclass
+class FakeOwnerAdminLockoutCounter:
+    """In-memory stand-in for `OwnerAdminLockoutPort` (`RedisOwnerAdminLockoutCounter` in
+    production) -- an in-memory `{identifier: count}` map, mirroring `identity`'s own
+    `FakeLoginAttemptTracker` (`identity/tests/conftest.py`)."""
+
+    counts: dict[str, int] = field(default_factory=dict)
+
+    async def record_failure(self, *, identifier: str, window_seconds: int) -> int:
+        self.counts[identifier] = self.counts.get(identifier, 0) + 1
+        return self.counts[identifier]
+
+    async def get_failure_count(self, *, identifier: str) -> int:
+        return self.counts.get(identifier, 0)
+
+    async def get_retry_after_seconds(self, *, identifier: str) -> int:
+        return 900 if self.counts.get(identifier, 0) > 0 else 0
+
+    async def reset(self, *, identifier: str) -> None:
+        self.counts.pop(identifier, None)
+
+
 @pytest.fixture
 def fake_repo() -> FakeConfigHeadRepository:
     return FakeConfigHeadRepository()
@@ -207,6 +229,11 @@ def fake_cache() -> FakeSnapshotCache:
 @pytest.fixture
 def fake_outbox() -> FakeOutbox:
     return FakeOutbox()
+
+
+@pytest.fixture
+def fake_owner_admin_lockout() -> FakeOwnerAdminLockoutCounter:
+    return FakeOwnerAdminLockoutCounter()
 
 
 @pytest.fixture

@@ -87,6 +87,25 @@ class ConfigHeadRepository(Protocol):
     ) -> bool: ...
 
 
+class OwnerAdminLockoutPort(Protocol):
+    """IP-scoped consecutive-wrong-guess counter behind `verifyOwnerAdminSlug`'s lockout
+    (`interfaces/routers.py`). Same shape as `identity.application.ports.LoginAttemptTrackerPort`
+    (single `identifier` here -- an IP -- since this endpoint has only one scope, unlike login's
+    ip+account pair) -- kept as a `Protocol` here rather than importing `backbone.rate_limit`'s
+    concrete `RedisWindowCounter` straight into `interfaces`: DEC-18 forbids a provider SDK/
+    datastore client type (here, `redis`, transitively) crossing a module's `interfaces/`
+    boundary. The real Redis-backed adapter lives in `infrastructure/`, wired at the composition
+    root, exactly like `SnapshotCachePort`/`RedisSnapshotCache` below."""
+
+    async def record_failure(self, *, identifier: str, window_seconds: int) -> int: ...
+
+    async def get_failure_count(self, *, identifier: str) -> int: ...
+
+    async def get_retry_after_seconds(self, *, identifier: str) -> int: ...
+
+    async def reset(self, *, identifier: str) -> None: ...
+
+
 class SnapshotCachePort(Protocol):
     """Redis-backed consumer-facing snapshot cache (Config Framework Sec 2.4: "Conforming
     consumers refresh their cached snapshots ... the platform keeps serving the last good

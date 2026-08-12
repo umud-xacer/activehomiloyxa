@@ -76,6 +76,7 @@ class AuthenticationUseCases:
         platform_settings: PlatformSettingsReaderPort,
         login_attempts: LoginAttemptTrackerPort,
         otp_throttle_policy: OtpThrottlePolicy | None = None,
+        otp_verify_lockout_policy: LoginLockoutPolicy | None = None,
     ) -> None:
         self._accounts = accounts
         self._sessions = sessions
@@ -92,6 +93,16 @@ class AuthenticationUseCases:
         self._platform_settings = platform_settings
         self._login_attempts = login_attempts
         self._otp_throttle_policy = otp_throttle_policy or OtpThrottlePolicy()
+        # Not admin-tunable via platform-settings (unlike `LoginLockoutPolicy`'s own use in
+        # `login_email`) -- same "hardcoded class-default thresholds" precedent `OtpThrottlePolicy`
+        # itself already sets for this module, and this guards a narrower, newer surface (repeated
+        # wrong-code guesses against any challenge, not just one) that doesn't yet have its own
+        # platform-settings key. `LoginLockoutPolicy` itself is reused as-is (not a new type) --
+        # "too many wrong guesses from one IP within a window" is the exact same shape whether the
+        # thing being guessed is a password or an OTP code.
+        self._otp_verify_lockout_policy = otp_verify_lockout_policy or LoginLockoutPolicy(
+            max_attempts=3, block_minutes=15
+        )
 
     # --- FR-AUTH-001: phone OTP ---------------------------------------------------------------
 
@@ -146,7 +157,20 @@ class AuthenticationUseCases:
         against a phone with no account raises `OtpPurposeMismatchError` (FR-AUTH-004 requires an
         already-registered user). ADR-0007: `account_kind`/`anketa` only apply on the REGISTRATION
         branch -- ignored for an already-existing account (its role was fixed at its own
-        signup)."""
+        signup).
+
+        IP-scoped lockout (`_otp_verify_lockout_policy`): each challenge already caps its OWN
+        wrong-guess count (`OtpChallenge.verify`, `OTP_MAX_VERIFY_ATTEMPTS`), but that alone never
+        blocks the requesting IP -- an attacker who exhausts one challenge could just request a
+        fresh one (up to `OtpThrottlePolicy`'s own 3-per-15-minutes cap) and keep guessing against
+        that instead, for up to ~15 wrong guesses per IP before the throttle even engages. Checked
+        BEFORE the challenge lookup, same reasoning `login_email` already documents for its own
+        lockout check: a cheap 429 for an already-locked-out caller, not a wasted DB round trip."""
+        if ip_address is not None:
+            await self._enforce_not_locked(
+                policy=self._otp_verify_lockout_policy, scope="otp_verify_ip", identifier=ip_address
+            )
+
         challenge = await self._otp_challenges.get_active_for_phone(phone, purpose)
         if challenge is None:
             raise OtpChallengeNotFoundError()
@@ -155,7 +179,16 @@ class AuthenticationUseCases:
         outcome = challenge.verify(candidate_code_hash=candidate_hash, now=now)
         await self._otp_challenges.save(outcome.challenge)
         if not outcome.matched:
+            if ip_address is not None:
+                await self._login_attempts.record_failure(
+                    scope="otp_verify_ip",
+                    identifier=ip_address,
+                    window_seconds=self._otp_verify_lockout_policy.block_minutes * 60,
+                )
             raise OtpCodeMismatchError()
+
+        if ip_address is not None:
+            await self._login_attempts.reset(scope="otp_verify_ip", identifier=ip_address)
 
         account = await self._accounts.get_by_phone(phone)
         if account is None:

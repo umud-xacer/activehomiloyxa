@@ -88,6 +88,7 @@ from backbone.persistence import (
     session_scope,
 )
 from backbone.persistence.env import required_env
+from backbone.rate_limit.tracker import RedisWindowCounter
 from billing.application import EntitlementUseCases, OrderUseCases, PaymentUseCases
 from billing.domain import InvoiceStatus
 from billing.infrastructure import (
@@ -135,9 +136,11 @@ from configuration.application import (
     CategoryReadUseCases,
     ConfigurationUseCases,
     GateFailedError,
+    OwnerAdminLockoutPort,
 )
 from configuration.domain import ConfigEntityType
 from configuration.infrastructure.cache.redis_snapshot_cache import RedisSnapshotCache
+from configuration.infrastructure.owner_admin_lockout import RedisOwnerAdminLockoutCounter
 from configuration.infrastructure.persistence.models import OutboxEvent
 from configuration.infrastructure.persistence.repository import (
     SqlalchemyConfigHeadRepository,
@@ -309,6 +312,19 @@ async def _configuration_session() -> AsyncIterator[AsyncSession]:
 
 def _configuration_snapshot_cache() -> RedisSnapshotCache:
     return RedisSnapshotCache(_configuration_redis_client())
+
+
+@lru_cache(maxsize=1)
+def _owner_admin_lockout_counter() -> RedisOwnerAdminLockoutCounter:
+    return RedisOwnerAdminLockoutCounter(
+        RedisWindowCounter(
+            _configuration_redis_client(), key_prefix="configuration:owner_admin_lockout"
+        )
+    )
+
+
+async def provide_owner_admin_lockout_counter() -> OwnerAdminLockoutPort:
+    return _owner_admin_lockout_counter()
 
 
 async def provide_configuration_use_cases() -> AsyncIterator[ConfigurationUseCases]:

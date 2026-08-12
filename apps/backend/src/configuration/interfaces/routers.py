@@ -11,12 +11,18 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 
-from configuration.application import CategoryReadUseCases, ConfigurationUseCases
+from backbone.net import resolve_client_ip
+from configuration.application import (
+    CategoryReadUseCases,
+    ConfigurationUseCases,
+    OwnerAdminLockoutPort,
+)
 from configuration.application.exceptions import (
     ConfigHeadNotFoundError,
     InvalidDraftRequestError,
+    OwnerAdminAccessLockedOutError,
 )
 from configuration.domain import (
     ConfigEntityType,
@@ -36,6 +42,7 @@ from configuration.interfaces.auth import (
 from configuration.interfaces.di import (
     get_category_read_use_cases,
     get_configuration_use_cases,
+    get_owner_admin_lockout_counter,
 )
 from configuration.interfaces.dto import (
     Category,
@@ -297,19 +304,55 @@ async def _current_owner_admin_slug(use_cases: ConfigurationUseCases) -> str:
             return _OWNER_ADMIN_SLUG_DEFAULT
 
 
+_OWNER_ADMIN_LOCKOUT_MAX_ATTEMPTS = 5
+_OWNER_ADMIN_LOCKOUT_BLOCK_SECONDS = 15 * 60
+"""Same shape as `identity`'s OTP-verify-by-IP lockout (3 attempts/15min) and
+`LoginLockoutPolicy`'s own default (4 attempts/15min) -- a slightly more lenient attempt count
+than either, since a legitimate super-admin fat-fingering their own slug is the only "innocent"
+way to ever see a wrong guess here at all (unlike a password/OTP, nobody else has a reason to
+guess right by accident). `rearm=True`: consecutive wrong guesses close enough together keep
+re-arming the block window, matching `LoginLockoutPolicy`'s documented reasoning."""
+
+
 @owner_admin_access_router.post(
     "/public/owner-admin-access/verify", operation_id="verifyOwnerAdminSlug"
 )
 async def verify_owner_admin_slug(
     body: OwnerAdminSlugCheckRequest,
+    request: Request,
     use_cases: ConfigurationUseCases = Depends(get_configuration_use_cases),
+    lockout: OwnerAdminLockoutPort = Depends(get_owner_admin_lockout_counter),
 ) -> OwnerAdminSlugCheckResult:
     """The one deliberate exception to "no public read of `platform-settings`" -- a yes/no oracle
     for a single guessed slug, never the real value, so the frontend's `/$ownerAdminSlug` route
     guard can tell a right guess from a wrong one without shipping the real path in the client
-    bundle (Task: owner-admin panel access, runtime-configurable slug)."""
+    bundle (Task: owner-admin panel access, runtime-configurable slug).
+
+    IP-scoped lockout: this endpoint was the motivating, most acute case for adding any
+    throttling at all (see `GlobalRateLimitMiddleware`'s own docstring) -- an oracle whose entire
+    purpose is answering "is this guess right", with no throttle of its own, is a slug-guessing
+    attacker's ideal target. The generic global rate limit (300 req/60s per IP) still applies on
+    top of this as a backstop, but is far too loose on its own to meaningfully slow a targeted
+    guess-the-slug attack; this is the purpose-specific lockout for that. Checked BEFORE the real
+    slug is looked up, same reasoning `identity`'s own lockout checks document: a cheap 429 for an
+    already-locked-out caller, not a wasted config-store read."""
+    ip = resolve_client_ip(
+        request.headers, fallback_host=request.client.host if request.client else None
+    )
+    attempts = await lockout.get_failure_count(identifier=ip)
+    if attempts >= _OWNER_ADMIN_LOCKOUT_MAX_ATTEMPTS:
+        retry_after = await lockout.get_retry_after_seconds(identifier=ip)
+        raise OwnerAdminAccessLockedOutError(retry_after_seconds=retry_after)
+
     real_slug = await _current_owner_admin_slug(use_cases)
-    return OwnerAdminSlugCheckResult(valid=body.slug == real_slug)
+    valid = body.slug == real_slug
+    if valid:
+        await lockout.reset(identifier=ip)
+    else:
+        await lockout.record_failure(
+            identifier=ip, window_seconds=_OWNER_ADMIN_LOCKOUT_BLOCK_SECONDS
+        )
+    return OwnerAdminSlugCheckResult(valid=valid)
 
 
 _STATS_CITIES_KEY = "stats.cities"

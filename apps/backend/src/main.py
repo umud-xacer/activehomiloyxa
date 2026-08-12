@@ -52,6 +52,8 @@ from backbone.errors import (
 from backbone.logging import configure_logging
 from backbone.persistence.engine import MissingDatabaseConfigError, make_engine
 from backbone.persistence.redis_client import redis_url
+from backbone.rate_limit import GlobalRateLimitMiddleware
+from backbone.rate_limit.middleware import DEFAULT_MAX_REQUESTS, DEFAULT_WINDOW_SECONDS
 from billing.interfaces.di import (
     get_acting_operator,
     get_entitlement_use_cases,
@@ -79,6 +81,7 @@ from configuration.interfaces.auth import get_acting_admin as get_config_acting_
 from configuration.interfaces.di import (
     get_category_read_use_cases,
     get_configuration_use_cases,
+    get_owner_admin_lockout_counter,
 )
 from configuration.interfaces.errors import register_configuration_exception_mappings
 from configuration.interfaces.routers import (
@@ -159,6 +162,24 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Outermost of the two (added last -> runs first, Starlette's middleware stack order) so a
+    # flood gets a cheap 429 before CORS/routing/DB ever run. Previously nothing but
+    # login/OTP had ANY request throttling -- see `GlobalRateLimitMiddleware`'s own docstring.
+    #
+    # Gated on REDIS_HOST actually being set (same "missing optional infra key is expected/
+    # recoverable" convention as `getYandexMapsApiKey()` et al) rather than calling `redis_url()`
+    # unconditionally: `app = create_app()` runs at MODULE IMPORT time (bottom of this file), and
+    # every module's "fakes only, no real datastore" `test_api.py` suite (13 of them) does
+    # `from main import create_app` -- unconditionally requiring Redis here would make importing
+    # `main` itself impossible without a running Redis, for suites that never touch it otherwise.
+    # Production/integration/e2e always set REDIS_HOST, so real protection is unaffected there.
+    if os.environ.get("REDIS_HOST"):
+        app.add_middleware(
+            GlobalRateLimitMiddleware,
+            redis=redis_asyncio.from_url(redis_url()),
+            max_requests=int(os.environ.get("RATE_LIMIT_MAX_REQUESTS", DEFAULT_MAX_REQUESTS)),
+            window_seconds=int(os.environ.get("RATE_LIMIT_WINDOW_SECONDS", DEFAULT_WINDOW_SECONDS)),
+        )
 
     mapper = default_exception_mapper()
     register_configuration_exception_mappings(mapper)
@@ -188,6 +209,9 @@ def create_app() -> FastAPI:
     )
     app.dependency_overrides[get_category_read_use_cases] = (
         composition_root.provide_category_read_use_cases
+    )
+    app.dependency_overrides[get_owner_admin_lockout_counter] = (
+        composition_root.provide_owner_admin_lockout_counter
     )
     app.dependency_overrides[get_authentication_use_cases] = (
         composition_root.provide_authentication_use_cases

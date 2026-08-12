@@ -126,6 +126,97 @@ async def test_verify_otp_wrong_code_raises_mismatch(
         )
 
 
+async def test_otp_verify_ip_lockout_after_repeated_wrong_codes(
+    auth_use_cases: AuthenticationUseCases, fake_otp_sms_provider: FakeOtpSmsProvider
+) -> None:
+    """New IP-scoped lockout on `verify_otp`: guards against exhausting one challenge's own
+    per-challenge wrong-guess cap (`OTP_MAX_VERIFY_ATTEMPTS=5`) then requesting a fresh challenge
+    and continuing to guess -- 3 wrong guesses from the same IP locks that IP out outright."""
+    await auth_use_cases.request_otp(
+        phone=PHONE, purpose=OtpPurpose.REGISTRATION, ip_address="9.9.9.9", now=NOW
+    )
+    for _ in range(3):
+        with pytest.raises(OtpCodeMismatchError):
+            await auth_use_cases.verify_otp(
+                phone=PHONE,
+                code="000000",
+                purpose=OtpPurpose.REGISTRATION,
+                ip_address="9.9.9.9",
+                user_agent="pytest",
+                now=NOW,
+            )
+    with pytest.raises(LoginLockedOutError):
+        await auth_use_cases.verify_otp(
+            phone=PHONE,
+            code="000000",
+            purpose=OtpPurpose.REGISTRATION,
+            ip_address="9.9.9.9",
+            user_agent="pytest",
+            now=NOW,
+        )
+
+
+async def test_otp_verify_ip_lockout_is_scoped_per_ip(
+    auth_use_cases: AuthenticationUseCases, fake_otp_sms_provider: FakeOtpSmsProvider
+) -> None:
+    """A different IP is unaffected by another IP's lockout."""
+    await auth_use_cases.request_otp(
+        phone=PHONE, purpose=OtpPurpose.REGISTRATION, ip_address="9.9.9.9", now=NOW
+    )
+    for _ in range(3):
+        with pytest.raises(OtpCodeMismatchError):
+            await auth_use_cases.verify_otp(
+                phone=PHONE,
+                code="000000",
+                purpose=OtpPurpose.REGISTRATION,
+                ip_address="9.9.9.9",
+                user_agent="pytest",
+                now=NOW,
+            )
+    code = fake_otp_sms_provider.sent[0][1]
+    account, _session, _raw_token = await auth_use_cases.verify_otp(
+        phone=PHONE,
+        code=code,
+        purpose=OtpPurpose.REGISTRATION,
+        ip_address="8.8.8.8",
+        user_agent="pytest",
+        now=NOW,
+    )
+    assert account.phone == PHONE
+
+
+async def test_otp_verify_ip_lockout_resets_on_successful_verify(
+    auth_use_cases: AuthenticationUseCases,
+    fake_otp_sms_provider: FakeOtpSmsProvider,
+    fake_login_attempts: FakeLoginAttemptTracker,
+) -> None:
+    await auth_use_cases.request_otp(
+        phone=PHONE, purpose=OtpPurpose.REGISTRATION, ip_address="9.9.9.9", now=NOW
+    )
+    code = fake_otp_sms_provider.sent[0][1]
+    with pytest.raises(OtpCodeMismatchError):
+        await auth_use_cases.verify_otp(
+            phone=PHONE,
+            code="000000",
+            purpose=OtpPurpose.REGISTRATION,
+            ip_address="9.9.9.9",
+            user_agent="pytest",
+            now=NOW,
+        )
+    await auth_use_cases.verify_otp(
+        phone=PHONE,
+        code=code,
+        purpose=OtpPurpose.REGISTRATION,
+        ip_address="9.9.9.9",
+        user_agent="pytest",
+        now=NOW,
+    )
+    assert (
+        await fake_login_attempts.get_failure_count(scope="otp_verify_ip", identifier="9.9.9.9")
+        == 0
+    )
+
+
 async def test_verify_otp_no_active_challenge_raises_not_found(
     auth_use_cases: AuthenticationUseCases,
 ) -> None:
