@@ -908,111 +908,112 @@ async def _backfill_listing_kind(
 
 _TOP_LEVEL_CATEGORY_HERO_THEMES: dict[str, dict[str, str]] = {
     "qurilish-materiallari": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/7903_40537885803_294ee51e0e_h_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1541976590-713941681591?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Har bir qurilish uchun ishonchli materiallar",
         "accentColor": "#EA580C",
     },
     "ish-orni": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/65535_52906947696_b92bd08840_h_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Ko'chmas mulk va qurilish sohasidagi eng yaxshi ish o'rinlari",
         "accentColor": "#2563EB",
     },
     "dala-hovlilar": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/65535_54398734359_27a6e8545f_h_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1449158743715-0a90ebb6d2d8?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Shahar shovqinidan uzoqlashing, tabiat qo'ynida dam oling",
         "accentColor": "#16A34A",
     },
     "uniforma-va-maxsus-kiyimlar": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/65535_54384001542_d84c09c6e2_h_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Professional ish uchun ishonchli himoya kiyimlari",
         "accentColor": "#F59E0B",
     },
     "mebel-materiallari": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/65535_54000294184_43e3e8e164_h_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Mebel yaratish uchun sifatli materiallar",
         "accentColor": "#92400E",
     },
     "dam-olish-maskanlari": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/65535_54088010610_9fa068dfa2_k_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1519046904884-53103b34b206?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Eng yaxshi dam olish maskanlarini shu yerdan toping",
         "accentColor": "#0D9488",
     },
     "hovlilar": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/65535_54452293698_3c3f2b3cc5_h_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "O'zingizni uyda his qiladigan hovlingizni toping",
         "accentColor": "#059669",
     },
     "landshaft-dizayni": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/65535_54511310790_b631dd27f8_h_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Hovlingizni professional dizayn bilan bezating",
         "accentColor": "#22C55E",
     },
     "kop-qavatli-binolar": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/65535_54396383676_3b2122fddd_h_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1460317442991-0ec209397118?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Zamonaviy shahar hayoti uchun yangi uy",
         "accentColor": "#334155",
     },
     "bosh-yerlar": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/65535_49834685981_790d3f8602_h_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Kelajakdagi qurilishingiz uchun ishonchli yer",
         "accentColor": "#B45309",
     },
     "mebel-salonlari": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/7058_6890528665_0debdf43c1_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Uyingiz uchun premium mebel kolleksiyalari",
         "accentColor": "#7C3AED",
     },
     "noturar-binolar": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/65535_54391974673_95f2178994_h_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Biznesingiz uchun professional makon",
         "accentColor": "#1E3A8A",
     },
     "uy-bezaklari": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/65535_54584305864_c2326e33eb_k_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Uyingizga did va zavq qo'shing",
         "accentColor": "#DB2777",
     },
     "hostel": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/4871_46940671922_cf1af5497e_h_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Qulay va arzon tunash joylarini toping",
         "accentColor": "#0891B2",
     },
     "mexmonxona": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/65535_53700417322_b2ee24338f_h_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Hashamat va qulaylik bir joyda",
         "accentColor": "#CA8A04",
     },
     "xizmat-korsatish": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/5457_30488745703_2cea8a2808_h_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Ishonchli ustalar va tezkor xizmat",
         "accentColor": "#DC2626",
     },
     "kotejlar": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/65535_49957301776_2f894d8375_h_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Tabiat qo'ynidagi hashamatli dam olish",
         "accentColor": "#15803D",
     },
     "maishiy-texnikalar": {
-        "heroImageUrl": "https://loremflickr.com/cache/resized/380_32272111690_58649f2aa7_h_1280_720_nofilter.jpg",
+        "heroImageUrl": "https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=1600&q=80&auto=format&fit=crop",
         "heroTagline": "Uyingiz uchun zamonaviy texnikalar",
         "accentColor": "#0284C7",
     },
 }
 """One themed hero per top-level category (Task: category mini-platform redesign) -- images from
-`loremflickr.com` (keyless, topic-tagged real photos, no API key/rate-limit like the Google/
-Mapbox/Yandex-JS-key services this codebase has already deliberately avoided elsewhere, see
-`feedback-technical-preferences` memory). `accentColor` values are spread across the palette so
-no two top-level categories read as visually identical. Consumed by `_backfill_category_theme`
-below, which is the only thing that ever reads this table.
+`images.unsplash.com/photo-<id>` (same keyless direct-CDN pattern already used for demo listing
+photos in `catalog/infrastructure/seed_demo_listings.py`). `accentColor` values are spread across
+the palette so no two top-level categories read as visually identical. Consumed by
+`_backfill_category_theme` below, which is the only thing that ever reads this table.
 
-URLs point directly at loremflickr's `/cache/resized/...jpg` path rather than its
-`/{w}/{h}/{tags}` endpoint: the latter is a redirector (302 to the former) and that extra hop
-alone measured ~0.9-1.4s on top of the actual image fetch -- confirmed live, reported by the user
-as "kategoriyalarni fon rasmi sekin yuklanyapti" (category hero backgrounds loading slowly).
-Skipping it roughly halves hero load time (~2s -> ~0.8-1.1s per image, measured). Each URL was
-resolved once by requesting the original `{w}/{h}/{tags}` endpoint and reading its `Location`
-header -- if loremflickr ever retires a cached file this hero silently falls back to no image
-(PageHeader's plain gradient), not a broken page, so this is a safe optimization to hand-pin."""
+Previously these pointed at `loremflickr.com/cache/resized/...jpg` -- URLs hand-pinned to a
+specific redirect target to skip loremflickr's `/{w}/{h}/{tags}` redirector hop (~0.9-1.4s
+measured). That cache entry turned out not to be permanent: loremflickr evicted it and every one
+of the 18 URLs started 404ing, which is exactly the failure this docstring used to warn about --
+reported by the user as "kategoriyalarni orqasida rasmlar turishi kerak edi, kirganda ko'rinmay
+qolgan" (category hero backgrounds should be there, went invisible after entering). Unsplash's
+`/photo-<id>` path is the CDN's permanent asset address, not a resolved-once cache of a redirect,
+so it doesn't carry the same eviction risk -- confirmed live (HTTP 200) for all 18 URLs below
+before pinning them here. If a photo ever does go missing, PageHeader's plain gradient is still
+the fallback, so this stays a safe optimization either way."""
 
 
 async def _backfill_category_theme(
