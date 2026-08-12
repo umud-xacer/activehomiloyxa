@@ -1016,6 +1016,2101 @@ before pinning them here. If a photo ever does go missing, PageHeader's plain gr
 the fallback, so this stays a safe optimization either way."""
 
 
+"""Every non-top-level category also gets a themed hero image now (Task: subcategory hero
+images, 518 categories). Generated OFFLINE (not at seed-run time) from each category's own Uzbek
+name -- translated word-by-word via a small curated dictionary, falling back to its top-level
+ancestor's theme words when the leaf name alone translates to nothing useful -- then hand-reviewed
+across all 518 entries for tag quality before being pasted in here as plain data, same as
+`_TOP_LEVEL_CATEGORY_HERO_THEMES` above.
+
+Uses loremflickr's LIVE tag redirector (`loremflickr.com/1600/900/{tags}`) directly as the stored
+`heroImageUrl` -- deliberately NOT a pre-resolved/pinned cache URL. That is exactly the mistake
+that broke all 18 top-level images earlier (see this file's docstring above
+`_backfill_category_theme`): a hand-pinned resolved-cache target got evicted by loremflickr and
+404'd everywhere at once. The redirector re-resolves fresh on every request instead, so there is
+no equivalent eviction risk here -- the tradeoff is one extra redirect hop per image load (~1s)
+that Unsplash's permanent `/photo-<id>` addresses don't pay, acceptable for the long tail of
+subcategory pages this backs.
+
+No `accentColor` here, matching `_backfill_category_theme`'s own documented convention for
+depth>1 categories: they inherit the nearest themed ancestor's color via `resolveAccentColor`'s
+ancestor walk (`lib/listing-kind.ts`) rather than each getting its own."""
+_SUBCATEGORY_HERO_THEMES: dict[str, dict[str, str]] = {
+    "bosh-yerlar-auksion-orqali-sotilayotgan-yerlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/auction,for,sale",
+        "heroTagline": "Auksion orqali sotilayotgan yerlar bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-dala-va-bog-yerlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/field,farm,garden",
+        "heroTagline": "Dala va bog' yerlari bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-fermer-xojaligi-yerlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/farm,land,plot",
+        "heroTagline": "Fermer xo'jaligi yerlari bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-investitsiya-uchun-yerlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/investment,land,plot",
+        "heroTagline": "Investitsiya uchun yerlar bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-kommunikatsiyaga-tayyor-yerlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/utilities,ready,land",
+        "heroTagline": "Kommunikatsiyaga tayyor yerlar bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-kottej-shaharchalari-uchun-yerlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/cottage,town,land",
+        "heroTagline": "Kottej shaharchalari uchun yerlar bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-qishloq-xojaligi-yerlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/village,farm,land",
+        "heroTagline": "Qishloq xo'jaligi yerlari bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-qishloq-xojaligi-yerlari-bogdorchilik": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/gardening,land",
+        "heroTagline": "Bog'dorchilik bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-qishloq-xojaligi-yerlari-chorvachilik": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/cattle,farm",
+        "heroTagline": "Chorvachilik bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-qishloq-xojaligi-yerlari-dehqonchilik": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/farming,land",
+        "heroTagline": "Dehqonchilik bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-qishloq-xojaligi-yerlari-issiqxona": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/greenhouse,land",
+        "heroTagline": "Issiqxona bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-sanoat-hududlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/industrial,zone",
+        "heroTagline": "Sanoat hududlari bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-shahar-ichidagi-yerlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/city,downtown,land",
+        "heroTagline": "Shahar ichidagi yerlar bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-shahar-tashqarisidagi-yerlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/city,countryside,land",
+        "heroTagline": "Shahar tashqarisidagi yerlar bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-tijorat-maqsadidagi-yerlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/commercial,land,plot",
+        "heroTagline": "Tijorat maqsadidagi yerlar bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-tijorat-maqsadidagi-yerlar-mehmonxona-uchun": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/hotel,land",
+        "heroTagline": "Mehmonxona uchun bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-tijorat-maqsadidagi-yerlar-ofis-binosi-uchun": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/office,building",
+        "heroTagline": "Ofis binosi uchun bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-tijorat-maqsadidagi-yerlar-omborxona-uchun": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/warehouse,land",
+        "heroTagline": "Omborxona uchun bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-tijorat-maqsadidagi-yerlar-restoran-uchun": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/restaurant,land",
+        "heroTagline": "Restoran uchun bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-tijorat-maqsadidagi-yerlar-savdo-markazi-uchun": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/shopping,center",
+        "heroTagline": "Savdo markazi uchun bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-turar-joy-qurish-uchun-yerlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/residential,housing,construction",
+        "heroTagline": "Turar joy qurish uchun yerlar bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-turar-joy-qurish-uchun-yerlar-10-sotixdan-katta": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/large,land",
+        "heroTagline": "10 sotixdan katta bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-turar-joy-qurish-uchun-yerlar-2-4-sotix": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/land,plot",
+        "heroTagline": "2-4 sotix bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-turar-joy-qurish-uchun-yerlar-2-sotixgacha": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/land,plot",
+        "heroTagline": "2 sotixgacha bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-turar-joy-qurish-uchun-yerlar-4-6-sotix": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/land,plot",
+        "heroTagline": "4-6 sotix bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-turar-joy-qurish-uchun-yerlar-6-10-sotix": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/land,plot",
+        "heroTagline": "6-10 sotix bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-yangi-massivlardagi-yerlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/new,district,land",
+        "heroTagline": "Yangi massivlardagi yerlar bo'yicha eng yaxshi takliflar",
+    },
+    "bosh-yerlar-yirik-loyiha-uchun-yer-maydonlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/large,project,land",
+        "heroTagline": "Yirik loyiha uchun yer maydonlari bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-barbekyu-va-yozgi-oshxonali-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/barbecue,summer,kitchen",
+        "heroTagline": "Barbekyu va yozgi oshxonali hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-haftalik-va-oylik-ijara": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/weekly,monthly,rental",
+        "heroTagline": "Haftalik va oylik ijara bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-hovuzli-dala-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/pool,field,farm",
+        "heroTagline": "Hovuzli dala hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-hovuzli-dala-hovlilar-bolalar-hovuzi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/kids,children,pool",
+        "heroTagline": "Bolalar hovuzi bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-hovuzli-dala-hovlilar-isitiladigan-hovuz": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/heated,pool",
+        "heroTagline": "Isitiladigan hovuz bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-hovuzli-dala-hovlilar-ochiq-hovuz": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/open,outdoor,pool",
+        "heroTagline": "Ochiq hovuz bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-hovuzli-dala-hovlilar-premium-spa-zonali-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/premium,luxury,spa",
+        "heroTagline": "Premium SPA zonali hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-hovuzli-dala-hovlilar-yopiq-hovuz": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/indoor,pool",
+        "heroTagline": "Yopiq hovuz bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-ijaraga-beriladigan-dala-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/rental,field,farm",
+        "heroTagline": "Ijaraga beriladigan dala hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-investitsiya-uchun-dala-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/investment,field,farm",
+        "heroTagline": "Investitsiya uchun dala hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-kol-yoki-daryo-boyidagi-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/lake,river,riverside",
+        "heroTagline": "Ko'l yoki daryo bo'yidagi hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-kunlik-ijara": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/daily,rental",
+        "heroTagline": "Kunlik ijara bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-kunlik-ijara-2-kishilik": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/country,house",
+        "heroTagline": "2 kishilik bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-kunlik-ijara-bayram-tadbirlari-uchun": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/festive,event",
+        "heroTagline": "Bayram tadbirlari uchun bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-kunlik-ijara-katta-guruhlar-uchun": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/large,group",
+        "heroTagline": "Katta guruhlar uchun bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-kunlik-ijara-korporativ-dam-olish-uchun": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/corporate,leisure,resort",
+        "heroTagline": "Korporativ dam olish uchun bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-kunlik-ijara-oilaviy": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/family,country",
+        "heroTagline": "Oilaviy bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-oilaviy-dam-olish-hovlilari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/family,leisure,resort",
+        "heroTagline": "Oilaviy dam olish hovlilari bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-premium-villalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/premium,luxury,villa",
+        "heroTagline": "Premium villalar bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-premium-villalar-panoramali-villa": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/panoramic,villa",
+        "heroTagline": "Panoramali villa bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-premium-villalar-smart-home": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/smart,home",
+        "heroTagline": "Smart Home bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-premium-villalar-vip-villa": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/vip,villa",
+        "heroTagline": "VIP villa bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-premium-villalar-zamonaviy-dizayndagi-villalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/modern,design,villa",
+        "heroTagline": "Zamonaviy dizayndagi villalar bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-sotuvdagi-dala-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/for,sale,field",
+        "heroTagline": "Sotuvdagi dala hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-tog-hududidagi-dala-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/mountain,zone,field",
+        "heroTagline": "Tog' hududidagi dala hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "dala-hovlilar-yangi-qurilgan-dala-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/new,built,field",
+        "heroTagline": "Yangi qurilgan dala hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-bolalar-kongilochar-markazlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/kids,children,entertainment",
+        "heroTagline": "Bolalar ko'ngilochar markazlari bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-dala-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/field,farm,villa",
+        "heroTagline": "Dala hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-hovuz-va-akvaparklar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/pool,waterpark",
+        "heroTagline": "Hovuz va akvaparklar bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-hovuz-va-akvaparklar-bolalar-akvaparki": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/kids,children,waterpark",
+        "heroTagline": "Bolalar akvaparki bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-hovuz-va-akvaparklar-family-zonalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/family,zone",
+        "heroTagline": "Family zonalari bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-hovuz-va-akvaparklar-ochiq-hovuz": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/open,outdoor,pool",
+        "heroTagline": "Ochiq hovuz bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-hovuz-va-akvaparklar-vip-zonalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/vip,zone",
+        "heroTagline": "VIP zonalar bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-hovuz-va-akvaparklar-yopiq-hovuz": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/indoor,pool",
+        "heroTagline": "Yopiq hovuz bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-kol-va-daryo-boyidagi-maskanlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/lake,river,riverside",
+        "heroTagline": "Ko'l va daryo bo'yidagi maskanlar bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-kottejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/cottage,resort",
+        "heroTagline": "Kottejlar bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-kurort-va-sanatoriyalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/resort,sanatorium",
+        "heroTagline": "Kurort va sanatoriyalar bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-mehmonxonalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/hotel,resort",
+        "heroTagline": "Mehmonxonalar bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-mehmonxonalar-3-yulduzli": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/star,hotel",
+        "heroTagline": "3 yulduzli bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-mehmonxonalar-4-yulduzli": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/star,hotel",
+        "heroTagline": "4 yulduzli bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-mehmonxonalar-5-yulduzli": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/star,hotel",
+        "heroTagline": "5 yulduzli bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-mehmonxonalar-boutique-hotel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/boutique,hotel",
+        "heroTagline": "Boutique Hotel bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-mehmonxonalar-business-hotel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/business,hotel",
+        "heroTagline": "Business Hotel bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-mehmonxonalar-family-hotel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/family,hotel",
+        "heroTagline": "Family Hotel bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-oilaviy-dam-olish-zonalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/family,leisure,resort",
+        "heroTagline": "Oilaviy dam olish zonalari bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-piknik-va-camping-hududlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/picnic,camping,zone",
+        "heroTagline": "Piknik va Camping hududlari bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-restoran-va-kafe-zonalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/restaurant,cafe,zone",
+        "heroTagline": "Restoran va kafe zonalari bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-sarguzasht-va-ekstremal-dam-olish-maskanlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/adventure,extreme,leisure",
+        "heroTagline": "Sarguzasht va ekstremal dam olish maskanlari bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-spa-va-wellness-markazlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/spa,wellness,centers",
+        "heroTagline": "SPA va Wellness markazlari bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-spa-va-wellness-markazlari-fitnes": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/fitness,gym",
+        "heroTagline": "Fitnes bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-spa-va-wellness-markazlari-hammom": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/spa,bath",
+        "heroTagline": "Hammom bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-spa-va-wellness-markazlari-massaj": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/massage,spa",
+        "heroTagline": "Massaj bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-spa-va-wellness-markazlari-sauna": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/sauna,resort",
+        "heroTagline": "Sauna bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-spa-va-wellness-markazlari-soglomlashtirish-xizmatlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/wellness,service",
+        "heroTagline": "Sog'lomlashtirish xizmatlari bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-spa-va-wellness-markazlari-termal-hovuz": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/thermal,pool",
+        "heroTagline": "Termal hovuz bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-tog-dam-olish-maskanlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/mountain,leisure,resort",
+        "heroTagline": "Tog' dam olish maskanlari bo'yicha eng yaxshi takliflar",
+    },
+    "dam-olish-maskanlari-villalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/villa,resort",
+        "heroTagline": "Villalar bo'yicha eng yaxshi takliflar",
+    },
+    "mashina-haydovchisi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/car,truck,driver",
+        "heroTagline": "Mashina haydovchisi bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-aeroportga-yaqin-hostellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/airport,near,hostel",
+        "heroTagline": "Aeroportga yaqin hostellar bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-ayollar-hosteli": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/women,hostel",
+        "heroTagline": "Ayollar hosteli bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-backpacker-hostel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/backpacker,hostel",
+        "heroTagline": "Backpacker Hostel bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-business-hostel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/business,hostel",
+        "heroTagline": "Business Hostel bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-erkaklar-hosteli": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/men,hostel",
+        "heroTagline": "Erkaklar hosteli bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-guest-house": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/guest,house",
+        "heroTagline": "Guest House bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-kapsula-hostellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/capsule,pod,hostel",
+        "heroTagline": "Kapsula hostellar bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-kapsula-hostellar-premium-kapsula": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/premium,luxury,capsule",
+        "heroTagline": "Premium kapsula bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-kapsula-hostellar-smart-capsule": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/smart,home,capsule",
+        "heroTagline": "Smart Capsule bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-kapsula-hostellar-standart-kapsula": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/standard,capsule,pod",
+        "heroTagline": "Standart kapsula bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-kunlik-hostellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/daily,hostel",
+        "heroTagline": "Kunlik hostellar bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-mini-hotel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/mini,hotel",
+        "heroTagline": "Mini Hotel bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-oilaviy-hostellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/family,hostel",
+        "heroTagline": "Oilaviy hostellar bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-premium-hostellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/premium,luxury,hostel",
+        "heroTagline": "Premium hostellar bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-premium-hostellar-deluxe-room": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/deluxe,room",
+        "heroTagline": "Deluxe Room bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-premium-hostellar-family-room": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/family,room",
+        "heroTagline": "Family Room bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-premium-hostellar-private-room": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/private,room",
+        "heroTagline": "Private Room bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-premium-hostellar-suite": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/suite,hostel",
+        "heroTagline": "Suite bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-shahar-markazidagi-hostellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/city,downtown,hostel",
+        "heroTagline": "Shahar markazidagi hostellar bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-talabalar-hosteli": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/student,hostel",
+        "heroTagline": "Talabalar hosteli bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-talabalar-hosteli-oylik-ijarali-hostellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/monthly,rental,hostel",
+        "heroTagline": "Oylik ijarali hostellar bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-talabalar-hosteli-umumiy-yashash-xonalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/shared,living,room",
+        "heroTagline": "Umumiy yashash xonalari bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-talabalar-hosteli-universitetlarga-yaqin-hostellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/university,near,hostel",
+        "heroTagline": "Universitetlarga yaqin hostellar bo'yicha eng yaxshi takliflar",
+    },
+    "hostel-uzoq-muddatli-yashash-hostellari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/long,term,living",
+        "heroTagline": "Uzoq muddatli yashash hostellari bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-hovuzli-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/pool,villa,yard",
+        "heroTagline": "Hovuzli hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-hovuzli-hovlilar-isitiladigan-hovuz": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/heated,pool",
+        "heroTagline": "Isitiladigan hovuz bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-hovuzli-hovlilar-ochiq-hovuz": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/open,outdoor,pool",
+        "heroTagline": "Ochiq hovuz bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-hovuzli-hovlilar-spa-zonali-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/spa,zone,villa",
+        "heroTagline": "SPA zonali hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-hovuzli-hovlilar-yopiq-hovuz": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/indoor,pool",
+        "heroTagline": "Yopiq hovuz bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-ijaraga-beriladigan-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/rental,villa,yard",
+        "heroTagline": "Ijaraga beriladigan hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-ikkilamchi-bozordagi-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/resale,market,villa",
+        "heroTagline": "Ikkilamchi bozordagi hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-investitsiya-uchun-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/investment,villa,yard",
+        "heroTagline": "Investitsiya uchun hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-katta-yer-maydoniga-ega-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/large,land,area",
+        "heroTagline": "Katta yer maydoniga ega hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-kottejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/cottage,villa",
+        "heroTagline": "Kottejlar bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-premium-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/premium,luxury,villa",
+        "heroTagline": "Premium hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-premium-hovlilar-dizaynerlik-interyeriga-ega-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/designer,interior,villa",
+        "heroTagline": "Dizaynerlik interyeriga ega hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-premium-hovlilar-klassik-villa": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/classic,villa",
+        "heroTagline": "Klassik villa bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-premium-hovlilar-panoramali-hovli": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/panoramic,villa,yard",
+        "heroTagline": "Panoramali hovli bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-premium-hovlilar-zamonaviy-villa": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/modern,villa",
+        "heroTagline": "Zamonaviy villa bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-qurilishi-tugallanmagan-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/construction,unfinished,villa",
+        "heroTagline": "Qurilishi tugallanmagan hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-shahar-ichidagi-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/city,downtown,villa",
+        "heroTagline": "Shahar ichidagi hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-shahar-tashqarisidagi-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/city,countryside,villa",
+        "heroTagline": "Shahar tashqarisidagi hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-smart-home-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/smart,home,villa",
+        "heroTagline": "Smart Home hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-smart-home-hovlilar-aqlli-iqlim-boshqaruvi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/smart,climate,control",
+        "heroTagline": "Aqlli iqlim boshqaruvi bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-smart-home-hovlilar-aqlli-yoritish": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/smart,lighting",
+        "heroTagline": "Aqlli yoritish bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-smart-home-hovlilar-avtomatlashtirilgan-xavfsizlik-tizimi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/automated,security,system",
+        "heroTagline": "Avtomatlashtirilgan xavfsizlik tizimi bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-sotuvdagi-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/for,sale,villa",
+        "heroTagline": "Sotuvdagi hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-sotuvdagi-hovlilar-2-xonali": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/room,apartment",
+        "heroTagline": "2 xonali bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-sotuvdagi-hovlilar-3-xonali": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/room,apartment",
+        "heroTagline": "3 xonali bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-sotuvdagi-hovlilar-4-xonali": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/room,apartment",
+        "heroTagline": "4 xonali bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-sotuvdagi-hovlilar-5-xonali": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/room,apartment",
+        "heroTagline": "5+ xonali bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-townhouse": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/townhouse,villa",
+        "heroTagline": "Townhouse bo'yicha eng yaxshi takliflar",
+    },
+    "hovlilar-yangi-qurilgan-hovlilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/new,built,villa",
+        "heroTagline": "Yangi qurilgan hovlilar bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-arxitektura-va-dizayn": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/architecture,design",
+        "heroTagline": "Arxitektura va dizayn bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-boshqa-kasblar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/other,profession",
+        "heroTagline": "Boshqa kasblar bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-haydovchilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/driver,office",
+        "heroTagline": "Haydovchilar bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-it-va-texnologiyalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/technology,office",
+        "heroTagline": "IT va texnologiyalar bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-it-va-texnologiyalar-backend-dasturchi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/programmer,coding",
+        "heroTagline": "Backend dasturchi bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-it-va-texnologiyalar-frontend-dasturchi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/programmer,coding",
+        "heroTagline": "Frontend dasturchi bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-it-va-texnologiyalar-mobil-dasturchi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/mobile,app,programmer",
+        "heroTagline": "Mobil dasturchi bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-it-va-texnologiyalar-system-administrator": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/server,admin",
+        "heroTagline": "System Administrator bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-it-va-texnologiyalar-ui-ux-dizayner": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/designer,office",
+        "heroTagline": "UI/UX dizayner bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-kochmas-mulk-agentlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/real,estate,agent",
+        "heroTagline": "Ko'chmas mulk agentlari bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-menejment": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/management,office",
+        "heroTagline": "Menejment bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-moliya-va-buxgalteriya": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/finance,accounting",
+        "heroTagline": "Moliya va buxgalteriya bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-muhandislik": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/engineering,office",
+        "heroTagline": "Muhandislik bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-ofis-ishlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/office,work",
+        "heroTagline": "Ofis ishlari bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-ombor-va-logistika": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/warehouse,logistics",
+        "heroTagline": "Ombor va logistika bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-qurilish-ishlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/construction,work",
+        "heroTagline": "Qurilish ishlari bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-qurilish-ishlari-armaturachi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/rebar,worker",
+        "heroTagline": "Armaturachi bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-qurilish-ishlari-betonchi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/concrete,worker",
+        "heroTagline": "Betonchi bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-qurilish-ishlari-gisht-teruvchi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/brick,bricklayer",
+        "heroTagline": "G'isht teruvchi bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-qurilish-ishlari-payvandchi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/welder,office",
+        "heroTagline": "Payvandchi bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-qurilish-ishlari-suvoqchi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/plasterer,office",
+        "heroTagline": "Suvoqchi bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-qurilish-ishlari-tom-yopuvchi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/roof,roofer",
+        "heroTagline": "Tom yopuvchi bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-sotuv-va-marketing": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/sale,marketing",
+        "heroTagline": "Sotuv va marketing bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-tozalash-xizmatlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/cleaning,service",
+        "heroTagline": "Tozalash xizmatlari bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-usta-xizmatlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/handyman,craftsman,service",
+        "heroTagline": "Usta xizmatlari bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-usta-xizmatlari-boyoqchi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/painter,office",
+        "heroTagline": "Bo'yoqchi bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-usta-xizmatlari-elektrchi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/electrician,office",
+        "heroTagline": "Elektrchi bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-usta-xizmatlari-konditsioner-ustasi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/air,conditioner,technician",
+        "heroTagline": "Konditsioner ustasi bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-usta-xizmatlari-mebel-ustasi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/furniture,technician",
+        "heroTagline": "Mebel ustasi bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-usta-xizmatlari-santexnik": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/plumber,office",
+        "heroTagline": "Santexnik bo'yicha eng yaxshi takliflar",
+    },
+    "ish-orni-xavfsizlik": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/security,office",
+        "heroTagline": "Xavfsizlik bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-biznes-klass": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/business,class",
+        "heroTagline": "Biznes klass bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-ekonom-klass": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/economy,class",
+        "heroTagline": "Ekonom klass bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-ikkilamchi-bozor": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/resale,market",
+        "heroTagline": "Ikkilamchi bozor bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-investitsiya-uchun": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/investment,apartment",
+        "heroTagline": "Investitsiya uchun bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-investitsiya-uchun-erta-bosqich": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/early,stage",
+        "heroTagline": "Erta bosqich bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-investitsiya-uchun-qurilish-jarayonida": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/construction,in,progress",
+        "heroTagline": "Qurilish jarayonida bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-investitsiya-uchun-tayyor-loyiha": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/ready,project",
+        "heroTagline": "Tayyor loyiha bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-investitsiya-uchun-tijorat-uchun-mos": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/commercial,suitable",
+        "heroTagline": "Tijorat uchun mos bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-investitsiya-uchun-yuqori-daromadli": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/high,income",
+        "heroTagline": "Yuqori daromadli bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-ipotekali-uylar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/mortgage,houses",
+        "heroTagline": "Ipotekali uylar bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-komfort-klass": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/comfort,class",
+        "heroTagline": "Komfort klass bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-penthouse": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/penthouse,apartment",
+        "heroTagline": "Penthouse bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-premium-turar-joylar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/premium,luxury,residential",
+        "heroTagline": "Premium turar joylar bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-premium-turar-joylar-designer-interior": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/designer,interior",
+        "heroTagline": "Designer Interior bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-premium-turar-joylar-penthouse": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/penthouse,apartment",
+        "heroTagline": "Penthouse bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-premium-turar-joylar-sky-residence": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/sky,residence",
+        "heroTagline": "Sky Residence bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-premium-turar-joylar-smart-home": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/smart,home",
+        "heroTagline": "Smart Home bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-premium-turar-joylar-terrace-apartment": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/terrace,apartment",
+        "heroTagline": "Terrace Apartment bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-qurilishi-davom-etayotgan-loyihalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/construction,ongoing,projects",
+        "heroTagline": "Qurilishi davom etayotgan loyihalar bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-studio": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/studio,apartment",
+        "heroTagline": "Studio bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-tayyor-topshirilgan-loyihalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/ready,delivered,projects",
+        "heroTagline": "Tayyor topshirilgan loyihalar bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-yangi-qurilishlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/new,construction",
+        "heroTagline": "Yangi qurilishlar bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-yangi-qurilishlar-1-xonali": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/room,apartment",
+        "heroTagline": "1 xonali bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-yangi-qurilishlar-2-xonali": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/room,apartment",
+        "heroTagline": "2 xonali bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-yangi-qurilishlar-3-xonali": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/room,apartment",
+        "heroTagline": "3 xonali bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-yangi-qurilishlar-4-xonali": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/room,apartment",
+        "heroTagline": "4+ xonali bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-yangi-qurilishlar-duplex": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/duplex,apartment",
+        "heroTagline": "Duplex bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-yangi-qurilishlar-family": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/family,apartment",
+        "heroTagline": "Family bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-yangi-qurilishlar-loft": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/loft,interior",
+        "heroTagline": "Loft bo'yicha eng yaxshi takliflar",
+    },
+    "kop-qavatli-binolar-yangi-qurilishlar-smart-apartment": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/smart,home,apartment",
+        "heroTagline": "Smart Apartment bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-eco-kotejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/eco,cottage",
+        "heroTagline": "Eco kotejlar bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-investitsion-kotejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/investment,cottage",
+        "heroTagline": "Investitsion kotejlar bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-kol-boyidagi-kotejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/lake,riverside,cottage",
+        "heroTagline": "Ko'l bo'yidagi kotejlar bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-kunlik-ijaraga-beriladigan-kotejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/daily,rental,cottage",
+        "heroTagline": "Kunlik ijaraga beriladigan kotejlar bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-luxury-villalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/luxury,villa",
+        "heroTagline": "Luxury Villalar bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-oilaviy-kotejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/family,cottage",
+        "heroTagline": "Oilaviy kotejlar bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-oilaviy-kotejlar-2-xonali": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/room,apartment",
+        "heroTagline": "2 xonali bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-oilaviy-kotejlar-3-xonali": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/room,apartment",
+        "heroTagline": "3 xonali bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-oilaviy-kotejlar-5-xonali": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/room,apartment",
+        "heroTagline": "5+ xonali bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-oilaviy-kotejlar-bolalar-maydonchali-kotejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/kids,children,playground",
+        "heroTagline": "Bolalar maydonchali kotejlar bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-ormon-hududidagi-kotejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/forest,zone,cottage",
+        "heroTagline": "O'rmon hududidagi kotejlar bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-premium-kotejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/premium,luxury,cottage",
+        "heroTagline": "Premium kotejlar bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-premium-kotejlar-basseynli": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/pool,cottage",
+        "heroTagline": "Basseynli bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-premium-kotejlar-panoramali": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/panoramic,cottage",
+        "heroTagline": "Panoramali bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-premium-kotejlar-sauna-va-spali": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/sauna,spa",
+        "heroTagline": "Sauna va SPA'li bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-premium-kotejlar-vip-xizmatli-kotejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/vip,service,cottage",
+        "heroTagline": "VIP xizmatli kotejlar bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-resort-villalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/resort,villa",
+        "heroTagline": "Resort villalar bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-shahar-tashqarisidagi-kotejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/city,countryside,cottage",
+        "heroTagline": "Shahar tashqarisidagi kotejlar bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-smart-kotejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/smart,home,cottage",
+        "heroTagline": "Smart kotejlar bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-sotuvdagi-kotejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/for,sale,cottage",
+        "heroTagline": "Sotuvdagi kotejlar bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-tog-kotejlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/mountain,cottage",
+        "heroTagline": "Tog' kotejlari bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-tog-kotejlari-ekstremal-turizm-uchun": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/extreme,adventure,tourism",
+        "heroTagline": "Ekstremal turizm uchun bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-tog-kotejlari-qishki-dam-olish-uchun": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/winter,leisure,resort",
+        "heroTagline": "Qishki dam olish uchun bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-tog-kotejlari-yozgi-dam-olish-uchun": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/summer,leisure,resort",
+        "heroTagline": "Yozgi dam olish uchun bo'yicha eng yaxshi takliflar",
+    },
+    "kotejlar-uzoq-muddatli-ijaradagi-kotejlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/long,term,rental",
+        "heroTagline": "Uzoq muddatli ijaradagi kotejlar bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-avtomatik-sugorish-tizimlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/automatic,irrigation,garden",
+        "heroTagline": "Avtomatik sug'orish tizimlari bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-bog-loyihalash": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/garden,orchard,design",
+        "heroTagline": "Bog' loyihalash bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-bog-loyihalash-dekorativ-bog": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/decorative,garden,orchard",
+        "heroTagline": "Dekorativ bog' bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-bog-loyihalash-klassik-bog": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/classic,garden,orchard",
+        "heroTagline": "Klassik bog' bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-bog-loyihalash-mevali-bog": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/fruit,garden,orchard",
+        "heroTagline": "Mevali bog' bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-bog-loyihalash-minimalistik-bog": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/minimalist,garden,orchard",
+        "heroTagline": "Minimalistik bog' bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-bog-loyihalash-yapon-bogi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/japanese,garden",
+        "heroTagline": "Yapon bog'i bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-bog-loyihalash-zamonaviy-bog": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/modern,garden,orchard",
+        "heroTagline": "Zamonaviy bog' bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-daraxt-va-gul-ekish": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/tree,planting,flower",
+        "heroTagline": "Daraxt va gul ekish bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-dekorativ-tosh-va-yolaklar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/decorative,stone,pathway",
+        "heroTagline": "Dekorativ tosh va yo'laklar bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-favvora-va-suniy-suv-havzalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/fountain,artificial,pond",
+        "heroTagline": "Favvora va sun'iy suv havzalari bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-gazon-va-maysa-ishlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/lawn,grass,work",
+        "heroTagline": "Gazon va maysa ishlari bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-hovli-dizayni": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/villa,yard,design",
+        "heroTagline": "Hovli dizayni bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-landshaft-parvarishlash-xizmatlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/landscape,garden,care",
+        "heroTagline": "Landshaft parvarishlash xizmatlari bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-park-va-yashil-hududlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/park,green,zone",
+        "heroTagline": "Park va yashil hududlar bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-pergola-va-ayvonlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/pergola,gazebo,porch",
+        "heroTagline": "Pergola va ayvonlar bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-tashqi-dam-olish-zonalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/exterior,leisure,resort",
+        "heroTagline": "Tashqi dam olish zonalari bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-tashqi-dam-olish-zonalari-barbekyu-zonasi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/barbecue,zone",
+        "heroTagline": "Barbekyu zonasi bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-tashqi-dam-olish-zonalari-bolalar-maydonchasi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/kids,children,playground",
+        "heroTagline": "Bolalar maydonchasi bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-tashqi-dam-olish-zonalari-gazebo": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/gazebo,garden",
+        "heroTagline": "Gazebo bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-tashqi-dam-olish-zonalari-ochiq-terassa": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/open,outdoor,terrace",
+        "heroTagline": "Ochiq terassa bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-tashqi-dam-olish-zonalari-pergola": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/pergola,garden",
+        "heroTagline": "Pergola bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-tashqi-dam-olish-zonalari-yozgi-oshxona": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/summer,kitchen",
+        "heroTagline": "Yozgi oshxona bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-tashqi-yoritish-tizimlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/exterior,lighting,system",
+        "heroTagline": "Tashqi yoritish tizimlari bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-tashqi-yoritish-tizimlari-aqlli-yoritish-tizimlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/smart,lighting,system",
+        "heroTagline": "Aqlli yoritish tizimlari bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-tashqi-yoritish-tizimlari-dekorativ-yoritish": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/decorative,lighting",
+        "heroTagline": "Dekorativ yoritish bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-tashqi-yoritish-tizimlari-led-yoritish": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/led,light,lighting",
+        "heroTagline": "LED yoritish bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-tashqi-yoritish-tizimlari-quyosh-energiyasida-ishlovchi-chiroqlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/solar,power,light",
+        "heroTagline": "Quyosh energiyasida ishlovchi chiroqlar bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-tom-boglari-roof-garden": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/roof,garden",
+        "heroTagline": "Tom bog'lari (Roof Garden) bo'yicha eng yaxshi takliflar",
+    },
+    "landshaft-dizayni-vertikal-boglar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/vertical,garden",
+        "heroTagline": "Vertikal bog'lar bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-changyutgichlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/vacuum,cleaner",
+        "heroTagline": "Changyutgichlar bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-gaz-plitalari-va-pechlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/gas,stove,board",
+        "heroTagline": "Gaz plitalari va pechlar bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-idish-yuvish-mashinalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/dishwasher,washing,machine",
+        "heroTagline": "Idish yuvish mashinalari bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-iqlim-texnikalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/climate,appliance",
+        "heroTagline": "Iqlim texnikalari bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-kichik-maishiy-texnikalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/small,household,appliance",
+        "heroTagline": "Kichik maishiy texnikalar bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-kir-yuvish-mashinalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/laundry,washing,machine",
+        "heroTagline": "Kir yuvish mashinalari bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-kir-yuvish-mashinalari-avtomatik": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/automatic,home",
+        "heroTagline": "Avtomatik bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-kir-yuvish-mashinalari-quritish-funksiyali": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/drying,function",
+        "heroTagline": "Quritish funksiyali bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-kir-yuvish-mashinalari-sanoat-kir-yuvish-mashinalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/industrial,laundry,washing",
+        "heroTagline": "Sanoat kir yuvish mashinalari bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-kir-yuvish-mashinalari-yarim-avtomatik": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/semi,automatic",
+        "heroTagline": "Yarim avtomatik bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-konditsionerlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/air,conditioner",
+        "heroTagline": "Konditsionerlar bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-mikrotolqinli-pechlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/microwave,oven",
+        "heroTagline": "Mikroto'lqinli pechlar bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-muzlatgichlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/refrigerator,fridge",
+        "heroTagline": "Muzlatgichlar bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-muzlatgichlar-ikki-eshikli": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/two,door,fridge",
+        "heroTagline": "Ikki eshikli bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-muzlatgichlar-mini-muzlatgichlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/mini,refrigerator,fridge",
+        "heroTagline": "Mini muzlatgichlar bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-muzlatgichlar-side-by-side": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/side,by,fridge",
+        "heroTagline": "Side by Side bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-muzlatgichlar-smart-muzlatgichlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/smart,home,refrigerator",
+        "heroTagline": "Smart muzlatgichlar bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-oshxona-texnikalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/kitchen,appliance",
+        "heroTagline": "Oshxona texnikalari bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-oshxona-texnikalari-blenderlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/blender,home",
+        "heroTagline": "Blenderlar bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-oshxona-texnikalari-elektr-choynaklar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/electrical,kettle",
+        "heroTagline": "Elektr choynaklar bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-oshxona-texnikalari-kofe-mashinalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/coffee,machine",
+        "heroTagline": "Kofe mashinalari bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-oshxona-texnikalari-mikserlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/mixer,home",
+        "heroTagline": "Mikserlar bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-oshxona-texnikalari-multivarkalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/slow,cooker",
+        "heroTagline": "Multivarkalar bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-premium-texnikalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/premium,luxury,appliance",
+        "heroTagline": "Premium texnikalar bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-smart-home-qurilmalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/smart,home,device",
+        "heroTagline": "Smart Home qurilmalari bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-suv-isitkichlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/water,heater",
+        "heroTagline": "Suv isitkichlari bo'yicha eng yaxshi takliflar",
+    },
+    "maishiy-texnikalar-televizorlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/television,home",
+        "heroTagline": "Televizorlar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-boyoq-va-laklar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/paint,lacquer,varnish",
+        "heroTagline": "Bo'yoq va laklar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-fanera-va-laminatlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/plywood,laminate,flooring",
+        "heroTagline": "Fanera va laminatlar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-mato-va-charm-qoplamalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/fabric,leather,coating",
+        "heroTagline": "Mato va charm qoplamalar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-mato-va-charm-qoplamalar-eko-charm": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/eco,leather",
+        "heroTagline": "Eko charm bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-mato-va-charm-qoplamalar-mikrofiber": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/microfiber,fabric",
+        "heroTagline": "Mikrofiber bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-mato-va-charm-qoplamalar-tabiiy-charm": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/natural,leather",
+        "heroTagline": "Tabiiy charm bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-mato-va-charm-qoplamalar-velyur": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/velvet,fabric",
+        "heroTagline": "Velyur bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-mdf-va-dsp-plitalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/mdf,board,chipboard",
+        "heroTagline": "MDF va DSP plitalari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-mebel-furnituralari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/furniture,hardware",
+        "heroTagline": "Mebel furnituralari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-mebel-furnituralari-ilgaklar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/hook,furniture",
+        "heroTagline": "Ilgaklar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-mebel-furnituralari-lift-tizimlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/lift,mechanism,system",
+        "heroTagline": "Lift tizimlari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-mebel-furnituralari-magnitlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/magnet,furniture",
+        "heroTagline": "Magnitlar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-mebel-furnituralari-menteshalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/hinge,furniture",
+        "heroTagline": "Menteshalar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-mebel-furnituralari-qulflar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/lock,furniture",
+        "heroTagline": "Qulflar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-mebel-furnituralari-relslar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/rail,slide",
+        "heroTagline": "Relslar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-mebel-ishlab-chiqarish-asboblari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/furniture,factory,production",
+        "heroTagline": "Mebel ishlab chiqarish asboblari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-mebel-oyoqlari-va-tayanchlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/furniture,legs,base",
+        "heroTagline": "Mebel oyoqlari va tayanchlari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-sharnir-va-rels-tizimlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/hinge,rail,slide",
+        "heroTagline": "Sharnir va rels tizimlari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-shisha-va-oyna-mahsulotlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/glass,mirror,products",
+        "heroTagline": "Shisha va oyna mahsulotlari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-stoleshnitsalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/countertop,furniture",
+        "heroTagline": "Stoleshnitsalar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-tutqich-va-aksessuarlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/handle,accessories",
+        "heroTagline": "Tutqich va aksessuarlar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-yelim-va-kimyoviy-mahsulotlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/glue,adhesive,chemical",
+        "heroTagline": "Yelim va kimyoviy mahsulotlar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-yogoch-materiallari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/wood,timber,materials",
+        "heroTagline": "Yog'och materiallari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-yogoch-materiallari-buk": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/beech,wood",
+        "heroTagline": "Buk bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-yogoch-materiallari-dsp": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/chipboard,furniture",
+        "heroTagline": "DSP bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-yogoch-materiallari-eman": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/oak,wood",
+        "heroTagline": "Eman bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-yogoch-materiallari-mdf": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/mdf,board",
+        "heroTagline": "MDF bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-yogoch-materiallari-qaragay": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/pine,wood",
+        "heroTagline": "Qarag'ay bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-yogoch-materiallari-yongoq": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/walnut,wood",
+        "heroTagline": "Yong'oq bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-materiallari-yumshoq-mebel-materiallari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/upholstered,soft,furniture",
+        "heroTagline": "Yumshoq mebel materiallari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-bog-va-tashqi-mebellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/garden,orchard,exterior",
+        "heroTagline": "Bog' va tashqi mebellar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-bolalar-xonasi-mebellari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/kids,children,room",
+        "heroTagline": "Bolalar xonasi mebellari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-buyurtma-asosida-tayyorlanadigan-mebellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/custom,order,made",
+        "heroTagline": "Buyurtma asosida tayyorlanadigan mebellar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-dekor-va-interyer-aksessuarlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/decor,interior,accessories",
+        "heroTagline": "Dekor va interyer aksessuarlari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-mebel-aksessuarlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/furniture,accessories",
+        "heroTagline": "Mebel aksessuarlari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-mehmonxona-mebellari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/hotel,furniture",
+        "heroTagline": "Mehmonxona mebellari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-ofis-mebellari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/office,furniture",
+        "heroTagline": "Ofis mebellari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-ofis-mebellari-ish-stollari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/work,office,table",
+        "heroTagline": "Ish stollari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-ofis-mebellari-konferensiya-stollari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/conference,table,desk",
+        "heroTagline": "Konferensiya stollari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-ofis-mebellari-ofis-stullari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/office,chair",
+        "heroTagline": "Ofis stullari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-ofis-mebellari-resepsion-mebellari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/reception,desk,furniture",
+        "heroTagline": "Resepsion mebellari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-ofis-mebellari-shkaflar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/wardrobe,cabinet",
+        "heroTagline": "Shkaflar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-oshxona-mebellari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/kitchen,furniture",
+        "heroTagline": "Oshxona mebellari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-oshxona-mebellari-klassik": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/classic,furniture",
+        "heroTagline": "Klassik bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-oshxona-mebellari-minimalistik": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/minimalist,garden",
+        "heroTagline": "Minimalistik bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-oshxona-mebellari-premium-oshxona-garniturlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/premium,luxury,kitchen",
+        "heroTagline": "Premium oshxona garniturlari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-oshxona-mebellari-zamonaviy": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/modern,furniture",
+        "heroTagline": "Zamonaviy bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-premium-mebellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/premium,luxury,furniture",
+        "heroTagline": "Premium mebellar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-restoran-va-kafe-mebellari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/restaurant,cafe,furniture",
+        "heroTagline": "Restoran va kafe mebellari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-smart-mebellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/smart,home,furniture",
+        "heroTagline": "Smart mebellar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-yotoqxona-mebellari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/bedroom,furniture",
+        "heroTagline": "Yotoqxona mebellari bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-yumshoq-mebellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/upholstered,soft,furniture",
+        "heroTagline": "Yumshoq mebellar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-yumshoq-mebellar-burchak-divanlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/corner,sofa,couch",
+        "heroTagline": "Burchak divanlar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-yumshoq-mebellar-divanlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/sofa,couch",
+        "heroTagline": "Divanlar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-yumshoq-mebellar-kreslolar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/armchair,furniture",
+        "heroTagline": "Kreslolar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-yumshoq-mebellar-puflar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/pouf,ottoman",
+        "heroTagline": "Puflar bo'yicha eng yaxshi takliflar",
+    },
+    "mebel-salonlari-yumshoq-mebellar-transformatsiyalanuvchi-mebellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/sofa,bed,furniture",
+        "heroTagline": "Transformatsiyalanuvchi mebellar bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-3-yulduzli-mehmonxonalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/star,hotel",
+        "heroTagline": "3 yulduzli mehmonxonalar bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-4-yulduzli-mehmonxonalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/star,hotel",
+        "heroTagline": "4 yulduzli mehmonxonalar bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-5-yulduzli-mehmonxonalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/star,hotel",
+        "heroTagline": "5 yulduzli mehmonxonalar bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-airport-hotel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/airport,hotel",
+        "heroTagline": "Airport Hotel bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-apart-hotel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/apart,hotel",
+        "heroTagline": "Apart Hotel bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-boutique-hotel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/boutique,hotel",
+        "heroTagline": "Boutique Hotel bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-business-hotel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/business,hotel",
+        "heroTagline": "Business Hotel bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-business-hotel-biznes-xizmatlariga-ega-mehmonxonalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/business,service,hotel",
+        "heroTagline": "Biznes xizmatlariga ega mehmonxonalar bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-business-hotel-coworking-zonalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/coworking,office,zone",
+        "heroTagline": "Coworking zonalari bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-business-hotel-konferensiya-zallari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/conference,hall",
+        "heroTagline": "Konferensiya zallari bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-city-hotel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/city,hotel",
+        "heroTagline": "City Hotel bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-eco-hotel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/eco,hotel",
+        "heroTagline": "Eco Hotel bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-family-hotel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/family,hotel",
+        "heroTagline": "Family Hotel bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-luxury-hotel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/luxury,hotel",
+        "heroTagline": "Luxury Hotel bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-luxury-hotel-deluxe-room": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/deluxe,room",
+        "heroTagline": "Deluxe Room bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-luxury-hotel-executive-room": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/executive,room",
+        "heroTagline": "Executive Room bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-luxury-hotel-presidential-suite": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/presidential,suite",
+        "heroTagline": "Presidential Suite bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-luxury-hotel-royal-suite": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/royal,suite",
+        "heroTagline": "Royal Suite bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-mountain-hotel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/mountain,hotel",
+        "heroTagline": "Mountain Hotel bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-resort-hotel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/resort,hotel",
+        "heroTagline": "Resort Hotel bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-resort-hotel-beach-resort": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/beach,resort",
+        "heroTagline": "Beach Resort bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-resort-hotel-family-resort": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/family,resort",
+        "heroTagline": "Family Resort bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-resort-hotel-mountain-resort": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/mountain,resort",
+        "heroTagline": "Mountain Resort bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-resort-hotel-wellness-resort": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/wellness,spa,resort",
+        "heroTagline": "Wellness Resort bo'yicha eng yaxshi takliflar",
+    },
+    "mexmonxona-spa-hotel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/spa,hotel",
+        "heroTagline": "Spa Hotel bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-avtoservis-va-avtosalonlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/car,service,garage",
+        "heroTagline": "Avtoservis va avtosalonlar bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-dokon-va-butiklar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/shop,store,boutique",
+        "heroTagline": "Do'kon va butiklar bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-investitsiya-obyektlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/investment,property",
+        "heroTagline": "Investitsiya obyektlari bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-ishlab-chiqarish-binolari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/factory,production,building",
+        "heroTagline": "Ishlab chiqarish binolari bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-kongilochar-markazlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/entertainment,center",
+        "heroTagline": "Ko'ngilochar markazlar bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-mehmonxonalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/hotel,commercial",
+        "heroTagline": "Mehmonxonalar bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-ofis-binolari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/office,building",
+        "heroTagline": "Ofis binolari bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-ofis-binolari-alohida-ofislar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/private,office",
+        "heroTagline": "Alohida ofislar bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-ofis-binolari-business-center": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/business,center",
+        "heroTagline": "Business Center bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-ofis-binolari-coworking": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/coworking,office",
+        "heroTagline": "Coworking bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-ofis-binolari-open-space": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/open,space",
+        "heroTagline": "Open Space bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-ofis-binolari-premium-office": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/premium,luxury,office",
+        "heroTagline": "Premium Office bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-omborxonalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/warehouse,commercial",
+        "heroTagline": "Omborxonalar bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-omborxonalar-distribyutor-markazlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/distributor,centers",
+        "heroTagline": "Distribyutor markazlari bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-omborxonalar-logistika-omborlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/logistics,warehouse",
+        "heroTagline": "Logistika omborlari bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-omborxonalar-sanoat-omborlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/industrial,warehouse",
+        "heroTagline": "Sanoat omborlari bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-omborxonalar-sovutkich-omborlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/cold,storage,warehouse",
+        "heroTagline": "Sovutkich omborlari bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-restoran-va-kafelar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/restaurant,cafe",
+        "heroTagline": "Restoran va kafelar bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-savdo-markazlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/shopping,centers",
+        "heroTagline": "Savdo markazlari bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-savdo-markazlari-butiklar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/boutique,shop",
+        "heroTagline": "Butiklar bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-savdo-markazlari-food-court-joylari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/food,court,hall",
+        "heroTagline": "Food court joylari bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-savdo-markazlari-savdo-pavilyonlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/shopping,pavilion",
+        "heroTagline": "Savdo pavilyonlari bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-savdo-markazlari-showroomlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/showroom,commercial",
+        "heroTagline": "Showroomlar bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-savdo-markazlari-supermarketlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/supermarket,commercial",
+        "heroTagline": "Supermarketlar bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-sport-va-fitness-markazlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/sport,gym,fitness",
+        "heroTagline": "Sport va fitness markazlari bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-talim-muassasalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/education,school,institution",
+        "heroTagline": "Ta'lim muassasalari bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-tibbiyot-markazlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/medical,clinic,centers",
+        "heroTagline": "Tibbiyot markazlari bo'yicha eng yaxshi takliflar",
+    },
+    "noturar-binolar-zavod-va-fabrikalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/factory,commercial",
+        "heroTagline": "Zavod va fabrikalar bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-armatura-va-metall-mahsulotlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/rebar,steel,metal",
+        "heroTagline": "Armatura va metall mahsulotlari bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-boyoqlar-va-pardozlash-materiallari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/paint,finishing,materials",
+        "heroTagline": "Bo'yoqlar va pardozlash materiallari bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-boyoqlar-va-pardozlash-materiallari-dekorativ-qoplamalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/decorative,coating",
+        "heroTagline": "Dekorativ qoplamalar bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-boyoqlar-va-pardozlash-materiallari-emal": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/enamel,paint",
+        "heroTagline": "Emal bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-boyoqlar-va-pardozlash-materiallari-grunt": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/primer,paint",
+        "heroTagline": "Grunt bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-boyoqlar-va-pardozlash-materiallari-ichki-boyoq": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/interior,paint",
+        "heroTagline": "Ichki bo'yoq bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-boyoqlar-va-pardozlash-materiallari-lak": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/varnish,paint",
+        "heroTagline": "Lak bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-boyoqlar-va-pardozlash-materiallari-tashqi-boyoq": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/exterior,paint",
+        "heroTagline": "Tashqi bo'yoq bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-elektr-mahsulotlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/electrical,products",
+        "heroTagline": "Elektr mahsulotlari bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-elektr-mahsulotlari-avtomat": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/circuit,breaker",
+        "heroTagline": "Avtomat bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-elektr-mahsulotlari-kabel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/cable,wire",
+        "heroTagline": "Kabel bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-elektr-mahsulotlari-rozetka": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/electrical,socket",
+        "heroTagline": "Rozetka bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-elektr-mahsulotlari-sensor": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/sensor,construction",
+        "heroTagline": "Sensor bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-elektr-mahsulotlari-yoritish": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/lighting,construction",
+        "heroTagline": "Yoritish bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-eshik-va-derazalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/door,window",
+        "heroTagline": "Eshik va derazalar bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-gisht-va-bloklar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/brick,block",
+        "heroTagline": "G'isht va bloklar bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-issiqlik-va-gidroizolyatsiya": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/thermal,insulation,waterproofing",
+        "heroTagline": "Issiqlik va gidroizolyatsiya bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-mahkamlash-mahsulotlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/fastener,hardware,products",
+        "heroTagline": "Mahkamlash mahsulotlari bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-mahkamlash-mahsulotlari-anker": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/anchor,bolt",
+        "heroTagline": "Anker bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-mahkamlash-mahsulotlari-bolt": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/bolt,construction",
+        "heroTagline": "Bolt bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-mahkamlash-mahsulotlari-dyubel": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/dowel,construction",
+        "heroTagline": "Dyubel bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-mahkamlash-mahsulotlari-gayka": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/nut,bolt",
+        "heroTagline": "Gayka bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-mahkamlash-mahsulotlari-mix": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/nail,construction",
+        "heroTagline": "Mix bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-mahkamlash-mahsulotlari-shayba": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/washer,bolt",
+        "heroTagline": "Shayba bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-mahkamlash-mahsulotlari-shurup": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/screw,construction",
+        "heroTagline": "Shurup bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-mahkamlash-mahsulotlari-vint": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/screw,bolt",
+        "heroTagline": "Vint bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-maxsus-texnika-va-jihozlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/special,equipment,machinery",
+        "heroTagline": "Maxsus texnika va jihozlar bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-pol-qoplamalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/floor,coating",
+        "heroTagline": "Pol qoplamalari bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-qurilish-asbob-uskunalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/construction,tools,equipment",
+        "heroTagline": "Qurilish asbob-uskunalari bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-santexnika-mahsulotlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/plumbing,products",
+        "heroTagline": "Santexnika mahsulotlari bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-sement-va-quruq-aralashmalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/cement,dry,mix",
+        "heroTagline": "Sement va quruq aralashmalar bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-tom-yopish-materiallari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/roof,roofing,materials",
+        "heroTagline": "Tom yopish materiallari bo'yicha eng yaxshi takliflar",
+    },
+    "qurilish-materiallari-yogoch-mahsulotlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/wood,timber,products",
+        "heroTagline": "Yog'och mahsulotlari bo'yicha eng yaxshi takliflar",
+    },
+    "tamirchi-xizmati": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/repairman,handyman",
+        "heroTagline": "Ta'mirchi bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-elektrchilar-uchun-kiyimlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/electrician,clothing,workwear",
+        "heroTagline": "Elektrchilar uchun kiyimlar bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-himoya-vositalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/protective,gear,equipment",
+        "heroTagline": "Himoya vositalari bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-himoya-vositalari-kaska": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/helmet,workwear",
+        "heroTagline": "Kaska bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-himoya-vositalari-kozoynak": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/safety,glasses",
+        "heroTagline": "Ko'zoynak bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-himoya-vositalari-niqob": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/mask,workwear",
+        "heroTagline": "Niqob bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-himoya-vositalari-qolqop": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/gloves,workwear",
+        "heroTagline": "Qo'lqop bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-himoya-vositalari-quloqchin": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/ear,protection",
+        "heroTagline": "Quloqchin bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-himoya-vositalari-respirator": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/respirator,mask",
+        "heroTagline": "Respirator bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-himoya-vositalari-xavfsizlik-kamarlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/security,safety,harness",
+        "heroTagline": "Xavfsizlik kamarlari bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-ish-poyabzallari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/work,office,boots",
+        "heroTagline": "Ish poyabzallari bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-ish-poyabzallari-botinka": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/boots,workwear",
+        "heroTagline": "Botinka bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-ish-poyabzallari-etik": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/boots,workwear",
+        "heroTagline": "Etik bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-ish-poyabzallari-metall-burunli-poyabzal": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/metal,steel,toe",
+        "heroTagline": "Metall burunli poyabzal bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-ish-poyabzallari-qishki-poyabzal": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/winter,boots,shoes",
+        "heroTagline": "Qishki poyabzal bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-ish-poyabzallari-suv-otkazmaydigan-poyabzal": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/water,waterproof,boots",
+        "heroTagline": "Suv o'tkazmaydigan poyabzal bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-ish-poyabzallari-yozgi-poyabzal": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/summer,boots,shoes",
+        "heroTagline": "Yozgi poyabzal bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-mavsumiy-ish-kiyimlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/seasonal,workwear,work",
+        "heroTagline": "Mavsumiy ish kiyimlari bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-maxsus-himoya-kiyimlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/special,protective,gear",
+        "heroTagline": "Maxsus himoya kiyimlari bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-mehmonxona-va-servis-formasi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/hotel,service,uniform",
+        "heroTagline": "Mehmonxona va servis formasi bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-muhandis-va-texnik-kiyimlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/engineer,technical,maintenance",
+        "heroTagline": "Muhandis va texnik kiyimlari bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-ofis-formasi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/office,uniform",
+        "heroTagline": "Ofis formasi bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-payvandchilar-uchun-kiyimlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/welder,clothing,workwear",
+        "heroTagline": "Payvandchilar uchun kiyimlar bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-qurilish-kiyimlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/construction,clothing",
+        "heroTagline": "Qurilish kiyimlari bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-qurilish-kiyimlari-jilet": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/vest,workwear",
+        "heroTagline": "Jilet bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-qurilish-kiyimlari-kombinezon": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/coverall,workwear",
+        "heroTagline": "Kombinezon bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-qurilish-kiyimlari-kurtka": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/jacket,workwear",
+        "heroTagline": "Kurtka bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-qurilish-kiyimlari-shim": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/pants,workwear",
+        "heroTagline": "Shim bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-qurilish-kiyimlari-termo-kiyimlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/thermal,workwear,clothing",
+        "heroTagline": "Termo kiyimlar bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-qurilish-kiyimlari-yomgir-kiyimi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/raincoat,clothing",
+        "heroTagline": "Yomg'ir kiyimi bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-restoran-va-oshpaz-formasi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/restaurant,chef,uniform",
+        "heroTagline": "Restoran va oshpaz formasi bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-santexnik-va-usta-kiyimlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/plumber,handyman,craftsman",
+        "heroTagline": "Santexnik va usta kiyimlari bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-tibbiyot-kiyimlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/medical,clinic,clothing",
+        "heroTagline": "Tibbiyot kiyimlari bo'yicha eng yaxshi takliflar",
+    },
+    "uniforma-va-maxsus-kiyimlar-xavfsizlik-xodimlari-formasi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/security,staff,uniform",
+        "heroTagline": "Xavfsizlik xodimlari formasi bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-dekorativ-yoritish": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/decorative,lighting",
+        "heroTagline": "Dekorativ yoritish bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-dekorativ-yoritish-aqlli-yoritish-tizimlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/smart,lighting,system",
+        "heroTagline": "Aqlli yoritish tizimlari bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-dekorativ-yoritish-dizayner-lampalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/designer,lamp,light",
+        "heroTagline": "Dizayner lampalari bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-dekorativ-yoritish-led-yoritish": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/led,light,lighting",
+        "heroTagline": "LED yoritish bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-dekorativ-yoritish-osma-chiroqlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/pendant,lamp,light",
+        "heroTagline": "Osma chiroqlar bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-dekorativ-yoritish-tungi-lampalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/night,lamp",
+        "heroTagline": "Tungi lampalar bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-devor-bezaklari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/wall,decor",
+        "heroTagline": "Devor bezaklari bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-devor-bezaklari-3d-panellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/panel,home",
+        "heroTagline": "3D panellar bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-devor-bezaklari-dekorativ-yogoch-panellar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/decorative,wood,timber",
+        "heroTagline": "Dekorativ yog'och panellar bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-devor-bezaklari-metall-dekorlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/metal,decor",
+        "heroTagline": "Metall dekorlar bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-devor-bezaklari-premium-devor-kompozitsiyalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/premium,luxury,wall",
+        "heroTagline": "Premium devor kompozitsiyalari bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-devor-bezaklari-stikerlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/sticker,home",
+        "heroTagline": "Stikerlar bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-gilam-va-pol-qoplamalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/carpet,rug,floor",
+        "heroTagline": "Gilam va pol qoplamalari bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-gullar-va-dekorativ-osimliklar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/flowers,decorative,plants",
+        "heroTagline": "Gullar va dekorativ o'simliklar bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-hammom-aksessuarlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/spa,bath,accessories",
+        "heroTagline": "Hammom aksessuarlari bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-kozgular": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/mirror,home",
+        "heroTagline": "Ko'zgular bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-oshxona-bezaklari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/kitchen,decor",
+        "heroTagline": "Oshxona bezaklari bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-pardalar-va-jalyuzilar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/curtain,blinds",
+        "heroTagline": "Pardalar va jalyuzilar bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-pardalar-va-jalyuzilar-avtomatik": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/automatic,home",
+        "heroTagline": "Avtomatik bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-pardalar-va-jalyuzilar-blackout": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/blackout,curtain",
+        "heroTagline": "Blackout bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-pardalar-va-jalyuzilar-klassik": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/classic,home",
+        "heroTagline": "Klassik bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-pardalar-va-jalyuzilar-premium-kolleksiyalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/premium,luxury,curtain",
+        "heroTagline": "Premium kolleksiyalar bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-pardalar-va-jalyuzilar-zamonaviy": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/modern,home",
+        "heroTagline": "Zamonaviy bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-rasmlar-va-kartinalar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/art,painting",
+        "heroTagline": "Rasmlar va kartinalar bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-shamdon-va-dekor-aksessuarlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/candlestick,decor,accessories",
+        "heroTagline": "Shamdon va dekor aksessuarlari bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-smart-dekor-mahsulotlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/smart,home,decor",
+        "heroTagline": "Smart dekor mahsulotlari bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-soatlar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/clock,home",
+        "heroTagline": "Soatlar bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-vaza-va-haykallar": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/vase,statue,sculpture",
+        "heroTagline": "Vaza va haykallar bo'yicha eng yaxshi takliflar",
+    },
+    "uy-bezaklari-yotoqxona-dekorlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/bedroom,decor",
+        "heroTagline": "Yotoqxona dekorlari bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-dizayn-va-loyiha-xizmatlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/design,project,service",
+        "heroTagline": "Dizayn va loyiha xizmatlari bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-elektrik-xizmatlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/electrical,service",
+        "heroTagline": "Elektrik xizmatlari bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-elektrik-xizmatlari-avariya-xizmatlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/emergency,repair,service",
+        "heroTagline": "Avariya xizmatlari bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-elektrik-xizmatlari-elektr-qalqonlarini-ornatish": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/electrical,panel,installation",
+        "heroTagline": "Elektr qalqonlarini o'rnatish bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-elektrik-xizmatlari-sim-tortish": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/wiring,handyman",
+        "heroTagline": "Sim tortish bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-elektrik-xizmatlari-smart-home-elektr-tizimlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/smart,home,electrical",
+        "heroTagline": "Smart Home elektr tizimlari bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-elektrik-xizmatlari-yoritish-tizimlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/lighting,system",
+        "heroTagline": "Yoritish tizimlari bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-kochirish-pereezd-xizmatlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/moving,relocation,service",
+        "heroTagline": "Ko'chirish (Pereezd) xizmatlari bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-konditsioner-va-ventilyatsiya": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/air,conditioner,ventilation",
+        "heroTagline": "Konditsioner va ventilyatsiya bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-mebel-yigish-va-ornatish": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/furniture,assembly,installation",
+        "heroTagline": "Mebel yig'ish va o'rnatish bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-qurilish-brigadalari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/construction,crew",
+        "heroTagline": "Qurilish brigadalari bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-santexnika-xizmatlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/plumbing,service",
+        "heroTagline": "Santexnika xizmatlari bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-tamirlash-xizmatlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/repair,renovation,service",
+        "heroTagline": "Ta'mirlash xizmatlari bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-tamirlash-xizmatlari-fasad-ishlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/facade,renovation,work",
+        "heroTagline": "Fasad ishlari bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-tamirlash-xizmatlari-kapital-tamirlash": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/major,renovation,repair",
+        "heroTagline": "Kapital ta'mirlash bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-tamirlash-xizmatlari-kosmetik-tamirlash": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/cosmetic,renovation,repair",
+        "heroTagline": "Kosmetik ta'mirlash bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-tamirlash-xizmatlari-kvartira-tamiri": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/apartment,renovation",
+        "heroTagline": "Kvartira ta'miri bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-tamirlash-xizmatlari-ofis-tamiri": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/office,renovation",
+        "heroTagline": "Ofis ta'miri bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-tozalash-xizmatlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/cleaning,service",
+        "heroTagline": "Tozalash xizmatlari bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-tozalash-xizmatlari-general-tozalash": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/deep,cleaning",
+        "heroTagline": "General tozalash bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-tozalash-xizmatlari-kimyoviy-tozalash": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/chemical,cleaning",
+        "heroTagline": "Kimyoviy tozalash bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-tozalash-xizmatlari-kundalik-tozalash": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/daily,cleaning",
+        "heroTagline": "Kundalik tozalash bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-tozalash-xizmatlari-ofis-tozalash": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/office,cleaning",
+        "heroTagline": "Ofis tozalash bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-tozalash-xizmatlari-qurilishdan-keyingi-tozalash": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/post,construction,cleaning",
+        "heroTagline": "Qurilishdan keyingi tozalash bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-usta-xizmatlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/handyman,craftsman,service",
+        "heroTagline": "Usta xizmatlari bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-uy-boshqaruvi-va-texnik-xizmat": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/home,control,technical",
+        "heroTagline": "Uy boshqaruvi va texnik xizmat bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-video-kuzatuv-va-smart-home": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/video,surveillance,camera",
+        "heroTagline": "Video kuzatuv va Smart Home bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-xavfsizlik-tizimlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/security,system",
+        "heroTagline": "Xavfsizlik tizimlari bo'yicha eng yaxshi takliflar",
+    },
+    "xizmat-korsatish-yuk-tashish-xizmatlari": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/cargo,truck,transport",
+        "heroTagline": "Yuk tashish xizmatlari bo'yicha eng yaxshi takliflar",
+    },
+    "yuk-mashina-haydovchisi": {
+        "heroImageUrl": "https://loremflickr.com/1600/900/cargo,truck,car",
+        "heroTagline": "Yuk mashina haydovchisi bo'yicha eng yaxshi takliflar",
+    },
+}
+
+
 async def _backfill_category_theme(
     use_cases: ConfigurationUseCases,
     repo: SqlalchemyConfigHeadRepository,
@@ -2254,6 +4349,20 @@ async def _seed_catalog_taxonomy(
             hero_image_url=theme["heroImageUrl"],
             hero_tagline=theme["heroTagline"],
             accent_color=theme["accentColor"],
+            now=now,
+        )
+
+    # -- Every subcategory also gets a themed hero image now (Task: subcategory hero images) --
+    # no accent_color, see _SUBCATEGORY_HERO_THEMES's own docstring for why. A code with no
+    # matching head yet (a subtree not seeded in this environment) is a silent no-op --
+    # _backfill_category_theme already returns early when the head doesn't exist.
+    for code, theme in _SUBCATEGORY_HERO_THEMES.items():
+        await _backfill_category_theme(
+            use_cases,
+            repo,
+            code=code,
+            hero_image_url=theme["heroImageUrl"],
+            hero_tagline=theme["heroTagline"],
             now=now,
         )
 
