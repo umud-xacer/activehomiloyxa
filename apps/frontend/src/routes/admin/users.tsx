@@ -10,6 +10,7 @@ import {
   Ban,
   RotateCcw,
   Shield,
+  Trash2,
   X,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/require-auth";
@@ -118,6 +119,26 @@ function UserRow({ user, index }: { user: UserAdminView; index: number }) {
     }
   };
 
+  const deletePermanently = async () => {
+    if (
+      !window.confirm(
+        "Bu foydalanuvchini BUTUNLAY o'chirmoqchimisiz? Bu amalni qaytarib bo'lmaydi — akkaunt tizimga kira olmay qoladi va shaxsiy ma'lumotlari (email, telefon, ism) tozalanadi.",
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await adminUsersApi.changeStatus(user.id, "CLOSE", "Admin panel orqali butunlay o'chirildi");
+      await invalidate();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "O'chirib bo'lmadi.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -170,6 +191,16 @@ function UserRow({ user, index }: { user: UserAdminView; index: number }) {
               <Ban className="size-3.5" />
             )}
             {user.status === "SUSPENDED" ? "Faollashtirish" : "Bloklash"}
+          </button>
+          <button
+            type="button"
+            disabled={busy || user.status === "CLOSED"}
+            onClick={deletePermanently}
+            title="Butunlay o'chirish — qaytarib bo'lmaydi"
+            className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1.5 text-xs font-semibold text-destructive-foreground transition hover:opacity-90 disabled:opacity-50"
+          >
+            <Trash2 className="size-3.5" />
+            O'chirish
           </button>
         </div>
       </div>
@@ -224,8 +255,8 @@ function Page() {
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard
             icon={UsersIcon}
-            label="Ko'rsatilmoqda"
-            value={items.length}
+            label="Jami foydalanuvchilar"
+            value={data?.page.total ?? items.length}
             accent="primary"
             index={0}
           />

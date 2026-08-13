@@ -123,6 +123,9 @@ from notifications.interfaces.di import get_notification_use_cases
 from notifications.interfaces.errors import register_notifications_exception_mappings
 from notifications.interfaces.routers import notifications_router
 from profiles.interfaces.di import (
+    get_acting_profile_manager as get_profiles_acting_profile_manager,
+)
+from profiles.interfaces.di import (
     get_acting_reviewer as get_profiles_acting_reviewer,
 )
 from profiles.interfaces.di import (
@@ -267,6 +270,9 @@ def create_app() -> FastAPI:
     )
     app.dependency_overrides[get_profiles_acting_reviewer] = (
         composition_root.provide_profiles_acting_reviewer
+    )
+    app.dependency_overrides[get_profiles_acting_profile_manager] = (
+        composition_root.provide_profiles_acting_profile_manager
     )
     app.dependency_overrides[get_moderation_use_cases] = (
         composition_root.provide_moderation_use_cases

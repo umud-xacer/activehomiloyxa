@@ -74,6 +74,16 @@ class RoleAssignment:
     assigned_by: UUID
 
 
+def _initial_review_status(account_kind: AccountKind) -> RegistrationReviewStatus:
+    """ADR-0007 (revised, product decision 2026-08-13): only LEGAL_ENTITY/INVESTOR signups need
+    a human reviewer -- an INDIVIDUAL account (buyer/renter/service-seeker) has nothing an admin
+    needs to approve, so it starts APPROVED and reaches its dashboard immediately after auth,
+    never touching `GET /admin/registration-queue`."""
+    if account_kind is AccountKind.INDIVIDUAL:
+        return RegistrationReviewStatus.APPROVED
+    return RegistrationReviewStatus.PENDING
+
+
 @dataclass(frozen=True)
 class UserAccount:
     """DDD Sec 5.1 aggregate root `UserAccount [P]`. `lock_version` matches
@@ -118,10 +128,12 @@ class UserAccount:
     ) -> UserAccount:
         """FR-AUTH-001: registration via a verified phone OTP. The OTP has already been verified
         by the caller (`OtpChallenge.verify`) before this factory runs, so the method is
-        recorded as verified immediately. ADR-0007: `account_kind`/`anketa` are captured at the
-        same signup step (registration wizard's role-picker + questionnaire); `review_status`
-        always starts `PENDING` regardless of `account_kind` -- every new account, individual
-        included, waits for a reviewer decision before its workspace unlocks."""
+        recorded as verified immediately. ADR-0007 (revised): `account_kind`/`anketa` are
+        captured at the same signup step (registration wizard's role-picker + questionnaire);
+        `review_status` starts `PENDING` for LEGAL_ENTITY/INVESTOR (still need a reviewer
+        decision before their workspace unlocks) but `APPROVED` immediately for INDIVIDUAL --
+        an ordinary buyer/renter/service-seeker has nothing to review. See
+        `_initial_review_status`."""
         method = AuthenticationMethod(
             method_type=AuthMethodType.PHONE_OTP,
             identifier=phone.value,
@@ -143,7 +155,7 @@ class UserAccount:
             updated_at=now,
             account_kind=account_kind,
             anketa=dict(anketa) if anketa else {},
-            review_status=RegistrationReviewStatus.PENDING,
+            review_status=_initial_review_status(account_kind),
         )
 
     @staticmethod
@@ -159,8 +171,9 @@ class UserAccount:
     ) -> UserAccount:
         """FR-AUTH-002. `AccountStatus` has no PENDING value in the frozen contract, so the
         account is ACTIVE immediately; `verified_at=None` on the EMAIL method records that
-        confirmation has not been completed (see `AuthenticationMethod` docstring). ADR-0007:
-        `review_status` starts `PENDING` regardless of `account_kind` -- see `register_via_phone`."""
+        confirmation has not been completed (see `AuthenticationMethod` docstring). ADR-0007
+        (revised): `review_status` starts `PENDING` for LEGAL_ENTITY/INVESTOR, `APPROVED` for
+        INDIVIDUAL -- see `register_via_phone`/`_initial_review_status`."""
         method = AuthenticationMethod(
             method_type=AuthMethodType.EMAIL,
             identifier=email.value,
@@ -183,7 +196,7 @@ class UserAccount:
             updated_at=now,
             account_kind=account_kind,
             anketa=dict(anketa) if anketa else {},
-            review_status=RegistrationReviewStatus.PENDING,
+            review_status=_initial_review_status(account_kind),
         )
 
     @staticmethod
@@ -199,8 +212,9 @@ class UserAccount:
     ) -> UserAccount:
         """FR-AUTH-003, first sign-in with no pre-existing account for this verified email. Only
         called when the caller's repository lookup found no existing account with this email --
-        otherwise `link_google_identity` is used instead (I-09: link, never duplicate). ADR-0007:
-        `review_status` starts `PENDING` regardless of `account_kind` -- see `register_via_phone`."""
+        otherwise `link_google_identity` is used instead (I-09: link, never duplicate). ADR-0007
+        (revised): `review_status` starts `PENDING` for LEGAL_ENTITY/INVESTOR, `APPROVED` for
+        INDIVIDUAL -- see `register_via_phone`/`_initial_review_status`."""
         method = AuthenticationMethod(
             method_type=AuthMethodType.GOOGLE,
             identifier=google_subject,
@@ -222,7 +236,7 @@ class UserAccount:
             updated_at=now,
             account_kind=account_kind,
             anketa=dict(anketa) if anketa else {},
-            review_status=RegistrationReviewStatus.PENDING,
+            review_status=_initial_review_status(account_kind),
         )
 
     def link_google_identity(self, *, google_subject: str, now: datetime) -> UserAccount:
@@ -255,7 +269,9 @@ class UserAccount:
         """Sign in with Apple, mirrors `register_via_google` exactly -- same FR-AUTH-003-style
         federated-identity shape, only the provider differs. Only called when the caller's
         repository lookup found no existing account with this verified email (I-09: link, never
-        duplicate; `link_apple_identity` handles the existing-account case)."""
+        duplicate; `link_apple_identity` handles the existing-account case). ADR-0007 (revised):
+        `review_status` starts `PENDING` for LEGAL_ENTITY/INVESTOR, `APPROVED` for INDIVIDUAL --
+        see `_initial_review_status`."""
         method = AuthenticationMethod(
             method_type=AuthMethodType.APPLE,
             identifier=apple_subject,
@@ -277,7 +293,7 @@ class UserAccount:
             updated_at=now,
             account_kind=account_kind,
             anketa=dict(anketa) if anketa else {},
-            review_status=RegistrationReviewStatus.PENDING,
+            review_status=_initial_review_status(account_kind),
         )
 
     def link_apple_identity(self, *, apple_subject: str, now: datetime) -> UserAccount:

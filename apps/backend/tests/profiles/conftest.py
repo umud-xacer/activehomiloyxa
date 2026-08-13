@@ -58,6 +58,18 @@ class FakeBusinessProfileRepository:
         items.sort(key=lambda p: p.created_at)
         return items[:limit], None
 
+    async def list_admin(
+        self, *, status: str | None, cursor: str | None, limit: int
+    ) -> tuple[list[BusinessProfile], str | None]:
+        items = list(self.profiles.values())
+        if status is not None:
+            items = [p for p in items if p.status.value == status]
+        items.sort(key=lambda p: p.created_at)
+        return items[:limit], None
+
+    async def count_all(self) -> int:
+        return len(self.profiles)
+
     async def get_by_portfolio_media_asset_id(self, media_asset_id: UUID) -> BusinessProfile | None:
         for profile in self.profiles.values():
             if any(item.media_asset_id == media_asset_id for item in profile.portfolio):

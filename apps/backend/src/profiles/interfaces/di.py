@@ -9,7 +9,7 @@ the real implementation is registered by the app factory via `app.dependency_ove
 from __future__ import annotations
 
 from profiles.application import ProfileUseCases, VerificationUseCases
-from profiles.interfaces.auth import ActingReviewer, ActingUser
+from profiles.interfaces.auth import ActingProfileManager, ActingReviewer, ActingUser
 
 
 async def get_profile_use_cases() -> ProfileUseCases:
@@ -36,5 +36,12 @@ async def get_acting_user() -> ActingUser:
 async def get_acting_reviewer() -> ActingReviewer:
     raise NotImplementedError(
         "get_acting_reviewer was not overridden by the composition root "
+        "(app.dependency_overrides) -- see apps/backend/src/composition_root.py"
+    )
+
+
+async def get_acting_profile_manager() -> ActingProfileManager:
+    raise NotImplementedError(
+        "get_acting_profile_manager was not overridden by the composition root "
         "(app.dependency_overrides) -- see apps/backend/src/composition_root.py"
     )

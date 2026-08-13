@@ -32,7 +32,7 @@ export const adminUsersApi = {
 
   changeStatus(
     userId: string,
-    action: "SUSPEND" | "REACTIVATE",
+    action: "SUSPEND" | "REACTIVATE" | "CLOSE",
     reason?: string,
   ): Promise<UserAdminView> {
     return http.post<UserAdminView>(

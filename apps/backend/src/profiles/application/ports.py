@@ -51,6 +51,20 @@ class BusinessProfileRepository(Protocol):
         `verified_only` filters to `badge.status == VALID`."""
         ...
 
+    async def list_admin(
+        self, *, status: str | None, cursor: str | None, limit: int
+    ) -> tuple[list[BusinessProfile], str | None]:
+        """Backs `adminListBusinessProfiles` (owner-admin panel) -- unlike `list_public`, includes
+        `ARCHIVED` profiles and accepts an explicit `status` filter instead of always excluding
+        one; ordered oldest-first, same cursor shape as `list_public`."""
+        ...
+
+    async def count_all(self) -> int:
+        """Backs the owner-admin panel's "total companies" stat -- a plain `COUNT(*)` over every
+        `BusinessProfile` regardless of status, mirroring `identity.application.ports.
+        UserAccountRepository.count_all`."""
+        ...
+
     async def get_by_portfolio_media_asset_id(self, media_asset_id: UUID) -> BusinessProfile | None:
         """Backs the media asset-status projection (X-06): at most one profile holds a given
         media asset attached as a portfolio item at a time."""

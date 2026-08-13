@@ -18,7 +18,12 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID, uuid4
 
-from contracts.events.identity import AccountSuspended, RegistrationApproved, RegistrationRejected
+from contracts.events.identity import (
+    AccountClosed,
+    AccountSuspended,
+    RegistrationApproved,
+    RegistrationRejected,
+)
 from identity.application.exceptions import AccountNotFoundError
 from identity.application.ports import (
     RoleDefinitionReaderPort,
@@ -47,18 +52,35 @@ class AdminIdentityUseCases:
         self,
         *,
         target_account_id: UserId,
-        action: Literal["SUSPEND", "REACTIVATE"],
+        action: Literal["SUSPEND", "REACTIVATE", "CLOSE"],
         reason: str | None,
         now: datetime,
     ) -> UserAccount:
         """adminChangeUserStatus. Suspension triggers bulk session revocation (Security Sec 3.3)
-        and publishes `AccountSuspended` (DDD Sec 6: "Operator suspension")."""
+        and publishes `AccountSuspended` (DDD Sec 6: "Operator suspension"). `CLOSE` is the
+        owner-admin panel's "permanently remove user" action -- same anonymise-and-retain
+        transition `UserAccount.close`/`AccountUseCases.close_account` already give a user over
+        their own account (FR-USER-005), just admin-triggered instead of self-service; terminal,
+        no reactivate path back out of CLOSED."""
         account = await self._require_account(target_account_id)
         if action == "SUSPEND":
             updated = account.suspend(now=now)
             await self._accounts.save(updated)
             await self._sessions.delete_all_for_account(target_account_id)
             event = AccountSuspended(
+                event_id=uuid4(),
+                occurred_at=now,
+                actor=target_account_id.value,
+                aggregate_type="UserAccount",
+                aggregate_id=target_account_id.value,
+                payload={"accountId": str(target_account_id.value), "reason": reason},
+            )
+            await self._outbox.append(event)
+        elif action == "CLOSE":
+            updated = account.close(now=now)
+            await self._accounts.save(updated)
+            await self._sessions.delete_all_for_account(target_account_id)
+            event = AccountClosed(
                 event_id=uuid4(),
                 occurred_at=now,
                 actor=target_account_id.value,
@@ -83,6 +105,9 @@ class AdminIdentityUseCases:
         return await self._accounts.list_page(
             status=status, query=query, cursor=cursor, limit=limit
         )
+
+    async def count_users(self) -> int:
+        return await self._accounts.count_all()
 
     async def assign_role(
         self,

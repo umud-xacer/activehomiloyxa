@@ -276,6 +276,7 @@ from profiles.infrastructure.event_projection import (
 from profiles.infrastructure.persistence.models import (
     OutboxEventRow as ProfilesOutboxEventRow,
 )
+from profiles.interfaces.auth import ActingProfileManager as ProfilesActingProfileManager
 from profiles.interfaces.auth import ActingReviewer as ProfilesActingReviewer
 from profiles.interfaces.auth import ActingUser as ProfilesActingUser
 from profiles.interfaces.moderation_port import ProfilesModerationAdapter
@@ -1823,6 +1824,37 @@ async def provide_profiles_acting_reviewer(
         )
         AuthorizationService().authorize(context, "profiles:verification:review")
         return ProfilesActingReviewer(account_id=account.id)
+    raise AssertionError("unreachable: _identity_session always yields exactly once")
+
+
+async def provide_profiles_acting_profile_manager(
+    ah_session: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+    authorization: str | None = Header(default=None),
+) -> ProfilesActingProfileManager:
+    """Overrides `profiles.interfaces.di.get_acting_profile_manager` -- backs
+    `adminListBusinessProfiles`/`adminArchiveBusinessProfile`, the owner-admin panel's direct
+    company-management surface. Runs the REAL Security Sec 4.2 Gate-3 check against
+    `profiles:profile:manage` (`configuration.domain.whitelist.PERMISSION_KEYS`'s 2026-08-13
+    extension), mirroring `provide_profiles_acting_reviewer`'s own "wired end-to-end" precedent
+    exactly."""
+    raw_token = _raw_session_token(ah_session, authorization)
+    if raw_token is None:
+        raise InvalidSessionTokenError()
+
+    async for session in _identity_session():
+        accounts = SqlalchemyUserAccountRepository(session)
+        sessions_repo = RedisSessionRepository(_identity_redis_client())
+        authz = ApplicationAuthorizationService(
+            session_repo=sessions_repo,
+            account_repo=accounts,
+            role_reader=_role_definition_reader(),
+        )
+        token_hash = _session_token_generator().hash_token(raw_token)
+        account, _session_obj, context = await authz.resolve_acting_context(
+            token_hash=token_hash, now=datetime.now(UTC)
+        )
+        AuthorizationService().authorize(context, "profiles:profile:manage")
+        return ProfilesActingProfileManager(account_id=account.id)
     raise AssertionError("unreachable: _identity_session always yields exactly once")
 
 

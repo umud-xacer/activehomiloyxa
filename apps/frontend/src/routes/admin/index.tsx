@@ -9,6 +9,7 @@ import {
   CreditCard,
   Megaphone,
   Users,
+  Building2,
   Flag,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/require-auth";
@@ -113,11 +114,18 @@ function Page() {
             index={2}
           />
           <AdminLinkCard
+            to="/admin/companies"
+            icon={Building2}
+            title="Kompaniyalar"
+            description="Barcha ro'yxatdan o'tgan kompaniyalarni ko'ring va kerak bo'lsa butunlay o'chiring."
+            index={3}
+          />
+          <AdminLinkCard
             to="/admin/moderation"
             icon={Flag}
             title="Moderatsiya"
             description="Shikoyat qilingan e'lonlar, profillar va foydalanuvchilar bo'yicha qaror qabul qiling."
-            index={3}
+            index={4}
           />
           {isSuperAdmin && (
             <AdminLinkCard
@@ -125,7 +133,7 @@ function Page() {
               icon={Layers}
               title="Kategoriyalar va tariflar boshqaruvi"
               description="E'lon kategoriyalari, dinamik maydonlar va barcha tarif turlarini yarating, tahrirlang."
-              index={4}
+              index={5}
             />
           )}
           {isSuperAdmin && (
@@ -134,7 +142,7 @@ function Page() {
               icon={Megaphone}
               title="Bannerlar boshqaruvi"
               description="Banner joylarini belgilang, kampaniyalarni yarating va rejalashtiring."
-              index={5}
+              index={6}
             />
           )}
         </div>

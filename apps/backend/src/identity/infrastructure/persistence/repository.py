@@ -280,6 +280,10 @@ class SqlalchemyUserAccountRepository:
         accounts = [await self._hydrate(row) for row in rows]
         return accounts, next_cursor
 
+    async def count_all(self) -> int:
+        result = await self._session.execute(select(func.count(UserAccountRow.id)))
+        return int(result.scalar_one())
+
     async def _hydrate(self, row: UserAccountRow) -> UserAccount:
         methods_result = await self._session.execute(
             select(AuthenticationMethodRow).where(AuthenticationMethodRow.account_id == row.id)

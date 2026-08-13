@@ -185,11 +185,12 @@ function SignUpPage() {
             <Clock3 className="size-7" />
           </div>
           <h1 className="font-display mt-6 text-2xl font-semibold tracking-tight">
-            So'rovingiz qabul qilindi
+            {accountKind === "INDIVIDUAL" ? "Akkauntingiz tayyor" : "So'rovingiz qabul qilindi"}
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            Emailingizni tasdiqlagach tizimga kiring — admin anketangizni ko'rib chiqib
-            tasdiqlagach, sizga tegishli panel ochiladi.
+            {accountKind === "INDIVIDUAL"
+              ? "Emailingizni tasdiqlagach tizimga kiring — panelingiz darhol ochiladi, admin tasdiqlashi shart emas."
+              : "Emailingizni tasdiqlagach tizimga kiring — admin anketangizni ko'rib chiqib tasdiqlagach, sizga tegishli panel ochiladi."}
           </p>
           <Link
             to="/auth/sign-in"
@@ -234,6 +235,17 @@ function AnketaForm({
 
   return (
     <form onSubmit={onSubmit} className="mt-8 space-y-4">
+      <FieldRow
+        icon={Phone}
+        type="tel"
+        label="Telefon raqami"
+        value={values.phone ?? ""}
+        onChange={set("phone")}
+        placeholder="+998901234567"
+        autoComplete="tel"
+        required
+      />
+
       {accountKind === "INDIVIDUAL" && (
         <>
           <FieldRow
@@ -428,7 +440,7 @@ function PhoneOtpSignUp({
   onDone: (account: import("@/lib/auth-client").Account) => void;
 }) {
   const [step, setStep] = useState<"phone" | "code">("phone");
-  const [phoneNumber, setPhoneNumber] = useState("+998");
+  const [phoneNumber, setPhoneNumber] = useState(String(anketa.phone ?? "+998"));
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

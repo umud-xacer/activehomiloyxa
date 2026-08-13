@@ -61,6 +61,11 @@ class UserAccountRepository(Protocol):
         ordering). Backs `listRegistrationQueue`."""
         ...
 
+    async def count_all(self) -> int:
+        """Backs the owner-admin panel's "total users" stat -- a plain `COUNT(*)` over every
+        `UserAccount` regardless of status."""
+        ...
+
 
 class SessionRepository(Protocol):
     """Redis-backed (Security Sec 3.2: server-side sessions, no JWT)."""

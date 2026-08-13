@@ -21,8 +21,9 @@ from main import create_app
 from profiles.application.ports import VerificationEligibilitySnapshot
 from profiles.application.profile_use_cases import ProfileUseCases
 from profiles.application.verification_use_cases import VerificationUseCases
-from profiles.interfaces.auth import ActingReviewer, ActingUser
+from profiles.interfaces.auth import ActingProfileManager, ActingReviewer, ActingUser
 from profiles.interfaces.di import (
+    get_acting_profile_manager,
     get_acting_reviewer,
     get_acting_user,
     get_profile_use_cases,
@@ -43,8 +44,10 @@ NOW = datetime(2026, 7, 13, 12, 0, tzinfo=UTC)
 TEST_OWNER = UserId(value=uuid4())
 TEST_OTHER = UserId(value=uuid4())
 TEST_REVIEWER = UserId(value=uuid4())
+TEST_PROFILE_MANAGER = UserId(value=uuid4())
 _TOKEN_TO_USER = {"owner-token": TEST_OWNER, "other-token": TEST_OTHER}
 _REVIEWER_TOKENS = {"reviewer-token"}
+_PROFILE_MANAGER_TOKENS = {"profile-manager-token"}
 
 
 @pytest.fixture
@@ -86,11 +89,22 @@ def client(
             raise HTTPException(status_code=403, detail="not a reviewer")
         return ActingReviewer(account_id=TEST_REVIEWER)
 
+    async def acting_profile_manager_override(
+        authorization: str | None = Header(default=None),
+    ) -> ActingProfileManager:
+        token = None
+        if authorization and authorization.lower().startswith("bearer "):
+            token = authorization[len("bearer ") :].strip()
+        if token not in _PROFILE_MANAGER_TOKENS:
+            raise HTTPException(status_code=403, detail="not a profile manager")
+        return ActingProfileManager(account_id=TEST_PROFILE_MANAGER)
+
     app = create_app()
     app.dependency_overrides[get_profile_use_cases] = _profile_use_cases
     app.dependency_overrides[get_verification_use_cases] = _verification_use_cases
     app.dependency_overrides[get_acting_user] = acting_user_override
     app.dependency_overrides[get_acting_reviewer] = acting_reviewer_override
+    app.dependency_overrides[get_acting_profile_manager] = acting_profile_manager_override
 
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
@@ -162,6 +176,64 @@ def test_archive_business_profile_by_owner_succeeds(client: TestClient) -> None:
 
 def test_list_business_profiles_is_public() -> None:
     pass  # covered implicitly by test_create_and_get_business_profile's GET (no auth header)
+
+
+# --- owner-admin-panel company management ----------------------------------------------------
+
+
+def test_admin_list_business_profiles_requires_profile_manager_permission(
+    client: TestClient,
+) -> None:
+    resp = client.get("/api/v1/admin/business-profiles", headers=_auth("owner-token"))
+    assert resp.status_code == 403
+
+
+def test_admin_list_business_profiles_reports_total_and_includes_archived(
+    client: TestClient,
+) -> None:
+    created = client.post(
+        "/api/v1/business-profiles",
+        json={"profileType": "SUPPLIER", "name": {"uz_latn": "Admin-listed co"}},
+        headers=_auth("owner-token"),
+    ).json()
+    client.delete(f"/api/v1/business-profiles/{created['id']}", headers=_auth("owner-token"))
+
+    resp = client.get(
+        "/api/v1/admin/business-profiles", headers=_auth("profile-manager-token")
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["page"]["total"] == 1
+    assert any(item["id"] == created["id"] and item["status"] == "ARCHIVED" for item in body["items"])
+
+
+def test_admin_archive_business_profile_bypasses_ownership(client: TestClient) -> None:
+    created = client.post(
+        "/api/v1/business-profiles",
+        json={"profileType": "SUPPLIER", "name": {"uz_latn": "Force-archived co"}},
+        headers=_auth("owner-token"),
+    ).json()
+
+    resp = client.post(
+        f"/api/v1/admin/business-profiles/{created['id']}/archive",
+        headers=_auth("profile-manager-token"),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "ARCHIVED"
+
+
+def test_admin_archive_business_profile_requires_profile_manager_permission(
+    client: TestClient,
+) -> None:
+    created = client.post(
+        "/api/v1/business-profiles",
+        json={"profileType": "SUPPLIER", "name": {"uz_latn": "Untouchable co"}},
+        headers=_auth("owner-token"),
+    ).json()
+    resp = client.post(
+        f"/api/v1/admin/business-profiles/{created['id']}/archive", headers=_auth("owner-token")
+    )
+    assert resp.status_code == 403
 
 
 # --- portfolio -------------------------------------------------------------------------------

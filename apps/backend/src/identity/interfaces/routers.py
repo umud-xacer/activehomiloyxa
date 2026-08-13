@@ -507,9 +507,10 @@ async def admin_list_users(
     accounts, next_cursor = await use_cases.list_users(
         status=status, query=query, cursor=cursor, limit=_clamp_limit(limit)
     )
+    total = await use_cases.count_users()
     return UserAdminViewPage(
         items=[_account_to_admin_view(a) for a in accounts],
-        page=PageInfo(limit=_clamp_limit(limit), next_cursor=next_cursor),
+        page=PageInfo(limit=_clamp_limit(limit), next_cursor=next_cursor, total=total),
     )
 
 

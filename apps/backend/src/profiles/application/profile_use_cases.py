@@ -175,6 +175,30 @@ class ProfileUseCases:
         archived = profile.archive(now=now)
         return await self._profiles.save(archived)
 
+    # --- owner-admin-panel-invoked commands (`profiles:profile:manage`) ------------------------
+
+    async def list_admin_profiles(
+        self, *, status: str | None, cursor: str | None, limit: int
+    ) -> tuple[list[BusinessProfile], str | None]:
+        """adminListBusinessProfiles. No ownership scoping -- the caller has already authorized
+        itself against `profiles:profile:manage` before invoking this (see
+        `interfaces/auth.py::ActingProfileManager`)."""
+        return await self._profiles.list_admin(status=status, cursor=cursor, limit=limit)
+
+    async def count_profiles(self) -> int:
+        return await self._profiles.count_all()
+
+    async def admin_archive_profile(
+        self, profile_id: BusinessProfileId, *, now: datetime
+    ) -> BusinessProfile:
+        """adminArchiveBusinessProfile. No ownership check, same end state as
+        `moderation_archive_profile` below -- but that method is reserved for the future
+        moderation module's own reactive, case-driven call path (`profiles:profile:moderate`);
+        this one is the owner-admin panel's direct, `profiles:profile:manage`-gated equivalent."""
+        profile = await self.get_profile(profile_id)
+        archived = profile.archive(now=now)
+        return await self._profiles.save(archived)
+
     # --- moderation-invoked commands (exposed via interfaces/moderation_port.py) -----------------
 
     async def moderation_archive_profile(

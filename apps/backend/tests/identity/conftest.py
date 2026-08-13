@@ -88,6 +88,9 @@ class FakeUserAccountRepository:
         next_cursor = "more" if len(items) > limit else None
         return page, next_cursor
 
+    async def count_all(self) -> int:
+        return len(self.accounts)
+
 
 @dataclass
 class FakeSessionRepository:

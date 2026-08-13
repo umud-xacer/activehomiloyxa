@@ -1,4 +1,5 @@
-"""Unit tests for `AdminIdentityUseCases` (suspend/reactivate, list users, assign/revoke role)."""
+"""Unit tests for `AdminIdentityUseCases` (suspend/reactivate/close, list/count users,
+assign/revoke role)."""
 
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ from identity.application import (
 from identity.domain import (
     AccountStatus,
     EmailAddress,
+    IllegalAccountStateTransitionError,
     PhoneNumber,
     RoleNotAssignedError,
     Session,
@@ -86,6 +88,56 @@ async def test_change_user_status_unknown_account_raises(
         )
 
 
+async def test_change_user_status_close_anonymises_and_revokes_sessions(
+    admin_use_cases: AdminIdentityUseCases,
+    fake_accounts: FakeUserAccountRepository,
+    fake_sessions: FakeSessionRepository,
+    fake_outbox: FakeOutbox,
+) -> None:
+    """2026-08-13: owner-admin panel's "permanently remove user" action -- same anonymise/
+    retain transition a user's own self-service `closeAccount` uses (FR-USER-005), just
+    admin-triggered."""
+    account = _seeded_account()
+    await fake_accounts.add(account)
+    session = Session.issue(
+        session_id=uuid4(),
+        account_id=account.id,
+        token_hash="hash",
+        ip_address=None,
+        user_agent=None,
+        now=NOW,
+        expires_at=NOW,
+    )
+    await fake_sessions.save(session)
+
+    closed = await admin_use_cases.change_user_status(
+        target_account_id=account.id, action="CLOSE", reason="duplicate account", now=NOW
+    )
+
+    assert closed.status is AccountStatus.CLOSED
+    assert closed.phone is None
+    persisted = await fake_accounts.get_by_id(account.id)
+    assert persisted is not None
+    assert persisted.status is AccountStatus.CLOSED
+    assert await fake_sessions.get_by_id(session.id) is None
+    assert any(e.event_type == "AccountClosed" for e in fake_outbox.events)
+
+
+async def test_change_user_status_close_is_terminal(
+    admin_use_cases: AdminIdentityUseCases, fake_accounts: FakeUserAccountRepository
+) -> None:
+    account = _seeded_account()
+    await fake_accounts.add(account)
+    await admin_use_cases.change_user_status(
+        target_account_id=account.id, action="CLOSE", reason=None, now=NOW
+    )
+
+    with pytest.raises(IllegalAccountStateTransitionError):
+        await admin_use_cases.change_user_status(
+            target_account_id=account.id, action="CLOSE", reason=None, now=NOW
+        )
+
+
 async def test_list_users_returns_page(
     admin_use_cases: AdminIdentityUseCases, fake_accounts: FakeUserAccountRepository
 ) -> None:
@@ -104,6 +156,23 @@ async def test_list_users_returns_page(
     )
     assert len(accounts) == 2
     assert cursor is None
+
+
+async def test_count_users_reflects_repository_size(
+    admin_use_cases: AdminIdentityUseCases, fake_accounts: FakeUserAccountRepository
+) -> None:
+    assert await admin_use_cases.count_users() == 0
+    await fake_accounts.add(_seeded_account())
+    await fake_accounts.add(
+        UserAccount.register_via_email(
+            account_id=UserId(value=uuid4()),
+            email=EmailAddress("second@example.com"),
+            password_hash="hashed:x",
+            display_name=None,
+            now=NOW,
+        )
+    )
+    assert await admin_use_cases.count_users() == 2
 
 
 async def test_assign_role_pins_head_and_version(

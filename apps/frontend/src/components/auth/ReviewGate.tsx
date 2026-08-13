@@ -100,8 +100,8 @@ export function ReviewGate({ account, children }: { account: Account; children: 
           <div>
             <div className="text-xs font-semibold text-foreground">Nima uchun kutish kerak?</div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Platformadagi har bir yangi akkaunt (jismoniy shaxs, yuridik shaxs yoki investor)
-              firibgarlikning oldini olish uchun admin tomonidan qo'lda tasdiqlanadi.
+              Yuridik shaxs va investor akkauntlari firibgarlikning oldini olish uchun admin
+              tomonidan qo'lda tasdiqlanadi. (Jismoniy shaxslar bu bosqichni o'tkazib yuboradi.)
             </p>
           </div>
         </motion.div>

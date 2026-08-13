@@ -12,7 +12,7 @@ import base64
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import Select, delete, select
+from sqlalchemy import Select, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from profiles.application.ports import (
@@ -211,6 +211,28 @@ class SqlalchemyBusinessProfileRepository:
                 | ((BusinessProfileRow.created_at == created_at) & (BusinessProfileRow.id > row_id))
             )
         return await self._execute_page(stmt, limit)
+
+    async def list_admin(
+        self, *, status: str | None, cursor: str | None, limit: int
+    ) -> tuple[list[BusinessProfile], str | None]:
+        stmt = (
+            select(BusinessProfileRow)
+            .order_by(BusinessProfileRow.created_at, BusinessProfileRow.id)
+            .limit(limit + 1)
+        )
+        if status is not None:
+            stmt = stmt.where(BusinessProfileRow.status == status)
+        if cursor is not None:
+            created_at, row_id = _decode_cursor(cursor)
+            stmt = stmt.where(
+                (BusinessProfileRow.created_at > created_at)
+                | ((BusinessProfileRow.created_at == created_at) & (BusinessProfileRow.id > row_id))
+            )
+        return await self._execute_page(stmt, limit)
+
+    async def count_all(self) -> int:
+        result = await self._session.execute(select(func.count(BusinessProfileRow.id)))
+        return int(result.scalar_one())
 
     async def get_by_portfolio_media_asset_id(self, media_asset_id: UUID) -> BusinessProfile | None:
         result = await self._session.execute(

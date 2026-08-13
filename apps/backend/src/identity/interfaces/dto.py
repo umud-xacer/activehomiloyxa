@@ -26,7 +26,7 @@ class PageInfo(CamelModel):
 class UserStatusChangeRequest(CamelModel):
     """OpenAPI `UserStatusChangeRequest`."""
 
-    action: Literal["SUSPEND", "REACTIVATE"]
+    action: Literal["SUSPEND", "REACTIVATE", "CLOSE"]
     reason: str | None = None
 
 

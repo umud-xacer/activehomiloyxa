@@ -28,8 +28,9 @@ from profiles.domain import BusinessProfile as BusinessProfileAggregate
 from profiles.domain import CaseStatus, ProfileType
 from profiles.domain import VerificationCase as VerificationCaseAggregate
 from profiles.domain.portfolio_item import PortfolioItem as PortfolioItemEntity
-from profiles.interfaces.auth import ActingReviewer, ActingUser
+from profiles.interfaces.auth import ActingProfileManager, ActingReviewer, ActingUser
 from profiles.interfaces.di import (
+    get_acting_profile_manager,
     get_acting_reviewer,
     get_acting_user,
     get_profile_use_cases,
@@ -373,3 +374,47 @@ async def decide_verification(
         now=datetime.now(UTC),
     )
     return _to_case_dto(case)
+
+
+# --- Company management (owner-admin-panel-only, Administration tag) ------------------------
+
+
+@admin_profiles_router.get(
+    "/admin/business-profiles", operation_id="adminListBusinessProfiles"
+)
+async def admin_list_business_profiles(
+    status: Literal["CREATED", "ACTIVE", "ARCHIVED"] | None = None,
+    cursor: str | None = None,
+    limit: int | None = Query(default=20),
+    _manager: ActingProfileManager = Depends(get_acting_profile_manager),
+    use_cases: ProfileUseCases = Depends(get_profile_use_cases),
+) -> BusinessProfilePage:
+    """Owner-admin panel's full company list -- unlike the public `listBusinessProfiles`,
+    includes ARCHIVED profiles and reports a real `page.total` (used for the panel's "total
+    companies" stat card)."""
+    page_limit = _clamp_limit(limit)
+    profiles, next_cursor = await use_cases.list_admin_profiles(
+        status=status, cursor=cursor, limit=page_limit
+    )
+    total = await use_cases.count_profiles()
+    return BusinessProfilePage(
+        items=[await _to_profile_dto(profile, use_cases=use_cases) for profile in profiles],
+        page=PageInfo(limit=page_limit, next_cursor=next_cursor, total=total),
+    )
+
+
+@admin_profiles_router.post(
+    "/admin/business-profiles/{profileId}/archive", operation_id="adminArchiveBusinessProfile"
+)
+async def admin_archive_business_profile(
+    profileId: UUID,
+    _manager: ActingProfileManager = Depends(get_acting_profile_manager),
+    use_cases: ProfileUseCases = Depends(get_profile_use_cases),
+) -> BusinessProfileDto:
+    """Owner-admin panel's "remove company" action. Archives rather than hard-deletes (same
+    anonymise/retain-over-hard-delete discipline `identity.UserAccount.close` uses for users) --
+    the profile disappears from every public listing immediately, its data/audit trail is kept."""
+    profile = await use_cases.admin_archive_profile(
+        BusinessProfileId(value=profileId), now=datetime.now(UTC)
+    )
+    return await _to_profile_dto(profile, use_cases=use_cases)

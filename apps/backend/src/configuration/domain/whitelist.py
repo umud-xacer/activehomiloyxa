@@ -194,6 +194,13 @@ EVENT_KEYS: frozenset[str] = frozenset(
 # until this task; wired end-to-end the same way (`composition_root.
 # provide_analytics_acting_operator` calls the real `identity.domain.AuthorizationService.
 # authorize` against it).
+# 2026-08-13 (owner-admin panel, product request): adds `profiles:profile:manage`, gating a new
+# direct owner-admin-panel company-management surface (`GET /admin/business-profiles`,
+# `POST /admin/business-profiles/{id}/archive`) -- distinct from `profiles:profile:moderate`
+# above, which stays reserved for the future moderation module's own reactive, case-driven
+# archive path (Task P-11/P-12, still not built). This key gates a direct, owner-admin-initiated
+# "list every company / remove one" capability instead, wired the same "real check, not merely
+# declared" way (`composition_root.provide_profiles_acting_profile_manager`).
 # Task P-16 (admin/BC-12) adds `admin:dashboard:read`, gating `getAdminDashboard`
 # (`GET /admin/dashboard`) -- the ONE operation that genuinely belongs to admin itself (DDD Sec
 # 5.12: "maps to no single owning aggregate"), wired the same way
@@ -224,6 +231,7 @@ PERMISSION_KEYS: frozenset[str] = frozenset(
         "billing:invoice:confirm_payment",
         "profiles:verification:review",
         "profiles:profile:moderate",
+        "profiles:profile:manage",
         "moderation:case:review",
         "ads:campaign:manage",
         "analytics:audit:read",

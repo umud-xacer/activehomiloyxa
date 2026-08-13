@@ -206,3 +206,30 @@ export const businessProfilesApi = {
     });
   },
 };
+
+export interface BusinessProfilePage {
+  items: BusinessProfile[];
+  page: { limit: number; nextCursor: string | null; total: number | null };
+}
+
+/** Owner-admin panel's direct company-management surface (`profiles:profile:manage`,
+ * gated the same "real check, not merely declared" way as `adminUsersApi`) — distinct from
+ * `businessProfilesApi.listPublic` above, which only ever shows non-ARCHIVED companies to
+ * anonymous visitors. */
+export const adminBusinessProfilesApi = {
+  list(params?: {
+    status?: "CREATED" | "ACTIVE" | "ARCHIVED";
+    cursor?: string;
+    limit?: number;
+  }): Promise<BusinessProfilePage> {
+    return http.get<BusinessProfilePage>("/admin/business-profiles", { params });
+  },
+
+  archive(profileId: string): Promise<BusinessProfile> {
+    return http.post<BusinessProfile>(
+      `/admin/business-profiles/${profileId}/archive`,
+      {},
+      { idempotent: true },
+    );
+  },
+};

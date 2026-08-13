@@ -26,3 +26,12 @@ class ActingReviewer:
     interfaces.auth.ActingOperator`'s own "the real check, not merely declared" precedent."""
 
     account_id: UserId
+
+
+@dataclass(frozen=True)
+class ActingProfileManager:
+    """Backs `adminListBusinessProfiles`/`adminArchiveBusinessProfile` -- the owner-admin panel's
+    direct company-management surface, gated by `profiles:profile:manage` (distinct from
+    `ActingReviewer`'s `profiles:verification:review`)."""
+
+    account_id: UserId

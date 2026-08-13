@@ -58,6 +58,7 @@ import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as OwnerAdminSlugIndexRouteImport } from './routes/$ownerAdminSlug/index'
 import { Route as OwnerAdminSlugBannersRouteImport } from './routes/$ownerAdminSlug/banners'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminCompaniesRouteImport } from './routes/admin/companies'
 import { Route as AdminModerationRouteImport } from './routes/admin/moderation'
 import { Route as AdminPaymentsRouteImport } from './routes/admin/payments'
 import { Route as AdminRegistrationsRouteImport } from './routes/admin/registrations'
@@ -331,6 +332,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCompaniesRoute = AdminCompaniesRouteImport.update({
+  id: '/admin/companies',
+  path: '/admin/companies',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminModerationRoute = AdminModerationRouteImport.update({
   id: '/admin/moderation',
   path: '/admin/moderation',
@@ -516,6 +522,7 @@ export interface FileRoutesByFullPath {
   '/verification': typeof VerificationRoute
   '/wallet': typeof WalletRoute
   '/$ownerAdminSlug/banners': typeof OwnerAdminSlugBannersRoute
+  '/admin/companies': typeof AdminCompaniesRoute
   '/admin/moderation': typeof AdminModerationRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/registrations': typeof AdminRegistrationsRoute
@@ -594,6 +601,7 @@ export interface FileRoutesByTo {
   '/verification': typeof VerificationRoute
   '/wallet': typeof WalletRoute
   '/$ownerAdminSlug/banners': typeof OwnerAdminSlugBannersRoute
+  '/admin/companies': typeof AdminCompaniesRoute
   '/admin/moderation': typeof AdminModerationRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/registrations': typeof AdminRegistrationsRoute
@@ -673,6 +681,7 @@ export interface FileRoutesById {
   '/verification': typeof VerificationRoute
   '/wallet': typeof WalletRoute
   '/$ownerAdminSlug/banners': typeof OwnerAdminSlugBannersRoute
+  '/admin/companies': typeof AdminCompaniesRoute
   '/admin/moderation': typeof AdminModerationRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/registrations': typeof AdminRegistrationsRoute
@@ -753,6 +762,7 @@ export interface FileRouteTypes {
     | '/verification'
     | '/wallet'
     | '/$ownerAdminSlug/banners'
+    | '/admin/companies'
     | '/admin/moderation'
     | '/admin/payments'
     | '/admin/registrations'
@@ -831,6 +841,7 @@ export interface FileRouteTypes {
     | '/verification'
     | '/wallet'
     | '/$ownerAdminSlug/banners'
+    | '/admin/companies'
     | '/admin/moderation'
     | '/admin/payments'
     | '/admin/registrations'
@@ -909,6 +920,7 @@ export interface FileRouteTypes {
     | '/verification'
     | '/wallet'
     | '/$ownerAdminSlug/banners'
+    | '/admin/companies'
     | '/admin/moderation'
     | '/admin/payments'
     | '/admin/registrations'
@@ -988,6 +1000,7 @@ export interface RootRouteChildren {
   VerificationRoute: typeof VerificationRoute
   WalletRoute: typeof WalletRoute
   OwnerAdminSlugBannersRoute: typeof OwnerAdminSlugBannersRoute
+  AdminCompaniesRoute: typeof AdminCompaniesRoute
   AdminModerationRoute: typeof AdminModerationRoute
   AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminRegistrationsRoute: typeof AdminRegistrationsRoute
@@ -1364,6 +1377,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/companies': {
+      id: '/admin/companies'
+      path: '/admin/companies'
+      fullPath: '/admin/companies'
+      preLoaderRoute: typeof AdminCompaniesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/moderation': {
       id: '/admin/moderation'
       path: '/admin/moderation'
@@ -1604,6 +1624,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerificationRoute: VerificationRoute,
   WalletRoute: WalletRoute,
   OwnerAdminSlugBannersRoute: OwnerAdminSlugBannersRoute,
+  AdminCompaniesRoute: AdminCompaniesRoute,
   AdminModerationRoute: AdminModerationRoute,
   AdminPaymentsRoute: AdminPaymentsRoute,
   AdminRegistrationsRoute: AdminRegistrationsRoute,
