@@ -27,7 +27,7 @@ export function PropertyCard({ property, index = 0 }: Props) {
         className="block"
         aria-label={property.title}
       >
-        <div className="relative aspect-[4/3] overflow-hidden">
+        <div className="relative h-44 overflow-hidden sm:h-48">
           {cover && (
             <img
               src={cover}

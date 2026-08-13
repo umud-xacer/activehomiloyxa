@@ -153,7 +153,7 @@ function PropertiesPage() {
         {data.items.length === 0 ? (
           <EmptyState title="No matching properties" description="Try widening your filters." />
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {data.items.map((p, i) => (
               <PropertyCard key={p.id} property={p} index={i} />
             ))}

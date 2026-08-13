@@ -14,7 +14,6 @@ import {
   TrendingUp,
   Sparkles,
   BadgePercent,
-  ChevronRight,
 } from "lucide-react";
 import { SortMenu, type HubOption } from "@/components/catalog/SortMenu";
 import { CategoryTile } from "@/components/catalog/CategoryTile";
@@ -127,52 +126,66 @@ function categoryHref(path: string): string {
 }
 
 function ChildrenGrid({
-  children,
+  items,
   byId,
+  activeId,
+  label = "Bo'lim ichidagi kichik kategoriyalar",
 }: {
-  children: CategorySummary[];
+  items: CategorySummary[];
   byId: Map<string, CategorySummary>;
+  /** Set when `items` are siblings (not children) of the page's own category -- the current
+   * category, wherever it appears in `items`, renders in an active/highlighted style instead of
+   * as a plain navigation link. */
+  activeId?: string;
+  label?: string;
 }) {
-  if (children.length === 0) return null;
+  if (items.length === 0) return null;
   return (
     <Container wide className="pt-8">
       <div className="mb-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
         <Layers className="size-4" />
-        Bo'lim ichidagi kichik kategoriyalar
-        <span className="opacity-60">· {children.length}</span>
+        {label}
+        <span className="opacity-60">· {items.length}</span>
       </div>
-      {/* Mobile: a dense, scannable vertical list (icon-left, label, chevron) -- the same
-       * drill-down pattern OLX/Avito/Airbnb use for category navigation on a narrow screen,
-       * where a grid of centered icon-over-label cards reads as oversized and wastes vertical
-       * space per row. `sm:` and up switches the exact same elements to the original centered
-       * card grid via responsive classes only (no separate markup branch to keep in sync). */}
-      <div className="flex flex-col gap-2 sm:grid sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-6">
-        {children.map((child, i) => {
-          const accent = resolveAccentColor(child, byId);
-          const icon = resolveCategoryIcon(child);
+      {/* Mobile: a single horizontally-scrolling chip row (Uybor.uz-style) -- a stacked list or
+       * a multi-column grid both push real listings below the fold once a category has more
+       * than a handful of children on a narrow screen. `sm:` and up switches the exact same
+       * elements to the original centered icon-over-label card grid, unchanged. */}
+      <div className="scrollbar-none -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 md:grid-cols-4 lg:grid-cols-6">
+        {items.map((item, i) => {
+          const accent = resolveAccentColor(item, byId);
+          const icon = resolveCategoryIcon(item);
+          const isActive = item.id === activeId;
           return (
             <motion.div
-              key={child.id}
+              key={item.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(i, 12) * 0.03, duration: 0.3 }}
-              className="sm:h-full"
+              className="shrink-0 snap-start sm:h-full sm:shrink"
             >
               <Link
-                to={categoryHref(child.path)}
-                className="group flex h-full items-center gap-3 rounded-xl border border-border bg-card p-3 text-left shadow-soft transition hover:border-primary/40 hover:shadow-elevated sm:flex-col sm:items-center sm:gap-3 sm:rounded-2xl sm:p-4 sm:text-center sm:hover:-translate-y-0.5"
+                to={categoryHref(item.path)}
+                className={`group flex h-full items-center gap-2 rounded-full border px-3.5 py-2 shadow-soft transition sm:flex-col sm:items-center sm:gap-3 sm:rounded-2xl sm:p-4 sm:text-center ${
+                  isActive
+                    ? "border-primary bg-primary/10 sm:bg-card"
+                    : "border-border bg-card hover:border-primary/40 hover:shadow-elevated sm:hover:-translate-y-0.5"
+                }`}
               >
                 <CategoryTile
-                  imageUrl={child.iconUrl}
+                  imageUrl={item.iconUrl}
                   icon={icon}
                   accentColor={accent}
                   size="md"
                   className="transition-transform duration-300 group-hover:scale-105"
                 />
-                <span className="line-clamp-1 min-w-0 flex-1 text-sm font-medium leading-snug text-foreground/85 sm:line-clamp-2 sm:flex-none sm:text-xs">
-                  {categoryLabel(child.name, "uz")}
+                <span
+                  className={`whitespace-nowrap text-xs font-medium leading-snug sm:line-clamp-2 sm:whitespace-normal ${
+                    isActive ? "text-primary" : "text-foreground/85"
+                  }`}
+                >
+                  {categoryLabel(item.name, "uz")}
                 </span>
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground/60 sm:hidden" />
               </Link>
             </motion.div>
           );
@@ -190,6 +203,15 @@ function useCategoryTree(categoryId: string, parentId: string | null) {
   const children = allCategories.filter((c) => c.status === "ACTIVE" && c.parentId === categoryId);
   const parent = parentId ? allCategories.find((c) => c.id === parentId) : undefined;
 
+  /** Every category at the same level as this one (same `parentId`), current one included --
+   * used as a fallback lateral-navigation strip when this category is a leaf (`children` is
+   * empty), so a deep, childless subcategory doesn't strand the visitor with no way to see its
+   * siblings ("Ofis binolari" hides "Omborxonalar"/"Do'konlar" otherwise). `null` at the root
+   * (no meaningful "siblings of every top-level category" strip to show there). */
+  const siblings = parentId
+    ? allCategories.filter((c) => c.status === "ACTIVE" && c.parentId === parentId)
+    : null;
+
   /** Full ancestor chain (root -> immediate parent), not just the one level `parent` gives --
    * an unlimited-depth category tree needs its whole path shown, not a single skipped level. */
   const byId = new Map(allCategories.map((c) => [c.id, c]));
@@ -202,7 +224,7 @@ function useCategoryTree(categoryId: string, parentId: string | null) {
     cursor = cursor.parentId ? byId.get(cursor.parentId) : undefined;
   }
 
-  return { children, parent, ancestors, byId };
+  return { children, parent, siblings, ancestors, byId };
 }
 
 /* ---------------------------------------------------------------------------------------------
@@ -233,9 +255,16 @@ const PROPERTY_HUB_OPTIONS: HubOption<PropertyQuery["sort"] & string>[] = [
 function PropertyDirectionView({ category }: { category: CategorySummary }) {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const { children, ancestors, byId } = useCategoryTree(category.id, category.parentId);
+  const { children, siblings, ancestors, byId } = useCategoryTree(category.id, category.parentId);
   const [featuredOnly, setFeaturedOnly] = useState(false);
   const hero = resolveHeroImage(category, byId);
+  // A leaf category (no children of its own) falls back to showing its siblings, current one
+  // highlighted, so lateral navigation never disappears just because a subcategory has no
+  // further children of its own.
+  const subcategoryItems = children.length > 0 ? children : (siblings ?? []);
+  const subcategoryActiveId = children.length > 0 ? undefined : category.id;
+  const subcategoryLabel =
+    children.length > 0 ? "Bo'lim ichidagi kichik kategoriyalar" : "Shu turkumdagi bo'limlar";
 
   const query: PropertyQuery = {
     category_id: category.id,
@@ -278,7 +307,12 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
         icon={resolveCategoryIcon(category)}
       />
 
-      <ChildrenGrid children={children} byId={byId} />
+      <ChildrenGrid
+        items={subcategoryItems}
+        byId={byId}
+        activeId={subcategoryActiveId}
+        label={subcategoryLabel}
+      />
 
       <Container wide className="pt-8 pb-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -316,7 +350,7 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
           />
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {items.map((p, i) => (
                 <PropertyCard key={p.id} property={p} index={i} />
               ))}
@@ -484,9 +518,13 @@ function CatalogDirectionView({
   category: CategorySummary;
   kind: Exclude<ListingKind, "PROPERTY">;
 }) {
-  const { children, ancestors, byId } = useCategoryTree(category.id, category.parentId);
+  const { children, siblings, ancestors, byId } = useCategoryTree(category.id, category.parentId);
   const hero = resolveHeroImage(category, byId);
   const name = categoryLabel(category.name, "uz");
+  const subcategoryItems = children.length > 0 ? children : (siblings ?? []);
+  const subcategoryActiveId = children.length > 0 ? undefined : category.id;
+  const subcategoryLabel =
+    children.length > 0 ? "Bo'lim ichidagi kichik kategoriyalar" : "Shu turkumdagi bo'limlar";
   const Icon = KIND_ICON[kind];
   const theme = KIND_THEME[kind];
   const [filters, setFilters] = useState<ListingFilterState>(emptyFilterState());
@@ -562,7 +600,12 @@ function CatalogDirectionView({
         icon={resolveCategoryIcon(category)}
       />
 
-      <ChildrenGrid children={children} byId={byId} />
+      <ChildrenGrid
+        items={subcategoryItems}
+        byId={byId}
+        activeId={subcategoryActiveId}
+        label={subcategoryLabel}
+      />
 
       <Container wide className="pt-8 pb-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -618,7 +661,7 @@ function CatalogDirectionView({
         )}
 
         {!isLoading && sorted.length > 0 && (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {sorted.map((listing) =>
               kind === "SERVICE" ? (
                 <ServiceCard key={listing.id} listing={listing} />
