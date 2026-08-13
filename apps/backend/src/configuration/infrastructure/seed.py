@@ -75,6 +75,7 @@ def _super_admin_permission_keys() -> list[str]:
 
 async def _seed_role(
     use_cases: ConfigurationUseCases,
+    repo: SqlalchemyConfigHeadRepository,
     *,
     code: str,
     role_name: str,
@@ -95,6 +96,9 @@ async def _seed_role(
             now=now,
         )
     except DuplicateCodeError:
+        await _backfill_role_permission_keys(
+            use_cases, repo, code=code, role_name=role_name, permission_keys=permission_keys, now=now
+        )
         return
 
     head = await use_cases.get_head(ConfigEntityType.ROLE_DEFINITION, version.head_id)
@@ -120,6 +124,62 @@ async def _seed_role(
             actor_id=SEED_CHECKER_ID,
             actor_permission_keys=bootstrap_authority,
             approval_note="seed: bootstrap approval",
+            now=now,
+        )
+
+
+async def _backfill_role_permission_keys(
+    use_cases: ConfigurationUseCases,
+    repo: SqlalchemyConfigHeadRepository,
+    *,
+    code: str,
+    role_name: str,
+    permission_keys: list[str],
+    now: datetime,
+) -> None:
+    """Self-heal for a role definition seeded before `PERMISSION_KEYS` (whitelist.py) gained a
+    new entry -- `_seed_role`'s own `create_draft` only ever runs once per code (`DuplicateCodeError`
+    short-circuits every later deploy), so without this, a permission key added to the whitelist
+    after go-live would sit in `PERMISSION_KEYS`/`_super_admin_permission_keys()` forever without
+    ever reaching the actually-published role version an existing account's `RoleAssignment` is
+    pinned to (Config Framework Sec 7.2: "role assignments pin identity + role version" -- no live
+    pointer to "current"). Same publish-a-new-version-only-if-changed pattern as
+    `_backfill_category_theme`, safe/cheap to re-run on every deploy."""
+    head = await repo.get_head_by_code(ConfigEntityType.ROLE_DEFINITION, code)
+    if head is None or head.current_version_id is None:
+        return
+    current = await repo.get_version(ConfigEntityType.ROLE_DEFINITION, head.id, head.current_version_id)
+    if current is None:
+        return
+    if sorted(current.definition_document.get("permission_keys") or []) == sorted(permission_keys):
+        return
+
+    new_document = {**current.definition_document, "permission_keys": permission_keys}
+    new_version = await use_cases.create_version_draft(
+        ConfigEntityType.ROLE_DEFINITION,
+        head.id,
+        definition=new_document,
+        actor_id=SEED_MAKER_ID,
+        now=now,
+    )
+    bootstrap_authority = frozenset(_super_admin_permission_keys())
+    step1 = await use_cases.publish(
+        ConfigEntityType.ROLE_DEFINITION,
+        head.id,
+        new_version.id,
+        actor_id=SEED_MAKER_ID,
+        actor_permission_keys=bootstrap_authority,
+        approval_note=f"seed: backfill {role_name} permission_keys",
+        now=now,
+    )
+    if step1.status.value == "APPROVAL":
+        await use_cases.publish(
+            ConfigEntityType.ROLE_DEFINITION,
+            head.id,
+            step1.id,
+            actor_id=SEED_CHECKER_ID,
+            actor_permission_keys=bootstrap_authority,
+            approval_note=f"seed: backfill {role_name} permission_keys approval",
             now=now,
         )
 
@@ -4383,6 +4443,7 @@ async def run_seed() -> None:
             try:
                 await _seed_role(
                     use_cases,
+                    repo,
                     code="super-admin",
                     role_name="Super Administrator",
                     permission_keys=_super_admin_permission_keys(),
@@ -4390,6 +4451,7 @@ async def run_seed() -> None:
                 )
                 await _seed_role(
                     use_cases,
+                    repo,
                     code="administrator",
                     role_name="Administrator",
                     permission_keys=_administrator_permission_keys(),
