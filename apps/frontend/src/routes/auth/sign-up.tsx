@@ -38,7 +38,7 @@ function errorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-type WizardStep = "role" | "anketa" | "verify" | "pending";
+type WizardStep = "role" | "individual-start" | "anketa" | "verify" | "pending";
 
 const ROLES: { kind: AccountKind; title: string; desc: string; Icon: LucideIcon }[] = [
   {
@@ -71,7 +71,13 @@ function SignUpPage() {
       {step !== "role" && step !== "pending" && (
         <button
           type="button"
-          onClick={() => setStep(step === "verify" ? "anketa" : "role")}
+          onClick={() => {
+            if (step === "verify") return setStep("anketa");
+            if (step === "anketa" && accountKind === "INDIVIDUAL") {
+              return setStep("individual-start");
+            }
+            return setStep("role");
+          }}
           className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-3.5" /> Orqaga
@@ -93,7 +99,7 @@ function SignUpPage() {
                 type="button"
                 onClick={() => {
                   setAccountKind(kind);
-                  setStep("anketa");
+                  setStep(kind === "INDIVIDUAL" ? "individual-start" : "anketa");
                 }}
                 className="group flex w-full items-start gap-4 rounded-2xl border border-border bg-card p-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-elevated"
               >
@@ -110,13 +116,31 @@ function SignUpPage() {
               </button>
             ))}
           </div>
-          <div className="mt-2">
-            <SocialSignInButtons />
-            <p className="mt-3 text-center text-[11px] text-muted-foreground">
-              Google yoki Apple bilan — faqat jismoniy shaxslar uchun, anketasiz darhol ro'yxatdan
-              o'tasiz.
-            </p>
+        </>
+      )}
+
+      {step === "individual-start" && (
+        <>
+          <h1 className="font-display text-3xl font-semibold tracking-tight">Jismoniy shaxs</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Google yoki Apple bilan bir bosishda ro'yxatdan o'ting — anketasiz, admin
+            tasdiqlashisiz.
+          </p>
+          <SocialSignInButtons />
+          <div className="mt-6 flex items-center gap-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            <span className="h-px flex-1 bg-border" /> yoki
+            <span className="h-px flex-1 bg-border" />
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setAccountKind("INDIVIDUAL");
+              setStep("anketa");
+            }}
+            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-soft transition hover:bg-muted"
+          >
+            Email yoki telefon bilan davom etish
+          </button>
         </>
       )}
 
