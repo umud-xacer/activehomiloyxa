@@ -49,7 +49,7 @@ export function PageHeader({
   const themed = Boolean(backgroundImageUrl);
   return (
     <section
-      className={`relative isolate overflow-hidden border-b border-border pt-32 pb-12 ${themed ? "text-white" : ""}`}
+      className={`relative isolate overflow-hidden border-b border-border pt-20 pb-5 sm:pt-28 sm:pb-8 lg:pt-32 lg:pb-12 ${themed ? "text-white" : ""}`}
     >
       {backgroundImageUrl ? (
         <>

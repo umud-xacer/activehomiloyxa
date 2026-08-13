@@ -166,7 +166,7 @@ function ChildrenGrid({
             >
               <Link
                 to={categoryHref(item.path)}
-                className={`group flex h-full items-center gap-2 rounded-full border px-3.5 py-2 shadow-soft transition sm:flex-col sm:items-center sm:gap-3 sm:rounded-2xl sm:p-4 sm:text-center ${
+                className={`group flex h-full items-center gap-1.5 rounded-full border px-2.5 py-1.5 shadow-soft transition sm:flex-col sm:items-center sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-4 sm:text-center ${
                   isActive
                     ? "border-primary bg-primary/10 sm:bg-card"
                     : "border-border bg-card hover:border-primary/40 hover:shadow-elevated sm:hover:-translate-y-0.5"
@@ -176,11 +176,11 @@ function ChildrenGrid({
                   imageUrl={item.iconUrl}
                   icon={icon}
                   accentColor={accent}
-                  size="md"
-                  className="transition-transform duration-300 group-hover:scale-105"
+                  size="sm"
+                  className="shrink-0 transition-transform duration-300 group-hover:scale-105 sm:size-12 [&>svg]:size-4 sm:[&>svg]:size-5"
                 />
                 <span
-                  className={`whitespace-nowrap text-xs font-medium leading-snug sm:line-clamp-2 sm:whitespace-normal ${
+                  className={`whitespace-nowrap text-[11px] font-medium leading-snug sm:line-clamp-2 sm:whitespace-normal sm:text-xs ${
                     isActive ? "text-primary" : "text-foreground/85"
                   }`}
                 >
