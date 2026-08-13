@@ -75,9 +75,9 @@ function CompanyRow({ profile, index }: { profile: BusinessProfile; index: numbe
       transition={{ delay: Math.min(index, 8) * 0.03, duration: 0.3 }}
       className="rounded-2xl border border-border/70 bg-background/50 p-4 transition hover:border-primary/30 hover:bg-background"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
             <span
               className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_CLASS[profile.status]}`}
             >
@@ -92,10 +92,12 @@ function CompanyRow({ profile, index }: { profile: BusinessProfile; index: numbe
               </span>
             )}
           </div>
-          <div className="mt-1 text-sm font-semibold text-foreground">{companyName(profile)}</div>
-          <div className="text-xs text-muted-foreground">{profile.id}</div>
+          <div className="mt-1 truncate text-sm font-semibold text-foreground">
+            {companyName(profile)}
+          </div>
+          <div className="truncate text-xs text-muted-foreground">{profile.id}</div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
           {profile.status === "ARCHIVED" ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground">
               <CheckCircle2 className="size-3.5" /> O'chirilgan
@@ -180,7 +182,7 @@ function Page() {
           icon={Building2}
           index={0}
           action={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {(["", "ACTIVE", "ARCHIVED"] as const).map((s) => (
                 <button
                   key={s || "all"}

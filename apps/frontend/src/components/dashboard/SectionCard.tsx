@@ -32,7 +32,7 @@ export function SectionCard({
       transition={{ delay: index * 0.05, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       className={`overflow-hidden rounded-2xl border border-border bg-card shadow-soft ${className}`}
     >
-      <div className="flex items-start justify-between gap-4 border-b border-border/70 px-6 py-4">
+      <div className="flex flex-col gap-3 border-b border-border/70 px-6 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="flex items-center gap-2.5">
           {Icon && (
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -46,7 +46,7 @@ export function SectionCard({
             {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
           </div>
         </div>
-        {action && <div className="shrink-0">{action}</div>}
+        {action && <div className="sm:shrink-0">{action}</div>}
       </div>
       <div className={noPadding ? "" : "p-6"}>{children}</div>
     </motion.section>
