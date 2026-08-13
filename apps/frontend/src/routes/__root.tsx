@@ -115,7 +115,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "@context": "https://schema.org",
           "@type": "Organization",
           name: "ActiveHome",
-          url: "https://active-home.lovable.app",
+          url: "https://activehome.uz",
           description:
             "AI-powered global super app for buying, renting, building, furnishing and booking homes.",
         }),
@@ -126,10 +126,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "@context": "https://schema.org",
           "@type": "WebSite",
           name: "ActiveHome",
-          url: "https://active-home.lovable.app",
+          url: "https://activehome.uz",
           potentialAction: {
             "@type": "SearchAction",
-            target: "https://active-home.lovable.app/properties?q={search_term_string}",
+            target: "https://activehome.uz/properties?q={search_term_string}",
             "query-input": "required name=search_term_string",
           },
         }),

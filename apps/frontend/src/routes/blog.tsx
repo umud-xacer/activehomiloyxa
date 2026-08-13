@@ -18,9 +18,9 @@ export const Route = createFileRoute("/blog")({
         content: "Market analysis, product updates and stories from the ActiveHome team.",
       },
       { property: "og:type", content: "article" },
-      { property: "og:url", content: "https://active-home.lovable.app/blog" },
+      { property: "og:url", content: "https://activehome.uz/blog" },
     ],
-    links: [{ rel: "canonical", href: "https://active-home.lovable.app/blog" }],
+    links: [{ rel: "canonical", href: "https://activehome.uz/blog" }],
   }),
   component: Page,
 });

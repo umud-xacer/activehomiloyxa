@@ -9,8 +9,6 @@ import {
   MapPin,
   ShieldCheck,
   Sparkles,
-  Heart,
-  Share2,
   Star,
   Phone,
   Mail,
@@ -19,6 +17,8 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { Container } from "@/components/layout/Container";
 import { PropertyCard } from "@/components/data/PropertyCard";
+import { FavoriteButton } from "@/components/data/FavoriteButton";
+import { ShareButton } from "@/components/data/ShareButton";
 import { ErrorState } from "@/components/state/ErrorState";
 import type { MapMarker } from "@/components/map/YandexMapView";
 import { ListingLocationSection } from "@/components/listing/ListingLocationSection";
@@ -36,7 +36,7 @@ export const Route = createFileRoute("/properties/$slug")({
     return data;
   },
   head: ({ params, loaderData }) => {
-    const url = `https://active-home.lovable.app/properties/${params.slug}`;
+    const url = `https://activehome.uz/properties/${params.slug}`;
     if (!loaderData) {
       return {
         meta: [{ title: "Property — ActiveHome" }, { name: "robots", content: "noindex" }],
@@ -192,18 +192,13 @@ function PropertyDetail() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  className="inline-flex size-10 items-center justify-center rounded-full border border-border bg-card hover:bg-muted"
-                  aria-label="Save"
-                >
-                  <Heart className="size-4" />
-                </button>
-                <button
-                  className="inline-flex size-10 items-center justify-center rounded-full border border-border bg-card hover:bg-muted"
-                  aria-label="Share"
-                >
-                  <Share2 className="size-4" />
-                </button>
+                <FavoriteButton listingId={property.id} variant="outline" className="size-10" />
+                <ShareButton
+                  url={`https://activehome.uz/properties/${property.slug}`}
+                  title={property.title}
+                  variant="outline"
+                  className="size-10"
+                />
               </div>
             </header>
 

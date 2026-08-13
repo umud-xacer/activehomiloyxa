@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Bath, BedDouble, Heart, MapPin, Maximize2, Sparkles, ShieldCheck } from "lucide-react";
+import { Bath, BedDouble, MapPin, Maximize2, Sparkles, ShieldCheck } from "lucide-react";
 import type { Property } from "@/features/properties/types";
 import { formatArea, formatPriceWithUnit } from "@/lib/format";
+import { FavoriteButton } from "@/components/data/FavoriteButton";
 
 interface Props {
   property: Property;
@@ -51,16 +52,7 @@ export function PropertyCard({ property, index = 0 }: Props) {
             </span>
           </div>
 
-          <button
-            type="button"
-            aria-label="Save to favorites"
-            onClick={(e) => {
-              e.preventDefault();
-            }}
-            className="absolute right-3 top-3 inline-flex size-9 items-center justify-center rounded-full bg-white/90 text-foreground shadow-soft backdrop-blur transition hover:bg-white"
-          >
-            <Heart className="size-4" />
-          </button>
+          <FavoriteButton listingId={property.id} className="absolute right-3 top-3" />
 
           {/* Price overlay */}
           <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-2">

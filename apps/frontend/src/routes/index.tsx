@@ -28,9 +28,9 @@ export const Route = createFileRoute("/")({
         content:
           "Properties, hotels, construction, materials, furniture, design and services. One global platform.",
       },
-      { property: "og:url", content: "https://active-home.lovable.app/" },
+      { property: "og:url", content: "https://activehome.uz/" },
     ],
-    links: [{ rel: "canonical", href: "https://active-home.lovable.app/" }],
+    links: [{ rel: "canonical", href: "https://activehome.uz/" }],
   }),
   component: Index,
 });

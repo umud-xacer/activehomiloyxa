@@ -30,6 +30,8 @@ import { useMe } from "@/features/auth/useAuth";
 import { ApiError } from "@/lib/http";
 import { categoryLabel } from "@/components/site/CategoryCarousel";
 import { resolveListingKind, KIND_ICON, KIND_EYEBROW } from "@/lib/listing-kind";
+import { FavoriteButton } from "@/components/data/FavoriteButton";
+import { ShareButton } from "@/components/data/ShareButton";
 
 export const Route = createFileRoute("/listing/$listingId")({
   head: () => ({ meta: [{ title: "E'lon — ActiveHome" }] }),
@@ -288,9 +290,20 @@ function Page() {
                   {KIND_EYEBROW[catalogKind]}
                 </div>
               )}
-              <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
-                {listing.title}
-              </h1>
+              <div className="flex items-start justify-between gap-4">
+                <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
+                  {listing.title}
+                </h1>
+                <div className="flex shrink-0 items-center gap-2">
+                  <FavoriteButton listingId={listing.id} variant="outline" className="size-10" />
+                  <ShareButton
+                    url={`https://activehome.uz/listing/${listing.id}`}
+                    title={listing.title}
+                    variant="outline"
+                    className="size-10"
+                  />
+                </div>
+              </div>
               <div className="mt-3 font-display text-2xl font-semibold text-primary">
                 {formatUzs(listing.price?.amount) || "Narx kelishiladi"}
               </div>

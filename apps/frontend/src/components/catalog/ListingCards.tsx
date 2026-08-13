@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Sofa, Wrench, Building2, Clock, MapPin } from "lucide-react";
 import { http } from "@/lib/http";
 import { formatUzs, type CatalogListing } from "@/lib/catalog-client";
+import { FavoriteButton } from "@/components/data/FavoriteButton";
 
 function listingHref(listing: CatalogListing) {
   return { to: "/listing/$listingId" as const, params: { listingId: listing.id } };
@@ -65,8 +66,9 @@ export function GoodsCard({ listing }: { listing: CatalogListing }) {
   return (
     <Link
       {...listingHref(listing)}
-      className="group block overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-elevated"
+      className="group relative block overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-elevated"
     >
+      <FavoriteButton listingId={listing.id} className="absolute right-3 top-3 z-10" />
       <CardThumbnail listing={listing} Icon={Sofa} />
       <div className="p-4">
         <h3 className="font-display text-base font-semibold text-foreground">{listing.title}</h3>
@@ -127,16 +129,19 @@ export function ServiceCard({ listing }: { listing: CatalogListing }) {
             </div>
           )}
         </div>
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
-            availableNow ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
-          }`}
-        >
+        <div className="flex shrink-0 items-center gap-1.5">
           <span
-            className={`size-1.5 rounded-full ${availableNow ? "bg-success" : "bg-muted-foreground"}`}
-          />
-          {availableNow ? "Band emas" : "Band"}
-        </span>
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+              availableNow ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
+            }`}
+          >
+            <span
+              className={`size-1.5 rounded-full ${availableNow ? "bg-success" : "bg-muted-foreground"}`}
+            />
+            {availableNow ? "Band emas" : "Band"}
+          </span>
+          <FavoriteButton listingId={listing.id} size="sm" variant="outline" />
+        </div>
       </div>
 
       <h3 className="font-display mt-3 text-base font-semibold text-foreground">{listing.title}</h3>
@@ -193,8 +198,9 @@ export function VenueCard({ listing }: { listing: CatalogListing }) {
   return (
     <Link
       {...listingHref(listing)}
-      className="group block overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-elevated"
+      className="group relative block overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition hover:-translate-y-1 hover:shadow-elevated"
     >
+      <FavoriteButton listingId={listing.id} className="absolute right-3 top-3 z-10" />
       <CardThumbnail listing={listing} Icon={Building2} />
       <div className="p-4">
         <h3 className="font-display text-base font-semibold text-foreground">{listing.title}</h3>
