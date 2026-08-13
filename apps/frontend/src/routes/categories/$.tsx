@@ -16,7 +16,7 @@ import {
   BadgePercent,
   ChevronRight,
 } from "lucide-react";
-import { CategoryHub, type HubOption } from "@/components/catalog/CategoryHub";
+import { SortMenu, type HubOption } from "@/components/catalog/SortMenu";
 import { CategoryTile } from "@/components/catalog/CategoryTile";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -287,26 +287,18 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
             {name}
             <span className="opacity-70">· {items.length} ta e'lon</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setFeaturedOnly((v) => !v)}
-            className={`inline-flex shrink-0 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium shadow-soft transition ${
-              featuredOnly
-                ? "border-warning bg-warning/10 text-warning"
-                : "border-border bg-card text-foreground/80 hover:border-warning/40"
-            }`}
-          >
-            <BadgePercent className="size-4" />
-            Chegirmadagilar
-          </button>
-        </div>
-        <div className="mt-4">
-          <CategoryHub
+          <SortMenu
             options={PROPERTY_HUB_OPTIONS}
             value={search.sort}
             onChange={(sort) =>
               navigate({ search: (prev: typeof search) => ({ ...prev, sort, page: 1 }) })
             }
+            extra={{
+              label: "Chegirmadagilar",
+              icon: BadgePercent,
+              active: featuredOnly,
+              onToggle: () => setFeaturedOnly((v) => !v),
+            }}
           />
         </div>
       </Container>
@@ -581,17 +573,17 @@ function CatalogDirectionView({
             {name}
             {!isLoading && <span className="opacity-70">· {sorted.length} ta e'lon</span>}
           </div>
-          {form && form.sections.length > 0 && (
-            <CategoryFiltersSheet
-              fields={form.sections.flatMap((s) => s.fields)}
-              state={filters}
-              onChange={setFilters}
-              resultCount={filtered.length}
-            />
-          )}
-        </div>
-        <div className="mt-4">
-          <CategoryHub options={CATALOG_HUB_OPTIONS} value={sort} onChange={setSort} />
+          <div className="flex items-center gap-2">
+            <SortMenu options={CATALOG_HUB_OPTIONS} value={sort} onChange={setSort} />
+            {form && form.sections.length > 0 && (
+              <CategoryFiltersSheet
+                fields={form.sections.flatMap((s) => s.fields)}
+                state={filters}
+                onChange={setFilters}
+                resultCount={filtered.length}
+              />
+            )}
+          </div>
         </div>
       </Container>
 
