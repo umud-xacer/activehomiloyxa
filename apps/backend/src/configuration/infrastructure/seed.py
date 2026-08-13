@@ -31,7 +31,12 @@ from uuid import UUID
 from redis.asyncio import Redis
 
 from backbone.outbox import OutboxWriter
-from backbone.persistence import make_engine, make_session_factory, redis_url, session_scope
+from backbone.persistence import (
+    make_engine,
+    make_session_factory,
+    redis_url,
+    session_scope,
+)
 from configuration.application import ConfigurationUseCases
 from configuration.application.exceptions import GateFailedError
 from configuration.domain import (
@@ -46,7 +51,9 @@ from configuration.domain.whitelist import (
 )
 from configuration.infrastructure.cache.redis_snapshot_cache import RedisSnapshotCache
 from configuration.infrastructure.persistence.models import OutboxEvent
-from configuration.infrastructure.persistence.repository import SqlalchemyConfigHeadRepository
+from configuration.infrastructure.persistence.repository import (
+    SqlalchemyConfigHeadRepository,
+)
 
 SEED_MAKER_ID = UUID("00000000-0000-0000-0000-000000000001")
 """Fixed system-actor id for the seed script's authoring step -- distinct from
@@ -97,7 +104,12 @@ async def _seed_role(
         )
     except DuplicateCodeError:
         await _backfill_role_permission_keys(
-            use_cases, repo, code=code, role_name=role_name, permission_keys=permission_keys, now=now
+            use_cases,
+            repo,
+            code=code,
+            role_name=role_name,
+            permission_keys=permission_keys,
+            now=now,
         )
         return
 
@@ -148,10 +160,14 @@ async def _backfill_role_permission_keys(
     head = await repo.get_head_by_code(ConfigEntityType.ROLE_DEFINITION, code)
     if head is None or head.current_version_id is None:
         return
-    current = await repo.get_version(ConfigEntityType.ROLE_DEFINITION, head.id, head.current_version_id)
+    current = await repo.get_version(
+        ConfigEntityType.ROLE_DEFINITION, head.id, head.current_version_id
+    )
     if current is None:
         return
-    if sorted(current.definition_document.get("permission_keys") or []) == sorted(permission_keys):
+    if sorted(current.definition_document.get("permission_keys") or []) == sorted(
+        permission_keys
+    ):
         return
 
     new_document = {**current.definition_document, "permission_keys": permission_keys}
@@ -184,7 +200,9 @@ async def _backfill_role_permission_keys(
         )
 
 
-async def _seed_platform_settings(use_cases: ConfigurationUseCases, *, now: datetime) -> None:
+async def _seed_platform_settings(
+    use_cases: ConfigurationUseCases, *, now: datetime
+) -> None:
     definition = {
         "descriptor": {"name": {"uz_latn": "Default platform settings"}},
         "settings_scope": "GLOBAL",
@@ -219,8 +237,12 @@ async def _seed_platform_settings(use_cases: ConfigurationUseCases, *, now: date
     except DuplicateCodeError:
         return
 
-    approve_key = _registry.approve_permission_key(ConfigEntityType.PLATFORM_SETTINGS.value)
-    manage_key = _registry.manage_permission_key(ConfigEntityType.PLATFORM_SETTINGS.value)
+    approve_key = _registry.approve_permission_key(
+        ConfigEntityType.PLATFORM_SETTINGS.value
+    )
+    manage_key = _registry.manage_permission_key(
+        ConfigEntityType.PLATFORM_SETTINGS.value
+    )
     step1 = await use_cases.publish(
         ConfigEntityType.PLATFORM_SETTINGS,
         version.head_id,
@@ -294,7 +316,9 @@ async def _backfill_platform_settings_defaults(
         return
     current_settings = dict(current.definition_document.get("settings") or {})
     missing = {
-        k: v for k, v in _PLATFORM_SETTINGS_ADDITIVE_DEFAULTS.items() if k not in current_settings
+        k: v
+        for k, v in _PLATFORM_SETTINGS_ADDITIVE_DEFAULTS.items()
+        if k not in current_settings
     }
     stale_slug = current_settings.get("admin.owner_panel_slug")
     slug_fix = (
@@ -316,8 +340,12 @@ async def _backfill_platform_settings_defaults(
         actor_id=SEED_MAKER_ID,
         now=now,
     )
-    manage_key = _registry.manage_permission_key(ConfigEntityType.PLATFORM_SETTINGS.value)
-    approve_key = _registry.approve_permission_key(ConfigEntityType.PLATFORM_SETTINGS.value)
+    manage_key = _registry.manage_permission_key(
+        ConfigEntityType.PLATFORM_SETTINGS.value
+    )
+    approve_key = _registry.approve_permission_key(
+        ConfigEntityType.PLATFORM_SETTINGS.value
+    )
     step1 = await use_cases.publish(
         ConfigEntityType.PLATFORM_SETTINGS,
         head.id,
@@ -436,11 +464,15 @@ async def _seed_furniture_form(
         )
     except DuplicateCodeError:
         existing = await repo.get_head_by_code(ConfigEntityType.FORM_DEFINITION, code)
-        assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
+        assert existing is not None, (
+            f"seed marker {code!r} vanished between check and lookup"
+        )
         return existing.id
 
     manage_key = _registry.manage_permission_key(ConfigEntityType.FORM_DEFINITION.value)
-    approve_key = _registry.approve_permission_key(ConfigEntityType.FORM_DEFINITION.value)
+    approve_key = _registry.approve_permission_key(
+        ConfigEntityType.FORM_DEFINITION.value
+    )
     step1 = await use_cases.publish(
         ConfigEntityType.FORM_DEFINITION,
         head.id,
@@ -478,7 +510,11 @@ async def _seed_furniture_category(
     code = "mebel-materiallari"
     definition = {
         "descriptor": {
-            "name": {"uz_latn": "Mebel materiallari", "ru": "Мебель", "en": "Furniture"},
+            "name": {
+                "uz_latn": "Mebel materiallari",
+                "ru": "Мебель",
+                "en": "Furniture",
+            },
             "metadata": {"listingKind": "GOODS"},
         },
         "parent_category_id": None,
@@ -497,7 +533,9 @@ async def _seed_furniture_category(
         )
     except DuplicateCodeError:
         existing = await repo.get_head_by_code(ConfigEntityType.CATEGORY, code)
-        assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
+        assert existing is not None, (
+            f"seed marker {code!r} vanished between check and lookup"
+        )
         await _backfill_listing_kind(
             use_cases,
             repo,
@@ -557,7 +595,9 @@ def _field(
         "order": order,
     }
     if options:
-        field["options"] = [{"value": v, "label": {"uz_latn": lbl}} for v, lbl in options]
+        field["options"] = [
+            {"value": v, "label": {"uz_latn": lbl}} for v, lbl in options
+        ]
     if default is not None:
         field["default_value"] = default
     return field
@@ -600,7 +640,13 @@ def _property_fields() -> list[dict[str, object]]:
 def _land_fields() -> list[dict[str, object]]:
     return [
         _field(
-            "area_sotix", "asosiy", "Maydon (sotix)", "number", required=True, facet=True, order=1
+            "area_sotix",
+            "asosiy",
+            "Maydon (sotix)",
+            "number",
+            required=True,
+            facet=True,
+            order=1,
         ),
         _field(
             "land_purpose",
@@ -657,7 +703,14 @@ def _goods_fields() -> list[dict[str, object]]:
 
 def _hospitality_fields() -> list[dict[str, object]]:
     return [
-        _field("room_capacity", "asosiy", "Xona sig'imi (kishi)", "number", facet=True, order=1),
+        _field(
+            "room_capacity",
+            "asosiy",
+            "Xona sig'imi (kishi)",
+            "number",
+            facet=True,
+            order=1,
+        ),
         _field(
             "amenities",
             "asosiy",
@@ -731,7 +784,9 @@ def _venue_fields() -> list[dict[str, object]]:
     ]
 
 
-def _service_cv_fields(*, extra: list[dict[str, object]] | None = None) -> list[dict[str, object]]:
+def _service_cv_fields(
+    *, extra: list[dict[str, object]] | None = None
+) -> list[dict[str, object]]:
     """The "CV" shape: a `SERVICE`-typed listing under `xizmat-korsatish` (or a trade-specific
     child of it) IS the person's public profile -- experience/specialization/coverage-area/rate,
     the same fields a hiring business or a household would actually filter on, browsable the
@@ -748,8 +803,16 @@ def _service_cv_fields(*, extra: list[dict[str, object]] | None = None) -> list[
             facet=True,
             order=1,
         ),
-        _field("specialization", "asosiy", "Mutaxassislik", "text", facet=True, order=2),
-        _field("service_regions", "asosiy", "Xizmat ko'rsatiladigan hududlar", "text", order=3),
+        _field(
+            "specialization", "asosiy", "Mutaxassislik", "text", facet=True, order=2
+        ),
+        _field(
+            "service_regions",
+            "asosiy",
+            "Xizmat ko'rsatiladigan hududlar",
+            "text",
+            order=3,
+        ),
         _field(
             "rate_type",
             "asosiy",
@@ -757,7 +820,11 @@ def _service_cv_fields(*, extra: list[dict[str, object]] | None = None) -> list[
             "select",
             facet=True,
             order=4,
-            options=[("hourly", "Soatlik"), ("daily", "Kunlik"), ("per_job", "Ish uchun")],
+            options=[
+                ("hourly", "Soatlik"),
+                ("daily", "Kunlik"),
+                ("per_job", "Ish uchun"),
+            ],
         ),
         _field(
             "available_now",
@@ -790,7 +857,9 @@ async def _seed_form(
     returns the existing head's id (by code) if this has already run against this database."""
     definition = {
         "descriptor": {"name": {"uz_latn": name}},
-        "sections": [{"code": section_code, "label": {"uz_latn": section_name}, "order": 1}],
+        "sections": [
+            {"code": section_code, "label": {"uz_latn": section_name}, "order": 1}
+        ],
         "fields": fields,
     }
     try:
@@ -804,11 +873,15 @@ async def _seed_form(
         )
     except DuplicateCodeError:
         existing = await repo.get_head_by_code(ConfigEntityType.FORM_DEFINITION, code)
-        assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
+        assert existing is not None, (
+            f"seed marker {code!r} vanished between check and lookup"
+        )
         return existing.id
 
     manage_key = _registry.manage_permission_key(ConfigEntityType.FORM_DEFINITION.value)
-    approve_key = _registry.approve_permission_key(ConfigEntityType.FORM_DEFINITION.value)
+    approve_key = _registry.approve_permission_key(
+        ConfigEntityType.FORM_DEFINITION.value
+    )
     step1 = await use_cases.publish(
         ConfigEntityType.FORM_DEFINITION,
         head.id,
@@ -873,7 +946,9 @@ async def _seed_category(
         )
     except DuplicateCodeError:
         existing = await repo.get_head_by_code(ConfigEntityType.CATEGORY, code)
-        assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
+        assert existing is not None, (
+            f"seed marker {code!r} vanished between check and lookup"
+        )
         await _backfill_listing_kind(
             use_cases,
             repo,
@@ -924,7 +999,9 @@ async def _backfill_listing_kind(
     no-op on every subsequent run once it's caught up (true idempotency, not just duplicate-skip)."""
     if listing_kind is None or current_version_id is None:
         return
-    current = await repo.get_version(ConfigEntityType.CATEGORY, head_id, current_version_id)
+    current = await repo.get_version(
+        ConfigEntityType.CATEGORY, head_id, current_version_id
+    )
     if current is None:
         return
     current_descriptor = dict(current.definition_document.get("descriptor") or {})
@@ -1028,7 +1105,7 @@ _TOP_LEVEL_CATEGORY_HERO_THEMES: dict[str, dict[str, str]] = {
         "accentColor": "#1E3A8A",
     },
     "uy-bezaklari": {
-        "heroImageUrl": "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=1600&q=80&auto=format&fit=crop",
+        "heroImageUrl": "https://live.staticflickr.com/8471/8394526520_f43e5632b1_b.jpg",
         "heroTagline": "Uyingizga did va zavq qo'shing",
         "accentColor": "#DB2777",
     },
@@ -2933,119 +3010,119 @@ _SUBCATEGORY_HERO_THEMES: dict[str, dict[str, str]] = {
         "heroTagline": "Xavfsizlik xodimlari formasi bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-dekorativ-yoritish": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/decorative,lighting",
+        "heroImageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Geometric_white_pendant_lamp_chandelier.jpg/1920px-Geometric_white_pendant_lamp_chandelier.jpg",
         "heroTagline": "Dekorativ yoritish bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-dekorativ-yoritish-aqlli-yoritish-tizimlari": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/smart,lighting,system",
+        "heroImageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Geometric_white_pendant_lamp_chandelier.jpg/1920px-Geometric_white_pendant_lamp_chandelier.jpg",
         "heroTagline": "Aqlli yoritish tizimlari bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-dekorativ-yoritish-dizayner-lampalari": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/designer,lamp,light",
+        "heroImageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Geometric_white_pendant_lamp_chandelier.jpg/1920px-Geometric_white_pendant_lamp_chandelier.jpg",
         "heroTagline": "Dizayner lampalari bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-dekorativ-yoritish-led-yoritish": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/led,light,lighting",
+        "heroImageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Geometric_white_pendant_lamp_chandelier.jpg/1920px-Geometric_white_pendant_lamp_chandelier.jpg",
         "heroTagline": "LED yoritish bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-dekorativ-yoritish-osma-chiroqlar": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/pendant,lamp,light",
+        "heroImageUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Geometric_white_pendant_lamp_chandelier.jpg/1920px-Geometric_white_pendant_lamp_chandelier.jpg",
         "heroTagline": "Osma chiroqlar bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-dekorativ-yoritish-tungi-lampalar": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/night,lamp",
+        "heroImageUrl": "https://live.staticflickr.com/4110/5103679082_799c8f2ccd_b.jpg",
         "heroTagline": "Tungi lampalar bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-devor-bezaklari": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/wall,decor",
+        "heroImageUrl": "https://live.staticflickr.com/8007/7647610132_017e4750e7_b.jpg",
         "heroTagline": "Devor bezaklari bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-devor-bezaklari-3d-panellar": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/panel,home",
+        "heroImageUrl": "https://live.staticflickr.com/8007/7647610132_017e4750e7_b.jpg",
         "heroTagline": "3D panellar bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-devor-bezaklari-dekorativ-yogoch-panellar": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/decorative,wood,timber",
+        "heroImageUrl": "https://live.staticflickr.com/3481/3470286741_92802e06f6_b.jpg",
         "heroTagline": "Dekorativ yog'och panellar bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-devor-bezaklari-metall-dekorlar": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/metal,decor",
+        "heroImageUrl": "https://live.staticflickr.com/62/154160164_6ceb2fa49e_b.jpg",
         "heroTagline": "Metall dekorlar bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-devor-bezaklari-premium-devor-kompozitsiyalari": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/premium,luxury,wall",
+        "heroImageUrl": "https://live.staticflickr.com/8007/7647610132_017e4750e7_b.jpg",
         "heroTagline": "Premium devor kompozitsiyalari bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-devor-bezaklari-stikerlar": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/sticker,home",
+        "heroImageUrl": "https://live.staticflickr.com/8007/7647610132_017e4750e7_b.jpg",
         "heroTagline": "Stikerlar bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-gilam-va-pol-qoplamalari": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/carpet,rug,floor",
+        "heroImageUrl": "https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIyLTEyL2FpYzE1NjYwNC1pbWFnZS5qcGc.jpg",
         "heroTagline": "Gilam va pol qoplamalari bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-gullar-va-dekorativ-osimliklar": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/flowers,decorative,plants",
+        "heroImageUrl": "https://live.staticflickr.com/2907/14197390872_75bb66c861_b.jpg",
         "heroTagline": "Gullar va dekorativ o'simliklar bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-hammom-aksessuarlari": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/spa,bath,accessories",
+        "heroImageUrl": "https://live.staticflickr.com/3065/2814824081_181c4615d8_b.jpg",
         "heroTagline": "Hammom aksessuarlari bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-kozgular": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/mirror,home",
+        "heroImageUrl": "https://live.staticflickr.com/65535/54297290632_165f766a5c_b.jpg",
         "heroTagline": "Ko'zgular bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-oshxona-bezaklari": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/kitchen,decor",
+        "heroImageUrl": "https://live.staticflickr.com/136/329995787_98fa39c23d_b.jpg",
         "heroTagline": "Oshxona bezaklari bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-pardalar-va-jalyuzilar": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/curtain,blinds",
+        "heroImageUrl": "https://live.staticflickr.com/5516/10589144656_b1d3a4445b_b.jpg",
         "heroTagline": "Pardalar va jalyuzilar bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-pardalar-va-jalyuzilar-avtomatik": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/automatic,home",
+        "heroImageUrl": "https://live.staticflickr.com/5516/10589144656_b1d3a4445b_b.jpg",
         "heroTagline": "Avtomatik bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-pardalar-va-jalyuzilar-blackout": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/blackout,curtain",
+        "heroImageUrl": "https://live.staticflickr.com/4310/36268144316_e3049c5e97_b.jpg",
         "heroTagline": "Blackout bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-pardalar-va-jalyuzilar-klassik": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/classic,home",
+        "heroImageUrl": "https://live.staticflickr.com/7196/6859957080_8f1ca6d839_b.jpg",
         "heroTagline": "Klassik bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-pardalar-va-jalyuzilar-premium-kolleksiyalar": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/premium,luxury,curtain",
+        "heroImageUrl": "https://live.staticflickr.com/8623/15917081098_b3f1e0d311_b.jpg",
         "heroTagline": "Premium kolleksiyalar bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-pardalar-va-jalyuzilar-zamonaviy": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/modern,home",
+        "heroImageUrl": "https://live.staticflickr.com/7196/6859957080_8f1ca6d839_b.jpg",
         "heroTagline": "Zamonaviy bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-rasmlar-va-kartinalar": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/art,painting",
+        "heroImageUrl": "https://live.staticflickr.com/7151/6854099213_b643011688_b.jpg",
         "heroTagline": "Rasmlar va kartinalar bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-shamdon-va-dekor-aksessuarlari": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/candlestick,decor,accessories",
+        "heroImageUrl": "https://images.rawpixel.com/editor_1024/czNmcy1wcml2YXRlL3Jhd3BpeGVsX2ltYWdlcy93ZWJzaXRlX2NvbnRlbnQvbHIvZnJjYW5kbGVzdGlja19jYW5kbGVfc3VuX2Z1c2lvbi1pbWFnZS1reWJlNGV1aS5qcGc.jpg",
         "heroTagline": "Shamdon va dekor aksessuarlari bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-smart-dekor-mahsulotlari": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/smart,home,decor",
+        "heroImageUrl": "https://upload.wikimedia.org/wikipedia/commons/e/e6/Amazon_Echo_Plus_02.jpg",
         "heroTagline": "Smart dekor mahsulotlari bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-soatlar": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/clock,home",
+        "heroImageUrl": "https://live.staticflickr.com/4005/5146431359_758816d2d1_b.jpg",
         "heroTagline": "Soatlar bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-vaza-va-haykallar": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/vase,statue,sculpture",
+        "heroImageUrl": "https://images.rawpixel.com/editor_1024/cHJpdmF0ZS9sci9pbWFnZXMvd2Vic2l0ZS8yMDIyLTA5L21ldDQ3MzcwLWltYWdlLmpwZw.jpg",
         "heroTagline": "Vaza va haykallar bo'yicha eng yaxshi takliflar",
     },
     "uy-bezaklari-yotoqxona-dekorlari": {
-        "heroImageUrl": "https://loremflickr.com/1600/900/bedroom,decor",
+        "heroImageUrl": "https://live.staticflickr.com/6183/6050427981_85a212629f_b.jpg",
         "heroTagline": "Yotoqxona dekorlari bo'yicha eng yaxshi takliflar",
     },
     "xizmat-korsatish-dizayn-va-loyiha-xizmatlari": {
@@ -3199,7 +3276,9 @@ async def _backfill_category_theme(
     head = await repo.get_head_by_code(ConfigEntityType.CATEGORY, code)
     if head is None or head.current_version_id is None:
         return
-    current = await repo.get_version(ConfigEntityType.CATEGORY, head.id, head.current_version_id)
+    current = await repo.get_version(
+        ConfigEntityType.CATEGORY, head.id, head.current_version_id
+    )
     if current is None:
         return
     current_descriptor = dict(current.definition_document.get("descriptor") or {})
@@ -3327,7 +3406,13 @@ def _kop_qavatli_binolar_tree() -> list[Node]:
         "Ikkilamchi bozor",
         (
             "Premium turar joylar",
-            ["Sky Residence", "Penthouse", "Terrace Apartment", "Smart Home", "Designer Interior"],
+            [
+                "Sky Residence",
+                "Penthouse",
+                "Terrace Apartment",
+                "Smart Home",
+                "Designer Interior",
+            ],
         ),
         "Biznes klass",
         "Komfort klass",
@@ -3352,7 +3437,10 @@ def _kop_qavatli_binolar_tree() -> list[Node]:
 
 def _kotejlar_tree() -> list[Node]:
     return [
-        ("Oilaviy kotejlar", ["2 xonali", "3 xonali", "5+ xonali", "Bolalar maydonchali kotejlar"]),
+        (
+            "Oilaviy kotejlar",
+            ["2 xonali", "3 xonali", "5+ xonali", "Bolalar maydonchali kotejlar"],
+        ),
         (
             "Premium kotejlar",
             ["Basseynli", "Sauna va SPA'li", "Panoramali", "VIP xizmatli kotejlar"],
@@ -3360,7 +3448,11 @@ def _kotejlar_tree() -> list[Node]:
         "Luxury Villalar",
         (
             "Tog' kotejlari",
-            ["Qishki dam olish uchun", "Yozgi dam olish uchun", "Ekstremal turizm uchun"],
+            [
+                "Qishki dam olish uchun",
+                "Yozgi dam olish uchun",
+                "Ekstremal turizm uchun",
+            ],
         ),
         "Ko'l bo'yidagi kotejlar",
         "O'rmon hududidagi kotejlar",
@@ -3403,7 +3495,11 @@ def _hovlilar_tree() -> list[Node]:
         "Qurilishi tugallanmagan hovlilar",
         (
             "Smart Home hovlilar",
-            ["Avtomatlashtirilgan xavfsizlik tizimi", "Aqlli yoritish", "Aqlli iqlim boshqaruvi"],
+            [
+                "Avtomatlashtirilgan xavfsizlik tizimi",
+                "Aqlli yoritish",
+                "Aqlli iqlim boshqaruvi",
+            ],
         ),
     ]
 
@@ -3412,7 +3508,13 @@ def _noturar_binolar_tree() -> list[Node]:
     return [
         (
             "Ofis binolari",
-            ["Business Center", "Coworking", "Premium Office", "Open Space", "Alohida ofislar"],
+            [
+                "Business Center",
+                "Coworking",
+                "Premium Office",
+                "Open Space",
+                "Alohida ofislar",
+            ],
         ),
         (
             "Savdo markazlari",
@@ -3464,7 +3566,12 @@ def _dala_hovlilar_tree() -> list[Node]:
         "Haftalik va oylik ijara",
         (
             "Premium villalar",
-            ["Smart Home", "VIP villa", "Panoramali villa", "Zamonaviy dizayndagi villalar"],
+            [
+                "Smart Home",
+                "VIP villa",
+                "Panoramali villa",
+                "Zamonaviy dizayndagi villalar",
+            ],
         ),
         "Oilaviy dam olish hovlilari",
         "Tog' hududidagi dala hovlilar",
@@ -3489,7 +3596,13 @@ def _bosh_yerlar_tree() -> list[Node]:
     return [
         (
             "Turar joy qurish uchun yerlar",
-            ["2 sotixgacha", "2-4 sotix", "4-6 sotix", "6-10 sotix", "10 sotixdan katta"],
+            [
+                "2 sotixgacha",
+                "2-4 sotix",
+                "4-6 sotix",
+                "6-10 sotix",
+                "10 sotixdan katta",
+            ],
         ),
         (
             "Tijorat maqsadidagi yerlar",
@@ -3531,7 +3644,14 @@ def _qurilish_materiallari_tree() -> list[Node]:
         "Santexnika mahsulotlari",
         (
             "Bo'yoqlar va pardozlash materiallari",
-            ["Ichki bo'yoq", "Tashqi bo'yoq", "Grunt", "Lak", "Emal", "Dekorativ qoplamalar"],
+            [
+                "Ichki bo'yoq",
+                "Tashqi bo'yoq",
+                "Grunt",
+                "Lak",
+                "Emal",
+                "Dekorativ qoplamalar",
+            ],
         ),
         "Pol qoplamalari",
         "Eshik va derazalar",
@@ -3548,7 +3668,12 @@ def _maishiy_texnikalar_tree() -> list[Node]:
     return [
         (
             "Muzlatgichlar",
-            ["Ikki eshikli", "Side by Side", "Mini muzlatgichlar", "Smart muzlatgichlar"],
+            [
+                "Ikki eshikli",
+                "Side by Side",
+                "Mini muzlatgichlar",
+                "Smart muzlatgichlar",
+            ],
         ),
         (
             "Kir yuvish mashinalari",
@@ -3568,7 +3693,13 @@ def _maishiy_texnikalar_tree() -> list[Node]:
         "Suv isitkichlari",
         (
             "Oshxona texnikalari",
-            ["Blenderlar", "Mikserlar", "Kofe mashinalari", "Multivarkalar", "Elektr choynaklar"],
+            [
+                "Blenderlar",
+                "Mikserlar",
+                "Kofe mashinalari",
+                "Multivarkalar",
+                "Elektr choynaklar",
+            ],
         ),
         "Kichik maishiy texnikalar",
         "Smart Home qurilmalari",
@@ -3621,7 +3752,14 @@ def _uniforma_tree() -> list[Node]:
     return [
         (
             "Qurilish kiyimlari",
-            ["Kurtka", "Shim", "Kombinezon", "Jilet", "Yomg'ir kiyimi", "Termo kiyimlar"],
+            [
+                "Kurtka",
+                "Shim",
+                "Kombinezon",
+                "Jilet",
+                "Yomg'ir kiyimi",
+                "Termo kiyimlar",
+            ],
         ),
         "Muhandis va texnik kiyimlari",
         "Elektrchilar uchun kiyimlar",
@@ -3668,14 +3806,24 @@ def _mebel_materiallari_tree() -> list[Node]:
         "Stoleshnitsalar",
         (
             "Mebel furnituralari",
-            ["Ilgaklar", "Menteshalar", "Relslar", "Lift tizimlari", "Magnitlar", "Qulflar"],
+            [
+                "Ilgaklar",
+                "Menteshalar",
+                "Relslar",
+                "Lift tizimlari",
+                "Magnitlar",
+                "Qulflar",
+            ],
         ),
         "Tutqich va aksessuarlar",
         "Sharnir va rels tizimlari",
         "Mebel oyoqlari va tayanchlari",
         "Shisha va oyna mahsulotlari",
         "Yumshoq mebel materiallari",
-        ("Mato va charm qoplamalar", ["Velyur", "Eko charm", "Tabiiy charm", "Mikrofiber"]),
+        (
+            "Mato va charm qoplamalar",
+            ["Velyur", "Eko charm", "Tabiiy charm", "Mikrofiber"],
+        ),
         "Yelim va kimyoviy mahsulotlar",
         "Bo'yoq va laklar",
         "Mebel ishlab chiqarish asboblari",
@@ -3740,11 +3888,24 @@ def _dam_olish_maskanlari_tree() -> list[Node]:
         "Kurort va sanatoriyalar",
         (
             "Hovuz va akvaparklar",
-            ["Ochiq hovuz", "Yopiq hovuz", "Bolalar akvaparki", "VIP zonalar", "Family zonalari"],
+            [
+                "Ochiq hovuz",
+                "Yopiq hovuz",
+                "Bolalar akvaparki",
+                "VIP zonalar",
+                "Family zonalari",
+            ],
         ),
         (
             "SPA va Wellness markazlari",
-            ["Sauna", "Hammom", "Massaj", "Fitnes", "Termal hovuz", "Sog'lomlashtirish xizmatlari"],
+            [
+                "Sauna",
+                "Hammom",
+                "Massaj",
+                "Fitnes",
+                "Termal hovuz",
+                "Sog'lomlashtirish xizmatlari",
+            ],
         ),
         "Tog' dam olish maskanlari",
         "Ko'l va daryo bo'yidagi maskanlar",
@@ -3818,7 +3979,13 @@ def _ish_orni_tree() -> list[Node]:
         ),
         (
             "Usta xizmatlari",
-            ["Elektrchi", "Santexnik", "Konditsioner ustasi", "Mebel ustasi", "Bo'yoqchi"],
+            [
+                "Elektrchi",
+                "Santexnik",
+                "Konditsioner ustasi",
+                "Mebel ustasi",
+                "Bo'yoqchi",
+            ],
         ),
         "Muhandislik",
         "Arxitektura va dizayn",
@@ -3927,16 +4094,26 @@ def _mexmonxona_tree() -> list[Node]:
         "Boutique Hotel",
         (
             "Business Hotel",
-            ["Konferensiya zallari", "Coworking zonalari", "Biznes xizmatlariga ega mehmonxonalar"],
+            [
+                "Konferensiya zallari",
+                "Coworking zonalari",
+                "Biznes xizmatlariga ega mehmonxonalar",
+            ],
         ),
-        ("Resort Hotel", ["Beach Resort", "Mountain Resort", "Wellness Resort", "Family Resort"]),
+        (
+            "Resort Hotel",
+            ["Beach Resort", "Mountain Resort", "Wellness Resort", "Family Resort"],
+        ),
         "Apart Hotel",
         "Family Hotel",
         "Spa Hotel",
         "Airport Hotel",
         "Mountain Hotel",
         "City Hotel",
-        ("Luxury Hotel", ["Presidential Suite", "Royal Suite", "Deluxe Room", "Executive Room"]),
+        (
+            "Luxury Hotel",
+            ["Presidential Suite", "Royal Suite", "Deluxe Room", "Executive Room"],
+        ),
         "Eco Hotel",
     ]
 
@@ -3974,7 +4151,12 @@ async def _seed_catalog_taxonomy(
         ),
         ("kotejlar", "Kotejlar", "/kotejlar", _kotejlar_tree()),
         ("hovlilar", "Hovlilar", "/hovlilar", _hovlilar_tree()),
-        ("noturar-binolar", "Noturar binolar", "/noturar-binolar", _noturar_binolar_tree()),
+        (
+            "noturar-binolar",
+            "Noturar binolar",
+            "/noturar-binolar",
+            _noturar_binolar_tree(),
+        ),
         ("dala-hovlilar", "Dala hovlilar", "/dala-hovlilar", _dala_hovlilar_tree()),
     ]:
         head_id = await _seed_category(
@@ -3999,7 +4181,12 @@ async def _seed_catalog_taxonomy(
 
     # -- Land.
     land_form_id = await _seed_form(
-        use_cases, repo, code="bosh-yer-form", name="Bo'sh yer", fields=_land_fields(), now=now
+        use_cases,
+        repo,
+        code="bosh-yer-form",
+        name="Bo'sh yer",
+        fields=_land_fields(),
+        now=now,
     )
     bosh_yerlar_head_id = await _seed_category(
         use_cases,
@@ -4023,7 +4210,12 @@ async def _seed_catalog_taxonomy(
 
     # -- Goods (physical-unit sales).
     goods_form_id = await _seed_form(
-        use_cases, repo, code="mahsulot-form", name="Mahsulot", fields=_goods_fields(), now=now
+        use_cases,
+        repo,
+        code="mahsulot-form",
+        name="Mahsulot",
+        fields=_goods_fields(),
+        now=now,
     )
     for code, name, path, tree in [
         (
@@ -4317,7 +4509,13 @@ async def _seed_catalog_taxonomy(
                     required=True,
                     facet=True,
                     order=10,
-                    options=[("B", "B"), ("C", "C"), ("D", "D"), ("BE", "BE"), ("CE", "CE")],
+                    options=[
+                        ("B", "B"),
+                        ("C", "C"),
+                        ("D", "D"),
+                        ("BE", "BE"),
+                        ("CE", "CE"),
+                    ],
                 ),
                 _field(
                     "own_vehicle",
