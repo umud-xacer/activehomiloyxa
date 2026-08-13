@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Sparkles,
   BadgePercent,
+  ChevronRight,
 } from "lucide-react";
 import { CategoryHub, type HubOption } from "@/components/catalog/CategoryHub";
 import { CategoryTile } from "@/components/catalog/CategoryTile";
@@ -140,7 +141,12 @@ function ChildrenGrid({
         Bo'lim ichidagi kichik kategoriyalar
         <span className="opacity-60">· {children.length}</span>
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+      {/* Mobile: a dense, scannable vertical list (icon-left, label, chevron) -- the same
+       * drill-down pattern OLX/Avito/Airbnb use for category navigation on a narrow screen,
+       * where a grid of centered icon-over-label cards reads as oversized and wastes vertical
+       * space per row. `sm:` and up switches the exact same elements to the original centered
+       * card grid via responsive classes only (no separate markup branch to keep in sync). */}
+      <div className="flex flex-col gap-2 sm:grid sm:grid-cols-3 sm:gap-3 md:grid-cols-4 lg:grid-cols-6">
         {children.map((child, i) => {
           const accent = resolveAccentColor(child, byId);
           const icon = resolveCategoryIcon(child);
@@ -150,10 +156,11 @@ function ChildrenGrid({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(i, 12) * 0.03, duration: 0.3 }}
+              className="sm:h-full"
             >
               <Link
                 to={categoryHref(child.path)}
-                className="group flex h-full flex-col items-center gap-3 rounded-2xl border border-border bg-card p-4 text-center shadow-soft transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-elevated"
+                className="group flex h-full items-center gap-3 rounded-xl border border-border bg-card p-3 text-left shadow-soft transition hover:border-primary/40 hover:shadow-elevated sm:flex-col sm:items-center sm:gap-3 sm:rounded-2xl sm:p-4 sm:text-center sm:hover:-translate-y-0.5"
               >
                 <CategoryTile
                   imageUrl={child.iconUrl}
@@ -162,9 +169,10 @@ function ChildrenGrid({
                   size="md"
                   className="transition-transform duration-300 group-hover:scale-105"
                 />
-                <span className="line-clamp-2 text-xs font-medium leading-snug text-foreground/85">
+                <span className="line-clamp-1 min-w-0 flex-1 text-sm font-medium leading-snug text-foreground/85 sm:line-clamp-2 sm:flex-none sm:text-xs">
                   {categoryLabel(child.name, "uz")}
                 </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/60 sm:hidden" />
               </Link>
             </motion.div>
           );

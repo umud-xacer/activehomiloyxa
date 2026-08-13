@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Tag } from "lucide-react";
+import { ChevronRight, Loader2, Tag } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/state/EmptyState";
@@ -30,7 +30,11 @@ function CategoryGrid({
   allCategories: CategorySummary[];
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    // Mobile: dense vertical list (icon-left, chevron-right) instead of a centered icon-over-
+    // label card grid -- the same responsive-classes-only pattern `ChildrenGrid` in
+    // `categories/$.tsx` uses, so both category-navigation surfaces read consistently at every
+    // size. `sm:` and up switches to the original centered card grid.
+    <div className="flex flex-col gap-2 sm:grid sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
       {categories.map((cat) => {
         const childCount = allCategories.filter(
           (c) => c.status === "ACTIVE" && c.parentId === cat.id,
@@ -39,23 +43,26 @@ function CategoryGrid({
           <Link
             key={cat.id}
             to={categoryHref(cat.path)}
-            className="group flex flex-col items-center gap-2.5 rounded-2xl border border-border bg-card p-5 text-center shadow-soft transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-elevated"
+            className="group flex items-center gap-3 rounded-xl border border-border bg-card p-3 text-left shadow-soft transition hover:border-primary/40 hover:shadow-elevated sm:flex-col sm:gap-2.5 sm:rounded-2xl sm:p-5 sm:text-center sm:hover:-translate-y-0.5"
           >
-            <div className="flex size-14 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 text-primary transition group-hover:scale-105">
+            <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 text-primary transition group-hover:scale-105 sm:size-14">
               {cat.iconUrl ? (
                 <img src={cat.iconUrl} alt="" className="size-full object-cover" />
               ) : (
-                <Tag className="size-5" />
+                <Tag className="size-4 sm:size-5" />
               )}
             </div>
-            <span className="font-display text-sm font-semibold text-foreground">
-              {categoryLabel(cat.name, "uz")}
-            </span>
-            {childCount > 0 && (
-              <span className="text-[11px] text-muted-foreground">
-                {childCount} ta kichik kategoriya
+            <div className="min-w-0 flex-1 sm:flex-none">
+              <span className="block truncate font-display text-sm font-semibold text-foreground">
+                {categoryLabel(cat.name, "uz")}
               </span>
-            )}
+              {childCount > 0 && (
+                <span className="block text-[11px] text-muted-foreground">
+                  {childCount} ta kichik kategoriya
+                </span>
+              )}
+            </div>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground/60 sm:hidden" />
           </Link>
         );
       })}
