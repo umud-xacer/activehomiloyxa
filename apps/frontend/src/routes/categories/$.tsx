@@ -16,7 +16,7 @@ import {
   BadgePercent,
 } from "lucide-react";
 import { SortMenu, type HubOption } from "@/components/catalog/SortMenu";
-import { CategoryTile } from "@/components/catalog/CategoryTile";
+import { CategoryChip } from "@/components/catalog/CategoryChip";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PropertyCard } from "@/components/data/PropertyCard";
@@ -147,49 +147,21 @@ function ChildrenGrid({
         {label}
         <span className="opacity-60">· {items.length}</span>
       </div>
-      {/* Mobile: a single horizontally-scrolling chip row (Uybor.uz-style) -- a stacked list or
-       * a multi-column grid both push real listings below the fold once a category has more
-       * than a handful of children on a narrow screen. `sm:` and up switches the exact same
-       * elements to the original centered icon-over-label card grid, unchanged. */}
-      <div className="scrollbar-none -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 md:grid-cols-4 lg:grid-cols-6">
-        {items.map((item, i) => {
-          const accent = resolveAccentColor(item, byId);
-          const icon = resolveCategoryIcon(item);
-          const isActive = item.id === activeId;
-          return (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i, 12) * 0.03, duration: 0.3 }}
-              className="shrink-0 snap-start sm:h-full sm:shrink"
-            >
-              <Link
-                to={categoryHref(item.path)}
-                className={`group flex h-full items-center gap-1.5 rounded-full border px-2.5 py-1.5 shadow-soft transition sm:flex-col sm:items-center sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-4 sm:text-center ${
-                  isActive
-                    ? "border-primary bg-primary/10 sm:bg-card"
-                    : "border-border bg-card hover:border-primary/40 hover:shadow-elevated sm:hover:-translate-y-0.5"
-                }`}
-              >
-                <CategoryTile
-                  imageUrl={item.iconUrl}
-                  icon={icon}
-                  accentColor={accent}
-                  size="sm"
-                  className="shrink-0 transition-transform duration-300 group-hover:scale-105 sm:size-12 [&>svg]:size-4 sm:[&>svg]:size-5"
-                />
-                <span
-                  className={`whitespace-nowrap text-[11px] font-medium leading-snug sm:line-clamp-2 sm:whitespace-normal sm:text-xs ${
-                    isActive ? "text-primary" : "text-foreground/85"
-                  }`}
-                >
-                  {categoryLabel(item.name, "uz")}
-                </span>
-              </Link>
-            </motion.div>
-          );
-        })}
+      {/* Compact real-photo pills, same at every width -- a grid of large icon-over-label cards
+       * (the original design) pushed real listings below the fold on mobile and read as
+       * oversized, generic-looking blocks even on desktop. `flex-wrap` lets the row reflow
+       * naturally instead of needing separate mobile/desktop layouts. */}
+      <div className="flex flex-wrap gap-2">
+        {items.map((item, i) => (
+          <CategoryChip
+            key={item.id}
+            category={item}
+            href={categoryHref(item.path)}
+            isActive={item.id === activeId}
+            accentColor={resolveAccentColor(item, byId)}
+            index={i}
+          />
+        ))}
       </div>
     </Container>
   );

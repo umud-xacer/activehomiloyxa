@@ -1,11 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Loader2, Tag } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/state/EmptyState";
 import { catalogClient, type CategorySummary } from "@/lib/catalog-client";
-import { categoryLabel } from "@/components/site/CategoryCarousel";
+import { CategoryChip } from "@/components/catalog/CategoryChip";
 import { Container } from "@/components/layout/Container";
 
 function categoryHref(path: string): string {
@@ -22,50 +22,14 @@ export const Route = createFileRoute("/categories/")({
   component: Page,
 });
 
-function CategoryGrid({
-  categories,
-  allCategories,
-}: {
-  categories: CategorySummary[];
-  allCategories: CategorySummary[];
-}) {
+function CategoryGrid({ categories }: { categories: CategorySummary[] }) {
+  // Compact real-photo pills, same at every width -- see CategoryChip's own docstring for why
+  // this replaced the old centered icon-over-label card grid.
   return (
-    // Mobile: dense vertical list (icon-left, chevron-right) instead of a centered icon-over-
-    // label card grid -- the same responsive-classes-only pattern `ChildrenGrid` in
-    // `categories/$.tsx` uses, so both category-navigation surfaces read consistently at every
-    // size. `sm:` and up switches to the original centered card grid.
-    <div className="flex flex-col gap-2 sm:grid sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-      {categories.map((cat) => {
-        const childCount = allCategories.filter(
-          (c) => c.status === "ACTIVE" && c.parentId === cat.id,
-        ).length;
-        return (
-          <Link
-            key={cat.id}
-            to={categoryHref(cat.path)}
-            className="group flex items-center gap-3 rounded-xl border border-border bg-card p-3 text-left shadow-soft transition hover:border-primary/40 hover:shadow-elevated sm:flex-col sm:gap-2.5 sm:rounded-2xl sm:p-5 sm:text-center sm:hover:-translate-y-0.5"
-          >
-            <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 text-primary transition group-hover:scale-105 sm:size-14">
-              {cat.iconUrl ? (
-                <img src={cat.iconUrl} alt="" className="size-full object-cover" />
-              ) : (
-                <Tag className="size-4 sm:size-5" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1 sm:flex-none">
-              <span className="block truncate font-display text-sm font-semibold text-foreground">
-                {categoryLabel(cat.name, "uz")}
-              </span>
-              {childCount > 0 && (
-                <span className="block text-[11px] text-muted-foreground">
-                  {childCount} ta kichik kategoriya
-                </span>
-              )}
-            </div>
-            <ChevronRight className="size-4 shrink-0 text-muted-foreground/60 sm:hidden" />
-          </Link>
-        );
-      })}
+    <div className="flex flex-wrap gap-2">
+      {categories.map((cat, i) => (
+        <CategoryChip key={cat.id} category={cat} href={categoryHref(cat.path)} index={i} />
+      ))}
     </div>
   );
 }
@@ -95,7 +59,7 @@ function Page() {
         ) : topLevel.length === 0 ? (
           <EmptyState title="Kategoriyalar topilmadi" />
         ) : (
-          <CategoryGrid categories={topLevel} allCategories={allCategories} />
+          <CategoryGrid categories={topLevel} />
         )}
       </Container>
     </AppShell>
