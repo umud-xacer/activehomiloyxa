@@ -21,7 +21,7 @@ import { authApi, type AccountKind, type Anketa } from "@/lib/auth-client";
 import { ApiError } from "@/lib/http";
 import { useInvalidateAuth } from "@/features/auth/useAuth";
 import { dashboardPathForAccount } from "@/lib/require-auth";
-import { AuthShell } from "./sign-in";
+import { AuthShell, SocialSignInButtons } from "./sign-in";
 
 export const Route = createFileRoute("/auth/sign-up")({
   head: () => ({
@@ -109,6 +109,13 @@ function SignUpPage() {
                 <ArrowRight className="ml-auto mt-3 size-4 shrink-0 text-foreground/30 transition group-hover:text-primary" />
               </button>
             ))}
+          </div>
+          <div className="mt-2">
+            <SocialSignInButtons />
+            <p className="mt-3 text-center text-[11px] text-muted-foreground">
+              Google yoki Apple bilan — faqat jismoniy shaxslar uchun, anketasiz darhol ro'yxatdan
+              o'tasiz.
+            </p>
           </div>
         </>
       )}

@@ -78,7 +78,7 @@ function AppleGlyph() {
   );
 }
 
-function SocialSignInButtons() {
+export function SocialSignInButtons() {
   const [notice, setNotice] = useState<"google" | "apple" | null>(null);
   const googleClientId = getGoogleClientId();
   const appleClientId = getAppleClientId();
