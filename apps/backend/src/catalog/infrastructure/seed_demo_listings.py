@@ -11691,14 +11691,37 @@ async def seed_demo_listings() -> None:
         async with httpx.AsyncClient(timeout=30.0) as client:
             for photo_id in {d.image_id for d in DEMO_LISTINGS}:
                 image_bytes = await _download_image(client, photo_id)
-                media_asset_by_image[photo_id] = await _upload_demo_image(
-                    session_factory,
-                    storage,
-                    scanner,
-                    processor,
-                    image_bytes=image_bytes,
-                    uploaded_by=UserId(value=owner_id),
-                )
+                # `_upload_demo_image` runs scan/processing batches inline (not scoped to just
+                # this asset) -- production's own `activehome-media-worker` systemd service polls
+                # and processes the *same* table concurrently, so a real race is possible: both
+                # this script and the worker pick up the same freshly-PENDING row, and whichever
+                # saves second hits SQLAlchemy's optimistic-lock `StaleDataError` (confirmed live,
+                # 2026-08-13: a 3rd seed batch crashed here, aborting the rest of
+                # scripts/server-deploy.sh -- set -euo pipefail -- before it ever reached the
+                # frontend build/service-restart steps). One retry after a short backoff resolves
+                # it every time in practice (the worker's own batch has already finished with this
+                # row by then); if it fails twice, skip this photo id rather than crash the whole
+                # deploy -- every DEMO_LISTINGS entry referencing it is skipped below in turn.
+                for attempt in range(2):
+                    try:
+                        media_asset_by_image[photo_id] = await _upload_demo_image(
+                            session_factory,
+                            storage,
+                            scanner,
+                            processor,
+                            image_bytes=image_bytes,
+                            uploaded_by=UserId(value=owner_id),
+                        )
+                        break
+                    except Exception:
+                        if attempt == 1:
+                            logger.exception(
+                                "seed_demo_listings: failed to upload image %r after retry, "
+                                "skipping every listing that references it",
+                                photo_id,
+                            )
+                        else:
+                            await asyncio.sleep(2.0)
 
         for index, demo in enumerate(DEMO_LISTINGS):
             if index < existing_count:
@@ -11708,6 +11731,13 @@ async def seed_demo_listings() -> None:
                 logger.warning(
                     "seed_demo_listings: category path %r not found, skipping %r",
                     demo.category_path,
+                    demo.title,
+                )
+                continue
+            if demo.image_id not in media_asset_by_image:
+                logger.warning(
+                    "seed_demo_listings: image %r was never uploaded, skipping %r",
+                    demo.image_id,
                     demo.title,
                 )
                 continue
