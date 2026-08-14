@@ -54,6 +54,7 @@ _MEDIA_STATUS_HANDLER = "catalog.media_asset_status_projection"
 _ENTITLEMENT_HANDLER = "catalog.entitlement_projection"
 _LISTING_PROMOTION_HANDLER = "catalog.listing_promotion_projection"
 _SUBSCRIPTION_VISIBILITY_HANDLER = "catalog.subscription_visibility_projection"
+_TRIAL_SUBSCRIPTION_HANDLER = "catalog.trial_subscription_visibility_projection"
 _IDENTITY_HANDLER = "catalog.identity_account_suspension_projection"
 
 _MEDIA_STATUS_BY_EVENT_TYPE = {
@@ -202,6 +203,44 @@ async def handle_subscription_visibility_event(
             return
         owner_profile_id = BusinessProfileId(value=UUID(str(owner_profile_id_raw)))
         if envelope.event_type == "EntitlementActivated":
+            await use_cases.reactivate_all_by_owner_profile(
+                owner_profile_id=owner_profile_id, now=envelope.occurred_at
+            )
+        else:
+            await use_cases.suspend_all_by_owner_profile(
+                owner_profile_id=owner_profile_id,
+                reason="subscription_lapsed",  # must match listing_use_cases._SUBSCRIPTION_LAPSE_REASON
+                now=envelope.occurred_at,
+            )
+
+
+async def handle_trial_subscription_event(
+    session: AsyncSession, envelope: EventEnvelope, use_cases: ListingUseCases
+) -> None:
+    """ADR-0010. profiles' `TrialSubscriptionStarted`/`TrialSubscriptionEnded` -- structurally
+    identical to `handle_subscription_visibility_event` above (same `suspend_all_by_owner_profile`/
+    `reactivate_all_by_owner_profile` calls, same lapse-reason string so
+    `reactivate_all_by_owner_profile`'s "only restore what I suspended" guard works uniformly
+    regardless of whether the lapse was trial- or payment-caused), but a SEPARATE handler and
+    ledger key rather than reusing billing's `EntitlementActivated`/`EntitlementExpired`
+    vocabulary -- profiles is not billing, and emitting an event literally named
+    `EntitlementActivated` for a trial (which is not a billing `Entitlement` at all, see
+    ADR-0010) would misdescribe its own producer, the same "one handler per producer+concern"
+    discipline this module already applies to `handle_entitlement_event` vs.
+    `handle_listing_promotion_event` vs. `handle_subscription_visibility_event`."""
+    async with idempotent_consume(
+        session,
+        ProcessedEventRow,
+        event_id=envelope.event_id,
+        handler=_TRIAL_SUBSCRIPTION_HANDLER,
+    ) as is_fresh:
+        if not is_fresh:
+            return
+        owner_profile_id_raw = envelope.payload.get("ownerProfileId")
+        if owner_profile_id_raw is None:
+            return
+        owner_profile_id = BusinessProfileId(value=UUID(str(owner_profile_id_raw)))
+        if envelope.event_type == "TrialSubscriptionStarted":
             await use_cases.reactivate_all_by_owner_profile(
                 owner_profile_id=owner_profile_id, now=envelope.occurred_at
             )

@@ -1045,7 +1045,7 @@ async def _backfill_listing_kind(
 
 _TOP_LEVEL_CATEGORY_HERO_THEMES: dict[str, dict[str, str]] = {
     "qurilish-materiallari": {
-        "heroImageUrl": "https://images.unsplash.com/photo-1541976590-713941681591?w=1600&q=80&auto=format&fit=crop",
+        "heroImageUrl": "https://upload.wikimedia.org/wikipedia/commons/5/52/-2022-03-16_Construction_of_a_brick_and_flint_house%2C_Northrepps%2C_England_%281%29.JPG",
         "heroTagline": "Har bir qurilish uchun ishonchli materiallar",
         "accentColor": "#EA580C",
     },
@@ -1110,7 +1110,7 @@ _TOP_LEVEL_CATEGORY_HERO_THEMES: dict[str, dict[str, str]] = {
         "accentColor": "#DB2777",
     },
     "hostel": {
-        "heroImageUrl": "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=1600&q=80&auto=format&fit=crop",
+        "heroImageUrl": "https://upload.wikimedia.org/wikipedia/commons/6/68/Hostel_Porto_Portugal.jpg",
         "heroTagline": "Qulay va arzon tunash joylarini toping",
         "accentColor": "#0891B2",
     },
@@ -1120,12 +1120,12 @@ _TOP_LEVEL_CATEGORY_HERO_THEMES: dict[str, dict[str, str]] = {
         "accentColor": "#CA8A04",
     },
     "xizmat-korsatish": {
-        "heroImageUrl": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1600&q=80&auto=format&fit=crop",
+        "heroImageUrl": "https://upload.wikimedia.org/wikipedia/commons/4/4a/Electrician_-_Flickr_-_garryknight.jpg",
         "heroTagline": "Ishonchli ustalar va tezkor xizmat",
         "accentColor": "#DC2626",
     },
     "kotejlar": {
-        "heroImageUrl": "https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=1600&q=80&auto=format&fit=crop",
+        "heroImageUrl": "https://upload.wikimedia.org/wikipedia/commons/2/2a/Large_chalet_house%2C_Waimes%2C_2013.jpg",
         "heroTagline": "Tabiat qo'ynidagi hashamatli dam olish",
         "accentColor": "#15803D",
     },

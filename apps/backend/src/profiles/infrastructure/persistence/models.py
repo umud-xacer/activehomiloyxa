@@ -68,6 +68,13 @@ class BusinessProfileRow(ProfilesBase, AggregateMixin):  # type: ignore[misc,val
     banner_media_asset_id: Mapped[PyUUID | None] = mapped_column(
         PGUUID(as_uuid=True), nullable=True
     )
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
+    trial_starts_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
+    trial_ends_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
     __table_args__ = (
         CheckConstraint(f"profile_type IN {_PROFILE_TYPES}", name="ck_business_profile_type"),
@@ -78,6 +85,14 @@ class BusinessProfileRow(ProfilesBase, AggregateMixin):  # type: ignore[misc,val
         ),
         CheckConstraint(
             "(badge_status IS NULL) = (badge_issued_at IS NULL)", name="ck_badge_shape"
+        ),
+        CheckConstraint(
+            "(trial_starts_at IS NULL) = (trial_ends_at IS NULL)",
+            name="ck_trial_shape",
+        ),
+        CheckConstraint(
+            "onboarding_completed_at IS NULL OR trial_starts_at IS NOT NULL",
+            name="ck_onboarding_implies_trial",
         ),
         CheckConstraint(
             "name_localized ? 'uz_latn' OR name_localized ? 'ru'",

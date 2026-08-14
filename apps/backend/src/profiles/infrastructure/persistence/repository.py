@@ -106,6 +106,9 @@ def _profile_to_domain(
         ),
         logo_media_asset_id=row.logo_media_asset_id,
         banner_media_asset_id=row.banner_media_asset_id,
+        onboarding_completed_at=row.onboarding_completed_at,
+        trial_starts_at=row.trial_starts_at,
+        trial_ends_at=row.trial_ends_at,
         created_at=row.created_at,
         updated_at=row.updated_at,
         lock_version=row.lock_version,
@@ -128,6 +131,9 @@ def _apply_profile_fields(row: BusinessProfileRow, profile: BusinessProfile) -> 
     row.badge_valid_until = profile.badge.valid_until if profile.badge else None
     row.logo_media_asset_id = profile.logo_media_asset_id
     row.banner_media_asset_id = profile.banner_media_asset_id
+    row.onboarding_completed_at = profile.onboarding_completed_at
+    row.trial_starts_at = profile.trial_starts_at
+    row.trial_ends_at = profile.trial_ends_at
     row.updated_at = profile.updated_at
 
 
@@ -254,6 +260,42 @@ class SqlalchemyBusinessProfileRepository:
                 BusinessProfileRow.badge_valid_until <= now,
             )
             .order_by(BusinessProfileRow.badge_valid_until)
+            .limit(limit)
+        )
+        result = await self._session.execute(stmt)
+        rows = list(result.scalars().all())
+        return [await self._hydrate(row) for row in rows]
+
+    async def get_by_slug(self, slug: str) -> BusinessProfile | None:
+        result = await self._session.execute(
+            select(BusinessProfileRow)
+            .where(BusinessProfileRow.slug == slug)
+            .order_by(BusinessProfileRow.created_at.desc())
+            .limit(1)
+        )
+        row = result.scalars().first()
+        return await self._hydrate(row) if row is not None else None
+
+    async def list_trials_expiring(self, *, now: datetime, limit: int) -> list[BusinessProfile]:
+        """ADR-0010. Joins against `subscription_entitlement_projection` so a profile whose
+        trial has already been superseded by a paid subscription (a later `valid_until`, not the
+        trial's own) is never re-swept -- `SubscriptionEntitlementProjectionRow.valid_until`
+        equal to `BusinessProfileRow.trial_ends_at` is what identifies "the projection row is
+        still the trial grant itself", since `complete_onboarding` writes the exact same instant
+        into both places (see `ProfileUseCases.complete_onboarding`)."""
+        stmt = (
+            select(BusinessProfileRow)
+            .join(
+                SubscriptionEntitlementProjectionRow,
+                SubscriptionEntitlementProjectionRow.business_profile_id == BusinessProfileRow.id,
+            )
+            .where(
+                BusinessProfileRow.trial_ends_at.is_not(None),
+                BusinessProfileRow.trial_ends_at <= now,
+                SubscriptionEntitlementProjectionRow.activation_state == "ACTIVE",
+                SubscriptionEntitlementProjectionRow.valid_until == BusinessProfileRow.trial_ends_at,
+            )
+            .order_by(BusinessProfileRow.trial_ends_at)
             .limit(limit)
         )
         result = await self._session.execute(stmt)

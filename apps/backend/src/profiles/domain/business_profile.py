@@ -14,13 +14,15 @@ path, and no way to reach `VALID` by any other call on this class.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
 from profiles.domain.exceptions import (
     IllegalBadgeTransitionError,
     IllegalProfileStatusTransitionError,
+    OnboardingAlreadyCompletedError,
+    OnboardingIncompleteError,
     PortfolioItemLimitExceededError,
     PortfolioItemNotFoundError,
 )
@@ -59,6 +61,19 @@ class BusinessProfile:
     indirection `catalog.domain.image_attachment.ImageAttachment` already uses). `None` = not set,
     the landing page falls back to a placeholder."""
     banner_media_asset_id: UUID | None
+    onboarding_completed_at: datetime | None
+    """ADR-0010: set once, by `complete_onboarding`, the moment the mandatory landing-page
+    fields are all present. `None` = the owner has not yet finished the mandatory setup wizard
+    (`requireOnboardedLegalEntity` on the frontend redirects there until this is set)."""
+    trial_starts_at: datetime | None
+    trial_ends_at: datetime | None
+    """ADR-0010: the 5-day free-trial window, started atomically with
+    `onboarding_completed_at` -- `(None, None)` before onboarding, both set together, never
+    independently. Public visibility during the trial is decided by the
+    `subscription_entitlement_projection` row `complete_onboarding` writes alongside this field,
+    not by comparing `trial_ends_at` to `now` at every read site -- this pair exists for display
+    ("N kun qoldi") and for the trial-expiry sweep worker's own query, not as a second source of
+    truth for entitlement."""
     created_at: datetime
     updated_at: datetime
     lock_version: int = 0
@@ -94,6 +109,9 @@ class BusinessProfile:
             portfolio=(),
             logo_media_asset_id=None,
             banner_media_asset_id=None,
+            onboarding_completed_at=None,
+            trial_starts_at=None,
+            trial_ends_at=None,
             created_at=now,
             updated_at=now,
         )
@@ -231,6 +249,36 @@ class BusinessProfile:
             replace(item, position=index + 1) for index, item in enumerate(remaining)
         )
         return replace(self, portfolio=renumbered, updated_at=now)
+
+    # --- onboarding / trial (ADR-0010) --------------------------------------------------------
+
+    def complete_onboarding(self, *, now: datetime, trial_days: int = 5) -> BusinessProfile:
+        """One-time transition (see `OnboardingAlreadyCompletedError`'s own docstring): checks
+        the mandatory landing-page fields are already present on the aggregate, then starts the
+        free-trial window. Does not itself touch `subscription_entitlement_projection` -- that
+        write is `application.ProfileUseCases.complete_onboarding`'s job, in the same
+        transaction as this call, since profiles' domain layer has no repository access
+        (Clean Architecture rule 4)."""
+        if self.onboarding_completed_at is not None:
+            raise OnboardingAlreadyCompletedError(self.id.value)
+        if not self.contacts.get("phones"):
+            raise OnboardingIncompleteError("contacts.phones")
+        if self.logo_media_asset_id is None:
+            raise OnboardingIncompleteError("logoMediaAssetId")
+        if self.description is None:
+            raise OnboardingIncompleteError("description")
+        if not self.address:
+            raise OnboardingIncompleteError("address")
+        if not self.portfolio:
+            raise OnboardingIncompleteError("portfolio")
+        trial_ends_at = now + timedelta(days=trial_days)
+        return replace(
+            self,
+            onboarding_completed_at=now,
+            trial_starts_at=now,
+            trial_ends_at=trial_ends_at,
+            updated_at=now,
+        )
 
     def remove_portfolio_item_for_media_asset(
         self, media_asset_id: UUID, *, now: datetime

@@ -678,6 +678,58 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /business-profiles/slug/{slug}:
+    get:
+      tags:
+      - Business Profiles
+      operationId: getBusinessProfileBySlug
+      summary: Get a business profile's public landing page by slug
+      description: ADR-0010. Unlike getBusinessProfile (by id), 404s once the profile is not currently
+        entitled (no active trial or paid subscription) — the public landing-page read.
+      security: []
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessProfile'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /business-profiles/{profileId}/complete-onboarding:
+    post:
+      tags:
+      - Business Profiles
+      operationId: completeOnboarding
+      summary: Complete the mandatory onboarding wizard and start the 5-day free trial
+      description: ADR-0010. Requires name, at least one phone, logo, description, address, and at least
+        one portfolio item to already be set. One-time transition; starts trial_starts_at/trial_ends_at
+        and grants ACTIVE subscription visibility for 5 days.
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      responses:
+        '200':
+          description: Onboarding completed, trial started.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
   /business-profiles/{profileId}/portfolio:
     get:
       tags:
@@ -4299,6 +4351,52 @@ components:
               type: string
               format: date-time
           additionalProperties: false
+        logoMediaAssetId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: A media asset reference, not a resolved URL — GET /media/{id} resolves the CDN
+            URL.
+        bannerMediaAssetId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        subscriptionStatus:
+          type: string
+          enum:
+          - ACTIVE
+          - EXPIRED
+          - NONE
+          readOnly: true
+          description: Whether this profile currently holds a valid subscription entitlement (trial or
+            paid, ADR-0010) — gates public visibility of this profile and its listings.
+        subscriptionValidUntil:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          readOnly: true
+        onboardingCompletedAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          readOnly: true
+          description: ADR-0010. Null until the mandatory onboarding wizard is completed.
+        trialStartsAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          readOnly: true
+        trialEndsAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          readOnly: true
         createdAt:
           type: string
           format: date-time

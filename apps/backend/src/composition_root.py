@@ -99,6 +99,11 @@ from billing.infrastructure import (
     SqlalchemyInvoiceRepository,
     SqlalchemyOrderRepository,
 )
+from billing.infrastructure.payment_gateway.click import ClickAdapter, ClickMerchantApi
+from billing.infrastructure.payment_gateway.payme import PaymeAdapter, PaymeMerchantApi
+from billing.infrastructure.payment_gateway.provider_transactions import (
+    ProviderTransactionRepository,
+)
 from billing.infrastructure.persistence.models import (
     OutboxEventRow as BillingOutboxEventRow,
 )
@@ -123,6 +128,7 @@ from catalog.infrastructure.event_projection import (
     handle_identity_event,
     handle_listing_promotion_event,
     handle_subscription_visibility_event,
+    handle_trial_subscription_event,
 )
 from catalog.infrastructure.event_projection import (
     handle_media_event as handle_catalog_media_event,
@@ -140,7 +146,9 @@ from configuration.application import (
 )
 from configuration.domain import ConfigEntityType
 from configuration.infrastructure.cache.redis_snapshot_cache import RedisSnapshotCache
-from configuration.infrastructure.owner_admin_lockout import RedisOwnerAdminLockoutCounter
+from configuration.infrastructure.owner_admin_lockout import (
+    RedisOwnerAdminLockoutCounter,
+)
 from configuration.infrastructure.persistence.models import OutboxEvent
 from configuration.infrastructure.persistence.repository import (
     SqlalchemyConfigHeadRepository,
@@ -260,6 +268,7 @@ from profiles.infrastructure import (
     SqlalchemySubscriptionEligibilityRepository,
     SqlalchemyVerificationCaseRepository,
     SqlalchemyVerificationEligibilityRepository,
+    TrialExpiryWorker,
 )
 from profiles.infrastructure import (
     MediaAssetReaderAdapter as ProfilesMediaAssetReaderAdapter,
@@ -276,7 +285,9 @@ from profiles.infrastructure.event_projection import (
 from profiles.infrastructure.persistence.models import (
     OutboxEventRow as ProfilesOutboxEventRow,
 )
-from profiles.interfaces.auth import ActingProfileManager as ProfilesActingProfileManager
+from profiles.interfaces.auth import (
+    ActingProfileManager as ProfilesActingProfileManager,
+)
 from profiles.interfaces.auth import ActingReviewer as ProfilesActingReviewer
 from profiles.interfaces.auth import ActingUser as ProfilesActingUser
 from profiles.interfaces.moderation_port import ProfilesModerationAdapter
@@ -319,7 +330,8 @@ def _configuration_snapshot_cache() -> RedisSnapshotCache:
 def _owner_admin_lockout_counter() -> RedisOwnerAdminLockoutCounter:
     return RedisOwnerAdminLockoutCounter(
         RedisWindowCounter(
-            _configuration_redis_client(), key_prefix="configuration:owner_admin_lockout"
+            _configuration_redis_client(),
+            key_prefix="configuration:owner_admin_lockout",
         )
     )
 
@@ -394,7 +406,9 @@ class _ConfigurationPortBridge:
                 items=[_head_to_dto(h) for h in heads],
                 page=PageInfo(limit=page_limit, next_cursor=next_cursor),
             )
-        raise AssertionError("unreachable: _configuration_session always yields exactly once")
+        raise AssertionError(
+            "unreachable: _configuration_session always yields exactly once"
+        )
 
     async def get_config_version(
         self, entity_type: str, head_id: UUID, version_id: UUID
@@ -410,7 +424,9 @@ class _ConfigurationPortBridge:
                 ConfigEntityType(entity_type), head_id, version_id
             )
             return _version_to_dto(version)
-        raise AssertionError("unreachable: _configuration_session always yields exactly once")
+        raise AssertionError(
+            "unreachable: _configuration_session always yields exactly once"
+        )
 
 
 @lru_cache(maxsize=1)
@@ -779,14 +795,18 @@ class _CategoryReaderBridge:
             repo = SqlalchemyConfigHeadRepository(session)
             use_cases = CategoryReadUseCases(repo, _configuration_snapshot_cache())
             return await use_cases.get_category(category_id)
-        raise AssertionError("unreachable: _configuration_session always yields exactly once")
+        raise AssertionError(
+            "unreachable: _configuration_session always yields exactly once"
+        )
 
     async def get_category_form(self, category_id: UUID) -> dict[str, Any] | None:
         async for session in _configuration_session():
             repo = SqlalchemyConfigHeadRepository(session)
             use_cases = CategoryReadUseCases(repo, _configuration_snapshot_cache())
             return await use_cases.get_category_form(category_id)
-        raise AssertionError("unreachable: _configuration_session always yields exactly once")
+        raise AssertionError(
+            "unreachable: _configuration_session always yields exactly once"
+        )
 
 
 class _CatalogMediaReaderBridge:
@@ -802,7 +822,9 @@ class _CatalogMediaReaderBridge:
                 assets=SqlalchemyMediaAssetRepository(session),
                 storage=_minio_adapter(),
                 outbox=OutboxWriter(session, MediaOutboxEventRow),
-                presign_expiry_seconds=int(required_env("MEDIA_PRESIGN_EXPIRY_SECONDS")),
+                presign_expiry_seconds=int(
+                    required_env("MEDIA_PRESIGN_EXPIRY_SECONDS")
+                ),
             )
             asset = await use_cases.get_media(MediaAssetId(value=media_id))
             return _asset_to_dto(asset)
@@ -908,7 +930,9 @@ async def provide_catalog_optional_acting_user(
     if raw_token is None:
         return None
     try:
-        return await provide_catalog_acting_user(ah_session=ah_session, authorization=authorization)
+        return await provide_catalog_acting_user(
+            ah_session=ah_session, authorization=authorization
+        )
     except (IdentityApplicationError, IdentityDomainError):
         return None
 
@@ -993,6 +1017,75 @@ async def provide_payment_use_cases() -> AsyncIterator[PaymentUseCases]:
             entitlements=SqlalchemyEntitlementRepository(session),
             payment_provider=_billing_payment_provider(),
             outbox=OutboxWriter(session, BillingOutboxEventRow),
+        )
+
+
+@lru_cache(maxsize=1)
+def _payme_merchant_key() -> str:
+    """ADR-0010. Placeholder (`CHANGE_ME_IN_SECRETS_STORE`) in every env file until the repository
+    owner registers a real Payme merchant account -- `required_env` (not eager at import time,
+    only read when a Payme webhook request actually arrives via `provide_payme_merchant_key`)
+    means a missing var 500s Payme's own webhook only, never the rest of billing, unlike the
+    Apple-adapter eager-construction footgun this composition root already learned from once."""
+    return required_env("PAYME_SECRET_KEY")
+
+
+@lru_cache(maxsize=1)
+def _click_secret_key() -> str:
+    """ADR-0010. Same placeholder-until-real-credentials convention as `_payme_merchant_key`."""
+    return required_env("CLICK_SECRET_KEY")
+
+
+async def provide_payme_merchant_key() -> str:
+    """Overrides `billing.infrastructure.payment_gateway.webhook_routers.get_payme_merchant_key`."""
+    return _payme_merchant_key()
+
+
+async def provide_click_secret_key() -> str:
+    """Overrides `billing.infrastructure.payment_gateway.webhook_routers.get_click_secret_key`."""
+    return _click_secret_key()
+
+
+async def provide_payme_merchant_api() -> AsyncIterator[PaymeMerchantApi]:
+    """ADR-0010. Overrides `webhook_routers.get_payme_merchant_api`. Same "one session backs
+    everything" discipline as `provide_payment_use_cases` -- `PaymeMerchantApi`'s own
+    `PaymentUseCases` is constructed here with `PaymeAdapter` as its `PaymentProviderPort`
+    (never `OfflineManualPaymentAdapter`, never shared with `provide_payment_use_cases`'s own
+    instance), so `PerformTransaction`'s provider-transaction update and its `confirm_payment`
+    call commit or roll back together, and `confirm_payment`'s own `payment_provider.confirm(...)`
+    call verifies a real `ProviderTransaction` row rather than trusting `confirmed=True` blindly."""
+    async for session in _billing_session():
+        transactions = ProviderTransactionRepository(session)
+        payment_use_cases = PaymentUseCases(
+            orders=SqlalchemyOrderRepository(session),
+            invoices=SqlalchemyInvoiceRepository(session),
+            entitlements=SqlalchemyEntitlementRepository(session),
+            payment_provider=PaymeAdapter(transactions),
+            outbox=OutboxWriter(session, BillingOutboxEventRow),
+        )
+        yield PaymeMerchantApi(
+            invoices=SqlalchemyInvoiceRepository(session),
+            transactions=transactions,
+            payment_use_cases=payment_use_cases,
+        )
+
+
+async def provide_click_merchant_api() -> AsyncIterator[ClickMerchantApi]:
+    """ADR-0010. Click sibling of `provide_payme_merchant_api` -- identical shape, `ClickAdapter`
+    instead of `PaymeAdapter`."""
+    async for session in _billing_session():
+        transactions = ProviderTransactionRepository(session)
+        payment_use_cases = PaymentUseCases(
+            orders=SqlalchemyOrderRepository(session),
+            invoices=SqlalchemyInvoiceRepository(session),
+            entitlements=SqlalchemyEntitlementRepository(session),
+            payment_provider=ClickAdapter(transactions),
+            outbox=OutboxWriter(session, BillingOutboxEventRow),
+        )
+        yield ClickMerchantApi(
+            invoices=SqlalchemyInvoiceRepository(session),
+            transactions=transactions,
+            payment_use_cases=payment_use_cases,
         )
 
 
@@ -1214,27 +1307,37 @@ def make_billing_entitlement_fanout_handler(
 
     async def _handle(envelope: EventEnvelope) -> None:
         if envelope.event_type in _CATALOG_RELEVANT_ENTITLEMENT_EVENT_TYPES and (
-            envelope.payload.get("entitlementType") in _CATALOG_RELEVANT_ENTITLEMENT_TYPES
+            envelope.payload.get("entitlementType")
+            in _CATALOG_RELEVANT_ENTITLEMENT_TYPES
         ):
             async with billing_session_factory() as session, session.begin():
                 await handle_entitlement_event(session, envelope)
-        if envelope.event_type in _CATALOG_PROMOTION_RELEVANT_ENTITLEMENT_EVENT_TYPES and (
-            envelope.payload.get("entitlementType") in _CATALOG_PROMOTION_RELEVANT_ENTITLEMENT_TYPES
+        if (
+            envelope.event_type in _CATALOG_PROMOTION_RELEVANT_ENTITLEMENT_EVENT_TYPES
+            and (
+                envelope.payload.get("entitlementType")
+                in _CATALOG_PROMOTION_RELEVANT_ENTITLEMENT_TYPES
+            )
         ):
             async with billing_session_factory() as session, session.begin():
                 await handle_listing_promotion_event(
                     session, envelope, _build_listing_use_cases(session)
                 )
         if (
-            envelope.event_type in _CATALOG_SUBSCRIPTION_VISIBILITY_RELEVANT_ENTITLEMENT_EVENT_TYPES
-            and (envelope.payload.get("entitlementType") in _CATALOG_RELEVANT_ENTITLEMENT_TYPES)
+            envelope.event_type
+            in _CATALOG_SUBSCRIPTION_VISIBILITY_RELEVANT_ENTITLEMENT_EVENT_TYPES
+            and (
+                envelope.payload.get("entitlementType")
+                in _CATALOG_RELEVANT_ENTITLEMENT_TYPES
+            )
         ):
             async with billing_session_factory() as session, session.begin():
                 await handle_subscription_visibility_event(
                     session, envelope, _build_listing_use_cases(session)
                 )
         if envelope.event_type in _PROFILES_RELEVANT_ENTITLEMENT_EVENT_TYPES and (
-            envelope.payload.get("entitlementType") in _PROFILES_RELEVANT_ENTITLEMENT_TYPES
+            envelope.payload.get("entitlementType")
+            in _PROFILES_RELEVANT_ENTITLEMENT_TYPES
         ):
             async with profiles_session_factory() as session, session.begin():
                 profiles = SqlalchemyBusinessProfileRepository(session)
@@ -1257,7 +1360,9 @@ def make_billing_entitlement_fanout_handler(
                     outbox=OutboxWriter(session, ProfilesOutboxEventRow),
                     subscriptions=SqlalchemySubscriptionEligibilityRepository(session),
                 )
-                await handle_subscription_entitlement_event(session, envelope, profile_use_cases)
+                await handle_subscription_entitlement_event(
+                    session, envelope, profile_use_cases
+                )
         if envelope.event_type in _BILLING_NOTIFICATION_EVENT_TYPES:
             async with _notifications_session_factory()() as session, session.begin():
                 dispatches = await handle_billing_event(
@@ -1265,7 +1370,9 @@ def make_billing_entitlement_fanout_handler(
                     envelope,
                     use_cases=_build_notification_dispatch_use_cases(session),
                     recipients=_RecipientDirectoryBridge(),
-                    order_projection=SqlalchemyOrderRecipientProjectionRepository(session),
+                    order_projection=SqlalchemyOrderRecipientProjectionRepository(
+                        session
+                    ),
                 )
             await _dispatch_queued_notifications(dispatches)
         if envelope.event_type in _ADS_RELEVANT_ENTITLEMENT_EVENT_TYPES and (
@@ -1559,7 +1666,9 @@ def provide_catalog_outbox_fanout_dispatcher() -> OutboxDispatcher:
     )
 
 
-def make_identity_account_status_projection_handler() -> Callable[[EventEnvelope], Awaitable[None]]:
+def make_identity_account_status_projection_handler() -> Callable[
+    [EventEnvelope], Awaitable[None]
+]:
     """Builds the `EventHandler`-shaped closure draining IDENTITY's own outbox and routing its
     real `AccountSuspended` event into catalog's already-built `handle_identity_event`
     (`catalog.infrastructure.event_projection`, DB Architecture Sec 14.4's own worked example:
@@ -1653,7 +1762,9 @@ async def provide_conversation_use_cases() -> AsyncIterator[ConversationUseCases
             yield ConversationUseCases(
                 conversations=SqlalchemyConversationRepository(messaging_session),
                 blocks=SqlalchemyBlockRepository(messaging_session),
-                listing_owners=SqlalchemyListingOwnerProjectionReader(messaging_session),
+                listing_owners=SqlalchemyListingOwnerProjectionReader(
+                    messaging_session
+                ),
                 publisher=_messaging_realtime_publisher(),
                 contact_policy=ContactPolicyPortAdapter(
                     SqlalchemyUserAccountRepository(identity_session)
@@ -1734,7 +1845,9 @@ class _ProfilesMediaReaderBridge:
                 assets=SqlalchemyMediaAssetRepository(session),
                 storage=_minio_adapter(),
                 outbox=OutboxWriter(session, MediaOutboxEventRow),
-                presign_expiry_seconds=int(required_env("MEDIA_PRESIGN_EXPIRY_SECONDS")),
+                presign_expiry_seconds=int(
+                    required_env("MEDIA_PRESIGN_EXPIRY_SECONDS")
+                ),
             )
             asset = await use_cases.get_media(MediaAssetId(value=media_id))
             return _asset_to_dto(asset)
@@ -1862,6 +1975,17 @@ def provide_profiles_badge_expiry_worker() -> BadgeExpiryWorker:
     """Not a FastAPI dependency override -- called directly by the worker process entrypoint
     (`apps/backend/src/profiles_worker.py`), same discipline as `provide_catalog_expiry_worker`."""
     return BadgeExpiryWorker(
+        session_factory=_profiles_session_factory(),
+        outbox_model=ProfilesOutboxEventRow,
+        media=_profiles_media_adapter(),
+    )
+
+
+def provide_profiles_trial_expiry_worker() -> TrialExpiryWorker:
+    """ADR-0010. Not a FastAPI dependency override -- called directly by the worker process
+    entrypoint (`apps/backend/src/profiles_worker.py`), same discipline as
+    `provide_profiles_badge_expiry_worker`."""
+    return TrialExpiryWorker(
         session_factory=_profiles_session_factory(),
         outbox_model=ProfilesOutboxEventRow,
         media=_profiles_media_adapter(),
@@ -2029,7 +2153,9 @@ class _ModerationAccountSuspensionBridge:
                 now=datetime.now(UTC),
             )
             return
-        raise AssertionError("unreachable: _identity_session always yields exactly once")
+        raise AssertionError(
+            "unreachable: _identity_session always yields exactly once"
+        )
 
 
 class _ModerationProfileCommandBridge:
@@ -2104,7 +2230,9 @@ async def provide_moderation_acting_moderator(
     raise AssertionError("unreachable: _identity_session always yields exactly once")
 
 
-def make_messaging_report_projection_handler() -> Callable[[EventEnvelope], Awaitable[None]]:
+def make_messaging_report_projection_handler() -> Callable[
+    [EventEnvelope], Awaitable[None]
+]:
     """Builds the `EventHandler`-shaped closure draining MESSAGING's own outbox and routing its
     real `ContentReported` event (Task P-10, `messaging.application.report_use_cases.
     ReportUseCases.create_report`) into moderation's `handle_content_reported` (FR-MOD-001/
@@ -2193,9 +2321,13 @@ class _RecipientDirectoryBridge:
             account = await SqlalchemyUserAccountRepository(session).get_by_id(
                 UserId(value=user_id)
             )
-            return _account_to_recipient_snapshot(account) if account is not None else None
+            return (
+                _account_to_recipient_snapshot(account) if account is not None else None
+            )
 
-    async def resolve_recipient_for_profile(self, profile_id: UUID) -> RecipientSnapshot | None:
+    async def resolve_recipient_for_profile(
+        self, profile_id: UUID
+    ) -> RecipientSnapshot | None:
         async with _profiles_session_factory()() as session:
             profile = await SqlalchemyBusinessProfileRepository(session).get_by_id(
                 BusinessProfileId(value=profile_id)
@@ -2204,7 +2336,9 @@ class _RecipientDirectoryBridge:
             return None
         return await self.resolve_recipient(profile.owner_user_id.value)
 
-    async def resolve_recipient_for_listing(self, listing_id: UUID) -> RecipientSnapshot | None:
+    async def resolve_recipient_for_listing(
+        self, listing_id: UUID
+    ) -> RecipientSnapshot | None:
         async with _catalog_session_factory()() as session:
             listing = await SqlalchemyListingRepository(session).get_by_id(
                 ListingId(value=listing_id)
@@ -2259,7 +2393,9 @@ async def _dispatch_queued_notifications(dispatches: list[QueuedDispatch]) -> No
 
 async def provide_notification_use_cases() -> AsyncIterator[NotificationUseCases]:
     async for session in _notifications_session():
-        yield NotificationUseCases(notifications=SqlalchemyNotificationRepository(session))
+        yield NotificationUseCases(
+            notifications=SqlalchemyNotificationRepository(session)
+        )
 
 
 async def provide_notifications_acting_user(
@@ -2289,7 +2425,9 @@ async def provide_notifications_acting_user(
     raise AssertionError("unreachable: _identity_session always yields exactly once")
 
 
-def make_profiles_notification_projection_handler() -> Callable[[EventEnvelope], Awaitable[None]]:
+def make_profiles_notification_projection_handler() -> Callable[
+    [EventEnvelope], Awaitable[None]
+]:
     """The FIRST dispatcher draining PROFILES' own outbox (Task P-13).
 
     Task P-15 adds a second route, same reason: analytics' `BusinessVerified`/
@@ -2312,7 +2450,14 @@ def make_profiles_notification_projection_handler() -> Callable[[EventEnvelope],
     `ProfileNotOwnedError`), which transitively blocked `billing.createOrder`/`getOrderInvoice`
     (both require an acting profile). `identity.infrastructure.event_projection.
     handle_profiles_event` closes this the same way every other P-20 fix in this file does: a new
-    route on the ALREADY-existing dispatcher, no new event, no contract change."""
+    route on the ALREADY-existing dispatcher, no new event, no contract change.
+
+    ADR-0010 adds a FIFTH route: catalog's own `handle_trial_subscription_event`, reacting to
+    `TrialSubscriptionStarted`/`TrialSubscriptionEnded` -- catalog is the CONSUMER (same reason
+    `handle_subscription_visibility_event` is routed off of BILLING's own outbox above; this is
+    the profiles-outbox sibling of that route), and catalog must never run its own competing
+    dispatcher against profiles' `outbox_event` table (this module's own `OutboxDispatcher`
+    docstring: "only one dispatcher can safely claim a given row")."""
 
     search_handler = make_search_event_handler(
         session_factory=_search_session_factory(), index=_search_index_adapter()
@@ -2343,6 +2488,14 @@ def make_profiles_notification_projection_handler() -> Callable[[EventEnvelope],
                 await handle_profiles_event_for_identity(
                     session, envelope, use_cases=_build_account_use_cases(session)
                 )
+        if envelope.event_type in {
+            "TrialSubscriptionStarted",
+            "TrialSubscriptionEnded",
+        }:
+            async with _catalog_session_factory()() as session, session.begin():
+                await handle_trial_subscription_event(
+                    session, envelope, _build_listing_use_cases(session)
+                )
 
     return _handle
 
@@ -2359,7 +2512,9 @@ def provide_profiles_notification_projection_dispatcher() -> OutboxDispatcher:
     )
 
 
-def make_moderation_notification_projection_handler() -> Callable[[EventEnvelope], Awaitable[None]]:
+def make_moderation_notification_projection_handler() -> Callable[
+    [EventEnvelope], Awaitable[None]
+]:
     """The FIRST dispatcher draining MODERATION's own outbox (Task P-13).
 
     Task P-15 adds a second route, same reason: analytics' `ModerationActionTaken` audit-fact
@@ -2496,7 +2651,9 @@ def provide_analytics_partition_precreate_worker() -> PartitionPrecreateWorker:
     return PartitionPrecreateWorker(session_factory=_analytics_session_factory())
 
 
-def make_configuration_audit_projection_handler() -> Callable[[EventEnvelope], Awaitable[None]]:
+def make_configuration_audit_projection_handler() -> Callable[
+    [EventEnvelope], Awaitable[None]
+]:
     """The FIRST dispatcher draining CONFIGURATION's own outbox (Task P-15) -- no prior task
     wired one (every conforming context reads configuration SYNCHRONOUSLY via cached snapshots,
     X-01; `ConfigurationChanged` itself had no async consumer until now). Routes every
@@ -2562,9 +2719,13 @@ async def _admin_session() -> AsyncIterator[AsyncSession]:
         yield session
 
 
-async def provide_operator_session_use_cases() -> AsyncIterator[OperatorSessionUseCases]:
+async def provide_operator_session_use_cases() -> AsyncIterator[
+    OperatorSessionUseCases
+]:
     async for session in _admin_session():
-        yield OperatorSessionUseCases(sessions=SqlalchemyOperatorSessionRepository(session))
+        yield OperatorSessionUseCases(
+            sessions=SqlalchemyOperatorSessionRepository(session)
+        )
 
 
 async def provide_admin_acting_operator(
@@ -2621,7 +2782,9 @@ class _ModerationQueueProbe:
                 cursor=None,
                 limit=limit or 20,
             )
-        raise AssertionError("unreachable: _moderation_session always yields exactly once")
+        raise AssertionError(
+            "unreachable: _moderation_session always yields exactly once"
+        )
 
 
 class _VerificationQueueProbe:
@@ -2645,7 +2808,9 @@ class _VerificationQueueProbe:
                 cursor=None,
                 limit=limit or 20,
             )
-        raise AssertionError("unreachable: _profiles_session always yields exactly once")
+        raise AssertionError(
+            "unreachable: _profiles_session always yields exactly once"
+        )
 
 
 class _InvoiceQueueProbe:
@@ -2665,7 +2830,9 @@ class _InvoiceQueueProbe:
                 outbox=OutboxWriter(session, BillingOutboxEventRow),
             )
             return await use_cases.admin_list_invoices(
-                status=InvoiceStatus(status) if status else None, cursor=None, limit=limit or 20
+                status=InvoiceStatus(status) if status else None,
+                cursor=None,
+                limit=limit or 20,
             )
         raise AssertionError("unreachable: _billing_session always yields exactly once")
 
@@ -2676,7 +2843,9 @@ class _UserQueueProbe:
     `adminListUsers`/`adminChangeUserStatus`/`assignRole`/`revokeRole` end-to-end (BC-01, P-16/
     ADR-0006)."""
 
-    async def admin_list_users(self, status: str | None = None, limit: int | None = 20) -> object:
+    async def admin_list_users(
+        self, status: str | None = None, limit: int | None = 20
+    ) -> object:
         async for session in _identity_session():
             use_cases = AdminIdentityUseCases(
                 accounts=SqlalchemyUserAccountRepository(session),
@@ -2687,7 +2856,9 @@ class _UserQueueProbe:
             return await use_cases.list_users(
                 status=status, query=None, cursor=None, limit=limit or 20
             )
-        raise AssertionError("unreachable: _identity_session always yields exactly once")
+        raise AssertionError(
+            "unreachable: _identity_session always yields exactly once"
+        )
 
 
 async def provide_admin_dashboard_use_cases(

@@ -60,6 +60,11 @@ export interface BusinessProfile {
   bannerMediaAssetId?: string | null;
   subscriptionStatus: "ACTIVE" | "EXPIRED" | "NONE";
   subscriptionValidUntil?: string | null;
+  /** ADR-0010. Null until the mandatory onboarding wizard (`routes/organization/setup.tsx`) is
+   * completed — `requireOnboardedLegalEntity` redirects a LEGAL_ENTITY account there until set. */
+  onboardingCompletedAt?: string | null;
+  trialStartsAt?: string | null;
+  trialEndsAt?: string | null;
   createdAt?: string;
 }
 
@@ -126,9 +131,18 @@ export const businessProfilesApi = {
     return http.get<BusinessProfile>(`/business-profiles/${profileId}`);
   },
 
+  /** GET /business-profiles/slug/{slug} — ADR-0010. The public landing-page read
+   * (`routes/companies/$slug.tsx`); unlike `get` above, 404s once the profile is not currently
+   * entitled (trial lapsed, subscription lapsed, never onboarded). */
+  getBySlug(slug: string): Promise<BusinessProfile> {
+    return http.get<BusinessProfile>(`/business-profiles/slug/${slug}`);
+  },
+
   create(input: {
     profileType: ProfileType;
     name: string;
+    description?: string;
+    contacts?: BusinessProfileContacts;
     address?: string;
   }): Promise<BusinessProfile> {
     return http.post<BusinessProfile>(
@@ -136,6 +150,8 @@ export const businessProfilesApi = {
       {
         profileType: input.profileType,
         name: { uz_latn: input.name },
+        description: input.description ? { uz_latn: input.description } : undefined,
+        contacts: input.contacts,
         address: input.address || undefined,
       },
       { idempotent: true },
@@ -187,6 +203,18 @@ export const businessProfilesApi = {
 
   removePortfolioItem(profileId: string, itemId: string): Promise<void> {
     return http.delete<void>(`/business-profiles/${profileId}/portfolio/${itemId}`);
+  },
+
+  /** POST /business-profiles/{id}/complete-onboarding — ADR-0010. Ends the mandatory onboarding
+   * wizard and starts the 5-day free trial. Backend re-validates every mandatory field is
+   * present (name/phone/logo/description/address/portfolio) — a 422 here means the wizard let
+   * something through it shouldn't have. */
+  completeOnboarding(profileId: string): Promise<BusinessProfile> {
+    return http.post<BusinessProfile>(
+      `/business-profiles/${profileId}/complete-onboarding`,
+      {},
+      { idempotent: true },
+    );
   },
 
   getVerification(profileId: string): Promise<VerificationCase | null> {

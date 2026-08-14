@@ -75,6 +75,22 @@ class BusinessProfileRepository(Protocol):
         `badge.valid_until <= now`."""
         ...
 
+    async def get_by_slug(self, slug: str) -> BusinessProfile | None:
+        """ADR-0010: backs the public `getBusinessProfileBySlug` landing-page read. `slug` is
+        display-only routing, not a unique identity by design (see `_generate_slug`'s own
+        docstring) -- in the practically-impossible event of a collision, returns the most
+        recently created match, same "newest wins" tiebreak `get_by_portfolio_media_asset_id`'s
+        sibling reads use nowhere else needing one today."""
+        ...
+
+    async def list_trials_expiring(self, *, now: datetime, limit: int) -> list[BusinessProfile]:
+        """ADR-0010: backs `TrialExpiryWorker`. Every profile with `trial_ends_at <= now` whose
+        `subscription_entitlement_projection` row is STILL the trial grant itself (not since
+        superseded by a paid purchase) -- the repository, not the use case, is responsible for
+        this join since `BusinessProfileRepository` and `SubscriptionEligibilityRepository` are
+        both profiles-module-local tables, no cross-module read involved."""
+        ...
+
 
 class VerificationCaseRepository(Protocol):
     """A distinct repository for the distinct `VerificationCase` aggregate root."""

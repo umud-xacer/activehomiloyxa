@@ -98,6 +98,9 @@ async def _to_profile_dto(
         banner_media_asset_id=profile.banner_media_asset_id,
         subscription_status=subscription_status,
         subscription_valid_until=subscription_valid_until,
+        onboarding_completed_at=profile.onboarding_completed_at,
+        trial_starts_at=profile.trial_starts_at,
+        trial_ends_at=profile.trial_ends_at,
         created_at=profile.created_at,
     )
 
@@ -193,6 +196,36 @@ async def get_business_profile(
     profileId: UUID, use_cases: ProfileUseCases = Depends(get_profile_use_cases)
 ) -> BusinessProfileDto:
     profile = await use_cases.get_profile(BusinessProfileId(value=profileId))
+    return await _to_profile_dto(profile, use_cases=use_cases)
+
+
+@profiles_router.get(
+    "/business-profiles/slug/{slug}", operation_id="getBusinessProfileBySlug"
+)
+async def get_business_profile_by_slug(
+    slug: str, use_cases: ProfileUseCases = Depends(get_profile_use_cases)
+) -> BusinessProfileDto:
+    """ADR-0010. The public landing-page read (`companies/$slug.tsx`) -- unlike
+    `getBusinessProfile` above, 404s once the profile is no longer entitled (trial lapsed,
+    subscription lapsed, never onboarded)."""
+    profile = await use_cases.get_public_profile_by_slug(slug, now=datetime.now(UTC))
+    return await _to_profile_dto(profile, use_cases=use_cases)
+
+
+@profiles_router.post(
+    "/business-profiles/{profileId}/complete-onboarding", operation_id="completeOnboarding"
+)
+async def complete_onboarding(
+    profileId: UUID,
+    user: ActingUser = Depends(get_acting_user),
+    use_cases: ProfileUseCases = Depends(get_profile_use_cases),
+) -> BusinessProfileDto:
+    """ADR-0010. Ends the mandatory onboarding wizard, starting the 5-day free trial. Raises
+    `422 VALIDATION_FAILED` (`OnboardingIncompleteError`) if a mandatory field is still missing,
+    `409 ILLEGAL_STATE_TRANSITION` if this profile already completed onboarding once."""
+    profile = await use_cases.complete_onboarding(
+        BusinessProfileId(value=profileId), owner_user_id=user.account_id, now=datetime.now(UTC)
+    )
     return await _to_profile_dto(profile, use_cases=use_cases)
 
 

@@ -71,7 +71,7 @@ import { Route as AuthSignUpRouteImport } from './routes/auth/sign-up'
 import { Route as CategoriesIndexRouteImport } from './routes/categories/index'
 import { Route as CategoriesSplatRouteImport } from './routes/categories/$'
 import { Route as CompaniesIndexRouteImport } from './routes/companies/index'
-import { Route as CompaniesProfileIdRouteImport } from './routes/companies/$profileId'
+import { Route as CompaniesSlugRouteImport } from './routes/companies/$slug'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardBusinessProfileRouteImport } from './routes/dashboard/business-profile'
 import { Route as DashboardBuyerRouteImport } from './routes/dashboard/buyer'
@@ -82,6 +82,7 @@ import { Route as InvestSlugRouteImport } from './routes/invest/$slug'
 import { Route as ListIndexRouteImport } from './routes/list/index'
 import { Route as ListListingIdRouteImport } from './routes/list/$listingId'
 import { Route as ListingListingIdRouteImport } from './routes/listing/$listingId'
+import { Route as OrganizationSetupRouteImport } from './routes/organization/setup'
 import { Route as PropertiesIndexRouteImport } from './routes/properties/index'
 import { Route as PropertiesSlugRouteImport } from './routes/properties/$slug'
 import { Route as AuthCallbackAppleRouteImport } from './routes/auth/callback/apple'
@@ -397,9 +398,9 @@ const CompaniesIndexRoute = CompaniesIndexRouteImport.update({
   path: '/companies/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CompaniesProfileIdRoute = CompaniesProfileIdRouteImport.update({
-  id: '/companies/$profileId',
-  path: '/companies/$profileId',
+const CompaniesSlugRoute = CompaniesSlugRouteImport.update({
+  id: '/companies/$slug',
+  path: '/companies/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
@@ -451,6 +452,11 @@ const ListListingIdRoute = ListListingIdRouteImport.update({
 const ListingListingIdRoute = ListingListingIdRouteImport.update({
   id: '/listing/$listingId',
   path: '/listing/$listingId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrganizationSetupRoute = OrganizationSetupRouteImport.update({
+  id: '/organization/setup',
+  path: '/organization/setup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
@@ -532,7 +538,7 @@ export interface FileRoutesByFullPath {
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/categories/$': typeof CategoriesSplatRoute
-  '/companies/$profileId': typeof CompaniesProfileIdRoute
+  '/companies/$slug': typeof CompaniesSlugRoute
   '/dashboard/business-profile': typeof DashboardBusinessProfileRoute
   '/dashboard/buyer': typeof DashboardBuyerRoute
   '/dashboard/investor': typeof DashboardInvestorRoute
@@ -540,6 +546,7 @@ export interface FileRoutesByFullPath {
   '/invest/$slug': typeof InvestSlugRoute
   '/list/$listingId': typeof ListListingIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
+  '/organization/setup': typeof OrganizationSetupRoute
   '/properties/$slug': typeof PropertiesSlugRoute
   '/$ownerAdminSlug/': typeof OwnerAdminSlugIndexRoute
   '/admin/': typeof AdminIndexRoute
@@ -611,7 +618,7 @@ export interface FileRoutesByTo {
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/categories/$': typeof CategoriesSplatRoute
-  '/companies/$profileId': typeof CompaniesProfileIdRoute
+  '/companies/$slug': typeof CompaniesSlugRoute
   '/dashboard/business-profile': typeof DashboardBusinessProfileRoute
   '/dashboard/buyer': typeof DashboardBuyerRoute
   '/dashboard/investor': typeof DashboardInvestorRoute
@@ -619,6 +626,7 @@ export interface FileRoutesByTo {
   '/invest/$slug': typeof InvestSlugRoute
   '/list/$listingId': typeof ListListingIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
+  '/organization/setup': typeof OrganizationSetupRoute
   '/properties/$slug': typeof PropertiesSlugRoute
   '/$ownerAdminSlug': typeof OwnerAdminSlugIndexRoute
   '/admin': typeof AdminIndexRoute
@@ -691,7 +699,7 @@ export interface FileRoutesById {
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/categories/$': typeof CategoriesSplatRoute
-  '/companies/$profileId': typeof CompaniesProfileIdRoute
+  '/companies/$slug': typeof CompaniesSlugRoute
   '/dashboard/business-profile': typeof DashboardBusinessProfileRoute
   '/dashboard/buyer': typeof DashboardBuyerRoute
   '/dashboard/investor': typeof DashboardInvestorRoute
@@ -699,6 +707,7 @@ export interface FileRoutesById {
   '/invest/$slug': typeof InvestSlugRoute
   '/list/$listingId': typeof ListListingIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
+  '/organization/setup': typeof OrganizationSetupRoute
   '/properties/$slug': typeof PropertiesSlugRoute
   '/$ownerAdminSlug/': typeof OwnerAdminSlugIndexRoute
   '/admin/': typeof AdminIndexRoute
@@ -772,7 +781,7 @@ export interface FileRouteTypes {
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/categories/$'
-    | '/companies/$profileId'
+    | '/companies/$slug'
     | '/dashboard/business-profile'
     | '/dashboard/buyer'
     | '/dashboard/investor'
@@ -780,6 +789,7 @@ export interface FileRouteTypes {
     | '/invest/$slug'
     | '/list/$listingId'
     | '/listing/$listingId'
+    | '/organization/setup'
     | '/properties/$slug'
     | '/$ownerAdminSlug/'
     | '/admin/'
@@ -851,7 +861,7 @@ export interface FileRouteTypes {
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/categories/$'
-    | '/companies/$profileId'
+    | '/companies/$slug'
     | '/dashboard/business-profile'
     | '/dashboard/buyer'
     | '/dashboard/investor'
@@ -859,6 +869,7 @@ export interface FileRouteTypes {
     | '/invest/$slug'
     | '/list/$listingId'
     | '/listing/$listingId'
+    | '/organization/setup'
     | '/properties/$slug'
     | '/$ownerAdminSlug'
     | '/admin'
@@ -930,7 +941,7 @@ export interface FileRouteTypes {
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/categories/$'
-    | '/companies/$profileId'
+    | '/companies/$slug'
     | '/dashboard/business-profile'
     | '/dashboard/buyer'
     | '/dashboard/investor'
@@ -938,6 +949,7 @@ export interface FileRouteTypes {
     | '/invest/$slug'
     | '/list/$listingId'
     | '/listing/$listingId'
+    | '/organization/setup'
     | '/properties/$slug'
     | '/$ownerAdminSlug/'
     | '/admin/'
@@ -1010,7 +1022,7 @@ export interface RootRouteChildren {
   AuthSignInRoute: typeof AuthSignInRoute
   AuthSignUpRoute: typeof AuthSignUpRoute
   CategoriesSplatRoute: typeof CategoriesSplatRoute
-  CompaniesProfileIdRoute: typeof CompaniesProfileIdRoute
+  CompaniesSlugRoute: typeof CompaniesSlugRoute
   DashboardBusinessProfileRoute: typeof DashboardBusinessProfileRoute
   DashboardBuyerRoute: typeof DashboardBuyerRoute
   DashboardInvestorRoute: typeof DashboardInvestorRoute
@@ -1018,6 +1030,7 @@ export interface RootRouteChildren {
   InvestSlugRoute: typeof InvestSlugRoute
   ListListingIdRoute: typeof ListListingIdRoute
   ListingListingIdRoute: typeof ListingListingIdRoute
+  OrganizationSetupRoute: typeof OrganizationSetupRoute
   PropertiesSlugRoute: typeof PropertiesSlugRoute
   OwnerAdminSlugIndexRoute: typeof OwnerAdminSlugIndexRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -1468,11 +1481,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompaniesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/companies/$profileId': {
-      id: '/companies/$profileId'
-      path: '/companies/$profileId'
-      fullPath: '/companies/$profileId'
-      preLoaderRoute: typeof CompaniesProfileIdRouteImport
+    '/companies/$slug': {
+      id: '/companies/$slug'
+      path: '/companies/$slug'
+      fullPath: '/companies/$slug'
+      preLoaderRoute: typeof CompaniesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/': {
@@ -1543,6 +1556,13 @@ declare module '@tanstack/react-router' {
       path: '/listing/$listingId'
       fullPath: '/listing/$listingId'
       preLoaderRoute: typeof ListingListingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/organization/setup': {
+      id: '/organization/setup'
+      path: '/organization/setup'
+      fullPath: '/organization/setup'
+      preLoaderRoute: typeof OrganizationSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/properties/': {
@@ -1634,7 +1654,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthSignInRoute: AuthSignInRoute,
   AuthSignUpRoute: AuthSignUpRoute,
   CategoriesSplatRoute: CategoriesSplatRoute,
-  CompaniesProfileIdRoute: CompaniesProfileIdRoute,
+  CompaniesSlugRoute: CompaniesSlugRoute,
   DashboardBusinessProfileRoute: DashboardBusinessProfileRoute,
   DashboardBuyerRoute: DashboardBuyerRoute,
   DashboardInvestorRoute: DashboardInvestorRoute,
@@ -1642,6 +1662,7 @@ const rootRouteChildren: RootRouteChildren = {
   InvestSlugRoute: InvestSlugRoute,
   ListListingIdRoute: ListListingIdRoute,
   ListingListingIdRoute: ListingListingIdRoute,
+  OrganizationSetupRoute: OrganizationSetupRoute,
   PropertiesSlugRoute: PropertiesSlugRoute,
   OwnerAdminSlugIndexRoute: OwnerAdminSlugIndexRoute,
   AdminIndexRoute: AdminIndexRoute,

@@ -13,6 +13,10 @@ Three categories of registered route are not contract drift and are excluded fro
   POST + 302 redirect, mandated by Apple whenever any scope is requested), not a JSON operation
   this app defines; it exists purely to hand the authorization code to the real `loginApple`
   JSON operation the same way a webhook receiver sits outside a REST resource contract.
+- /payments/payme/webhook, /payments/click/prepare, /payments/click/complete -- ADR-0010's Payme/
+  Click server-to-server callbacks: Payme's own JSON-RPC 2.0 envelope and Click's own form-encoded
+  Prepare/Complete handshake, neither of which is this app's JSON API (same "webhook receiver
+  sits outside the REST resource contract" reasoning as the Apple relay above).
 
 Usage: python tools/check_contract_drift.py contracts/openapi.yaml
 """
@@ -32,6 +36,9 @@ NON_CONTRACT_PATHS = {
     "/health",
     "/ready",
     "/auth/callback/apple",
+    "/payments/payme/webhook",
+    "/payments/click/prepare",
+    "/payments/click/complete",
 }
 
 

@@ -1,5 +1,6 @@
 import { redirect } from "@tanstack/react-router";
 import { authApi } from "@/lib/auth-client";
+import { businessProfilesApi } from "@/lib/business-profiles-client";
 import { ApiError } from "@/lib/http";
 import { verifyOwnerAdminSlug } from "@/lib/owner-admin-client";
 
@@ -34,6 +35,36 @@ export function dashboardPathForAccount(account: { accountKind?: string | null }
   if (account.accountKind === "INVESTOR") return "/dashboard/investor";
   return "/dashboard";
 }
+
+/**
+ * ADR-0010: `requireAuth` plus a mandatory-onboarding check for LEGAL_ENTITY accounts. Checked
+ * on every visit (not just immediately post-signup), so an account that abandoned the wizard
+ * mid-way is caught on its next login too, not just the first one. INDIVIDUAL/INVESTOR accounts
+ * pass through unaffected (this guard only ever redirects a LEGAL_ENTITY account without a
+ * completed `BusinessProfile.onboarding_completed_at`).
+ *
+ * A LEGAL_ENTITY account with no owned profile at all is sent straight to `/organization/setup`
+ * without a profile fetch (nothing to fetch yet); one with an owned profile but no completed
+ * onboarding is sent there too. The backend's own `POST .../complete-onboarding` validation
+ * (`OnboardingIncompleteError`) is the real gate — this is a client-side fast-fail, same
+ * "backend is the real boundary" posture every other guard in this file documents.
+ */
+export const requireOnboardedLegalEntity = async ({ location }: { location: { href: string } }) => {
+  const result = await requireAuth({ location });
+  if (!result) return result;
+  const { account } = result;
+  if (account.accountKind !== "LEGAL_ENTITY") return result;
+
+  const ownedProfileId = (account.ownedProfileIds ?? [])[0];
+  if (!ownedProfileId) {
+    throw redirect({ to: "/organization/setup" });
+  }
+  const profile = await businessProfilesApi.get(ownedProfileId).catch(() => null);
+  if (!profile?.onboardingCompletedAt) {
+    throw redirect({ to: "/organization/setup" });
+  }
+  return result;
+};
 
 /**
  * Guard for the `/admin` area (registration review, and the hub linking to it). Unlike

@@ -10,6 +10,7 @@ from profiles.application.exceptions import (
     MediaAssetNotFoundError,
     NotProfileOwnerError,
     ProfileNotFoundError,
+    ProfileNotPubliclyVisibleError,
     VerificationCaseNotFoundError,
     VerificationNotEligibleError,
 )
@@ -20,6 +21,8 @@ from profiles.domain.exceptions import (
     IllegalProfileStatusTransitionError,
     IllegalVerificationCaseStateTransitionError,
     NoDocumentsSubmittedError,
+    OnboardingAlreadyCompletedError,
+    OnboardingIncompleteError,
     PortfolioItemLimitExceededError,
     PortfolioItemNotFoundError,
     TerminalVerificationCaseError,
@@ -42,6 +45,14 @@ def register_profiles_exception_mappings(mapper: ExceptionMapper) -> None:
             status=422,
             code="VALIDATION_FAILED",
             title="Verification requires at least one submitted document",
+        ),
+    )
+    mapper.register(
+        OnboardingIncompleteError,
+        simple_problem_builder(
+            status=422,
+            code="VALIDATION_FAILED",
+            title="Business profile is missing a required onboarding field",
         ),
     )
     mapper.register(
@@ -104,6 +115,14 @@ def register_profiles_exception_mappings(mapper: ExceptionMapper) -> None:
             status=404, code="RESOURCE_NOT_FOUND", title="No such portfolio item"
         ),
     )
+    mapper.register(
+        ProfileNotPubliclyVisibleError,
+        simple_problem_builder(
+            status=404,
+            code="RESOURCE_NOT_FOUND",
+            title="Business profile not found",
+        ),
+    )
 
     # --- conflict (409) ------------------------------------------------------------------------
     mapper.register(
@@ -134,5 +153,13 @@ def register_profiles_exception_mappings(mapper: ExceptionMapper) -> None:
             status=409,
             code="ILLEGAL_STATE_TRANSITION",
             title="Verification case is terminal and cannot be modified",
+        ),
+    )
+    mapper.register(
+        OnboardingAlreadyCompletedError,
+        simple_problem_builder(
+            status=409,
+            code="ILLEGAL_STATE_TRANSITION",
+            title="Business profile has already completed onboarding",
         ),
     )

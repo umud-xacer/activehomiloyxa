@@ -39,6 +39,30 @@ class PortfolioItemNotFoundError(ProfilesDomainError):
         super().__init__(f"no portfolio item {item_id} on this business profile")
 
 
+# --- onboarding / trial (ADR-0010) -----------------------------------------------------------
+
+
+class OnboardingAlreadyCompletedError(ProfilesDomainError):
+    """`complete_onboarding` is a one-time transition (mirrors `issue_badge`'s "no setter, no
+    alternate path" discipline) -- a profile that already has `onboarding_completed_at` set
+    cannot start a second trial by calling it again."""
+
+    def __init__(self, profile_id: UUID) -> None:
+        self.profile_id = profile_id
+        super().__init__(f"business profile {profile_id} has already completed onboarding")
+
+
+class OnboardingIncompleteError(ProfilesDomainError):
+    """`complete_onboarding`'s own precondition: the mandatory landing-page fields (name, at
+    least one phone, logo, description, address, at least one portfolio item) must already be
+    set on the aggregate before it will start the trial -- named per the first missing field so
+    the frontend wizard can point the owner at exactly what to fill in next."""
+
+    def __init__(self, missing_field: str) -> None:
+        self.missing_field = missing_field
+        super().__init__(f"cannot complete onboarding: missing required field {missing_field!r}")
+
+
 # --- I-13: the badge-issuance guard --------------------------------------------------------------
 
 

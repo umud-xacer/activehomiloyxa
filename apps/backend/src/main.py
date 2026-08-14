@@ -63,6 +63,14 @@ from billing.interfaces.di import (
 from billing.interfaces.di import (
     get_acting_user as get_billing_acting_user,
 )
+from billing.infrastructure.payment_gateway.webhook_routers import (
+    click_webhook_router,
+    get_click_merchant_api,
+    get_click_secret_key,
+    get_payme_merchant_api,
+    get_payme_merchant_key,
+    payme_webhook_router,
+)
 from billing.interfaces.errors import register_billing_exception_mappings
 from billing.interfaces.routers import admin_billing_router, billing_router
 from catalog.interfaces.di import (
@@ -180,8 +188,12 @@ def create_app() -> FastAPI:
         app.add_middleware(
             GlobalRateLimitMiddleware,
             redis=redis_asyncio.from_url(redis_url()),
-            max_requests=int(os.environ.get("RATE_LIMIT_MAX_REQUESTS", DEFAULT_MAX_REQUESTS)),
-            window_seconds=int(os.environ.get("RATE_LIMIT_WINDOW_SECONDS", DEFAULT_WINDOW_SECONDS)),
+            max_requests=int(
+                os.environ.get("RATE_LIMIT_MAX_REQUESTS", DEFAULT_MAX_REQUESTS)
+            ),
+            window_seconds=int(
+                os.environ.get("RATE_LIMIT_WINDOW_SECONDS", DEFAULT_WINDOW_SECONDS)
+            ),
         )
 
     mapper = default_exception_mapper()
@@ -219,7 +231,9 @@ def create_app() -> FastAPI:
     app.dependency_overrides[get_authentication_use_cases] = (
         composition_root.provide_authentication_use_cases
     )
-    app.dependency_overrides[get_account_use_cases] = composition_root.provide_account_use_cases
+    app.dependency_overrides[get_account_use_cases] = (
+        composition_root.provide_account_use_cases
+    )
     app.dependency_overrides[get_authenticated_request] = (
         composition_root.provide_authenticated_request
     )
@@ -239,29 +253,63 @@ def create_app() -> FastAPI:
         composition_root.provide_media_intake_use_cases
     )
     app.dependency_overrides[get_acting_user] = composition_root.provide_acting_user
-    app.dependency_overrides[get_listing_use_cases] = composition_root.provide_listing_use_cases
-    app.dependency_overrides[get_favorite_use_cases] = composition_root.provide_favorite_use_cases
-    app.dependency_overrides[get_catalog_acting_user] = composition_root.provide_catalog_acting_user
+    app.dependency_overrides[get_listing_use_cases] = (
+        composition_root.provide_listing_use_cases
+    )
+    app.dependency_overrides[get_favorite_use_cases] = (
+        composition_root.provide_favorite_use_cases
+    )
+    app.dependency_overrides[get_catalog_acting_user] = (
+        composition_root.provide_catalog_acting_user
+    )
     app.dependency_overrides[get_catalog_optional_acting_user] = (
         composition_root.provide_catalog_optional_acting_user
     )
-    app.dependency_overrides[get_order_use_cases] = composition_root.provide_order_use_cases
-    app.dependency_overrides[get_payment_use_cases] = composition_root.provide_payment_use_cases
+    app.dependency_overrides[get_order_use_cases] = (
+        composition_root.provide_order_use_cases
+    )
+    app.dependency_overrides[get_payment_use_cases] = (
+        composition_root.provide_payment_use_cases
+    )
     app.dependency_overrides[get_entitlement_use_cases] = (
         composition_root.provide_entitlement_use_cases
     )
-    app.dependency_overrides[get_billing_acting_user] = composition_root.provide_billing_acting_user
-    app.dependency_overrides[get_acting_operator] = composition_root.provide_billing_acting_operator
-    app.dependency_overrides[get_search_use_cases] = composition_root.provide_search_use_cases
+    app.dependency_overrides[get_billing_acting_user] = (
+        composition_root.provide_billing_acting_user
+    )
+    app.dependency_overrides[get_acting_operator] = (
+        composition_root.provide_billing_acting_operator
+    )
+    app.dependency_overrides[get_payme_merchant_api] = (
+        composition_root.provide_payme_merchant_api
+    )
+    app.dependency_overrides[get_payme_merchant_key] = (
+        composition_root.provide_payme_merchant_key
+    )
+    app.dependency_overrides[get_click_merchant_api] = (
+        composition_root.provide_click_merchant_api
+    )
+    app.dependency_overrides[get_click_secret_key] = (
+        composition_root.provide_click_secret_key
+    )
+    app.dependency_overrides[get_search_use_cases] = (
+        composition_root.provide_search_use_cases
+    )
     app.dependency_overrides[get_messaging_acting_user] = (
         composition_root.provide_messaging_acting_user
     )
     app.dependency_overrides[get_conversation_use_cases] = (
         composition_root.provide_conversation_use_cases
     )
-    app.dependency_overrides[get_block_use_cases] = composition_root.provide_block_use_cases
-    app.dependency_overrides[get_report_use_cases] = composition_root.provide_report_use_cases
-    app.dependency_overrides[get_profile_use_cases] = composition_root.provide_profile_use_cases
+    app.dependency_overrides[get_block_use_cases] = (
+        composition_root.provide_block_use_cases
+    )
+    app.dependency_overrides[get_report_use_cases] = (
+        composition_root.provide_report_use_cases
+    )
+    app.dependency_overrides[get_profile_use_cases] = (
+        composition_root.provide_profile_use_cases
+    )
     app.dependency_overrides[get_verification_use_cases] = (
         composition_root.provide_verification_use_cases
     )
@@ -286,10 +334,18 @@ def create_app() -> FastAPI:
     app.dependency_overrides[get_notifications_acting_user] = (
         composition_root.provide_notifications_acting_user
     )
-    app.dependency_overrides[get_campaign_use_cases] = composition_root.provide_campaign_use_cases
-    app.dependency_overrides[get_serving_use_cases] = composition_root.provide_serving_use_cases
-    app.dependency_overrides[get_ads_acting_operator] = composition_root.provide_ads_acting_operator
-    app.dependency_overrides[get_audit_use_cases] = composition_root.provide_audit_use_cases
+    app.dependency_overrides[get_campaign_use_cases] = (
+        composition_root.provide_campaign_use_cases
+    )
+    app.dependency_overrides[get_serving_use_cases] = (
+        composition_root.provide_serving_use_cases
+    )
+    app.dependency_overrides[get_ads_acting_operator] = (
+        composition_root.provide_ads_acting_operator
+    )
+    app.dependency_overrides[get_audit_use_cases] = (
+        composition_root.provide_audit_use_cases
+    )
     app.dependency_overrides[get_admin_report_use_cases] = (
         composition_root.provide_admin_report_use_cases
     )
@@ -317,6 +373,8 @@ def create_app() -> FastAPI:
     app.include_router(favorites_router, prefix="/api/v1")
     app.include_router(billing_router, prefix="/api/v1")
     app.include_router(admin_billing_router, prefix="/api/v1")
+    app.include_router(payme_webhook_router, prefix="/api/v1")
+    app.include_router(click_webhook_router, prefix="/api/v1")
     app.include_router(search_router, prefix="/api/v1")
     app.include_router(messaging_router, prefix="/api/v1")
     app.include_router(profiles_router, prefix="/api/v1")

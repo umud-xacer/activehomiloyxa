@@ -16,11 +16,17 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
-from contracts.events.profiles import BusinessProfileCreated, VerifiedBadgeExpired
+from contracts.events.profiles import (
+    BusinessProfileCreated,
+    TrialSubscriptionEnded,
+    TrialSubscriptionStarted,
+    VerifiedBadgeExpired,
+)
 from profiles.application.exceptions import (
     MediaAssetNotFoundError,
     NotProfileOwnerError,
     ProfileNotFoundError,
+    ProfileNotPubliclyVisibleError,
 )
 from profiles.application.ports import (
     BusinessProfileRepository,
@@ -121,6 +127,20 @@ class ProfileUseCases:
             profile_type=profile_type, verified_only=verified_only, cursor=cursor, limit=limit
         )
 
+    async def get_public_profile_by_slug(self, slug: str, *, now: datetime) -> BusinessProfile:
+        """ADR-0010. `getBusinessProfileBySlug` -- unlike `get_profile` (by-id, used by the
+        owner's own dashboard), this 404s (`ProfileNotPubliclyVisibleError`) whenever the
+        profile is not currently entitled (no trial, trial lapsed, subscription lapsed), so a
+        lapsed org's public landing page actually disappears from the site rather than staying
+        reachable by a stale/shared link."""
+        profile = await self._profiles.get_by_slug(slug)
+        if profile is None:
+            raise ProfileNotPubliclyVisibleError(slug)
+        status, _ = await self.get_subscription_status(profile.id, now=now)
+        if status != "ACTIVE":
+            raise ProfileNotPubliclyVisibleError(slug)
+        return profile
+
     # --- update / archive (FR-PROF-002) ------------------------------------------------------
 
     async def update_profile(
@@ -174,6 +194,96 @@ class ProfileUseCases:
         _check_owner(profile, owner_user_id)
         archived = profile.archive(now=now)
         return await self._profiles.save(archived)
+
+    # --- onboarding / trial (ADR-0010) ----------------------------------------------------------
+
+    async def complete_onboarding(
+        self, profile_id: BusinessProfileId, *, owner_user_id: UserId, now: datetime
+    ) -> BusinessProfile:
+        """`BusinessProfile.complete_onboarding` does the mandatory-field + one-time-transition
+        checks; this use case additionally writes the trial grant into
+        `subscription_entitlement_projection` (the same table/write path
+        `apply_subscription_projection` uses for a paid entitlement, called directly here rather
+        than round-tripped through profiles' own outbox, since both writes land in the same
+        transaction on the same aggregate) and appends `TrialSubscriptionStarted` for catalog to
+        consume asynchronously."""
+        assert self._subscriptions is not None
+        profile = await self.get_profile(profile_id)
+        _check_owner(profile, owner_user_id)
+        updated = profile.complete_onboarding(now=now)
+        saved = await self._profiles.save(updated)
+        trial_entitlement_id = uuid4()
+        event_id = uuid4()
+        await self._subscriptions.upsert(
+            SubscriptionEligibilitySnapshot(
+                business_profile_id=saved.id,
+                entitlement_id=trial_entitlement_id,
+                valid_from=updated.trial_starts_at,  # type: ignore[arg-type]
+                valid_until=updated.trial_ends_at,  # type: ignore[arg-type]
+                activation_state="ACTIVE",
+                source_event_id=event_id,
+            )
+        )
+        await self._outbox.append(
+            TrialSubscriptionStarted(
+                event_id=event_id,
+                occurred_at=now,
+                actor=owner_user_id.value,
+                aggregate_type="BusinessProfile",
+                aggregate_id=saved.id.value,
+                payload={
+                    "ownerProfileId": str(saved.id.value),
+                    "trialEntitlementId": str(trial_entitlement_id),
+                    "validFrom": updated.trial_starts_at.isoformat(),  # type: ignore[union-attr]
+                    "validUntil": updated.trial_ends_at.isoformat(),  # type: ignore[union-attr]
+                },
+            )
+        )
+        return saved
+
+    async def sweep_expired_trials(self, *, now: datetime, batch_size: int) -> int:
+        """Called by `infrastructure.worker.TrialExpiryWorker`. For each candidate from
+        `BusinessProfileRepository.list_trials_expiring` (already scoped to "the projection row
+        is still the trial grant, not since superseded by a paid purchase"), flips that
+        projection row to `EXPIRED` and appends `TrialSubscriptionEnded` -- does not touch the
+        `BusinessProfile` aggregate itself (`onboarding_completed_at`/`trial_starts_at`/
+        `trial_ends_at` are a historical record of the trial that was granted, not a live
+        entitlement state, so nothing on the aggregate changes). Mirrors
+        `sweep_expired_badges`'s own shape."""
+        assert self._subscriptions is not None
+        candidates = await self._profiles.list_trials_expiring(now=now, limit=batch_size)
+        swept = 0
+        for profile in candidates:
+            snapshot = await self._subscriptions.get_for_profile(profile.id)
+            assert snapshot is not None  # guaranteed by list_trials_expiring's own join
+            event_id = uuid4()
+            await self._subscriptions.upsert(
+                SubscriptionEligibilitySnapshot(
+                    business_profile_id=profile.id,
+                    entitlement_id=snapshot.entitlement_id,
+                    valid_from=snapshot.valid_from,
+                    valid_until=snapshot.valid_until,
+                    activation_state="EXPIRED",
+                    source_event_id=event_id,
+                )
+            )
+            await self._outbox.append(
+                TrialSubscriptionEnded(
+                    event_id=event_id,
+                    occurred_at=now,
+                    actor=None,
+                    aggregate_type="BusinessProfile",
+                    aggregate_id=profile.id.value,
+                    payload={
+                        "ownerProfileId": str(profile.id.value),
+                        "trialEntitlementId": str(snapshot.entitlement_id),
+                        "validFrom": snapshot.valid_from.isoformat(),
+                        "validUntil": snapshot.valid_until.isoformat(),
+                    },
+                )
+            )
+            swept += 1
+        return swept
 
     # --- owner-admin-panel-invoked commands (`profiles:profile:manage`) ------------------------
 

@@ -18,7 +18,7 @@ from profiles.infrastructure.persistence import (
     SqlalchemyVerificationCaseRepository,
     SqlalchemyVerificationEligibilityRepository,
 )
-from profiles.infrastructure.worker import BadgeExpiryWorker
+from profiles.infrastructure.worker import BadgeExpiryWorker, TrialExpiryWorker
 
 __all__ = [
     "BadgeExpiryWorker",
@@ -27,6 +27,7 @@ __all__ = [
     "SqlalchemySubscriptionEligibilityRepository",
     "SqlalchemyVerificationCaseRepository",
     "SqlalchemyVerificationEligibilityRepository",
+    "TrialExpiryWorker",
     "handle_entitlement_event",
     "handle_media_event",
     "handle_subscription_entitlement_event",

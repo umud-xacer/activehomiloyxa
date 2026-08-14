@@ -100,6 +100,13 @@ class BusinessProfile(CamelModel):
     gates a `LEGAL_ENTITY`-owned profile's public visibility (see `listPublicBusinessProfiles`'s
     own docstring)."""
     subscription_valid_until: datetime | None = None
+    onboarding_completed_at: datetime | None = None
+    """ADR-0010. `null` = the owner has not yet finished the mandatory setup wizard --
+    `requireOnboardedLegalEntity` on the frontend redirects there until this is set."""
+    trial_starts_at: datetime | None = None
+    trial_ends_at: datetime | None = None
+    """ADR-0010. Display-only ("N kun qoldi"); `subscription_status` above is the actual
+    entitlement read, not a comparison against this field."""
     created_at: datetime
 
 

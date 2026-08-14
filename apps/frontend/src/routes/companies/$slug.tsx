@@ -1,12 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Building2, Globe, Loader2, Mail, MapPin, Phone, ShieldCheck, Wrench } from "lucide-react";
+import {
+  Building2,
+  Film,
+  Globe,
+  Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  ShieldCheck,
+  Wrench,
+} from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
-import { businessProfilesApi, PROFILE_TYPE_LABEL } from "@/lib/business-profiles-client";
+import {
+  businessProfilesApi,
+  PROFILE_TYPE_LABEL,
+  type PortfolioItem,
+} from "@/lib/business-profiles-client";
 import { http } from "@/lib/http";
+import { useMediaAsset } from "@/lib/use-media-asset";
 
-export const Route = createFileRoute("/companies/$profileId")({
+export const Route = createFileRoute("/companies/$slug")({
   head: () => ({ meta: [{ title: "Kompaniya — ActiveHome" }] }),
   component: Page,
 });
@@ -17,20 +32,57 @@ interface SearchHitLite {
   price?: { amount: string; currency: string } | null;
 }
 
+function PortfolioSlide({ item }: { item: PortfolioItem }) {
+  const asset = useMediaAsset(item.mediaAssetId);
+  const video = asset?.contentType?.startsWith("video/");
+
+  return (
+    <div className="relative aspect-square w-40 shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-muted sm:w-56">
+      {!asset?.url ? (
+        <div className="flex size-full items-center justify-center">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : video ? (
+        <video src={asset.url} preload="metadata" className="size-full object-cover" muted />
+      ) : (
+        <img src={asset.url} alt="" className="size-full object-cover" loading="lazy" />
+      )}
+      {video && (
+        <div className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
+          <Film className="size-3" /> Video
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Page() {
-  const { profileId } = Route.useParams();
-  const { data: profile, isLoading } = useQuery({
-    queryKey: ["business-profiles", profileId],
-    queryFn: () => businessProfilesApi.get(profileId),
+  const { slug } = Route.useParams();
+  const {
+    data: profile,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["business-profiles", "slug", slug],
+    queryFn: () => businessProfilesApi.getBySlug(slug),
+    retry: false,
+  });
+  const { data: portfolio } = useQuery({
+    queryKey: ["business-profiles", "portfolio", profile?.id],
+    queryFn: () => businessProfilesApi.listPortfolio(profile!.id),
+    enabled: !!profile,
   });
   const { data: services } = useQuery({
-    queryKey: ["search", "owner-profile", profileId],
+    queryKey: ["search", "owner-profile", profile?.id],
     queryFn: () =>
       http.get<{ items: SearchHitLite[] }>("/search", {
-        params: { ownerProfileId: profileId, limit: 20 },
+        params: { ownerProfileId: profile!.id, limit: 20 },
       }),
     enabled: !!profile,
   });
+
+  const logo = useMediaAsset(profile?.logoMediaAssetId);
+  const banner = useMediaAsset(profile?.bannerMediaAssetId);
 
   if (isLoading) {
     return (
@@ -42,12 +94,15 @@ function Page() {
     );
   }
 
-  if (!profile) {
+  if (isError || !profile) {
     return (
       <AppShell>
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2 pt-32 text-center">
           <p className="font-display text-xl font-semibold">Kompaniya topilmadi</p>
-          <Link to="/companies" className="text-sm text-primary hover:underline">
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Bu sahifa mavjud emas yoki kompaniyaning obuna muddati tugagan bo'lishi mumkin.
+          </p>
+          <Link to="/companies" className="mt-2 text-sm text-primary hover:underline">
             Kompaniyalar ro'yxatiga qaytish
           </Link>
         </div>
@@ -58,20 +113,32 @@ function Page() {
   const name = profile.name.uz_latn || profile.name.ru || profile.name.en || "Kompaniya";
   const description =
     profile.description?.uz_latn || profile.description?.ru || profile.description?.en;
+  const primaryPhone = profile.contacts?.phones?.[0];
 
   return (
     <AppShell>
-      <section className="relative isolate overflow-hidden border-b border-border bg-card/40 pt-32 pb-12">
-        <div className="gradient-mesh absolute inset-0 -z-10 opacity-60" />
+      <section className="relative isolate overflow-hidden border-b border-border pt-24 pb-16">
+        <div className="absolute inset-0 -z-10">
+          {banner?.url ? (
+            <img src={banner.url} alt="" className="size-full object-cover" />
+          ) : (
+            <div className="gradient-mesh size-full opacity-60" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/85 to-background/40" />
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           className="mx-auto max-w-5xl px-6"
         >
-          <div className="flex items-center gap-4">
-            <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <Building2 className="size-7" />
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-card text-primary shadow-soft">
+              {logo?.url ? (
+                <img src={logo.url} alt="" className="size-full object-cover" />
+              ) : (
+                <Building2 className="size-7" />
+              )}
             </div>
             <div>
               <h1 className="font-display text-3xl font-semibold tracking-tight">{name}</h1>
@@ -86,12 +153,35 @@ function Page() {
                 )}
               </div>
             </div>
+            {primaryPhone && (
+              <a
+                href={`tel:${primaryPhone.replace(/\s+/g, "")}`}
+                className="ml-auto inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow"
+              >
+                <Phone className="size-4" /> Qo'ng'iroq qilish
+              </a>
+            )}
           </div>
           {description && (
             <p className="mt-6 max-w-2xl text-sm text-muted-foreground">{description}</p>
           )}
         </motion.div>
       </section>
+
+      {portfolio && portfolio.length > 0 && (
+        <section className="border-b border-border bg-card/30 py-8">
+          <div className="mx-auto max-w-5xl px-6">
+            <h2 className="mb-4 font-display text-base font-semibold text-foreground">
+              Qilgan ishlarimiz
+            </h2>
+            <div className="flex snap-x gap-3 overflow-x-auto pb-2">
+              {portfolio.map((item) => (
+                <PortfolioSlide key={item.id} item={item} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-6 py-12 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
@@ -130,9 +220,13 @@ function Page() {
                 </div>
               )}
               {profile.contacts?.phones?.map((phone) => (
-                <div key={phone} className="flex items-center gap-2">
+                <a
+                  key={phone}
+                  href={`tel:${phone.replace(/\s+/g, "")}`}
+                  className="flex items-center gap-2 hover:text-primary"
+                >
                   <Phone className="size-4 shrink-0" /> {phone}
-                </div>
+                </a>
               ))}
               {profile.contacts?.emails?.map((email) => (
                 <div key={email} className="flex items-center gap-2">

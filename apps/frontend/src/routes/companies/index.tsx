@@ -36,8 +36,8 @@ function CompanyCard({ profile, index }: { profile: BusinessProfile; index: numb
       transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.4), ease: [0.22, 1, 0.36, 1] }}
     >
       <Link
-        to="/companies/$profileId"
-        params={{ profileId: profile.id }}
+        to="/companies/$slug"
+        params={{ slug: profile.slug || profile.id }}
         className="group flex h-full flex-col rounded-3xl border border-border bg-card p-6 shadow-soft transition hover:border-primary/40 hover:shadow-elevated"
       >
         <div className="flex items-center gap-3">

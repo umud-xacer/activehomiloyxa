@@ -60,3 +60,17 @@ class MediaAssetNotFoundError(ProfilesApplicationError):
     def __init__(self, media_asset_id: UUID) -> None:
         self.media_asset_id = media_asset_id
         super().__init__(f"media asset {media_asset_id} not found")
+
+
+class ProfileNotPubliclyVisibleError(ProfilesApplicationError):
+    """ADR-0010: raised by `get_public_profile_by_slug` when the profile's
+    `subscription_status` is not `ACTIVE` (no trial, trial lapsed, subscription lapsed) --
+    `interfaces/errors.py` maps this to a 404, same as `ProfileNotFoundError`, deliberately: a
+    visitor should not be able to distinguish "never existed" from "exists but not currently
+    entitled to a public landing page" from the response alone. The owner's own dashboard reads
+    the by-id endpoint instead, which stays permissive (see `BusinessProfileRepository.
+    get_by_slug`'s own docstring)."""
+
+    def __init__(self, slug: str) -> None:
+        self.slug = slug
+        super().__init__(f"business profile {slug!r} is not currently publicly visible")

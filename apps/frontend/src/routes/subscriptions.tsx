@@ -6,6 +6,7 @@ import {
   CalendarClock,
   CheckCircle2,
   Clock,
+  CreditCard,
   Loader2,
   ShieldAlert,
   ShieldCheck,
@@ -18,6 +19,13 @@ import { useMe } from "@/features/auth/useAuth";
 import { authApi } from "@/lib/auth-client";
 import { ApiError } from "@/lib/http";
 import { billingApi, type Invoice, type Order, type Product } from "@/lib/billing-client";
+import {
+  buildClickCheckoutUrl,
+  buildPaymeCheckoutUrl,
+  getClickMerchantId,
+  getClickServiceId,
+  getPaymeMerchantId,
+} from "@/lib/payment-gateways";
 
 export const Route = createFileRoute("/subscriptions")({
   beforeLoad: requireAuth,
@@ -37,7 +45,14 @@ function productName(product: Product): string {
 function termLabel(termDays: number | null | undefined): string {
   if (termDays === 7) return "Haftalik";
   if (termDays === 30) return "Oylik";
+  if (termDays === 180) return "6 oylik";
+  if (termDays === 365) return "Yillik";
   return termDays ? `${termDays} kunlik` : "Obuna";
+}
+
+/** ADR-0010: the yearly plan is highlighted as best-value in the picker grid. */
+function isBestValue(termDays: number | null | undefined): boolean {
+  return termDays === 365;
 }
 
 function formatDate(iso: string): string {
@@ -145,11 +160,24 @@ function BuyPlanCard({
     }
   };
 
+  const bestValue = isBestValue(product.termDays);
+
   return (
-    <div className="flex flex-col rounded-2xl border border-border bg-background p-5">
-      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-        {termLabel(product.termDays)}
-      </span>
+    <div
+      className={`flex flex-col rounded-2xl border p-5 ${
+        bestValue ? "border-primary/50 bg-primary/5" : "border-border bg-background"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+          {termLabel(product.termDays)}
+        </span>
+        {bestValue && (
+          <span className="inline-flex w-fit items-center gap-1 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-semibold text-primary-foreground">
+            Eng foydali
+          </span>
+        )}
+      </div>
       <p className="mt-2 font-display text-lg font-semibold text-foreground">
         {productName(product)}
       </p>
@@ -167,6 +195,47 @@ function BuyPlanCard({
         {busy && <Loader2 className="size-4 animate-spin" />}
         Sotib olish
       </button>
+    </div>
+  );
+}
+
+/** ADR-0010: online gateway checkout, alongside the pre-existing "wait for admin to confirm
+ * offline payment" flow below (BRULE-15 default -- neither replaces the other; a buyer who has no
+ * Payme/Click card at all can still pay any other way and have an admin confirm it manually). Each
+ * button independently falls back to a "sozlanmagan" notice if its provider's merchant id isn't
+ * configured yet (see `lib/payment-gateways.ts`), same convention as the Google/Apple sign-in
+ * buttons on the auth pages. */
+function GatewayCheckoutButtons({ invoice }: { invoice: Invoice }) {
+  const paymeMerchantId = getPaymeMerchantId();
+  const clickServiceId = getClickServiceId();
+  const clickMerchantId = getClickMerchantId();
+
+  return (
+    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {paymeMerchantId ? (
+        <a
+          href={buildPaymeCheckoutUrl(paymeMerchantId, invoice)}
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+        >
+          <CreditCard className="size-4" /> Payme orqali to'lash
+        </a>
+      ) : (
+        <p className="rounded-full border border-dashed border-border px-4 py-2.5 text-center text-xs text-muted-foreground">
+          Payme hali sozlanmagan
+        </p>
+      )}
+      {clickServiceId && clickMerchantId ? (
+        <a
+          href={buildClickCheckoutUrl(clickServiceId, clickMerchantId, invoice)}
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted"
+        >
+          <CreditCard className="size-4" /> Click orqali to'lash
+        </a>
+      ) : (
+        <p className="rounded-full border border-dashed border-border px-4 py-2.5 text-center text-xs text-muted-foreground">
+          Click hali sozlanmagan
+        </p>
+      )}
     </div>
   );
 }
@@ -195,9 +264,11 @@ function PlanPicker({ ownedProfileId }: { ownedProfileId: string }) {
         <p className="mt-2 text-sm text-muted-foreground">
           Hisob-faktura №{justOrdered.invoice.invoiceNumber} —{" "}
           {Number(justOrdered.invoice.amount.amount).toLocaleString("uz-UZ")}{" "}
-          {justOrdered.invoice.amount.currency}. To'lovni amalga oshiring va admin tasdiqlagach
-          obunangiz avtomatik faollashadi.
+          {justOrdered.invoice.amount.currency}. Quyidagi to'lov usullaridan birini tanlang — to'lov
+          tasdiqlangach obunangiz avtomatik faollashadi. Boshqa usulda to'lagan bo'lsangiz, admin
+          tasdiqlashini kuting.
         </p>
+        <GatewayCheckoutButtons invoice={justOrdered.invoice} />
       </div>
     );
   }

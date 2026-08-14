@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Building2,
@@ -15,25 +14,20 @@ import {
   TrendingUp,
   ArrowUpRight,
 } from "lucide-react";
-import { requireAuth } from "@/lib/require-auth";
+import { requireOnboardedLegalEntity } from "@/lib/require-auth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { Container } from "@/components/layout/Container";
 import { ReviewGate } from "@/components/auth/ReviewGate";
+import { SubscriptionGate } from "@/components/auth/SubscriptionGate";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { ListingsTable } from "@/components/dashboard/ListingsTable";
-import {
-  businessProfilesApi,
-  PROFILE_TYPE_LABEL,
-  type BusinessProfile,
-  type ProfileType,
-} from "@/lib/business-profiles-client";
+import { businessProfilesApi, type BusinessProfile } from "@/lib/business-profiles-client";
 import { catalogClient } from "@/lib/catalog-client";
-import { ApiError } from "@/lib/http";
 import { useMe } from "@/features/auth/useAuth";
 
 export const Route = createFileRoute("/dashboard/seller")({
-  beforeLoad: requireAuth,
+  beforeLoad: requireOnboardedLegalEntity,
   head: () => ({
     meta: [
       { title: "Yuridik shaxs paneli — ActiveHome" },
@@ -53,67 +47,6 @@ function useOwnedProfiles(ownedProfileIds: string[]) {
 
 function profileName(p: BusinessProfile): string {
   return p.name.uz_latn || p.name.en || p.name.ru || "—";
-}
-
-function CreateProfileCard() {
-  const queryClient = useQueryClient();
-  const [name, setName] = useState("");
-  const [profileType, setProfileType] = useState<ProfileType>("MANUFACTURER");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    try {
-      await businessProfilesApi.create({ profileType, name });
-      await queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
-      await queryClient.invalidateQueries({ queryKey: ["business-profiles"] });
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Profil yaratib bo'lmadi.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <SectionCard title="Biznes profilingizni yarating" icon={Building2} index={0}>
-      <p className="text-sm text-muted-foreground">
-        E'lon joylash, mijozlarga ko'rinish va tasdiqlash nishonini olish uchun avval kompaniya
-        profilini to'ldiring.
-      </p>
-      <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Kompaniya nomi"
-          required
-          className="flex-1 rounded-2xl border border-border bg-background px-4 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-primary/30"
-        />
-        <select
-          value={profileType}
-          onChange={(e) => setProfileType(e.target.value as ProfileType)}
-          className="rounded-2xl border border-border bg-background px-4 py-2.5 text-sm outline-none transition focus:ring-2 focus:ring-primary/30"
-        >
-          {Object.entries(PROFILE_TYPE_LABEL).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <button
-          type="submit"
-          disabled={loading || !name}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow disabled:opacity-60"
-        >
-          {loading ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-          Yaratish
-        </button>
-      </form>
-      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
-    </SectionCard>
-  );
 }
 
 function VerificationRow({ profile }: { profile: BusinessProfile }) {
@@ -179,7 +112,9 @@ function Page() {
   return (
     <DashboardShell account={account}>
       <ReviewGate account={account}>
-        <SellerContent account={account} />
+        <SubscriptionGate account={account}>
+          <SellerContent account={account} />
+        </SubscriptionGate>
       </ReviewGate>
     </DashboardShell>
   );
@@ -250,9 +185,7 @@ function SellerContent({ account }: { account: NonNullable<ReturnType<typeof use
         />
       </section>
 
-      {ownedProfileIds.length === 0 ? (
-        <CreateProfileCard />
-      ) : profilesLoading || !primaryProfile ? (
+      {profilesLoading || !primaryProfile ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" /> Yuklanmoqda…
         </div>
