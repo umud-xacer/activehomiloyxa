@@ -125,9 +125,7 @@ class ClickAdapter:
     ) -> bool:
         if not confirmed:
             return False
-        transaction = await self._transactions.get_by_invoice(
-            invoice_id, provider="CLICK"
-        )
+        transaction = await self._transactions.get_by_invoice(invoice_id, provider="CLICK")
         return transaction is not None and transaction.state == "PERFORMED"
 
 
@@ -156,9 +154,7 @@ class ClickMerchantApi:
         if existing is not None:
             return {"merchant_prepare_id": str(existing.id)}
 
-        existing_for_invoice = await self._transactions.get_by_invoice(
-            invoice.id, provider="CLICK"
-        )
+        existing_for_invoice = await self._transactions.get_by_invoice(invoice.id, provider="CLICK")
         if existing_for_invoice is not None:
             return {"merchant_prepare_id": str(existing_for_invoice.id)}
 
@@ -184,9 +180,7 @@ class ClickMerchantApi:
         if transaction is None:
             raise ClickError(ERR_TRANSACTION_NOT_FOUND, "Transaction not found")
         if str(transaction.id) != request.merchant_prepare_id:
-            raise ClickError(
-                ERR_TRANSACTION_NOT_FOUND, "merchant_prepare_id does not match"
-            )
+            raise ClickError(ERR_TRANSACTION_NOT_FOUND, "merchant_prepare_id does not match")
 
         if request.error < 0:
             cancelled = await self._transactions.mark_cancelled(

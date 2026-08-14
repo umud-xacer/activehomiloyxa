@@ -121,9 +121,7 @@ async def payme_webhook(
 
     request_id = body.get("id") if isinstance(body, dict) else None
     if not _verify_payme_auth(authorization, merchant_key):
-        return _payme_response(
-            request_id, error=PaymeError(-32504, "Insufficient privilege")
-        )
+        return _payme_response(request_id, error=PaymeError(-32504, "Insufficient privilege"))
 
     method = body.get("method") if isinstance(body, dict) else None
     params = body.get("params") if isinstance(body, dict) else None

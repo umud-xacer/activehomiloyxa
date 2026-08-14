@@ -165,9 +165,7 @@ class ProviderTransactionRow(BillingBase):  # type: ignore[misc,valid-type]
         UniqueConstraint(
             "provider", "provider_transaction_id", name="ux_provider_transaction_external_id"
         ),
-        UniqueConstraint(
-            "invoice_id", "provider", name="ux_provider_transaction_invoice_provider"
-        ),
+        UniqueConstraint("invoice_id", "provider", name="ux_provider_transaction_invoice_provider"),
     )
 
 

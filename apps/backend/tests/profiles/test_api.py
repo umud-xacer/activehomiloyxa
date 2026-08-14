@@ -198,13 +198,13 @@ def test_admin_list_business_profiles_reports_total_and_includes_archived(
     ).json()
     client.delete(f"/api/v1/business-profiles/{created['id']}", headers=_auth("owner-token"))
 
-    resp = client.get(
-        "/api/v1/admin/business-profiles", headers=_auth("profile-manager-token")
-    )
+    resp = client.get("/api/v1/admin/business-profiles", headers=_auth("profile-manager-token"))
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["page"]["total"] == 1
-    assert any(item["id"] == created["id"] and item["status"] == "ARCHIVED" for item in body["items"])
+    assert any(
+        item["id"] == created["id"] and item["status"] == "ARCHIVED" for item in body["items"]
+    )
 
 
 def test_admin_archive_business_profile_bypasses_ownership(client: TestClient) -> None:

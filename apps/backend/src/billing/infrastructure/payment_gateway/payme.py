@@ -120,9 +120,7 @@ class PaymeAdapter:
     ) -> bool:
         if not confirmed:
             return False
-        transaction = await self._transactions.get_by_invoice(
-            invoice_id, provider="PAYME"
-        )
+        transaction = await self._transactions.get_by_invoice(invoice_id, provider="PAYME")
         return transaction is not None and transaction.state == "PERFORMED"
 
 
@@ -169,17 +167,13 @@ class PaymeMerchantApi:
         try:
             invoice_id = UUID(str(raw_id))
         except ValueError as exc:
-            raise PaymeError(
-                ERR_ACCOUNT_NOT_FOUND, "invoice_id is not a valid identifier"
-            ) from exc
+            raise PaymeError(ERR_ACCOUNT_NOT_FOUND, "invoice_id is not a valid identifier") from exc
         invoice = await self._invoices.get_by_id(invoice_id)
         if invoice is None:
             raise PaymeError(ERR_ACCOUNT_NOT_FOUND, "Order not found")
         return invoice
 
-    async def _check_perform_transaction(
-        self, params: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def _check_perform_transaction(self, params: dict[str, Any]) -> dict[str, Any]:
         invoice = await self._resolve_invoice(params.get("account") or {})
         if invoice.status is not InvoiceStatus.ISSUED:
             raise PaymeError(ERR_UNABLE_TO_PERFORM, "Invoice is not payable")
@@ -193,21 +187,15 @@ class PaymeMerchantApi:
         if int(params.get("amount", -1)) != _to_tiyin(invoice.amount.amount):
             raise PaymeError(ERR_INVALID_AMOUNT, "Incorrect amount")
 
-        existing_by_provider_id = (
-            await self._transactions.get_by_provider_transaction_id(
-                provider="PAYME", provider_transaction_id=provider_transaction_id
-            )
+        existing_by_provider_id = await self._transactions.get_by_provider_transaction_id(
+            provider="PAYME", provider_transaction_id=provider_transaction_id
         )
         if existing_by_provider_id is not None:
             return _create_transaction_response(existing_by_provider_id)
 
-        existing_for_invoice = await self._transactions.get_by_invoice(
-            invoice.id, provider="PAYME"
-        )
+        existing_for_invoice = await self._transactions.get_by_invoice(invoice.id, provider="PAYME")
         if existing_for_invoice is not None:
-            raise PaymeError(
-                ERR_ALREADY_HAS_TRANSACTION, "Order already has a transaction"
-            )
+            raise PaymeError(ERR_ALREADY_HAS_TRANSACTION, "Order already has a transaction")
 
         if invoice.status is not InvoiceStatus.ISSUED:
             raise PaymeError(ERR_UNABLE_TO_PERFORM, "Invoice is not payable")
@@ -260,9 +248,7 @@ class PaymeMerchantApi:
     async def _get_statement(self, params: dict[str, Any]) -> dict[str, Any]:
         start = _from_ms(int(params["from"]))
         end = _from_ms(int(params["to"]))
-        transactions = await self._transactions.list_between(
-            provider="PAYME", start=start, end=end
-        )
+        transactions = await self._transactions.list_between(provider="PAYME", start=start, end=end)
         return {
             "transactions": [
                 {**_check_transaction_response(t), "amount": _to_tiyin(t.amount)}
@@ -270,9 +256,7 @@ class PaymeMerchantApi:
             ]
         }
 
-    async def _get_transaction_or_raise(
-        self, provider_transaction_id: str
-    ) -> ProviderTransaction:
+    async def _get_transaction_or_raise(self, provider_transaction_id: str) -> ProviderTransaction:
         transaction = await self._transactions.get_by_provider_transaction_id(
             provider="PAYME", provider_transaction_id=provider_transaction_id
         )

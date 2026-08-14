@@ -199,9 +199,7 @@ async def get_business_profile(
     return await _to_profile_dto(profile, use_cases=use_cases)
 
 
-@profiles_router.get(
-    "/business-profiles/slug/{slug}", operation_id="getBusinessProfileBySlug"
-)
+@profiles_router.get("/business-profiles/slug/{slug}", operation_id="getBusinessProfileBySlug")
 async def get_business_profile_by_slug(
     slug: str, use_cases: ProfileUseCases = Depends(get_profile_use_cases)
 ) -> BusinessProfileDto:
@@ -412,9 +410,7 @@ async def decide_verification(
 # --- Company management (owner-admin-panel-only, Administration tag) ------------------------
 
 
-@admin_profiles_router.get(
-    "/admin/business-profiles", operation_id="adminListBusinessProfiles"
-)
+@admin_profiles_router.get("/admin/business-profiles", operation_id="adminListBusinessProfiles")
 async def admin_list_business_profiles(
     status: Literal["CREATED", "ACTIVE", "ARCHIVED"] | None = None,
     cursor: str | None = None,

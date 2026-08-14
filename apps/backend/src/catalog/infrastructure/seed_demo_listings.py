@@ -11412,11 +11412,7 @@ def _default_for_field(field: dict[str, object]) -> object:
         return "false"
     if field_type == "number":
         return "1"
-    if (
-        field_type in ("select", "multiselect")
-        and isinstance(options, list)
-        and options
-    ):
+    if field_type in ("select", "multiselect") and isinstance(options, list) and options:
         first = options[0]
         value = first.get("value") if isinstance(first, dict) else first
         return [value] if field_type == "multiselect" else value
@@ -11483,13 +11479,9 @@ class _ConfigurationBridge:
     ) -> ConfigurationVersion:
         async with self._session_factory() as session:
             repo = SqlalchemyConfigHeadRepository(session)
-            version = await repo.get_version(
-                ConfigEntityType(entity_type), head_id, version_id
-            )
+            version = await repo.get_version(ConfigEntityType(entity_type), head_id, version_id)
             if version is None:
-                raise ConfigVersionNotFoundError(
-                    entity_type, str(head_id), str(version_id)
-                )
+                raise ConfigVersionNotFoundError(entity_type, str(head_id), str(version_id))
             return _version_to_dto(version)
 
 
@@ -11655,9 +11647,7 @@ async def _existing_demo_listing_count(
 ) -> int:
     async with session_factory() as session:
         result = await session.execute(
-            select(func.count())
-            .select_from(ListingRow)
-            .where(ListingRow.owner_user_id == owner_id)
+            select(func.count()).select_from(ListingRow).where(ListingRow.owner_user_id == owner_id)
         )
         return int(result.scalar_one())
 
@@ -11796,9 +11786,7 @@ async def seed_demo_listings() -> None:
                     demo.category_path,
                 )
 
-        logger.info(
-            "seed_demo_listings: seeded up to %d demo listings", len(DEMO_LISTINGS)
-        )
+        logger.info("seed_demo_listings: seeded up to %d demo listings", len(DEMO_LISTINGS))
     finally:
         await redis_client.aclose()
         await engine.dispose()

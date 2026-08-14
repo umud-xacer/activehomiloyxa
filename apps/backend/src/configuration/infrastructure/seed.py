@@ -165,9 +165,7 @@ async def _backfill_role_permission_keys(
     )
     if current is None:
         return
-    if sorted(current.definition_document.get("permission_keys") or []) == sorted(
-        permission_keys
-    ):
+    if sorted(current.definition_document.get("permission_keys") or []) == sorted(permission_keys):
         return
 
     new_document = {**current.definition_document, "permission_keys": permission_keys}
@@ -200,9 +198,7 @@ async def _backfill_role_permission_keys(
         )
 
 
-async def _seed_platform_settings(
-    use_cases: ConfigurationUseCases, *, now: datetime
-) -> None:
+async def _seed_platform_settings(use_cases: ConfigurationUseCases, *, now: datetime) -> None:
     definition = {
         "descriptor": {"name": {"uz_latn": "Default platform settings"}},
         "settings_scope": "GLOBAL",
@@ -237,12 +233,8 @@ async def _seed_platform_settings(
     except DuplicateCodeError:
         return
 
-    approve_key = _registry.approve_permission_key(
-        ConfigEntityType.PLATFORM_SETTINGS.value
-    )
-    manage_key = _registry.manage_permission_key(
-        ConfigEntityType.PLATFORM_SETTINGS.value
-    )
+    approve_key = _registry.approve_permission_key(ConfigEntityType.PLATFORM_SETTINGS.value)
+    manage_key = _registry.manage_permission_key(ConfigEntityType.PLATFORM_SETTINGS.value)
     step1 = await use_cases.publish(
         ConfigEntityType.PLATFORM_SETTINGS,
         version.head_id,
@@ -316,9 +308,7 @@ async def _backfill_platform_settings_defaults(
         return
     current_settings = dict(current.definition_document.get("settings") or {})
     missing = {
-        k: v
-        for k, v in _PLATFORM_SETTINGS_ADDITIVE_DEFAULTS.items()
-        if k not in current_settings
+        k: v for k, v in _PLATFORM_SETTINGS_ADDITIVE_DEFAULTS.items() if k not in current_settings
     }
     stale_slug = current_settings.get("admin.owner_panel_slug")
     slug_fix = (
@@ -340,12 +330,8 @@ async def _backfill_platform_settings_defaults(
         actor_id=SEED_MAKER_ID,
         now=now,
     )
-    manage_key = _registry.manage_permission_key(
-        ConfigEntityType.PLATFORM_SETTINGS.value
-    )
-    approve_key = _registry.approve_permission_key(
-        ConfigEntityType.PLATFORM_SETTINGS.value
-    )
+    manage_key = _registry.manage_permission_key(ConfigEntityType.PLATFORM_SETTINGS.value)
+    approve_key = _registry.approve_permission_key(ConfigEntityType.PLATFORM_SETTINGS.value)
     step1 = await use_cases.publish(
         ConfigEntityType.PLATFORM_SETTINGS,
         head.id,
@@ -464,15 +450,11 @@ async def _seed_furniture_form(
         )
     except DuplicateCodeError:
         existing = await repo.get_head_by_code(ConfigEntityType.FORM_DEFINITION, code)
-        assert existing is not None, (
-            f"seed marker {code!r} vanished between check and lookup"
-        )
+        assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
         return existing.id
 
     manage_key = _registry.manage_permission_key(ConfigEntityType.FORM_DEFINITION.value)
-    approve_key = _registry.approve_permission_key(
-        ConfigEntityType.FORM_DEFINITION.value
-    )
+    approve_key = _registry.approve_permission_key(ConfigEntityType.FORM_DEFINITION.value)
     step1 = await use_cases.publish(
         ConfigEntityType.FORM_DEFINITION,
         head.id,
@@ -533,9 +515,7 @@ async def _seed_furniture_category(
         )
     except DuplicateCodeError:
         existing = await repo.get_head_by_code(ConfigEntityType.CATEGORY, code)
-        assert existing is not None, (
-            f"seed marker {code!r} vanished between check and lookup"
-        )
+        assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
         await _backfill_listing_kind(
             use_cases,
             repo,
@@ -595,9 +575,7 @@ def _field(
         "order": order,
     }
     if options:
-        field["options"] = [
-            {"value": v, "label": {"uz_latn": lbl}} for v, lbl in options
-        ]
+        field["options"] = [{"value": v, "label": {"uz_latn": lbl}} for v, lbl in options]
     if default is not None:
         field["default_value"] = default
     return field
@@ -784,9 +762,7 @@ def _venue_fields() -> list[dict[str, object]]:
     ]
 
 
-def _service_cv_fields(
-    *, extra: list[dict[str, object]] | None = None
-) -> list[dict[str, object]]:
+def _service_cv_fields(*, extra: list[dict[str, object]] | None = None) -> list[dict[str, object]]:
     """The "CV" shape: a `SERVICE`-typed listing under `xizmat-korsatish` (or a trade-specific
     child of it) IS the person's public profile -- experience/specialization/coverage-area/rate,
     the same fields a hiring business or a household would actually filter on, browsable the
@@ -803,9 +779,7 @@ def _service_cv_fields(
             facet=True,
             order=1,
         ),
-        _field(
-            "specialization", "asosiy", "Mutaxassislik", "text", facet=True, order=2
-        ),
+        _field("specialization", "asosiy", "Mutaxassislik", "text", facet=True, order=2),
         _field(
             "service_regions",
             "asosiy",
@@ -857,9 +831,7 @@ async def _seed_form(
     returns the existing head's id (by code) if this has already run against this database."""
     definition = {
         "descriptor": {"name": {"uz_latn": name}},
-        "sections": [
-            {"code": section_code, "label": {"uz_latn": section_name}, "order": 1}
-        ],
+        "sections": [{"code": section_code, "label": {"uz_latn": section_name}, "order": 1}],
         "fields": fields,
     }
     try:
@@ -873,15 +845,11 @@ async def _seed_form(
         )
     except DuplicateCodeError:
         existing = await repo.get_head_by_code(ConfigEntityType.FORM_DEFINITION, code)
-        assert existing is not None, (
-            f"seed marker {code!r} vanished between check and lookup"
-        )
+        assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
         return existing.id
 
     manage_key = _registry.manage_permission_key(ConfigEntityType.FORM_DEFINITION.value)
-    approve_key = _registry.approve_permission_key(
-        ConfigEntityType.FORM_DEFINITION.value
-    )
+    approve_key = _registry.approve_permission_key(ConfigEntityType.FORM_DEFINITION.value)
     step1 = await use_cases.publish(
         ConfigEntityType.FORM_DEFINITION,
         head.id,
@@ -946,9 +914,7 @@ async def _seed_category(
         )
     except DuplicateCodeError:
         existing = await repo.get_head_by_code(ConfigEntityType.CATEGORY, code)
-        assert existing is not None, (
-            f"seed marker {code!r} vanished between check and lookup"
-        )
+        assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
         await _backfill_listing_kind(
             use_cases,
             repo,
@@ -999,9 +965,7 @@ async def _backfill_listing_kind(
     no-op on every subsequent run once it's caught up (true idempotency, not just duplicate-skip)."""
     if listing_kind is None or current_version_id is None:
         return
-    current = await repo.get_version(
-        ConfigEntityType.CATEGORY, head_id, current_version_id
-    )
+    current = await repo.get_version(ConfigEntityType.CATEGORY, head_id, current_version_id)
     if current is None:
         return
     current_descriptor = dict(current.definition_document.get("descriptor") or {})
@@ -3276,9 +3240,7 @@ async def _backfill_category_theme(
     head = await repo.get_head_by_code(ConfigEntityType.CATEGORY, code)
     if head is None or head.current_version_id is None:
         return
-    current = await repo.get_version(
-        ConfigEntityType.CATEGORY, head.id, head.current_version_id
-    )
+    current = await repo.get_version(ConfigEntityType.CATEGORY, head.id, head.current_version_id)
     if current is None:
         return
     current_descriptor = dict(current.definition_document.get("descriptor") or {})

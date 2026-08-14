@@ -293,7 +293,8 @@ class SqlalchemyBusinessProfileRepository:
                 BusinessProfileRow.trial_ends_at.is_not(None),
                 BusinessProfileRow.trial_ends_at <= now,
                 SubscriptionEntitlementProjectionRow.activation_state == "ACTIVE",
-                SubscriptionEntitlementProjectionRow.valid_until == BusinessProfileRow.trial_ends_at,
+                SubscriptionEntitlementProjectionRow.valid_until
+                == BusinessProfileRow.trial_ends_at,
             )
             .order_by(BusinessProfileRow.trial_ends_at)
             .limit(limit)
