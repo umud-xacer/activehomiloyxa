@@ -333,6 +333,30 @@ PROFILES_MATRIX: list[AuthorizationScenario] = [
         expect_allowed=False,
         expect_exception=WrongActingProfileError,
     ),
+    # ADR-0010's `profiles:profile:manage` gates `adminListBusinessProfiles`/
+    # `adminArchiveBusinessProfile` (`composition_root.provide_profiles_acting_profile_manager`)
+    # -- operator-wide like `profiles:verification:review` above (Gate 3 only, no ownership
+    # scoping: the owner-admin panel manages every profile, not just ones the operator "owns").
+    AuthorizationScenario(
+        name="profiles_manage_no_permissions_denied",
+        granted_permissions=frozenset(),
+        required_permission="profiles:profile:manage",
+        expect_allowed=False,
+        expect_exception=PermissionDeniedError,
+    ),
+    AuthorizationScenario(
+        name="profiles_manage_unrelated_permission_denied",
+        granted_permissions=frozenset({"catalog:listing:manage"}),
+        required_permission="profiles:profile:manage",
+        expect_allowed=False,
+        expect_exception=PermissionDeniedError,
+    ),
+    AuthorizationScenario(
+        name="profiles_manage_exact_permission_granted_allowed",
+        granted_permissions=frozenset({"profiles:profile:manage"}),
+        required_permission="profiles:profile:manage",
+        expect_allowed=True,
+    ),
 ]
 
 # Task P-12 (moderation/BC-11) extends the harness with scenarios for its one permission key,

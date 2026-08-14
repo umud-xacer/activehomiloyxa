@@ -87,6 +87,25 @@ class FakeBusinessProfileRepository:
         items.sort(key=lambda p: p.badge.valid_until)  # type: ignore[union-attr]
         return items[:limit]
 
+    async def get_by_slug(self, slug: str) -> BusinessProfile | None:
+        matches = [p for p in self.profiles.values() if p.slug == slug]
+        matches.sort(key=lambda p: p.created_at, reverse=True)
+        return matches[0] if matches else None
+
+    async def list_trials_expiring(self, *, now: datetime, limit: int) -> list[BusinessProfile]:
+        """No `subscription_entitlement_projection` join here (this fake has no such table) --
+        the real repository's `valid_until == trial_ends_at` check exists to skip a profile
+        already superseded by a paid subscription; every test exercising this fake constructs
+        profiles directly via `BusinessProfile` transitions, so `trial_ends_at` alone is enough
+        to identify an expiring trial without that extra guard."""
+        items = [
+            p
+            for p in self.profiles.values()
+            if p.trial_ends_at is not None and p.trial_ends_at <= now
+        ]
+        items.sort(key=lambda p: p.trial_ends_at)  # type: ignore[arg-type,return-value]
+        return items[:limit]
+
 
 @dataclass
 class FakeVerificationCaseRepository:
