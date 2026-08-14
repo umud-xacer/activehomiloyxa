@@ -41,13 +41,25 @@ class MinioStorageAdapter:
         # `MINIO_ENDPOINT` (127.0.0.1:9000 in production) is correct for every server-side call
         # in this class -- but a presigned PUT url is handed to a *browser*, which cannot reach
         # the server's own loopback address. `MINIO_PUBLIC_ENDPOINT_URL` is a full base URL
-        # (scheme included, e.g. https://activehome.uz/media-upload -- an nginx passthrough
-        # proxying straight to MinIO, mirroring MEDIA_CDN_BASE_URL's own "public URL for
-        # something MinIO-backed" role for downloads) reachable from outside. Real bug found live:
-        # every upload from an actual external browser was silently failing in production (only
-        # server-seeded demo data, uploaded from inside the server's own network, ever worked) --
-        # this was never caught locally because 127.0.0.1 legitimately IS reachable from a
-        # developer's own browser when MinIO also runs on their own machine.
+        # (scheme included, e.g. https://activehome.uz -- bare origin, NO extra path segment; an
+        # nginx passthrough proxying straight to MinIO, mirroring MEDIA_CDN_BASE_URL's own "public
+        # URL for something MinIO-backed" role for downloads) reachable from outside. Real bug
+        # found live: every upload from an actual external browser was silently failing in
+        # production (only server-seeded demo data, uploaded from inside the server's own network,
+        # ever worked) -- this was never caught locally because 127.0.0.1 legitimately IS reachable
+        # from a developer's own browser when MinIO also runs on their own machine.
+        #
+        # Second real bug found live (2026-08-14), same class: `MINIO_PUBLIC_ENDPOINT_URL` had
+        # been set to `https://activehome.uz/media-upload` (an extra path segment baked in), which
+        # boto3 signs as part of the request's canonical URI -- MinIO then verifies the signature
+        # against whatever path it actually receives. Whether nginx forwarded that segment or
+        # stripped it, verification broke: strip it and the received path no longer matches what
+        # was signed (`SignatureDoesNotMatch`); keep it and MinIO reads that segment as the bucket
+        # name instead of `active-home-media` (`NoSuchBucket`) -- there's no nginx rewrite that
+        # satisfies both sides at once. The endpoint given to boto3 for presigning MUST be the bare
+        # origin nginx forwards completely unmodified (see `deployment/nginx/activehome.conf`'s own
+        # `location /active-home-media/` block and its docstring for the full story) -- any extra
+        # path segment here is presigned-upload-breaking by construction, not a config nicety.
         self._presign_client = client or boto3.client(
             "s3",
             endpoint_url=required_env("MINIO_PUBLIC_ENDPOINT_URL"),
