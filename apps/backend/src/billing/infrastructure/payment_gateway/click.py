@@ -91,12 +91,21 @@ class ClickCompleteRequest:
     sign_string: str
 
 
+def _click_md5(raw: str) -> str:
+    """Click's Shop API mandates MD5 for `sign_string` -- fixed by their own protocol, not a
+    choice available to this integration. `usedforsecurity=False` tells bandit/FIPS-mode hashlib
+    this hash is a third-party wire-protocol checksum, not this app's own cryptographic
+    primitive (silences bandit's B324 "weak MD5 hash" finding correctly rather than suppressing
+    it blindly with a bare `# nosec`)."""
+    return hashlib.md5(raw.encode(), usedforsecurity=False).hexdigest()
+
+
 def verify_prepare_signature(request: ClickPrepareRequest, secret_key: str) -> bool:
     raw = (
         f"{request.click_trans_id}{request.service_id}{secret_key}"
         f"{request.merchant_trans_id}{request.amount_raw}{request.action}{request.sign_time}"
     )
-    return hashlib.md5(raw.encode()).hexdigest() == request.sign_string.lower()
+    return _click_md5(raw) == request.sign_string.lower()
 
 
 def verify_complete_signature(request: ClickCompleteRequest, secret_key: str) -> bool:
@@ -105,7 +114,7 @@ def verify_complete_signature(request: ClickCompleteRequest, secret_key: str) ->
         f"{request.merchant_trans_id}{request.merchant_prepare_id}"
         f"{request.amount_raw}{request.action}{request.sign_time}"
     )
-    return hashlib.md5(raw.encode()).hexdigest() == request.sign_string.lower()
+    return _click_md5(raw) == request.sign_string.lower()
 
 
 class ClickAdapter:
