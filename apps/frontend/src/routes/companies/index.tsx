@@ -5,6 +5,7 @@ import { Building2, Loader2, ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/dashboard/EmptyState";
+import { useMediaAsset } from "@/lib/use-media-asset";
 import {
   businessProfilesApi,
   PROFILE_TYPE_LABEL,
@@ -28,6 +29,34 @@ function companyName(profile: BusinessProfile): string {
   return profile.name.uz_latn || profile.name.ru || profile.name.en || "Tashkilot";
 }
 
+/** Two-letter fallback avatar text -- first letter of the first two words, or the first two
+ * characters of a single-word name (e.g. "Davr bank" -> "DB", "Anorbank" -> "AN"). */
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return name.trim().slice(0, 2).toUpperCase();
+}
+
+function CompanyLogo({ profile }: { profile: BusinessProfile }) {
+  const logo = useMediaAsset(profile.logoMediaAssetId);
+
+  return (
+    <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-white p-1">
+      {logo?.url ? (
+        <img
+          src={logo.url}
+          alt={companyName(profile)}
+          className="size-full object-contain"
+        />
+      ) : (
+        <span className="font-display text-sm font-semibold text-primary">
+          {initials(companyName(profile))}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function CompanyCard({ profile, index }: { profile: BusinessProfile; index: number }) {
   return (
     <motion.div
@@ -41,9 +70,7 @@ function CompanyCard({ profile, index }: { profile: BusinessProfile; index: numb
         className="group flex h-full flex-col rounded-3xl border border-border bg-card p-6 shadow-soft transition hover:border-primary/40 hover:shadow-elevated"
       >
         <div className="flex items-center gap-3">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <Building2 className="size-5" />
-          </div>
+          <CompanyLogo profile={profile} />
           <div className="min-w-0">
             <p className="truncate font-display text-base font-semibold text-foreground">
               {companyName(profile)}

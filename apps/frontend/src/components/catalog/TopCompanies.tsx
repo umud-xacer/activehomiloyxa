@@ -12,12 +12,36 @@
 import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Building2, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { businessProfilesApi, type BusinessProfile } from "@/lib/business-profiles-client";
 import type { CatalogListing } from "@/lib/catalog-client";
+import { useMediaAsset } from "@/lib/use-media-asset";
 
 function profileName(profile: BusinessProfile): string {
   return profile.name.uz_latn || profile.name.ru || profile.name.en || "Tashkilot";
+}
+
+/** Two-letter fallback avatar text -- mirrors `routes/companies/index.tsx`'s `initials()`. */
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return name.trim().slice(0, 2).toUpperCase();
+}
+
+function CompanyLogo({ profile }: { profile: BusinessProfile }) {
+  const logo = useMediaAsset(profile.logoMediaAssetId);
+
+  return (
+    <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-white p-1">
+      {logo?.url ? (
+        <img src={logo.url} alt={profileName(profile)} className="size-full object-contain" />
+      ) : (
+        <span className="font-display text-sm font-semibold text-primary">
+          {initials(profileName(profile))}
+        </span>
+      )}
+    </div>
+  );
 }
 
 export function useTopCompanies(listings: CatalogListing[], limit = 6) {
@@ -95,9 +119,7 @@ export function TopCompanies({
                 active ? "border-primary bg-primary/5" : "border-border bg-card"
               }`}
             >
-              <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Building2 className="size-5" />
-              </div>
+              <CompanyLogo profile={profile} />
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="truncate text-sm font-semibold text-foreground">
