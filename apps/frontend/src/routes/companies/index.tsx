@@ -14,10 +14,10 @@ import {
 export const Route = createFileRoute("/companies/")({
   head: () => ({
     meta: [
-      { title: "Xizmatlar va kompaniyalar — ActiveHome" },
+      { title: "Tashkilotlar — ActiveHome" },
       {
         name: "description",
-        content: "Qurilish, ta'mirlash va uy-joy sohasidagi tasdiqlangan kompaniyalar katalogi.",
+        content: "Qurilish, ta'mirlash va uy-joy sohasidagi tasdiqlangan tashkilotlar katalogi.",
       },
     ],
   }),
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/companies/")({
 });
 
 function companyName(profile: BusinessProfile): string {
-  return profile.name.uz_latn || profile.name.ru || profile.name.en || "Kompaniya";
+  return profile.name.uz_latn || profile.name.ru || profile.name.en || "Tashkilot";
 }
 
 function CompanyCard({ profile, index }: { profile: BusinessProfile; index: number }) {
@@ -80,7 +80,7 @@ function Page() {
     <AppShell>
       <PageHeader
         eyebrow="Yuridik shaxslar uchun"
-        title="Xizmatlar va kompaniyalar"
+        title="Tashkilotlar"
         description="Qurilish materiallari, pudratchilar, dizaynerlar va xizmat ko'rsatuvchilarning tasdiqlangan katalogi."
       />
       {/* Narrower max-w-6xl base preserved on purpose (3-col directory grid reads better a bit
@@ -94,8 +94,8 @@ function Page() {
         {!isLoading && active.length === 0 && (
           <EmptyState
             icon={Building2}
-            title="Hozircha kompaniya yo'q"
-            description="Yaqinda faol obunaga ega kompaniyalar shu yerda ko'rinadi."
+            title="Hozircha tashkilot yo'q"
+            description="Yaqinda faol obunaga ega tashkilotlar shu yerda ko'rinadi."
           />
         )}
         {active.length > 0 && (

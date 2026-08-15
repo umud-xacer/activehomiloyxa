@@ -88,8 +88,10 @@
   },
   "organizations": {
     "eyebrow": "Tasdiqlangan hamkorlar",
-    "title": "Tashkilotlar va kompaniyalar",
-    "subtitle": "Qurilish kompaniyalari, agentliklar, banklar va xizmat brendlari — bitta ekotizimda."
+    "title": "Tashkilotlar",
+    "subtitle": "Qurilish, agentlik, bank va xizmat sohasidagi tasdiqlangan tashkilotlar — bitta ekotizimda.",
+    "cta": "Hamkor sifatida qo'shiling",
+    "view_all": "Barcha tashkilotlarni ko'rish"
   },
   "featured": {
     "title": "Tanlangan obyektlar",

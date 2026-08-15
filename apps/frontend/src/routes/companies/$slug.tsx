@@ -22,7 +22,7 @@ import { http } from "@/lib/http";
 import { useMediaAsset } from "@/lib/use-media-asset";
 
 export const Route = createFileRoute("/companies/$slug")({
-  head: () => ({ meta: [{ title: "Kompaniya — ActiveHome" }] }),
+  head: () => ({ meta: [{ title: "Tashkilot — ActiveHome" }] }),
   component: Page,
 });
 
@@ -98,19 +98,19 @@ function Page() {
     return (
       <AppShell>
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-2 pt-32 text-center">
-          <p className="font-display text-xl font-semibold">Kompaniya topilmadi</p>
+          <p className="font-display text-xl font-semibold">Tashkilot topilmadi</p>
           <p className="max-w-sm text-sm text-muted-foreground">
-            Bu sahifa mavjud emas yoki kompaniyaning obuna muddati tugagan bo'lishi mumkin.
+            Bu sahifa mavjud emas yoki tashkilotning obuna muddati tugagan bo'lishi mumkin.
           </p>
           <Link to="/companies" className="mt-2 text-sm text-primary hover:underline">
-            Kompaniyalar ro'yxatiga qaytish
+            Tashkilotlar ro'yxatiga qaytish
           </Link>
         </div>
       </AppShell>
     );
   }
 
-  const name = profile.name.uz_latn || profile.name.ru || profile.name.en || "Kompaniya";
+  const name = profile.name.uz_latn || profile.name.ru || profile.name.en || "Tashkilot";
   const description =
     profile.description?.uz_latn || profile.description?.ru || profile.description?.en;
   const primaryPhone = profile.contacts?.phones?.[0];

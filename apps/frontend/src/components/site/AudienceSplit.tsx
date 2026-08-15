@@ -4,8 +4,8 @@ import { ArrowRight, Building2, Home } from "lucide-react";
 
 /** The homepage's own "no confusion" entry point (Monetization/B2C-B2B task): two unambiguous
  * paths right below the search hero, before any other section competes for attention --
- * "Ko'chmas mulk va E'lonlar" (individuals: browse/list property) vs. "Xizmatlar va
- * Kompaniyalar" (legal entities: the B2B services/companies directory, `/companies`). */
+ * "Ko'chmas mulk va E'lonlar" (individuals: browse/list property) vs. "Tashkilotlar"
+ * (legal entities: the B2B organizations directory, `/companies`). */
 export function AudienceSplit() {
   return (
     <section className="relative mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -49,11 +49,9 @@ export function AudienceSplit() {
               <Building2 className="size-6" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-display text-xl font-semibold text-foreground">
-                Xizmatlar va Kompaniyalar
-              </p>
+              <p className="font-display text-xl font-semibold text-foreground">Tashkilotlar</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Qurilish, ta'mirlash va dizayn bo'yicha tasdiqlangan kompaniyalar katalogi.
+                Qurilish, ta'mirlash va dizayn bo'yicha tasdiqlangan tashkilotlar katalogi.
               </p>
             </div>
             <ArrowRight className="size-5 shrink-0 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" />

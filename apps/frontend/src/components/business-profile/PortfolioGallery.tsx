@@ -61,22 +61,34 @@ function PortfolioTile({ item, onRemove }: { item: PortfolioItem; onRemove: () =
 export function PortfolioFields({
   profile,
   action,
+  onItemsChange,
 }: {
   profile: BusinessProfile;
   /** Rendered above the grid, next to the upload button -- lets the wizard show its own step
    * label instead of `SectionCard`'s title slot. */
   action?: ReactNode;
+  /** The wire `BusinessProfile.portfolio` field is never populated by `GET /business-profiles/
+   * {id}` (only the dedicated `listPortfolio` endpoint returns items) -- callers that need to
+   * know the live item count (onboarding wizard's "Davom etish" gate, the dashboard's live
+   * landing-page preview) must read it from here instead of `profile.portfolio`. */
+  onItemsChange?: (items: PortfolioItem[]) => void;
 }) {
   const queryClient = useQueryClient();
-  const [items, setItems] = useState<PortfolioItem[]>(profile.portfolio ?? []);
+  const [items, setItemsState] = useState<PortfolioItem[]>(profile.portfolio ?? []);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const setItems = (next: PortfolioItem[]) => {
+    setItemsState(next);
+    onItemsChange?.(next);
+  };
 
   useEffect(() => {
     businessProfilesApi
       .listPortfolio(profile.id)
       .then(setItems)
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.id]);
 
   const refresh = async () => {
@@ -108,7 +120,7 @@ export function PortfolioFields({
   };
 
   const remove = async (itemId: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== itemId));
+    setItems(items.filter((i) => i.id !== itemId));
     try {
       await businessProfilesApi.removePortfolioItem(profile.id, itemId);
     } finally {
@@ -161,7 +173,13 @@ export function PortfolioFields({
 }
 
 /** The edit-form's own card wrapper around `PortfolioFields`. */
-export function PortfolioGallery({ profile }: { profile: BusinessProfile }) {
+export function PortfolioGallery({
+  profile,
+  onItemsChange,
+}: {
+  profile: BusinessProfile;
+  onItemsChange?: (items: PortfolioItem[]) => void;
+}) {
   return (
     <SectionCard
       title="Portfolio galereyasi"
@@ -169,7 +187,7 @@ export function PortfolioGallery({ profile }: { profile: BusinessProfile }) {
       description="Rasm (JPEG/PNG/WEBP, maks. 1.2 MB) yoki video (MP4/WEBM, maks. 30 MB) qo'shing."
       index={2}
     >
-      <PortfolioFields profile={profile} />
+      <PortfolioFields profile={profile} onItemsChange={onItemsChange} />
     </SectionCard>
   );
 }

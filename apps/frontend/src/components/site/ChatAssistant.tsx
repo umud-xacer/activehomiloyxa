@@ -14,7 +14,7 @@ interface ChatMessage {
 const WELCOME: ChatMessage = {
   id: "welcome",
   role: "assistant",
-  text: "Assalomu alaykum! Men Active Home yordamchisiman. Sizga qanday yordam bera olaman? Uy va mulk, xizmatlar, investorlar, bron qilish yoki kompaniyalar haqida so'rashingiz mumkin.",
+  text: "Assalomu alaykum! Men Active Home yordamchisiman. Sizga qanday yordam bera olaman? Uy va mulk, xizmatlar, investorlar, bron qilish yoki tashkilotlar haqida so'rashingiz mumkin.",
 };
 
 const AUTO_OPEN_SEEN_KEY = "ah:chat-auto-opened";

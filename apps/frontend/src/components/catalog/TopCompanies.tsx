@@ -17,7 +17,7 @@ import { businessProfilesApi, type BusinessProfile } from "@/lib/business-profil
 import type { CatalogListing } from "@/lib/catalog-client";
 
 function profileName(profile: BusinessProfile): string {
-  return profile.name.uz_latn || profile.name.ru || profile.name.en || "Kompaniya";
+  return profile.name.uz_latn || profile.name.ru || profile.name.en || "Tashkilot";
 }
 
 export function useTopCompanies(listings: CatalogListing[], limit = 6) {
@@ -62,7 +62,7 @@ export function TopCompanies({
     <section className="mt-14">
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
-          <h2 className="font-display text-xl font-semibold text-foreground">Top kompaniyalar</h2>
+          <h2 className="font-display text-xl font-semibold text-foreground">Top tashkilotlar</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Shu kategoriyada eng ko'p e'lon joylagan tashkilotlar.
           </p>

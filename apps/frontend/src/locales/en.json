@@ -88,8 +88,10 @@
   },
   "organizations": {
     "eyebrow": "Verified partners",
-    "title": "Organizations & companies",
-    "subtitle": "Construction firms, agencies, banks and service brands — all in one ecosystem."
+    "title": "Organizations",
+    "subtitle": "Verified construction, agency, bank and service organizations — all in one ecosystem.",
+    "cta": "Join as a partner",
+    "view_all": "View all organizations"
   },
   "featured": {
     "title": "Featured properties",

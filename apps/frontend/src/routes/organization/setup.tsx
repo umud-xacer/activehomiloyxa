@@ -274,7 +274,11 @@ function PortfolioStep({
   onNext: () => void;
   onBack: () => void;
 }) {
-  const hasItems = (profile.portfolio?.length ?? 0) > 0;
+  // `profile.portfolio` is never populated by the profile-read endpoint (only the dedicated
+  // listPortfolio call returns items) -- track the live count via PortfolioFields' own callback
+  // instead of trusting the wire field, or this gate never unlocks.
+  const [itemCount, setItemCount] = useState((profile.portfolio ?? []).length);
+  const hasItems = itemCount > 0;
   return (
     <WizardCard>
       <h2 className="font-display text-xl font-semibold text-foreground">
@@ -284,7 +288,7 @@ function PortfolioStep({
         Kamida bitta rasm yoki video qo'shing — bu potentsial mijozlarga ishonch beradi.
       </p>
       <div className="mt-6">
-        <PortfolioFields profile={profile} />
+        <PortfolioFields profile={profile} onItemsChange={(items) => setItemCount(items.length)} />
       </div>
       <div className="mt-6 flex items-center gap-3">
         <button

@@ -69,7 +69,7 @@ const KB: KBEntry[] = [
     topic: "organizations",
     keywords: ["kompaniya", "tashkilot", "hamkor", "bank", "ipoteka"],
     reply:
-      "Bosh sahifadagi \"Tashkilotlar va kompaniyalar\" bo'limida tasdiqlangan hamkor banklar va kompaniyalarni ko'rishingiz mumkin — masalan, ipoteka uchun hamkor banklar ro'yxati shu yerda.",
+      "Bosh sahifadagi \"Tashkilotlar\" bo'limida tasdiqlangan hamkor banklar va tashkilotlarni ko'rishingiz mumkin — masalan, ipoteka uchun hamkor banklar ro'yxati shu yerda.",
   },
   {
     topic: "signup",
@@ -98,7 +98,7 @@ const KB: KBEntry[] = [
 ];
 
 export const FALLBACK =
-  "Men faqat Active Home platformasi bo'yicha — ko'chmas mulk, qurilish, usta xizmatlari, investitsiyalar, bron qilish va kompaniyalar haqida — savollarga javob bera olaman. Savolingizni shu mavzularda qayta so'rab ko'rasizmi?";
+  "Men faqat Active Home platformasi bo'yicha — ko'chmas mulk, qurilish, usta xizmatlari, investitsiyalar, bron qilish va tashkilotlar haqida — savollarga javob bera olaman. Savolingizni shu mavzularda qayta so'rab ko'rasizmi?";
 
 export const SUGGESTIONS = [
   "Uy qanday qidiraman?",
