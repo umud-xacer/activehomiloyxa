@@ -204,6 +204,12 @@ class MediaAssetSnapshot:
 
     id: UUID
     scan_status: Literal["PENDING", "CLEAN", "QUARANTINED"]
+    content_type: str | None = None
+    """Additive (promo-video business rule support): lets `ProfileUseCases.add_promo_video`
+    reject a non-video asset without profiles needing any wider access to `media`."""
+    duration_seconds: float | None = None
+    """Additive: the same field `media.interfaces.dto.MediaAsset` exposes, read-only here too --
+    `None` for images/GIF, or for a video whose duration `media`'s own probe could not read."""
 
 
 class MediaAssetReaderPort(Protocol):

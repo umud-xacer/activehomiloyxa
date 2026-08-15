@@ -39,6 +39,23 @@ class PortfolioItemNotFoundError(ProfilesDomainError):
         super().__init__(f"no portfolio item {item_id} on this business profile")
 
 
+# --- promo video (landing-page promo-video business rule, additive) ------------------------------
+
+
+class PromoVideoLimitExceededError(ProfilesDomainError):
+    """A business profile may hold at most `MAX_PROMO_VIDEOS` promo videos."""
+
+    def __init__(self, limit: int) -> None:
+        self.limit = limit
+        super().__init__(f"a business profile may hold at most {limit} promo videos")
+
+
+class PromoVideoNotFoundError(ProfilesDomainError):
+    def __init__(self, media_asset_id: UUID) -> None:
+        self.media_asset_id = media_asset_id
+        super().__init__(f"no promo video {media_asset_id} on this business profile")
+
+
 # --- onboarding / trial (ADR-0010) -----------------------------------------------------------
 
 

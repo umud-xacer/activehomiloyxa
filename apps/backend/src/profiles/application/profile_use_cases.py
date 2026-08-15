@@ -27,6 +27,9 @@ from profiles.application.exceptions import (
     NotProfileOwnerError,
     ProfileNotFoundError,
     ProfileNotPubliclyVisibleError,
+    PromoVideoNotReadyError,
+    PromoVideoNotVideoError,
+    PromoVideoTooLongError,
 )
 from profiles.application.ports import (
     BusinessProfileRepository,
@@ -38,6 +41,13 @@ from profiles.domain import BusinessProfile, ProfileType
 from shared_kernel import BusinessProfileId, LocalizedText, OutboxPort, UserId
 
 SubscriptionStatus = Literal["ACTIVE", "EXPIRED", "NONE"]
+
+MAX_PROMO_VIDEO_DURATION_SECONDS = 30.0
+"""Landing-page promo-video business rule (site-owner spec): each attached video must be 30
+seconds or shorter -- enforced here (not on the aggregate) since duration is a fact about the
+referenced `media` asset, read via `MediaAssetReaderPort`."""
+
+_PROMO_VIDEO_CONTENT_TYPES = ("video/mp4", "video/webm")
 
 
 class ProfileUseCases:
@@ -410,6 +420,58 @@ class ProfileUseCases:
     async def list_portfolio(self, profile_id: BusinessProfileId) -> tuple[Any, ...]:
         profile = await self.get_profile(profile_id)
         return profile.portfolio
+
+    # --- promo video (landing-page promo-video business rule, additive) ------------------------
+
+    async def add_promo_video(
+        self,
+        profile_id: BusinessProfileId,
+        *,
+        owner_user_id: UserId,
+        media_asset_id: UUID,
+        now: datetime,
+    ) -> BusinessProfile:
+        """`profile.add_promo_video` enforces the aggregate-local "at most `MAX_PROMO_VIDEOS`"
+        invariant; everything here is a fact about the referenced media asset that only this
+        layer can read (`MediaAssetReaderPort`): it must exist, have finished scanning CLEAN
+        (unlike a portfolio image, a rejected/still-pending video is never attached at all --
+        there's no async removal-on-rejection projection for promo videos to fall back on), be
+        video-typed, and be 30 seconds or shorter. Fails CLOSED on an unreadable duration
+        (`duration_seconds is None`) -- a hand-rolled, dependency-free MP4/WebM parser
+        (`media.infrastructure.video_probe`) is deliberately conservative about what it claims to
+        know, and "cannot confirm this video is within the cap" must not be treated the same as
+        "confirmed within the cap" for a rule the site owner asked to be mandatory."""
+        profile = await self.get_profile(profile_id)
+        _check_owner(profile, owner_user_id)
+        asset = await self._media.get_media_asset(media_asset_id)
+        if asset is None:
+            raise MediaAssetNotFoundError(media_asset_id)
+        if asset.scan_status != "CLEAN":
+            raise PromoVideoNotReadyError(media_asset_id)
+        if asset.content_type not in _PROMO_VIDEO_CONTENT_TYPES:
+            raise PromoVideoNotVideoError(media_asset_id, asset.content_type)
+        if (
+            asset.duration_seconds is None
+            or asset.duration_seconds > MAX_PROMO_VIDEO_DURATION_SECONDS
+        ):
+            raise PromoVideoTooLongError(
+                media_asset_id, asset.duration_seconds, MAX_PROMO_VIDEO_DURATION_SECONDS
+            )
+        updated = profile.add_promo_video(media_asset_id=media_asset_id, now=now)
+        return await self._profiles.save(updated)
+
+    async def remove_promo_video(
+        self,
+        profile_id: BusinessProfileId,
+        media_asset_id: UUID,
+        *,
+        owner_user_id: UserId,
+        now: datetime,
+    ) -> BusinessProfile:
+        profile = await self.get_profile(profile_id)
+        _check_owner(profile, owner_user_id)
+        updated = profile.remove_promo_video(media_asset_id, now=now)
+        return await self._profiles.save(updated)
 
     # --- subscription entitlement projection (Monetization task) ------------------------------
 

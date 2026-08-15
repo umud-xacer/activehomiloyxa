@@ -112,6 +112,7 @@ def _profile_to_domain(
         created_at=row.created_at,
         updated_at=row.updated_at,
         lock_version=row.lock_version,
+        promo_video_media_asset_ids=tuple(UUID(v) for v in (row.promo_video_media_asset_ids or [])),
     )
 
 
@@ -134,6 +135,7 @@ def _apply_profile_fields(row: BusinessProfileRow, profile: BusinessProfile) -> 
     row.onboarding_completed_at = profile.onboarding_completed_at
     row.trial_starts_at = profile.trial_starts_at
     row.trial_ends_at = profile.trial_ends_at
+    row.promo_video_media_asset_ids = [str(v) for v in profile.promo_video_media_asset_ids]
     row.updated_at = profile.updated_at
 
 

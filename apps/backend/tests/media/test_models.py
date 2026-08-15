@@ -23,6 +23,7 @@ EXPECTED_COLUMNS = {
         "processing_status",
         "exif_stripped",
         "uploaded_by",
+        "duration_seconds",
         "created_at",
         "updated_at",
         "lock_version",

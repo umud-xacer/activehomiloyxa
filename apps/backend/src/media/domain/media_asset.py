@@ -69,6 +69,11 @@ class MediaAsset:
     created_at: datetime
     updated_at: datetime
     lock_version: int = 0
+    duration_seconds: float | None = None
+    """Additive (promo-video business rule support, `profiles` module): the container's own
+    declared duration, populated only for `video/mp4`/`video/webm` by `complete_processing` --
+    `None` for every image/GIF asset (unaffected) and for a video whose duration could not be
+    confidently read (see `infrastructure.video_probe`'s own docstring)."""
 
     # --- factory (FR-MEDIA-001/002, ImageOnlyPolicy [P] + the size cap) ----------------------
 
@@ -133,12 +138,17 @@ class MediaAsset:
     # --- processing (FR-MEDIA-003/005; requires CLEAN; single-shot PENDING -> {COMPLETED, FAILED}) -
 
     def complete_processing(
-        self, *, variants: tuple[ImageVariant, ...], now: datetime
+        self,
+        *,
+        variants: tuple[ImageVariant, ...],
+        now: datetime,
+        duration_seconds: float | None = None,
     ) -> MediaAsset:
         """`ImageProcessingService`: EXIF/GPS strip + variant generation, both committed
         atomically here (BRULE-12 / Physical DB `exif_stripped` "must be true before any variant
         row exists" -- there is no intermediate state where `exif_stripped=True` but variants
-        are still empty, or vice versa)."""
+        are still empty, or vice versa). `duration_seconds` is additive and defaults to `None`,
+        unchanged from before it existed for every existing (image/GIF) call site."""
         if self.scan_status is not ScanStatus.CLEAN:
             raise ScanNotCleanError(self.scan_status.value)
         if self.processing_status is not ProcessingStatus.PENDING:
@@ -150,6 +160,7 @@ class MediaAsset:
             processing_status=ProcessingStatus.COMPLETED,
             exif_stripped=True,
             variants=variants,
+            duration_seconds=duration_seconds,
             updated_at=now,
         )
 

@@ -65,6 +65,10 @@ export interface BusinessProfile {
   onboardingCompletedAt?: string | null;
   trialStartsAt?: string | null;
   trialEndsAt?: string | null;
+  /** Additive (landing-page promo-video business rule). At most 2 media asset references, each
+   * a video/mp4 or video/webm asset no longer than 30 seconds — resolve via `GET /media/{id}`,
+   * same convention as `logoMediaAssetId`. */
+  promoVideoMediaAssetIds?: string[];
   createdAt?: string;
 }
 
@@ -203,6 +207,20 @@ export const businessProfilesApi = {
 
   removePortfolioItem(profileId: string, itemId: string): Promise<void> {
     return http.delete<void>(`/business-profiles/${profileId}/portfolio/${itemId}`);
+  },
+
+  /** POST /business-profiles/{id}/promo-videos — additive (landing-page promo-video business
+   * rule). Backend re-validates the referenced asset is scanned CLEAN, video-typed, and 30
+   * seconds or shorter server-side (never merely trusted from the client); returns the whole
+   * updated profile (not just the new item) since there's no per-item id to hand back. */
+  addPromoVideo(profileId: string, mediaAssetId: string): Promise<BusinessProfile> {
+    return http.post<BusinessProfile>(`/business-profiles/${profileId}/promo-videos`, {
+      mediaAssetId,
+    });
+  },
+
+  removePromoVideo(profileId: string, mediaAssetId: string): Promise<void> {
+    return http.delete<void>(`/business-profiles/${profileId}/promo-videos/${mediaAssetId}`);
   },
 
   /** POST /business-profiles/{id}/complete-onboarding — ADR-0010. Ends the mandatory onboarding

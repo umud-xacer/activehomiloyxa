@@ -11,6 +11,9 @@ from profiles.application.exceptions import (
     NotProfileOwnerError,
     ProfileNotFoundError,
     ProfileNotPubliclyVisibleError,
+    PromoVideoNotReadyError,
+    PromoVideoNotVideoError,
+    PromoVideoTooLongError,
     VerificationCaseNotFoundError,
     VerificationNotEligibleError,
 )
@@ -25,6 +28,8 @@ from profiles.domain.exceptions import (
     OnboardingIncompleteError,
     PortfolioItemLimitExceededError,
     PortfolioItemNotFoundError,
+    PromoVideoLimitExceededError,
+    PromoVideoNotFoundError,
     TerminalVerificationCaseError,
 )
 
@@ -61,6 +66,30 @@ def register_profiles_exception_mappings(mapper: ExceptionMapper) -> None:
             status=422,
             code="VALIDATION_FAILED",
             title="Submitted document positions must be unique and contiguous",
+        ),
+    )
+    mapper.register(
+        PromoVideoNotVideoError,
+        simple_problem_builder(
+            status=422,
+            code="VALIDATION_FAILED",
+            title="Promo video must reference a video/mp4 or video/webm media asset",
+        ),
+    )
+    mapper.register(
+        PromoVideoTooLongError,
+        simple_problem_builder(
+            status=422,
+            code="VALIDATION_FAILED",
+            title="Promo video must be 30 seconds or shorter",
+        ),
+    )
+    mapper.register(
+        PromoVideoNotReadyError,
+        simple_problem_builder(
+            status=422,
+            code="VALIDATION_FAILED",
+            title="Media asset has not finished processing yet",
         ),
     )
 
@@ -116,6 +145,10 @@ def register_profiles_exception_mappings(mapper: ExceptionMapper) -> None:
         ),
     )
     mapper.register(
+        PromoVideoNotFoundError,
+        simple_problem_builder(status=404, code="RESOURCE_NOT_FOUND", title="No such promo video"),
+    )
+    mapper.register(
         ProfileNotPubliclyVisibleError,
         simple_problem_builder(
             status=404,
@@ -161,5 +194,13 @@ def register_profiles_exception_mappings(mapper: ExceptionMapper) -> None:
             status=409,
             code="ILLEGAL_STATE_TRANSITION",
             title="Business profile has already completed onboarding",
+        ),
+    )
+    mapper.register(
+        PromoVideoLimitExceededError,
+        simple_problem_builder(
+            status=409,
+            code="BUSINESS_RULE_VIOLATION",
+            title="A business profile may hold at most two promo videos",
         ),
     )

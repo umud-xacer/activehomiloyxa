@@ -794,6 +794,58 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /business-profiles/{profileId}/promo-videos:
+    post:
+      tags:
+      - Business Profiles
+      operationId: addPromoVideo
+      summary: Add a promo video
+      description: |-
+        Additive (landing-page promo-video business rule). Attaches an already-uploaded
+        video/mp4 or video/webm MediaAssetRef as a promotional video. At most 2 per profile,
+        each capped to 30 seconds -- both enforced server-side against the referenced media
+        asset's own scanned facts (content type, probed duration), not merely trusted from the
+        client.
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromoVideoAddRequest'
+      responses:
+        '201':
+          description: Added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessProfile'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+  /business-profiles/{profileId}/promo-videos/{mediaAssetId}:
+    delete:
+      tags:
+      - Business Profiles
+      operationId: removePromoVideo
+      summary: Remove a promo video
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      - name: mediaAssetId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '204':
+          description: Removed.
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /business-profiles/{profileId}/team:
     get:
       tags:
@@ -4397,10 +4449,30 @@ components:
           - 'null'
           format: date-time
           readOnly: true
+        promoVideoMediaAssetIds:
+          type: array
+          readOnly: true
+          default: []
+          items:
+            type: string
+            format: uuid
+          description: Additive (landing-page promo-video business rule). At most 2 media asset
+            references, each a video/mp4 or video/webm asset no longer than 30 seconds —
+            GET /media/{id} resolves each to a CDN URL, same as logoMediaAssetId.
         createdAt:
           type: string
           format: date-time
           readOnly: true
+      additionalProperties: false
+    PromoVideoAddRequest:
+      type: object
+      description: Additive (landing-page promo-video business rule). POST /business-profiles/{id}/promo-videos body.
+      required:
+      - mediaAssetId
+      properties:
+        mediaAssetId:
+          type: string
+          format: uuid
       additionalProperties: false
     BusinessProfileCreateRequest:
       type: object
@@ -5297,6 +5369,14 @@ components:
               height:
                 type: integer
             additionalProperties: false
+        durationSeconds:
+          type:
+          - number
+          - 'null'
+          readOnly: true
+          description: Additive. Only ever set for video/mp4 or video/webm content, once
+            processing has probed the container's own declared duration (landing-page
+            promo-video business rule support) — always null for images/GIF.
         createdAt:
           type: string
           format: date-time

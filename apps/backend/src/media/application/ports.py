@@ -110,6 +110,11 @@ class ProcessedImage:
 
     stripped_original: bytes
     variants: tuple[GeneratedVariant, ...]
+    duration_seconds: float | None = None
+    """Additive (promo-video business rule support): populated only for `video/mp4`/`video/webm`
+    content, by reading the container's own declared duration (`infrastructure.video_probe`) --
+    `None` for every image/GIF content type (unchanged from before this field existed), and also
+    `None` for a video whose duration this dependency-free parser could not confidently read."""
 
 
 class ImageProcessingPort(Protocol):

@@ -17,6 +17,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Float,
     ForeignKey,
     Text,
     UniqueConstraint,
@@ -49,6 +50,9 @@ class MediaAssetRow(MediaBase, AggregateMixin):  # type: ignore[misc,valid-type]
     processing_status: Mapped[str] = mapped_column(Text, nullable=False, server_default="PENDING")
     exif_stripped: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     uploaded_by: Mapped[PyUUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    """Additive (promo-video business rule support, `profiles` module) -- see `domain.
+    media_asset.MediaAsset.duration_seconds`'s own docstring."""
 
     __table_args__ = (
         CheckConstraint(

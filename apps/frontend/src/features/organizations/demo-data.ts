@@ -1,19 +1,20 @@
 /**
- * "Trusted partner" organizations -- the backend has no admin-curated organization/company
- * concept yet (the closest thing, `profiles`' `BusinessProfile`, is owner-scoped self-service, not
- * an admin-authored "featured partners" list). These 5 are the real partner banks and logos from
- * the platform's original Django build (`ActiveReturn`'s `blog.partner` fixture), carried over so
- * this section shows genuine partners rather than invented placeholder companies.
+ * "Trusted partner" organizations -- the homepage's compact "Tashkilotlar" rail
+ * (`components/site/OrganizationsCarousel.tsx`). Originally a hand-curated list of 5 real
+ * partner-bank logos carried over from the platform's original Django build (see prior git
+ * history for the fixture-based version). Swapped to a real fetch now that self-service
+ * `BusinessProfile` (`profiles` module, ADR-0010) is the real "organizations" backend concept --
+ * every publicly-visible (`subscriptionStatus === "ACTIVE"`, trial or paid) profile appears here
+ * automatically the moment it completes onboarding, capped to the homepage's own display limit;
+ * the complete list (no cap) lives at `/companies`, linked via the carousel's own "Barcha
+ * tashkilotlarni ko'rish" button.
  *
- * Swap point: `getOrganizations()` is the only place that knows this list is a static carry-over.
- * Once a real backend concept exists for admin-curated partner organizations, replace its body
- * with the real fetch -- the only caller (`OrganizationsCarousel`) already treats it as async.
+ * Swap point: `getOrganizations()` is the only place that knows about this fetch -- the only
+ * caller (`OrganizationsCarousel`) already treats it as async and doesn't care where the data
+ * actually comes from.
  */
-import anorbankLogo from "@/assets/partners/Artboard_30-100.jpg";
-import davrbankLogo from "@/assets/partners/Artboard_34-100.jpg";
-import infinbankLogo from "@/assets/partners/Artboard_38-100.jpg";
-import trastbankLogo from "@/assets/partners/Artboard_51-100.jpg";
-import turonbankLogo from "@/assets/partners/Artboard_52-100.jpg";
+import { businessProfilesApi, PROFILE_TYPE_LABEL, type BusinessProfile } from "@/lib/business-profiles-client";
+import { getMediaAssetUrl } from "@/lib/media-client";
 
 export interface Organization {
   key: string;
@@ -23,16 +24,29 @@ export interface Organization {
   to: string;
 }
 
-/** Links point at the closest existing route for that org's line of business (there's no
- * per-organization profile page yet). */
-const ORGANIZATIONS: Organization[] = [
-  { key: "anorbank", name: "Anorbank", kind: "Ipoteka", logo: anorbankLogo, to: "/payments" },
-  { key: "davrbank", name: "Davr bank", kind: "Ipoteka", logo: davrbankLogo, to: "/payments" },
-  { key: "trastbank", name: "Trast bank", kind: "Ipoteka", logo: trastbankLogo, to: "/payments" },
-  { key: "turonbank", name: "Turon bank", kind: "Ipoteka", logo: turonbankLogo, to: "/payments" },
-  { key: "infinbank", name: "InfinBank", kind: "Ipoteka", logo: infinbankLogo, to: "/payments" },
-];
+/** Real API companies almost always outnumber the homepage's compact rail -- the site owner's
+ * own explicit spec: show at most 5 here, everything else only in the full `/companies` catalog. */
+export const HOMEPAGE_ORGANIZATIONS_LIMIT = 5;
 
-export async function getOrganizations(): Promise<Organization[]> {
-  return ORGANIZATIONS;
+function orgName(profile: BusinessProfile): string {
+  return profile.name.uz_latn || profile.name.ru || profile.name.en || "Tashkilot";
+}
+
+export async function getOrganizations(
+  limit: number = HOMEPAGE_ORGANIZATIONS_LIMIT,
+): Promise<Organization[]> {
+  const profiles = await businessProfilesApi.listPublic();
+  const active = profiles.filter((p) => p.subscriptionStatus === "ACTIVE").slice(0, limit);
+  const resolved = await Promise.all(
+    active.map(async (profile) => ({
+      key: profile.id,
+      name: orgName(profile),
+      kind: PROFILE_TYPE_LABEL[profile.profileType],
+      logo: profile.logoMediaAssetId ? await getMediaAssetUrl(profile.logoMediaAssetId) : null,
+      to: `/companies/${profile.slug || profile.id}`,
+    })),
+  );
+  // A logo-less profile would render a broken <img> in this brand-rail context -- skip it here
+  // (it still appears normally on `/companies`, which already has its own initials fallback).
+  return resolved.filter((org): org is Organization => !!org.logo);
 }

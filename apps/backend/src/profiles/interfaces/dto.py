@@ -10,6 +10,8 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
+from pydantic import Field
+
 from active_home_shared import CamelModel
 from shared_kernel import LocalizedText
 
@@ -107,7 +109,19 @@ class BusinessProfile(CamelModel):
     trial_ends_at: datetime | None = None
     """ADR-0010. Display-only ("N kun qoldi"); `subscription_status` above is the actual
     entitlement read, not a comparison against this field."""
+    promo_video_media_asset_ids: list[UUID] = Field(default_factory=list)
+    """Additive (landing-page promo-video business rule): up to 2 media asset references, each
+    resolved to a CDN url the same way `logo_media_asset_id`/`PortfolioItem.media_asset_id` are
+    -- via `GET /media/{id}`, never a resolved URL inline here."""
     created_at: datetime
+
+
+class PromoVideoAddRequest(CamelModel):
+    """Additive (landing-page promo-video business rule). `POST /business-profiles/{id}/
+    promo-videos` body -- just the already-uploaded media asset id, mirroring `updateBusinessProfileBranding`'s
+    shape rather than `PortfolioItem`'s (no position/caption for promo videos)."""
+
+    media_asset_id: UUID
 
 
 class BusinessProfileBadge(CamelModel):

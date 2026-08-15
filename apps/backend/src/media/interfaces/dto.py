@@ -32,6 +32,10 @@ class MediaAsset(CamelModel):
     url: str | None = None
     """CDN delivery URL for the original (only when CLEAN)."""
     variants: list[MediaAssetVariants] | None = None
+    duration_seconds: float | None = None
+    """Additive: only ever set for `video/mp4`/`video/webm` content, once processing has probed
+    the container's own declared duration (promo-video business rule support, `profiles`
+    module) -- always `None` for images/GIF."""
     created_at: datetime
 
 

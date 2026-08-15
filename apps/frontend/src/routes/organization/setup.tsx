@@ -13,12 +13,13 @@ import { useEffect, useState, type ReactNode } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Building2, Check, ImageIcon, Loader2, MapPin, Phone, Sparkles } from "lucide-react";
+import { Building2, Check, Film, ImageIcon, Loader2, MapPin, Phone, Sparkles } from "lucide-react";
 import { requireAuth, dashboardPathForAccount } from "@/lib/require-auth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { TextListField } from "@/components/business-profile/TextListField";
 import { BrandingFields } from "@/components/business-profile/BrandingSection";
 import { PortfolioFields } from "@/components/business-profile/PortfolioGallery";
+import { PromoVideoFields } from "@/components/business-profile/PromoVideoUpload";
 import { useMe } from "@/features/auth/useAuth";
 import { ApiError } from "@/lib/http";
 import {
@@ -290,6 +291,20 @@ function PortfolioStep({
       <div className="mt-6">
         <PortfolioFields profile={profile} onItemsChange={(items) => setItemCount(items.length)} />
       </div>
+
+      <div className="mt-8 border-t border-border/70 pt-6">
+        <h3 className="flex items-center gap-2 font-display text-base font-semibold text-foreground">
+          <Film className="size-4 text-primary" /> Promo videolar (ixtiyoriy)
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Kompaniyangiz haqida qisqa (maks. 30 soniya) tanishtiruv video qo'shing — ko'pi bilan 2
+          ta.
+        </p>
+        <div className="mt-4">
+          <PromoVideoFields profile={profile} />
+        </div>
+      </div>
+
       <div className="mt-6 flex items-center gap-3">
         <button
           type="button"

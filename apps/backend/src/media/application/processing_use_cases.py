@@ -113,7 +113,9 @@ class MediaProcessingUseCases:
                     data=generated.data,
                     content_type=asset.content_type.value,
                 )
-            updated = asset.complete_processing(variants=variants, now=now)
+            updated = asset.complete_processing(
+                variants=variants, duration_seconds=processed.duration_seconds, now=now
+            )
             await self._assets.save(updated)
             await self._publish_ready(updated, now=now)
         except Exception:

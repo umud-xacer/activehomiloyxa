@@ -16,6 +16,7 @@ import io
 from PIL import Image
 
 from media.application.ports import GeneratedVariant, ProcessedImage
+from media.infrastructure.video_probe import probe_duration_seconds
 
 _PIL_FORMAT_BY_CONTENT_TYPE = {
     "image/jpeg": "JPEG",
@@ -96,5 +97,10 @@ class PillowImageProcessingAdapter:
 
     async def process(self, *, data: bytes, content_type: str) -> ProcessedImage:
         if content_type not in _PIL_FORMAT_BY_CONTENT_TYPE:
-            return ProcessedImage(stripped_original=data, variants=())
+            duration = (
+                await asyncio.to_thread(probe_duration_seconds, data, content_type)
+                if content_type in ("video/mp4", "video/webm")
+                else None
+            )
+            return ProcessedImage(stripped_original=data, variants=(), duration_seconds=duration)
         return await asyncio.to_thread(_process_sync, data, content_type)

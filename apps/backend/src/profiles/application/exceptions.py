@@ -62,6 +62,44 @@ class MediaAssetNotFoundError(ProfilesApplicationError):
         super().__init__(f"media asset {media_asset_id} not found")
 
 
+class PromoVideoNotVideoError(ProfilesApplicationError):
+    """Promo videos must reference a `video/mp4`/`video/webm` media asset, not an image -- a fact
+    about the referenced asset's content_type, learned via `MediaAssetReaderPort`, so it belongs
+    here rather than on the aggregate (mirrors `MediaAssetNotFoundError`'s own placement)."""
+
+    def __init__(self, media_asset_id: UUID, content_type: str | None) -> None:
+        self.media_asset_id = media_asset_id
+        self.content_type = content_type
+        super().__init__(f"media asset {media_asset_id} is not a video (got {content_type!r})")
+
+
+class PromoVideoTooLongError(ProfilesApplicationError):
+    """The promo-video business rule's own hard cap: at most 30 seconds. Fails closed on an
+    unreadable/unknown duration too (see `ProfileUseCases.add_promo_video`'s own docstring) --
+    `duration_seconds=None` in this error means "could not be determined", not "unlimited"."""
+
+    def __init__(
+        self, media_asset_id: UUID, duration_seconds: float | None, max_seconds: float
+    ) -> None:
+        self.media_asset_id = media_asset_id
+        self.duration_seconds = duration_seconds
+        self.max_seconds = max_seconds
+        super().__init__(
+            f"media asset {media_asset_id} duration {duration_seconds!r}s exceeds the "
+            f"{max_seconds}s promo-video cap (or could not be determined)"
+        )
+
+
+class PromoVideoNotReadyError(ProfilesApplicationError):
+    """The referenced media asset has not finished the async scan/processing pipeline yet
+    (`scan_status != CLEAN`) -- unlike portfolio images, a promo video must be fully processed
+    before it can be attached, since duration is only known once processing has run."""
+
+    def __init__(self, media_asset_id: UUID) -> None:
+        self.media_asset_id = media_asset_id
+        super().__init__(f"media asset {media_asset_id} is not yet ready (scan/processing pending)")
+
+
 class ProfileNotPubliclyVisibleError(ProfilesApplicationError):
     """ADR-0010: raised by `get_public_profile_by_slug` when the profile's
     `subscription_status` is not `ACTIVE` (no trial, trial lapsed, subscription lapsed) --

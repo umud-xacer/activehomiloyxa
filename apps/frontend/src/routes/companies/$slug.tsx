@@ -56,6 +56,21 @@ function PortfolioSlide({ item }: { item: PortfolioItem }) {
   );
 }
 
+function PromoVideoCard({ mediaAssetId }: { mediaAssetId: string }) {
+  const asset = useMediaAsset(mediaAssetId);
+  return (
+    <div className="aspect-video w-full max-w-sm shrink-0 overflow-hidden rounded-2xl border border-border bg-muted">
+      {asset?.url ? (
+        <video src={asset.url} preload="metadata" controls className="size-full object-cover" />
+      ) : (
+        <div className="flex size-full items-center justify-center">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Page() {
   const { slug } = Route.useParams();
   const {
@@ -167,6 +182,21 @@ function Page() {
           )}
         </motion.div>
       </section>
+
+      {profile.promoVideoMediaAssetIds && profile.promoVideoMediaAssetIds.length > 0 && (
+        <section className="border-b border-border bg-card/30 py-8">
+          <div className="mx-auto max-w-5xl px-6">
+            <h2 className="mb-4 flex items-center gap-2 font-display text-base font-semibold text-foreground">
+              <Film className="size-4 text-primary" /> Video taqdimot
+            </h2>
+            <div className="flex flex-wrap gap-4">
+              {profile.promoVideoMediaAssetIds.map((mediaAssetId) => (
+                <PromoVideoCard key={mediaAssetId} mediaAssetId={mediaAssetId} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {portfolio && portfolio.length > 0 && (
         <section className="border-b border-border bg-card/30 py-8">

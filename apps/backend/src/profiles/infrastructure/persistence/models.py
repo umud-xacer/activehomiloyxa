@@ -75,6 +75,12 @@ class BusinessProfileRow(ProfilesBase, AggregateMixin):  # type: ignore[misc,val
         TIMESTAMP(timezone=True), nullable=True
     )
     trial_ends_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    promo_video_media_asset_ids: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, server_default="[]"
+    )
+    """Additive (landing-page promo-video business rule): a small (<=2), ordered JSON array of
+    media asset id strings -- no position/caption semantics needed, so a dedicated child table
+    (`portfolio_item`'s pattern) would be pure overhead for this bounded collection."""
 
     __table_args__ = (
         CheckConstraint(f"profile_type IN {_PROFILE_TYPES}", name="ck_business_profile_type"),

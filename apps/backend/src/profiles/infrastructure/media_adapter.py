@@ -32,4 +32,6 @@ class MediaAssetReaderAdapter:
         return MediaAssetSnapshot(
             id=asset.id,  # type: ignore[attr-defined]
             scan_status=asset.scan_status,  # type: ignore[attr-defined]
+            content_type=getattr(asset, "content_type", None),
+            duration_seconds=getattr(asset, "duration_seconds", None),
         )

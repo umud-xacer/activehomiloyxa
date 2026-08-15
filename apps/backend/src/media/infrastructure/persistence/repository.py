@@ -54,6 +54,7 @@ def _asset_to_domain(row: MediaAssetRow, variant_rows: list[ImageVariantRow]) ->
         created_at=row.created_at,
         updated_at=row.updated_at,
         lock_version=row.lock_version,
+        duration_seconds=row.duration_seconds,
     )
 
 
@@ -97,6 +98,7 @@ class SqlalchemyMediaAssetRepository:
         row.processing_status = asset.processing_status.value
         row.exif_stripped = asset.exif_stripped
         row.uploaded_by = asset.uploaded_by.value
+        row.duration_seconds = asset.duration_seconds
         row.updated_at = asset.updated_at
 
         await self._session.execute(
@@ -153,6 +155,7 @@ class SqlalchemyMediaAssetRepository:
             processing_status=asset.processing_status.value,
             exif_stripped=asset.exif_stripped,
             uploaded_by=asset.uploaded_by.value,
+            duration_seconds=asset.duration_seconds,
             created_at=asset.created_at,
             updated_at=asset.updated_at,
             lock_version=asset.lock_version,

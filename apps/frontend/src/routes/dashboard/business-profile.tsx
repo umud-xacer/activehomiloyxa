@@ -25,6 +25,7 @@ import { EmptyState } from "@/components/dashboard/EmptyState";
 import { TextListField } from "@/components/business-profile/TextListField";
 import { BrandingSection } from "@/components/business-profile/BrandingSection";
 import { PortfolioGallery } from "@/components/business-profile/PortfolioGallery";
+import { PromoVideoSection } from "@/components/business-profile/PromoVideoUpload";
 import { LandingPreviewCard, type ProfileDraft } from "@/components/business-profile/LandingPreviewCard";
 import { useMe } from "@/features/auth/useAuth";
 import { ApiError, http } from "@/lib/http";
@@ -441,6 +442,7 @@ function BusinessProfilePageContent({
             <ProfileForm profile={profile} draft={draft} onDraftChange={setDraft} />
             <BrandingSection profile={profile} />
             <PortfolioGallery profile={profile} onItemsChange={setPortfolioItems} />
+            <PromoVideoSection profile={profile} />
             <ServicesSection profileId={profile.id} />
           </div>
           <div className="order-1 lg:sticky lg:top-24 lg:order-2">

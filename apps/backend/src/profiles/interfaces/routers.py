@@ -44,6 +44,7 @@ from profiles.interfaces.dto import (
     BusinessProfilePage,
     BusinessProfileUpdateRequest,
     PageInfo,
+    PromoVideoAddRequest,
     VerificationCasePage,
     VerificationDecisionRequest,
     VerificationRequestCreate,
@@ -101,6 +102,7 @@ async def _to_profile_dto(
         onboarding_completed_at=profile.onboarding_completed_at,
         trial_starts_at=profile.trial_starts_at,
         trial_ends_at=profile.trial_ends_at,
+        promo_video_media_asset_ids=list(profile.promo_video_media_asset_ids),
         created_at=profile.created_at,
     )
 
@@ -322,6 +324,50 @@ async def remove_portfolio_item(
     await use_cases.remove_portfolio_item(
         BusinessProfileId(value=profileId),
         itemId,
+        owner_user_id=user.account_id,
+        now=datetime.now(UTC),
+    )
+
+
+# --- Promo videos (landing-page promo-video business rule, additive) -----------------------
+
+
+@profiles_router.post(
+    "/business-profiles/{profileId}/promo-videos", operation_id="addPromoVideo", status_code=201
+)
+async def add_promo_video(
+    profileId: UUID,
+    body: PromoVideoAddRequest,
+    user: ActingUser = Depends(get_acting_user),
+    use_cases: ProfileUseCases = Depends(get_profile_use_cases),
+) -> BusinessProfileDto:
+    """Raises `422 VALIDATION_FAILED` if the referenced media asset is not yet scanned CLEAN, is
+    not video-typed, or its declared duration exceeds the 30-second cap (or could not be
+    determined) -- see `ProfileUseCases.add_promo_video`'s own docstring. `409 CONFLICT` if the
+    profile already holds 2 promo videos."""
+    profile = await use_cases.add_promo_video(
+        BusinessProfileId(value=profileId),
+        owner_user_id=user.account_id,
+        media_asset_id=body.media_asset_id,
+        now=datetime.now(UTC),
+    )
+    return await _to_profile_dto(profile, use_cases=use_cases)
+
+
+@profiles_router.delete(
+    "/business-profiles/{profileId}/promo-videos/{mediaAssetId}",
+    operation_id="removePromoVideo",
+    status_code=204,
+)
+async def remove_promo_video(
+    profileId: UUID,
+    mediaAssetId: UUID,
+    user: ActingUser = Depends(get_acting_user),
+    use_cases: ProfileUseCases = Depends(get_profile_use_cases),
+) -> None:
+    await use_cases.remove_promo_video(
+        BusinessProfileId(value=profileId),
+        mediaAssetId,
         owner_user_id=user.account_id,
         now=datetime.now(UTC),
     )

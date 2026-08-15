@@ -25,6 +25,8 @@ from profiles.domain.exceptions import (
     OnboardingIncompleteError,
     PortfolioItemLimitExceededError,
     PortfolioItemNotFoundError,
+    PromoVideoLimitExceededError,
+    PromoVideoNotFoundError,
 )
 from profiles.domain.portfolio_item import PortfolioItem
 from profiles.domain.value_objects import BadgeStatus, ProfileStatus, ProfileType, VerifiedBadge
@@ -33,6 +35,12 @@ from shared_kernel import BusinessProfileId, LocalizedText, UserId
 
 MAX_PORTFOLIO_ITEMS = 50
 """Physical DB `ck (position BETWEEN 1 AND 50)` -- the literal spec number."""
+
+MAX_PROMO_VIDEOS = 2
+"""Landing-page promo-video business rule (additive, site-owner spec): at most 2 short
+promotional videos per business profile, each independently capped to 30 seconds -- enforced at
+attach-time by `application.ProfileUseCases.add_promo_video` (duration is a fact about the
+referenced media asset, not something this aggregate can check on its own)."""
 
 
 @dataclass(frozen=True)
@@ -77,6 +85,11 @@ class BusinessProfile:
     created_at: datetime
     updated_at: datetime
     lock_version: int = 0
+    promo_video_media_asset_ids: tuple[UUID, ...] = ()
+    """Additive (landing-page promo-video business rule): unlike `portfolio`, these have no
+    caption/position -- just an ordered (append-order) list of media references, capped at
+    `MAX_PROMO_VIDEOS`. `create()` does not list this explicitly; it uses this default, same as
+    `lock_version` above."""
 
     # --- factory (FR-PROF-001) ------------------------------------------------------------------
 
@@ -249,6 +262,29 @@ class BusinessProfile:
             replace(item, position=index + 1) for index, item in enumerate(remaining)
         )
         return replace(self, portfolio=renumbered, updated_at=now)
+
+    # --- promo video (landing-page promo-video business rule, additive) ------------------------
+
+    def add_promo_video(self, *, media_asset_id: UUID, now: datetime) -> BusinessProfile:
+        """Content-type/duration/scan-status checks all happen one layer up
+        (`application.ProfileUseCases.add_promo_video`, which alone has read access to the
+        referenced media asset's facts) -- this method's own job is only the aggregate-local
+        invariant: at most `MAX_PROMO_VIDEOS`, no duplicate id."""
+        if len(self.promo_video_media_asset_ids) >= MAX_PROMO_VIDEOS:
+            raise PromoVideoLimitExceededError(MAX_PROMO_VIDEOS)
+        if media_asset_id in self.promo_video_media_asset_ids:
+            return self
+        return replace(
+            self,
+            promo_video_media_asset_ids=(*self.promo_video_media_asset_ids, media_asset_id),
+            updated_at=now,
+        )
+
+    def remove_promo_video(self, media_asset_id: UUID, *, now: datetime) -> BusinessProfile:
+        if media_asset_id not in self.promo_video_media_asset_ids:
+            raise PromoVideoNotFoundError(media_asset_id)
+        remaining = tuple(mid for mid in self.promo_video_media_asset_ids if mid != media_asset_id)
+        return replace(self, promo_video_media_asset_ids=remaining, updated_at=now)
 
     # --- onboarding / trial (ADR-0010) --------------------------------------------------------
 

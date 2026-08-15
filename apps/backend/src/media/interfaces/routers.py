@@ -62,6 +62,7 @@ def _asset_to_dto(asset: DomainMediaAsset) -> MediaAsset:
             if deliverable and asset.variants
             else None
         ),
+        duration_seconds=asset.duration_seconds,
         created_at=asset.created_at,
     )
 
