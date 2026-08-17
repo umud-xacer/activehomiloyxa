@@ -62,7 +62,7 @@ import {
   type RouteResult,
   type TravelMode,
 } from "@/lib/routing";
-import { searchPlaces, type GeocodeResult } from "@/lib/geocoding";
+import { searchPlaces, GeocodeUnavailableError, type GeocodeResult } from "@/lib/geocoding";
 
 type StyleKey = "street" | "satellite" | "hybrid";
 
@@ -303,6 +303,7 @@ function YandexMapViewClient({
   const [searchResults, setSearchResults] = useState<GeocodeResult[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState(false);
 
   useEffect(() => {
     if (!geolocateError) return;
@@ -317,13 +318,23 @@ function YandexMapViewClient({
     if (q.length < 2) {
       setSearchResults([]);
       setSearchLoading(false);
+      setSearchError(false);
       return;
     }
     setSearchLoading(true);
+    setSearchError(false);
     const timer = setTimeout(async () => {
-      const results = await searchPlaces(q);
-      setSearchResults(results);
-      setSearchLoading(false);
+      try {
+        const results = await searchPlaces(q);
+        setSearchResults(results);
+      } catch (err) {
+        if (err instanceof GeocodeUnavailableError) {
+          setSearchError(true);
+          setSearchResults([]);
+        }
+      } finally {
+        setSearchLoading(false);
+      }
     }, 350);
     return () => clearTimeout(timer);
   }, [searchQuery, enableSearch]);
@@ -891,6 +902,35 @@ function YandexMapViewClient({
     [height, fullscreen],
   );
 
+  // `fixed inset-0` covers the viewport visually, but the real page underneath is still there
+  // and still scrollable -- a wheel/keyboard scroll starting outside the map's own hit area
+  // (e.g. over `/map`'s listing sidebar) moves the page behind the overlay, which then snaps
+  // back the moment fullscreen closes. Locking body scroll for the duration is the standard
+  // fullscreen-modal fix; restored unconditionally on cleanup so a later unmount (route change
+  // while still in fullscreen) can never leave scrolling permanently disabled.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [fullscreen]);
+
+  // Toggling `fullscreen` only changes CSS (`fixed inset-0` + 100vh) -- the underlying Yandex
+  // map instance caches its container's pixel size at init and never re-measures on its own,
+  // since a class/style change isn't a `window resize` event (the one thing it does listen for).
+  // Left uncalled, the map keeps rendering at its pre-fullscreen size, leaving the rest of the
+  // now-much-larger container blank (the reported "expand doesn't actually open" bug). One frame
+  // of delay lets the browser finish the layout reflow from the new size before Yandex measures
+  // it -- calling `fitToViewport()` in the same tick still sees the stale pre-toggle box.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const raf = requestAnimationFrame(() => map.container.fitToViewport());
+    return () => cancelAnimationFrame(raf);
+  }, [fullscreen]);
+
   if (keyMissing) return <MapKeyMissing height={height} className={className} />;
   if (loadFailed) {
     return (
@@ -1022,7 +1062,12 @@ function YandexMapViewClient({
                 })}
               </div>
             )}
-            {searchOpen && searchResults.length > 0 && (
+            {searchOpen && searchError && (
+              <div className="border-t border-border/60 px-3 py-2.5 text-[11px] text-muted-foreground">
+                Qidiruv vaqtincha ishlamayapti. Birozdan so'ng qayta urinib ko'ring.
+              </div>
+            )}
+            {searchOpen && !searchError && searchResults.length > 0 && (
               <div className="max-h-64 overflow-y-auto border-t border-border/60 p-1">
                 {searchResults.map((r) => (
                   <button

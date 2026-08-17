@@ -47,6 +47,17 @@ function toGeocodeResult(obj: YMapsGeocodeResultItem): GeocodeResult {
 // old Nominatim/AbortController implementation gave callers who fire this on every keystroke).
 let latestRequestId = 0;
 
+// Thrown when the Geocoder call itself fails (script load issue, or the API key rejecting the
+// request e.g. HTTP 401 because the key isn't authorized for the Geocoder product) -- distinct
+// from "the query legitimately had zero matches", which resolves with an empty array instead.
+export class GeocodeUnavailableError extends Error {
+  constructor(cause: unknown) {
+    super("Geocoder request failed");
+    this.name = "GeocodeUnavailableError";
+    this.cause = cause;
+  }
+}
+
 export async function searchPlaces(query: string, limit = 6): Promise<GeocodeResult[]> {
   const q = query.trim();
   if (q.length < 2) return [];
@@ -56,16 +67,16 @@ export async function searchPlaces(query: string, limit = 6): Promise<GeocodeRes
   let ymaps;
   try {
     ymaps = await loadYandexMaps();
-  } catch {
-    return [];
+  } catch (err) {
+    throw new GeocodeUnavailableError(err);
   }
   if (requestId !== latestRequestId) return [];
 
   let result;
   try {
     result = await ymaps.geocode(q, { results: limit });
-  } catch {
-    return [];
+  } catch (err) {
+    throw new GeocodeUnavailableError(err);
   }
   if (requestId !== latestRequestId) return [];
 
