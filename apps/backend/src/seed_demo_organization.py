@@ -30,6 +30,7 @@ a second demo account with a fresh email) -- re-running is a deliberate choice, 
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 import time
 from datetime import UTC, datetime
@@ -52,9 +53,15 @@ from profiles.infrastructure.persistence.repository import SqlalchemyBusinessPro
 from shared_kernel import BusinessProfileId, UserId
 
 ASSETS_DIR = Path(
-    "C:/Users/user/AppData/Local/Temp/claude/C--Users-user-Desktop-Active-home-full-2-fixed/"
-    "e1ad73bf-9b47-41ba-9310-5bb9c6b9e254/scratchpad"
+    os.environ.get(
+        "SEED_ASSETS_DIR",
+        "C:/Users/user/AppData/Local/Temp/claude/C--Users-user-Desktop-Active-home-full-2-fixed/"
+        "e1ad73bf-9b47-41ba-9310-5bb9c6b9e254/scratchpad",
+    )
 )
+"""Local dev default matches the dev machine's own scratchpad; production/other hosts must set
+`SEED_ASSETS_DIR` to wherever the 7 source files (logo.png, portfolio1..4.jpg, exterior.jpg,
+promo_video.mp4) were copied to on that host."""
 
 EMAIL = f"vista.arxitektura+{int(time.time())}@activehome.test"
 PASSWORD = "DemoOrg2026!Vista"
