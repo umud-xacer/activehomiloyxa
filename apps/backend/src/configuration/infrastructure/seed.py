@@ -1101,7 +1101,7 @@ _TOP_LEVEL_CATEGORY_HERO_THEMES: dict[str, dict[str, str]] = {
 }
 """One themed hero per top-level category (Task: category mini-platform redesign) -- images from
 `images.unsplash.com/photo-<id>` (same keyless direct-CDN pattern already used for demo listing
-photos in `catalog/infrastructure/seed_demo_listings.py`). `accentColor` values are spread across
+photos in `seed_demo_listings.py`). `accentColor` values are spread across
 the palette so no two top-level categories read as visually identical. Consumed by
 `_backfill_category_theme` below, which is the only thing that ever reads this table.
 

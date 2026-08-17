@@ -18,9 +18,17 @@ Idempotent: skips entirely once the demo seller account already owns >= `len(DEM
 listings, so a redeploy does not re-download images or re-publish. Invoked by
 `scripts/server-deploy.sh` right after the category seed.
 
-Invocable directly: `python -m catalog.infrastructure.seed_demo_listings` (needs the same
+Invocable directly: `python -m seed_demo_listings` (needs the same
 POSTGRES_*/REDIS_*/MINIO_*/CLAMAV_*/MEDIA_CDN_BASE_URL environment as every other backbone
 entrypoint, plus outbound HTTPS to images.unsplash.com).
+
+Lives at the top level, a sibling of `composition_root.py`, not inside `catalog/infrastructure/`
+-- same placement as `retire_subcategories.py`/`seed_demo_organization.py`/`bootstrap_admin.py`.
+It needs direct read access to `configuration`'s application/domain/infrastructure layers (the
+`_ConfigurationBridge`/`_CategoryReaderBridge` below), which only the composition root and other
+top-level scripts are allowed to do -- `tools/importlinter.cfg`'s per-module contract restricts
+`catalog` itself to importing other modules' `interfaces/` package only, so this script cannot
+live inside the `catalog` package.
 """
 
 from __future__ import annotations
