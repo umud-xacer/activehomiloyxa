@@ -11,7 +11,25 @@ one instead.
 
 from __future__ import annotations
 
-from redis.asyncio import Redis
+from typing import Protocol
+
+
+class _RedisCounterClient(Protocol):
+    """Structural surface this class actually calls -- the 5 methods below, exactly as called
+    here, not `redis.asyncio.Redis`'s own (far wider, overload-heavy) typeshed signatures. Narrow
+    on purpose: a test double (`tests/backbone/test_rate_limit.py`'s `_FakeRedis`) satisfies this
+    by shape alone, with no inheritance/registration needed. A real `Redis` instance's methods
+    are strict *supersets* of these at runtime (more accepted argument shapes, e.g. `delete`'s
+    real signature is variadic) but mypy's structural Protocol check does not treat a wider
+    concrete signature as automatically satisfying a narrower one -- the two real construction
+    sites that hand a genuine `Redis` in (`composition_root.py`, `main.py`) each carry their own
+    explicit, explained `type: ignore[arg-type]` for exactly this reason."""
+
+    async def incr(self, name: str) -> int: ...
+    async def expire(self, name: str, time: int) -> object: ...
+    async def get(self, name: str) -> str | None: ...
+    async def ttl(self, name: str) -> int: ...
+    async def delete(self, name: str) -> object: ...
 
 
 class RedisWindowCounter:
@@ -31,7 +49,7 @@ class RedisWindowCounter:
       arriving, which is the wrong shape for a generic throughput cap.
     """
 
-    def __init__(self, redis: Redis, *, key_prefix: str) -> None:
+    def __init__(self, redis: _RedisCounterClient, *, key_prefix: str) -> None:
         self._redis = redis
         self._key_prefix = key_prefix
 

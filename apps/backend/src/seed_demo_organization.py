@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import secrets
 import sys
 import time
 from datetime import UTC, datetime
@@ -64,7 +65,10 @@ ASSETS_DIR = Path(
 promo_video.mp4) were copied to on that host."""
 
 EMAIL = f"vista.arxitektura+{int(time.time())}@activehome.test"
-PASSWORD = "DemoOrg2026!Vista"
+PASSWORD = f"DemoOrg-{secrets.token_urlsafe(12)}"
+"""Generated per run, not a fixed literal -- a throwaway demo account still shouldn't have a
+guessable/repeated password, and a hardcoded string here would (correctly) trip bandit's
+B105 hardcoded-password check regardless of the account being non-sensitive."""
 COMPANY_NAME = "Vista Arxitektura Byurosi"
 DESCRIPTION = (
     "Zamonaviy arxitektura va shahar rejalashtirish loyihalari — funksionallik va estetikani "

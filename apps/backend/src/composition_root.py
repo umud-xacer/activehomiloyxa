@@ -330,7 +330,10 @@ def _configuration_snapshot_cache() -> RedisSnapshotCache:
 def _owner_admin_lockout_counter() -> RedisOwnerAdminLockoutCounter:
     return RedisOwnerAdminLockoutCounter(
         RedisWindowCounter(
-            _configuration_redis_client(),
+            # A real `Redis` client's methods are strict supersets of `_RedisCounterClient`'s
+            # narrow surface (e.g. `delete`'s real signature is variadic) -- see that Protocol's
+            # own docstring for why mypy's structural check still flags this as a mismatch.
+            _configuration_redis_client(),  # type: ignore[arg-type]
             key_prefix="configuration:owner_admin_lockout",
         )
     )

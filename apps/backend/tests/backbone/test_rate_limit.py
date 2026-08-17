@@ -12,7 +12,7 @@ from starlette.routing import Route
 from starlette.testclient import TestClient
 
 from backbone.rate_limit.middleware import GlobalRateLimitMiddleware
-from backbone.rate_limit.tracker import RedisWindowCounter
+from backbone.rate_limit.tracker import RedisWindowCounter, _RedisCounterClient
 
 
 class _FakeRedis:
@@ -45,6 +45,18 @@ class _RedisDown:
     """Every method raises, simulating an unreachable Redis (connection refused/timeout)."""
 
     async def incr(self, key: str) -> int:
+        raise ConnectionError("redis unavailable")
+
+    async def expire(self, key: str, seconds: int) -> None:
+        raise ConnectionError("redis unavailable")
+
+    async def get(self, key: str) -> str | None:
+        raise ConnectionError("redis unavailable")
+
+    async def ttl(self, key: str) -> int:
+        raise ConnectionError("redis unavailable")
+
+    async def delete(self, key: str) -> None:
         raise ConnectionError("redis unavailable")
 
 
@@ -90,7 +102,7 @@ async def test_get_retry_after_seconds_is_zero_with_no_counter() -> None:
 
 
 def _app_with_middleware(
-    redis: object, *, max_requests: int = 2, window_seconds: int = 60
+    redis: _RedisCounterClient, *, max_requests: int = 2, window_seconds: int = 60
 ) -> Starlette:
     async def _ok(request: object) -> PlainTextResponse:
         return PlainTextResponse("ok")

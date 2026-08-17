@@ -22,13 +22,11 @@ import json
 import logging
 from uuid import uuid4
 
-from redis.asyncio import Redis
-from redis.exceptions import RedisError
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from backbone.net import resolve_client_ip
-from backbone.rate_limit.tracker import RedisWindowCounter
+from backbone.rate_limit.tracker import RedisWindowCounter, _RedisCounterClient
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +48,7 @@ class GlobalRateLimitMiddleware:
     def __init__(
         self,
         app: ASGIApp,
-        redis: Redis,
+        redis: _RedisCounterClient,
         *,
         max_requests: int = DEFAULT_MAX_REQUESTS,
         window_seconds: int = DEFAULT_WINDOW_SECONDS,
@@ -78,12 +76,24 @@ class GlobalRateLimitMiddleware:
         # endpoints) -- letting a Redis blip/outage propagate as an unhandled exception here would
         # turn "the rate limiter is briefly unavailable" into "the entire site 500s", a strictly
         # worse outcome than temporarily running unthrottled. Logged so an outage is still visible.
+        #
+        # Deliberately `Exception`, not just `(RedisError, OSError, TimeoutError)`: a real,
+        # reproduced failure mode (redis-py's async connection pool raising a bare
+        # `RuntimeError("Event loop is closed")` when reused across two different event loops --
+        # never happens in production's one-loop-for-the-process-lifetime uvicorn run, but does in
+        # a test suite that spins up more than one `TestClient`/loop against the same imported
+        # `app`) is not a `RedisError` subclass and slipped straight through the narrower catch,
+        # turning exactly the "whole site 500s" outcome this middleware exists to prevent into a
+        # real, observed one (QG-08's `test_logout_without_a_session_is_a_safe_no_op`). This
+        # middleware's entire job is best-effort throttling in front of arbitrary downstream
+        # routes -- any exception here must degrade to "let the request through unthrottled",
+        # never surface as that route's own 500.
         try:
             count = await self._counter.increment(
                 ip, window_seconds=self._window_seconds, rearm=False
             )
-        except (RedisError, OSError, TimeoutError):
-            logger.warning("rate_limit.redis_unavailable", extra={"ip": ip})
+        except Exception:
+            logger.warning("rate_limit.redis_unavailable", extra={"ip": ip}, exc_info=True)
             await self.app(scope, receive, send)
             return
 

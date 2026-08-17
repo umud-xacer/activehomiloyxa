@@ -31,7 +31,7 @@ from identity.application.ports import (
     UserAccountRepository,
 )
 from identity.domain import RegistrationReviewStatus, UserAccount
-from shared_kernel import BusinessProfileId, OutboxPort, UserId
+from shared_kernel import BusinessProfileId, EventEnvelope, OutboxPort, UserId
 
 
 class AdminIdentityUseCases:
@@ -63,6 +63,7 @@ class AdminIdentityUseCases:
         their own account (FR-USER-005), just admin-triggered instead of self-service; terminal,
         no reactivate path back out of CLOSED."""
         account = await self._require_account(target_account_id)
+        event: EventEnvelope
         if action == "SUSPEND":
             updated = account.suspend(now=now)
             await self._accounts.save(updated)

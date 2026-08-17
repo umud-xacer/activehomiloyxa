@@ -187,7 +187,10 @@ def create_app() -> FastAPI:
     if os.environ.get("REDIS_HOST"):
         app.add_middleware(
             GlobalRateLimitMiddleware,
-            redis=redis_asyncio.from_url(redis_url()),
+            # A real `Redis` client's methods are strict supersets of `_RedisCounterClient`'s
+            # narrow surface -- see that Protocol's own docstring (backbone/rate_limit/tracker.py)
+            # for why mypy's structural check still flags this as a mismatch.
+            redis=redis_asyncio.from_url(redis_url()),  # type: ignore[arg-type]
             max_requests=int(os.environ.get("RATE_LIMIT_MAX_REQUESTS", DEFAULT_MAX_REQUESTS)),
             window_seconds=int(os.environ.get("RATE_LIMIT_WINDOW_SECONDS", DEFAULT_WINDOW_SECONDS)),
         )
