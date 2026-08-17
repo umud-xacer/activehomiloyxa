@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Building2,
+  Clock,
   Gauge,
   Loader2,
   Save,
@@ -18,6 +19,7 @@ import {
   ExternalLink,
   Plus,
 } from "lucide-react";
+import { TelegramIcon, InstagramIcon, FacebookIcon } from "@/components/site/SocialIcons";
 import { requireOnboardedLegalEntity } from "@/lib/require-auth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -26,13 +28,19 @@ import { TextListField } from "@/components/business-profile/TextListField";
 import { BrandingSection } from "@/components/business-profile/BrandingSection";
 import { PortfolioGallery } from "@/components/business-profile/PortfolioGallery";
 import { PromoVideoSection } from "@/components/business-profile/PromoVideoUpload";
-import { LandingPreviewCard, type ProfileDraft } from "@/components/business-profile/LandingPreviewCard";
+import {
+  LandingPreviewCard,
+  type ProfileDraft,
+} from "@/components/business-profile/LandingPreviewCard";
 import { useMe } from "@/features/auth/useAuth";
 import { ApiError, http } from "@/lib/http";
 import {
   businessProfilesApi,
+  MAIN_CATEGORIES,
+  MAIN_CATEGORY_LABEL,
   PROFILE_TYPE_LABEL,
   type BusinessProfile,
+  type MainCategory,
   type PortfolioItem,
 } from "@/lib/business-profiles-client";
 
@@ -70,10 +78,15 @@ function draftFromProfile(profile: BusinessProfile): ProfileDraft {
     phones: profile.contacts?.phones ?? [],
     emails: profile.contacts?.emails ?? [],
     website: profile.contacts?.website || "",
+    workingHours: profile.contacts?.workingHours || "",
+    mainCategory: profile.mainCategory || "",
+    socialTelegram: profile.contacts?.socialLinks?.telegram || "",
+    socialInstagram: profile.contacts?.socialLinks?.instagram || "",
+    socialFacebook: profile.contacts?.socialLinks?.facebook || "",
   };
 }
 
-/** Same 7 fields the mandatory onboarding wizard (`routes/organization/setup.tsx`) treats as
+/** Same 8 fields the mandatory onboarding wizard (`routes/organization/setup.tsx`) treats as
  * landing-page essentials, checked against live (unsaved) draft state for the text fields and
  * against saved `profile` state for media (branding/portfolio only change via their own
  * immediate-save upload flows, never through the "Saqlash" button). `portfolioCount` is passed
@@ -85,10 +98,14 @@ function completeness(profile: BusinessProfile, draft: ProfileDraft, portfolioCo
     { label: "Kompaniya nomi", done: !!draft.name.trim() },
     { label: "Tavsif", done: !!draft.description.trim() },
     { label: "Manzil", done: !!draft.address.trim() },
-    { label: "Telefon yoki email", done: draft.phones.some((p) => p.trim()) || draft.emails.some((e) => e.trim()) },
+    {
+      label: "Telefon yoki email",
+      done: draft.phones.some((p) => p.trim()) || draft.emails.some((e) => e.trim()),
+    },
     { label: "Logotip", done: !!profile.logoMediaAssetId },
     { label: "Muqova rasmi", done: !!profile.bannerMediaAssetId },
     { label: "Portfolio (rasm/video)", done: portfolioCount > 0 },
+    { label: "Asosiy kategoriya", done: !!draft.mainCategory },
   ];
   const missing = checks.filter((c) => !c.done).map((c) => c.label);
   return { percent: Math.round(((checks.length - missing.length) / checks.length) * 100), missing };
@@ -267,6 +284,11 @@ function ProfileForm({
     setError(null);
     setSaved(false);
     try {
+      const socialLinks = {
+        telegram: draft.socialTelegram.trim() || undefined,
+        instagram: draft.socialInstagram.trim() || undefined,
+        facebook: draft.socialFacebook.trim() || undefined,
+      };
       await businessProfilesApi.update(profile.id, {
         name: draft.name,
         description: draft.description,
@@ -275,7 +297,10 @@ function ProfileForm({
           phones: draft.phones.map((p) => p.trim()).filter(Boolean),
           emails: draft.emails.map((e) => e.trim()).filter(Boolean),
           website: draft.website.trim() || undefined,
+          workingHours: draft.workingHours.trim() || undefined,
+          socialLinks: Object.values(socialLinks).some(Boolean) ? socialLinks : undefined,
         },
+        mainCategory: draft.mainCategory || undefined,
       });
       await queryClient.invalidateQueries({ queryKey: ["business-profiles"] });
       setSaved(true);
@@ -310,6 +335,27 @@ function ProfileForm({
               {PROFILE_TYPE_LABEL[profile.profileType]}
             </div>
           </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Asosiy kategoriya</label>
+          <select
+            value={draft.mainCategory}
+            onChange={(e) => patch({ mainCategory: e.target.value as MainCategory })}
+            className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary/30"
+          >
+            <option value="" disabled>
+              Tanlang
+            </option>
+            {MAIN_CATEGORIES.map((value) => (
+              <option key={value} value={value}>
+                {MAIN_CATEGORY_LABEL[value]}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-[11px] text-muted-foreground/70">
+            Tashkilotlar katalogida shu bo'lim ostida ko'rinasiz.
+          </p>
         </div>
 
         <div>
@@ -352,16 +398,68 @@ function ProfileForm({
           />
         </div>
 
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Globe className="size-3.5" /> Veb-sayt
+            </label>
+            <input
+              value={draft.website}
+              onChange={(e) => patch({ website: e.target.value })}
+              placeholder="https://company.uz"
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Clock className="size-3.5" /> Ish vaqti
+            </label>
+            <input
+              value={draft.workingHours}
+              onChange={(e) => patch({ workingHours: e.target.value })}
+              placeholder="Dush-Shan: 09:00–18:00"
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+        </div>
+
         <div>
-          <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <Globe className="size-3.5" /> Veb-sayt
-          </label>
-          <input
-            value={draft.website}
-            onChange={(e) => patch({ website: e.target.value })}
-            placeholder="https://company.uz"
-            className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary/30"
-          />
+          <label className="text-xs font-medium text-muted-foreground">Ijtimoiy tarmoqlar</label>
+          <div className="mt-1.5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2">
+              <span className="flex size-5 shrink-0 items-center justify-center text-[#24A1DE]">
+                <TelegramIcon />
+              </span>
+              <input
+                value={draft.socialTelegram}
+                onChange={(e) => patch({ socialTelegram: e.target.value })}
+                placeholder="https://t.me/..."
+                className="w-full bg-transparent text-sm outline-none"
+              />
+            </div>
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2">
+              <span className="flex size-5 shrink-0 items-center justify-center text-[#D6249F]">
+                <InstagramIcon />
+              </span>
+              <input
+                value={draft.socialInstagram}
+                onChange={(e) => patch({ socialInstagram: e.target.value })}
+                placeholder="https://instagram.com/..."
+                className="w-full bg-transparent text-sm outline-none"
+              />
+            </div>
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2">
+              <span className="flex size-5 shrink-0 items-center justify-center text-[#1877F2]">
+                <FacebookIcon />
+              </span>
+              <input
+                value={draft.socialFacebook}
+                onChange={(e) => patch({ socialFacebook: e.target.value })}
+                placeholder="https://facebook.com/..."
+                className="w-full bg-transparent text-sm outline-none"
+              />
+            </div>
+          </div>
         </div>
 
         {error && <p className="text-xs text-destructive">{error}</p>}
@@ -437,7 +535,11 @@ function BusinessProfilePageContent({
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
           <div className="order-2 space-y-6 lg:order-1 lg:col-span-2">
-            <ProfileCompletionMeter profile={profile} draft={draft} portfolioCount={portfolioItems.length} />
+            <ProfileCompletionMeter
+              profile={profile}
+              draft={draft}
+              portfolioCount={portfolioItems.length}
+            />
             <SubscriptionBanner profile={profile} />
             <ProfileForm profile={profile} draft={draft} onDraftChange={setDraft} />
             <BrandingSection profile={profile} />

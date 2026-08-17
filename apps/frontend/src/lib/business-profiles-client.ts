@@ -16,6 +16,36 @@ export type ProfileType =
   | "INTERIOR_DESIGNER"
   | "SERVICE_PROVIDER";
 
+/** Additive (Organizations Main-Category task) — a second, independent sector classification
+ * from `ProfileType`, used only for the public `/companies` directory's category tabs and the
+ * mandatory onboarding-wizard selector. Two sectors (finance/mortgage, real-estate agencies)
+ * have no corresponding `ProfileType` at all, which is why this isn't derived from that enum. */
+export type MainCategory =
+  | "FINANCE_MORTGAGE"
+  | "CONSTRUCTION_CONTRACTORS"
+  | "MANUFACTURERS_MATERIALS"
+  | "ARCHITECTURE_INTERIOR"
+  | "REPAIR_SERVICES"
+  | "REAL_ESTATE_AGENCIES";
+
+export const MAIN_CATEGORY_LABEL: Record<MainCategory, string> = {
+  FINANCE_MORTGAGE: "Finans va Ipoteka",
+  CONSTRUCTION_CONTRACTORS: "Qurilish kompaniyalari va Pudratchilar",
+  MANUFACTURERS_MATERIALS: "Ishlab chiqaruvchilar va Materiallar",
+  ARCHITECTURE_INTERIOR: "Arxitektura va Interyer dizayn",
+  REPAIR_SERVICES: "Ta'mirlash va Xizmat ko'rsatuvchilar",
+  REAL_ESTATE_AGENCIES: "Ko'chmas mulk agentliklari",
+};
+
+export const MAIN_CATEGORIES: MainCategory[] = [
+  "FINANCE_MORTGAGE",
+  "CONSTRUCTION_CONTRACTORS",
+  "MANUFACTURERS_MATERIALS",
+  "ARCHITECTURE_INTERIOR",
+  "REPAIR_SERVICES",
+  "REAL_ESTATE_AGENCIES",
+];
+
 export interface LocalizedText {
   uz_latn?: string;
   uz_cyrl?: string;
@@ -30,11 +60,19 @@ export interface BusinessProfileBadge {
 }
 
 /** The `contacts` blob is a freeform JSONB VO in the backend (no fixed shape mandated) — this
- * is this frontend's own chosen convention for it, used consistently by create/update/read. */
+ * is this frontend's own chosen convention for it, used consistently by create/update/read.
+ * `workingHours`/`socialLinks` are additive (Portfolio & Navigation UI spec) — free text and
+ * per-company channel URLs, no backend schema change needed since the field is freeform JSON. */
 export interface BusinessProfileContacts {
   phones?: string[];
   emails?: string[];
   website?: string;
+  workingHours?: string;
+  socialLinks?: {
+    telegram?: string;
+    instagram?: string;
+    facebook?: string;
+  };
 }
 
 export interface PortfolioItem {
@@ -69,6 +107,8 @@ export interface BusinessProfile {
    * a video/mp4 or video/webm asset no longer than 30 seconds — resolve via `GET /media/{id}`,
    * same convention as `logoMediaAssetId`. */
   promoVideoMediaAssetIds?: string[];
+  /** Additive (Organizations Main-Category task). Null on profiles that predate this field. */
+  mainCategory?: MainCategory | null;
   createdAt?: string;
 }
 
@@ -106,6 +146,7 @@ interface UpdatePayload {
   description?: string;
   contacts?: BusinessProfileContacts;
   address?: string;
+  mainCategory?: MainCategory;
 }
 
 export const businessProfilesApi = {
@@ -116,12 +157,14 @@ export const businessProfilesApi = {
    * rather than a backend one). */
   listPublic(params?: {
     profileType?: ProfileType;
+    mainCategory?: MainCategory;
     verifiedOnly?: boolean;
   }): Promise<BusinessProfile[]> {
     return http
       .get<{ items: BusinessProfile[] }>("/business-profiles", {
         params: {
           profileType: params?.profileType,
+          mainCategory: params?.mainCategory,
           verifiedOnly: params?.verifiedOnly,
           limit: 100,
         },
@@ -148,6 +191,7 @@ export const businessProfilesApi = {
     description?: string;
     contacts?: BusinessProfileContacts;
     address?: string;
+    mainCategory?: MainCategory;
   }): Promise<BusinessProfile> {
     return http.post<BusinessProfile>(
       "/business-profiles",
@@ -157,6 +201,7 @@ export const businessProfilesApi = {
         description: input.description ? { uz_latn: input.description } : undefined,
         contacts: input.contacts,
         address: input.address || undefined,
+        mainCategory: input.mainCategory,
       },
       { idempotent: true },
     );
@@ -169,6 +214,7 @@ export const businessProfilesApi = {
       description: input.description !== undefined ? { uz_latn: input.description } : undefined,
       contacts: input.contacts,
       address: input.address,
+      mainCategory: input.mainCategory,
     });
   },
 

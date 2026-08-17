@@ -572,6 +572,17 @@ paths:
           - ARCHITECT
           - INTERIOR_DESIGNER
           - SERVICE_PROVIDER
+      - name: mainCategory
+        in: query
+        schema:
+          type: string
+          enum:
+          - FINANCE_MORTGAGE
+          - CONSTRUCTION_CONTRACTORS
+          - MANUFACTURERS_MATERIALS
+          - ARCHITECTURE_INTERIOR
+          - REPAIR_SERVICES
+          - REAL_ESTATE_AGENCIES
       - name: verifiedOnly
         in: query
         schema:
@@ -4459,6 +4470,20 @@ components:
           description: Additive (landing-page promo-video business rule). At most 2 media asset
             references, each a video/mp4 or video/webm asset no longer than 30 seconds —
             GET /media/{id} resolves each to a CDN URL, same as logoMediaAssetId.
+        mainCategory:
+          type:
+          - string
+          - 'null'
+          description: Additive (Organizations Main-Category task). A second, independent
+            sector classification from profileType, used for the public /companies directory's
+            category tabs — null on profiles that predate this field.
+          enum:
+          - FINANCE_MORTGAGE
+          - CONSTRUCTION_CONTRACTORS
+          - MANUFACTURERS_MATERIALS
+          - ARCHITECTURE_INTERIOR
+          - REPAIR_SERVICES
+          - REAL_ESTATE_AGENCIES
         createdAt:
           type: string
           format: date-time
@@ -4500,6 +4525,17 @@ components:
           additionalProperties: true
         address:
           type: string
+        mainCategory:
+          type:
+          - string
+          - 'null'
+          enum:
+          - FINANCE_MORTGAGE
+          - CONSTRUCTION_CONTRACTORS
+          - MANUFACTURERS_MATERIALS
+          - ARCHITECTURE_INTERIOR
+          - REPAIR_SERVICES
+          - REAL_ESTATE_AGENCIES
       additionalProperties: false
     BusinessProfileUpdateRequest:
       type: object
@@ -4514,6 +4550,17 @@ components:
           additionalProperties: true
         address:
           type: string
+        mainCategory:
+          type:
+          - string
+          - 'null'
+          enum:
+          - FINANCE_MORTGAGE
+          - CONSTRUCTION_CONTRACTORS
+          - MANUFACTURERS_MATERIALS
+          - ARCHITECTURE_INTERIOR
+          - REPAIR_SERVICES
+          - REAL_ESTATE_AGENCIES
       additionalProperties: false
     PortfolioItem:
       type: object

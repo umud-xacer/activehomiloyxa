@@ -6,6 +6,7 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Film,
   Globe,
   Loader2,
@@ -14,6 +15,7 @@ import {
   MessageCircle,
   Navigation,
   Phone,
+  Play,
   ShieldCheck,
   Wrench,
   X,
@@ -26,6 +28,8 @@ import {
 } from "@/lib/business-profiles-client";
 import { http } from "@/lib/http";
 import { useMediaAsset } from "@/lib/use-media-asset";
+import { formatDuration, useVideoDuration } from "@/lib/use-video-duration";
+import { TelegramIcon, InstagramIcon, FacebookIcon } from "@/components/site/SocialIcons";
 
 export const Route = createFileRoute("/companies/$slug")({
   head: () => ({ meta: [{ title: "Tashkilot — ActiveHome" }] }),
@@ -38,18 +42,32 @@ interface SearchHitLite {
   price?: { amount: string; currency: string } | null;
 }
 
-/** A few preset ratios cycled by index -- gives the portfolio grid a real masonry look without
- * depending on each image's actual (network-dependent, layout-shifting) intrinsic dimensions. */
-const MASONRY_ASPECTS = ["aspect-[4/5]", "aspect-square", "aspect-[4/3]", "aspect-[3/4]"];
+/** Shared by the portfolio grid/carousel AND the promo-video preview cards -- both open the same
+ * lightbox, keyed by `mediaAssetId` alone (a promo video has no `PortfolioItem` id). */
+interface LightboxItem {
+  mediaAssetId: string;
+}
 
-function MasonryTile({
+function SectionEyebrow({ children }: { children: string }) {
+  return (
+    <div className="mb-2 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-primary">
+      <span className="h-px w-5 bg-primary/50" /> {children}
+    </div>
+  );
+}
+
+/** One tile in the portfolio gallery -- rendered identically inside the mobile horizontal
+ * carousel and the desktop 3-column grid, only the wrapping layout differs between the two. */
+function GalleryTile({
   item,
   index,
   onOpen,
+  className = "",
 }: {
   item: PortfolioItem;
   index: number;
   onOpen: () => void;
+  className?: string;
 }) {
   const asset = useMediaAsset(item.mediaAssetId);
   const video = asset?.contentType?.startsWith("video/");
@@ -62,15 +80,20 @@ function MasonryTile({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.4), ease: [0.22, 1, 0.36, 1] }}
-      className={`group relative mb-3 block w-full overflow-hidden rounded-2xl border border-border bg-muted shadow-soft transition-shadow duration-300 hover:shadow-elevated ${MASONRY_ASPECTS[index % MASONRY_ASPECTS.length]}`}
-      style={{ breakInside: "avoid" }}
+      className={`group relative aspect-square overflow-hidden rounded-2xl border border-border bg-muted shadow-soft transition-shadow duration-300 hover:shadow-elevated ${className}`}
     >
       {!asset?.url ? (
         <div className="flex size-full items-center justify-center">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
       ) : video ? (
-        <video src={asset.url} preload="metadata" muted className="size-full object-cover" />
+        <video
+          src={asset.url}
+          preload="metadata"
+          muted
+          playsInline
+          className="size-full object-cover"
+        />
       ) : (
         <img
           src={asset.url}
@@ -91,14 +114,47 @@ function MasonryTile({
   );
 }
 
-function PortfolioLightbox({
+/** Mobile: swipeable horizontal carousel (`overflow-x-auto` + scroll-snap). Desktop (`lg:`): a
+ * clean 3-column grid, per spec. Two layout wrappers around the same `GalleryTile`. */
+function PortfolioGalleryLayout({
+  items,
+  onOpen,
+}: {
+  items: PortfolioItem[];
+  onOpen: (index: number) => void;
+}) {
+  return (
+    <>
+      <div className="-mx-6 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-6 px-6 pb-2 scrollbar-none lg:hidden">
+        {items.map((item, i) => (
+          <GalleryTile
+            key={item.id}
+            item={item}
+            index={i}
+            onOpen={() => onOpen(i)}
+            className="w-[64%] shrink-0 snap-center sm:w-[38%]"
+          />
+        ))}
+      </div>
+      <div className="hidden lg:grid lg:grid-cols-3 lg:gap-4">
+        {items.map((item, i) => (
+          <GalleryTile key={item.id} item={item} index={i} onOpen={() => onOpen(i)} />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function MediaLightbox({
   items,
   index,
+  autoPlay,
   onClose,
   onNavigate,
 }: {
-  items: PortfolioItem[];
+  items: LightboxItem[];
   index: number;
+  autoPlay?: boolean;
   onClose: () => void;
   onNavigate: (next: number) => void;
 }) {
@@ -131,11 +187,11 @@ function PortfolioLightbox({
       >
         <X className="size-5" />
       </button>
-      <span className="absolute left-4 top-4 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white/80">
-        {index + 1} / {items.length}
-      </span>
       {items.length > 1 && (
         <>
+          <span className="absolute left-4 top-4 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white/80">
+            {index + 1} / {items.length}
+          </span>
           <button
             type="button"
             onClick={(e) => {
@@ -172,7 +228,7 @@ function PortfolioLightbox({
           <video
             src={asset.url}
             controls
-            autoPlay
+            autoPlay={autoPlay}
             className="max-h-[85vh] rounded-xl shadow-2xl"
           />
         ) : (
@@ -187,25 +243,80 @@ function PortfolioLightbox({
   );
 }
 
-function PromoVideoCard({ mediaAssetId }: { mediaAssetId: string }) {
+/** Promo video preview card -- a YouTube-style thumbnail (native browser-rendered first frame
+ * via `<video preload="metadata">`, no server-side poster since ADR-0008 does zero video
+ * processing) with a centered Play button and a "0:30"-style duration badge, per spec. Clicking
+ * opens the shared lightbox with `autoPlay` instead of playing inline. */
+function PromoVideoCard({ mediaAssetId, onOpen }: { mediaAssetId: string; onOpen: () => void }) {
   const asset = useMediaAsset(mediaAssetId);
+  const durationSeconds = useVideoDuration(asset?.url);
+
   return (
-    <div className="aspect-video w-full max-w-sm shrink-0 overflow-hidden rounded-2xl border border-border bg-muted shadow-soft transition-shadow duration-300 hover:shadow-elevated">
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group relative aspect-video w-full max-w-sm shrink-0 overflow-hidden rounded-2xl border border-border bg-muted shadow-soft transition-shadow duration-300 hover:shadow-elevated"
+    >
       {asset?.url ? (
-        <video src={asset.url} preload="metadata" controls className="size-full object-cover" />
+        <video
+          src={asset.url}
+          preload="metadata"
+          muted
+          playsInline
+          className="size-full object-cover"
+        />
       ) : (
         <div className="flex size-full items-center justify-center">
           <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
       )}
-    </div>
+      <div className="absolute inset-0 bg-black/20 transition-colors duration-300 group-hover:bg-black/35" />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="flex size-14 items-center justify-center rounded-full bg-white/90 text-primary shadow-elevated transition-transform duration-300 group-hover:scale-110">
+          <Play className="ml-0.5 size-6 fill-current" />
+        </span>
+      </div>
+      {durationSeconds !== null && (
+        <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[11px] font-semibold text-white">
+          {formatDuration(durationSeconds)}
+        </span>
+      )}
+    </button>
   );
 }
 
-function SectionEyebrow({ children }: { children: string }) {
+function CompanySocialLinks({
+  links,
+}: {
+  links: { telegram?: string; instagram?: string; facebook?: string };
+}) {
+  const items = [
+    { key: "telegram", href: links.telegram, Icon: TelegramIcon, bg: "#24A1DE" },
+    {
+      key: "instagram",
+      href: links.instagram,
+      Icon: InstagramIcon,
+      bg: "radial-gradient(circle at 30% 110%, #feda75 0%, #fa7e1e 20%, #d62976 45%, #962fbf 65%, #4f5bd5 90%)",
+    },
+    { key: "facebook", href: links.facebook, Icon: FacebookIcon, bg: "#1877F2" },
+  ].filter((i) => i.href);
+
+  if (items.length === 0) return null;
+
   return (
-    <div className="mb-2 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-primary">
-      <span className="h-px w-5 bg-primary/50" /> {children}
+    <div className="flex items-center gap-2 px-2 py-2">
+      {items.map(({ key, href, Icon, bg }) => (
+        <a
+          key={key}
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="flex size-9 items-center justify-center rounded-full text-white shadow-soft transition hover:-translate-y-0.5 hover:shadow-elevated"
+          style={{ background: bg }}
+        >
+          <Icon />
+        </a>
+      ))}
     </div>
   );
 }
@@ -237,7 +348,11 @@ function Page() {
 
   const logo = useMediaAsset(profile?.logoMediaAssetId);
   const banner = useMediaAsset(profile?.bannerMediaAssetId);
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [lightbox, setLightbox] = useState<{
+    items: LightboxItem[];
+    index: number;
+    autoPlay?: boolean;
+  } | null>(null);
 
   if (isLoading) {
     return (
@@ -271,146 +386,147 @@ function Page() {
   const primaryPhone = profile.contacts?.phones?.[0];
   const primaryEmail = profile.contacts?.emails?.[0];
   const website = profile.contacts?.website;
+  const workingHours = profile.contacts?.workingHours;
+  const socialLinks = profile.contacts?.socialLinks;
   const promoVideos = profile.promoVideoMediaAssetIds ?? [];
+  const portfolioItems = portfolio ?? [];
 
   return (
     <AppShell>
-      {/* --- Hero: cover photo + floating glass profile card -------------------------------- */}
-      <section className="relative isolate">
-        <div className="h-64 w-full overflow-hidden sm:h-80 lg:h-[26rem]">
+      {/* --- Hero: rounded banner + overlapping logo card -------------------------------- */}
+      <section className="mx-auto max-w-6xl px-4 pt-24 sm:px-6 sm:pt-28">
+        <motion.div
+          initial={{ scale: 1.03, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="relative h-48 w-full overflow-hidden rounded-2xl border border-border bg-muted shadow-soft md:h-64"
+        >
           {banner?.url ? (
-            <motion.img
-              initial={{ scale: 1.08, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-              src={banner.url}
-              alt=""
-              className="size-full object-cover"
-            />
+            <img src={banner.url} alt="" className="size-full object-cover" />
           ) : (
             <div className="gradient-mesh size-full opacity-70" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-black/10" />
-        </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
+        </motion.div>
 
-        <div className="mx-auto max-w-6xl px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-            className="-mt-20 rounded-[2rem] border border-border/70 bg-card/95 p-6 shadow-elevated backdrop-blur-xl sm:-mt-24 sm:p-8"
-          >
-            <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-              <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-end">
-                <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl border-4 border-card bg-card text-primary shadow-elevated sm:size-28 sm:-mt-16">
-                  {logo?.url ? (
-                    <img src={logo.url} alt="" className="size-full object-cover" />
-                  ) : (
-                    <Building2 className="size-9" />
-                  )}
-                </div>
-                <div>
-                  <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl lg:text-4xl">
-                    {name}
-                  </h1>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-border bg-background/60 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                      {PROFILE_TYPE_LABEL[profile.profileType]}
-                    </span>
-                    {profile.badge?.status === "VALID" && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-semibold text-success">
-                        <ShieldCheck className="size-3.5" /> Tasdiqlangan
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {primaryPhone && (
-                  <a
-                    href={`tel:${primaryPhone.replace(/\s+/g, "")}`}
-                    className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow"
-                  >
-                    <Phone className="size-4" /> Qo'ng'iroq qilish
-                  </a>
-                )}
-                {primaryEmail && (
-                  <a
-                    href={`mailto:${primaryEmail}`}
-                    className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-sm font-semibold text-foreground transition hover:border-primary/40 hover:text-primary"
-                  >
-                    <MessageCircle className="size-4" /> Xabar yuborish
-                  </a>
-                )}
-                {website && (
-                  <a
-                    href={website}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:border-primary/40 hover:text-primary"
-                    title="Veb-sayt"
-                  >
-                    <Globe className="size-4" />
-                  </a>
-                )}
-              </div>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+          className="flex flex-col gap-5 px-1 pb-2 sm:flex-row sm:items-end sm:justify-between sm:px-2"
+        >
+          <div className="flex items-end gap-4">
+            <div className="-mt-12 flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-white text-primary shadow-md md:-mt-16 md:size-32">
+              {logo?.url ? (
+                <img src={logo.url} alt="" className="size-full object-cover" />
+              ) : (
+                <Building2 className="size-9 md:size-11" />
+              )}
             </div>
-
-            {description && (
-              <p className="mt-6 max-w-2xl border-t border-border/60 pt-5 text-sm leading-relaxed text-muted-foreground">
-                {description}
+            <div className="pb-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-xl font-semibold tracking-tight text-foreground sm:text-2xl lg:text-3xl">
+                  {name}
+                </h1>
+                {profile.badge?.status === "VALID" && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+                    <ShieldCheck className="size-3.5" /> Tasdiqlangan
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {PROFILE_TYPE_LABEL[profile.profileType]}
               </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+            {primaryPhone && (
+              <a
+                href={`tel:${primaryPhone.replace(/\s+/g, "")}`}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow sm:flex-none"
+              >
+                <Phone className="size-4" /> Qo'ng'iroq qilish
+              </a>
             )}
-          </motion.div>
-        </div>
+            {primaryEmail && (
+              <a
+                href={`mailto:${primaryEmail}`}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-sm font-semibold text-foreground transition hover:border-primary/40 hover:text-primary sm:flex-none"
+              >
+                <MessageCircle className="size-4" /> Xabar yuborish
+              </a>
+            )}
+            {website && (
+              <a
+                href={website}
+                target="_blank"
+                rel="noreferrer"
+                className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:border-primary/40 hover:text-primary"
+                title="Veb-sayt"
+              >
+                <Globe className="size-4" />
+              </a>
+            )}
+          </div>
+        </motion.div>
+
+        {description && (
+          <p className="max-w-2xl px-1 pb-8 pt-2 text-sm leading-relaxed text-muted-foreground sm:px-2">
+            {description}
+          </p>
+        )}
       </section>
 
       {/* --- Promo video ---------------------------------------------------------------------- */}
       {promoVideos.length > 0 && (
-        <section className="relative mx-auto max-w-6xl px-6 py-14">
-          <div className="gradient-mesh pointer-events-none absolute inset-x-0 top-0 -z-10 h-full opacity-10" />
+        <section className="relative mx-auto max-w-6xl px-6 py-10">
           <SectionEyebrow>Tanishtiruv</SectionEyebrow>
           <h2 className="mb-6 flex items-center gap-2 font-display text-xl font-semibold text-foreground sm:text-2xl">
             <Film className="size-5 text-primary" /> Video taqdimot
           </h2>
           <div className="flex flex-wrap gap-5">
-            {promoVideos.map((mediaAssetId) => (
-              <PromoVideoCard key={mediaAssetId} mediaAssetId={mediaAssetId} />
+            {promoVideos.map((mediaAssetId, i) => (
+              <PromoVideoCard
+                key={mediaAssetId}
+                mediaAssetId={mediaAssetId}
+                onOpen={() =>
+                  setLightbox({
+                    items: promoVideos.map((id) => ({ mediaAssetId: id })),
+                    index: i,
+                    autoPlay: true,
+                  })
+                }
+              />
             ))}
           </div>
         </section>
       )}
 
-      {/* --- Portfolio masonry ---------------------------------------------------------------- */}
-      {portfolio && portfolio.length > 0 && (
-        <section className="border-t border-border bg-card/40 py-14">
+      {/* --- Portfolio: mobile carousel / desktop 3-col grid ----------------------------------- */}
+      {portfolioItems.length > 0 && (
+        <section className="border-t border-border bg-card/40 py-10">
           <div className="mx-auto max-w-6xl px-6">
             <SectionEyebrow>Portfolio</SectionEyebrow>
             <h2 className="mb-6 font-display text-xl font-semibold text-foreground sm:text-2xl">
               Qilgan ishlarimiz
             </h2>
-            <div className="columns-2 gap-3 sm:columns-3 lg:columns-4">
-              {portfolio.map((item, i) => (
-                <MasonryTile
-                  key={item.id}
-                  item={item}
-                  index={i}
-                  onOpen={() => setLightboxIndex(i)}
-                />
-              ))}
-            </div>
+            <PortfolioGalleryLayout
+              items={portfolioItems}
+              onOpen={(index) => setLightbox({ items: portfolioItems, index })}
+            />
           </div>
         </section>
       )}
 
       <AnimatePresence>
-        {lightboxIndex !== null && portfolio && portfolio.length > 0 && (
-          <PortfolioLightbox
-            items={portfolio}
-            index={lightboxIndex}
-            onClose={() => setLightboxIndex(null)}
-            onNavigate={setLightboxIndex}
+        {lightbox && (
+          <MediaLightbox
+            items={lightbox.items}
+            index={lightbox.index}
+            autoPlay={lightbox.autoPlay}
+            onClose={() => setLightbox(null)}
+            onNavigate={(next) => setLightbox({ ...lightbox, index: next })}
           />
         )}
       </AnimatePresence>
@@ -472,6 +588,14 @@ function Page() {
                   <span className="pt-1">{profile.address}</span>
                 </div>
               )}
+              {workingHours && (
+                <div className="flex items-start gap-3 rounded-xl px-2 py-2 text-sm text-muted-foreground">
+                  <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground/70">
+                    <Clock className="size-4" />
+                  </span>
+                  <span className="whitespace-pre-line pt-1">{workingHours}</span>
+                </div>
+              )}
               {profile.contacts?.phones?.map((phone) => (
                 <a
                   key={phone}
@@ -510,6 +634,7 @@ function Page() {
                 </a>
               )}
               {!profile.address &&
+                !workingHours &&
                 !profile.contacts?.phones?.length &&
                 !profile.contacts?.emails?.length &&
                 !website && (
@@ -518,6 +643,7 @@ function Page() {
                   </p>
                 )}
             </div>
+            {socialLinks && <CompanySocialLinks links={socialLinks} />}
             {profile.address && (
               <div className="px-4 pb-4">
                 <a

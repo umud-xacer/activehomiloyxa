@@ -37,7 +37,7 @@ from profiles.application.ports import (
     SubscriptionEligibilityRepository,
     SubscriptionEligibilitySnapshot,
 )
-from profiles.domain import BusinessProfile, ProfileType
+from profiles.domain import BusinessProfile, MainCategory, ProfileType
 from shared_kernel import BusinessProfileId, LocalizedText, OutboxPort, UserId
 
 SubscriptionStatus = Literal["ACTIVE", "EXPIRED", "NONE"]
@@ -80,6 +80,7 @@ class ProfileUseCases:
         contacts: dict[str, Any] | None,
         address: str | None,
         now: datetime,
+        main_category: MainCategory | None = None,
     ) -> BusinessProfile:
         profile_id = BusinessProfileId(value=uuid4())
         slug = _generate_slug(name, profile_id.value)
@@ -93,6 +94,7 @@ class ProfileUseCases:
             address=address,
             slug=slug,
             now=now,
+            main_category=main_category,
         )
         profile = profile.activate(now=now)
         await self._profiles.add(profile)
@@ -132,9 +134,14 @@ class ProfileUseCases:
         verified_only: bool,
         cursor: str | None,
         limit: int,
+        main_category: MainCategory | None = None,
     ) -> tuple[list[BusinessProfile], str | None]:
         return await self._profiles.list_public(
-            profile_type=profile_type, verified_only=verified_only, cursor=cursor, limit=limit
+            profile_type=profile_type,
+            main_category=main_category,
+            verified_only=verified_only,
+            cursor=cursor,
+            limit=limit,
         )
 
     async def get_public_profile_by_slug(self, slug: str, *, now: datetime) -> BusinessProfile:
@@ -163,11 +170,17 @@ class ProfileUseCases:
         contacts: dict[str, Any] | None,
         address: str | None,
         now: datetime,
+        main_category: MainCategory | None = None,
     ) -> BusinessProfile:
         profile = await self.get_profile(profile_id)
         _check_owner(profile, owner_user_id)
         updated = profile.update_details(
-            name=name, description=description, contacts=contacts, address=address, now=now
+            name=name,
+            description=description,
+            contacts=contacts,
+            address=address,
+            main_category=main_category,
+            now=now,
         )
         return await self._profiles.save(updated)
 

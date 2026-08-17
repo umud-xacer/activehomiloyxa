@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import {
   Building2,
   Check,
+  Clock,
   Copy,
   ExternalLink,
   Film,
@@ -12,7 +13,13 @@ import {
   Phone,
   ShieldCheck,
 } from "lucide-react";
-import { PROFILE_TYPE_LABEL, type BusinessProfile, type PortfolioItem } from "@/lib/business-profiles-client";
+import {
+  MAIN_CATEGORY_LABEL,
+  PROFILE_TYPE_LABEL,
+  type BusinessProfile,
+  type MainCategory,
+  type PortfolioItem,
+} from "@/lib/business-profiles-client";
 import { useMediaAsset } from "@/lib/use-media-asset";
 
 export interface ProfileDraft {
@@ -22,6 +29,11 @@ export interface ProfileDraft {
   phones: string[];
   emails: string[];
   website: string;
+  workingHours: string;
+  mainCategory: MainCategory | "";
+  socialTelegram: string;
+  socialInstagram: string;
+  socialFacebook: string;
 }
 
 function PreviewThumb({ item }: { item: PortfolioItem }) {
@@ -122,6 +134,11 @@ export function LandingPreviewCard({
             <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
               {PROFILE_TYPE_LABEL[profile.profileType]}
             </span>
+            {draft.mainCategory && (
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                {MAIN_CATEGORY_LABEL[draft.mainCategory]}
+              </span>
+            )}
             {profile.badge?.status === "VALID" && (
               <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">
                 <ShieldCheck className="size-3" /> Tasdiqlangan
@@ -169,6 +186,12 @@ export function LandingPreviewCard({
             <div className="flex items-center gap-1.5">
               <Globe className="size-3 shrink-0" />
               <span className="truncate">{draft.website}</span>
+            </div>
+          )}
+          {draft.workingHours.trim() && (
+            <div className="flex items-center gap-1.5">
+              <Clock className="size-3 shrink-0" />
+              <span className="truncate">{draft.workingHours}</span>
             </div>
           )}
         </div>

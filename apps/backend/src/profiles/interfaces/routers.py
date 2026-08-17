@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, Query
 
 from profiles.application import ProfileUseCases, VerificationUseCases
 from profiles.domain import BusinessProfile as BusinessProfileAggregate
-from profiles.domain import CaseStatus, ProfileType
+from profiles.domain import CaseStatus, MainCategory, ProfileType
 from profiles.domain import VerificationCase as VerificationCaseAggregate
 from profiles.domain.portfolio_item import PortfolioItem as PortfolioItemEntity
 from profiles.interfaces.auth import ActingProfileManager, ActingReviewer, ActingUser
@@ -103,6 +103,7 @@ async def _to_profile_dto(
         trial_starts_at=profile.trial_starts_at,
         trial_ends_at=profile.trial_ends_at,
         promo_video_media_asset_ids=list(profile.promo_video_media_asset_ids),
+        main_category=profile.main_category.value if profile.main_category else None,
         created_at=profile.created_at,
     )
 
@@ -157,6 +158,15 @@ async def list_business_profiles(
         "SERVICE_PROVIDER",
     ]
     | None = None,
+    mainCategory: Literal[
+        "FINANCE_MORTGAGE",
+        "CONSTRUCTION_CONTRACTORS",
+        "MANUFACTURERS_MATERIALS",
+        "ARCHITECTURE_INTERIOR",
+        "REPAIR_SERVICES",
+        "REAL_ESTATE_AGENCIES",
+    ]
+    | None = None,
     verifiedOnly: bool | None = None,
     cursor: str | None = None,
     limit: int | None = Query(default=20),
@@ -165,6 +175,7 @@ async def list_business_profiles(
     page_limit = _clamp_limit(limit)
     profiles, next_cursor = await use_cases.list_public_profiles(
         profile_type=ProfileType(profileType) if profileType else None,
+        main_category=MainCategory(mainCategory) if mainCategory else None,
         verified_only=bool(verifiedOnly),
         cursor=cursor,
         limit=page_limit,
@@ -189,6 +200,7 @@ async def create_business_profile(
         contacts=body.contacts,
         address=body.address,
         now=datetime.now(UTC),
+        main_category=MainCategory(body.main_category) if body.main_category else None,
     )
     return await _to_profile_dto(profile, use_cases=use_cases)
 
@@ -244,6 +256,7 @@ async def update_business_profile(
         contacts=body.contacts,
         address=body.address,
         now=datetime.now(UTC),
+        main_category=MainCategory(body.main_category) if body.main_category else None,
     )
     return await _to_profile_dto(profile, use_cases=use_cases)
 

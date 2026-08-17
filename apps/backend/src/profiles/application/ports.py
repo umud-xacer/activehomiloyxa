@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import Literal, Protocol
 from uuid import UUID
 
-from profiles.domain import BusinessProfile, CaseStatus, ProfileType, VerificationCase
+from profiles.domain import BusinessProfile, CaseStatus, MainCategory, ProfileType, VerificationCase
 from shared_kernel import BusinessProfileId, UserId
 
 
@@ -43,12 +43,16 @@ class BusinessProfileRepository(Protocol):
         self,
         *,
         profile_type: ProfileType | None,
+        main_category: MainCategory | None,
         verified_only: bool,
         cursor: str | None,
         limit: int,
     ) -> tuple[list[BusinessProfile], str | None]:
         """Backs `listBusinessProfiles`. Every non-`ARCHIVED` profile is publicly listable;
-        `verified_only` filters to `badge.status == VALID`."""
+        `verified_only` filters to `badge.status == VALID`. `main_category` (additive,
+        Organizations Main-Category task) filters to that sector tab -- a profile with `None`
+        main_category never matches any non-null filter value, same as any other None-vs-value
+        equality filter."""
         ...
 
     async def list_admin(

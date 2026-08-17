@@ -24,8 +24,11 @@ import { useMe } from "@/features/auth/useAuth";
 import { ApiError } from "@/lib/http";
 import {
   businessProfilesApi,
+  MAIN_CATEGORIES,
+  MAIN_CATEGORY_LABEL,
   PROFILE_TYPE_LABEL,
   type BusinessProfile,
+  type MainCategory,
   type ProfileType,
 } from "@/lib/business-profiles-client";
 
@@ -111,10 +114,13 @@ function BasicsStep({
   const [description, setDescription] = useState(existingProfile?.description?.uz_latn || "");
   const [phones, setPhones] = useState<string[]>(existingProfile?.contacts?.phones ?? []);
   const [address, setAddress] = useState(existingProfile?.address || "");
+  const [mainCategory, setMainCategory] = useState<MainCategory | "">(
+    existingProfile?.mainCategory || "",
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canContinue = name.trim() && phones.some((p) => p.trim()) && address.trim();
+  const canContinue = name.trim() && phones.some((p) => p.trim()) && address.trim() && mainCategory;
 
   const onSubmit = async () => {
     setSaving(true);
@@ -127,6 +133,7 @@ function BasicsStep({
             description,
             address,
             contacts: { phones: cleanPhones },
+            mainCategory: mainCategory || undefined,
           })
         : await businessProfilesApi.create({
             profileType,
@@ -134,6 +141,7 @@ function BasicsStep({
             description,
             contacts: { phones: cleanPhones },
             address,
+            mainCategory: mainCategory || undefined,
           });
       onCreated(profile);
     } catch (err) {
@@ -175,6 +183,27 @@ function BasicsStep({
               ))}
             </select>
           </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Asosiy kategoriya *</label>
+          <select
+            value={mainCategory}
+            onChange={(e) => setMainCategory(e.target.value as MainCategory)}
+            className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary/30"
+          >
+            <option value="" disabled>
+              Tanlang
+            </option>
+            {MAIN_CATEGORIES.map((value) => (
+              <option key={value} value={value}>
+                {MAIN_CATEGORY_LABEL[value]}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-[11px] text-muted-foreground/70">
+            Tashkilotingiz Tashkilotlar katalogida shu bo'lim ostida ko'rinadi.
+          </p>
         </div>
 
         <div>

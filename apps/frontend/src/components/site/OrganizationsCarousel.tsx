@@ -1,42 +1,71 @@
 /**
- * Partners -- a premium "trusted by" panel: a soft glass card (matching Hero's search card and
- * CtaBand's banner card language) rather than a bare row sitting directly on the page background.
- * Muted by default, brand color + lift revealed on hover.
- *
- * Data comes from `features/organizations/demo-data.ts` (`getOrganizations()`), the same
- * demo-data-with-swap-point pattern as `features/investors` -- see that file for the swap point.
+ * Homepage "Tashkilotlar" widget -- the top 5 verified/approved business profiles, in the same
+ * ActiveHome card idiom as `PropertyCard`/`CompanyCard` (`rounded-3xl border border-border
+ * bg-card shadow-soft`, fade-up on scroll), each linking straight to its real portfolio page
+ * (`/companies/$slug`). Real data via `businessProfilesApi.listPublic({ verifiedOnly: true })`
+ * -- replaces the previous avatar-carousel demo-data widget (Portfolio & Navigation UI spec).
  */
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight } from "lucide-react";
-import { getOrganizations, type Organization } from "@/features/organizations/demo-data";
+import { ArrowUpRight, Building2, ShieldCheck } from "lucide-react";
+import {
+  businessProfilesApi,
+  MAIN_CATEGORY_LABEL,
+  PROFILE_TYPE_LABEL,
+  type BusinessProfile,
+} from "@/lib/business-profiles-client";
+import { useMediaAsset } from "@/lib/use-media-asset";
 
-function OrgAvatar({ org, index }: { org: Organization; index: number }) {
+function companyName(profile: BusinessProfile): string {
+  return profile.name.uz_latn || profile.name.ru || profile.name.en || "Tashkilot";
+}
+
+function CompanyLogo({ profile }: { profile: BusinessProfile }) {
+  const logo = useMediaAsset(profile.logoMediaAssetId);
+  return (
+    <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-white p-1 shadow-soft">
+      {logo?.url ? (
+        <img src={logo.url} alt="" className="size-full object-contain" />
+      ) : (
+        <Building2 className="size-5 text-primary" />
+      )}
+    </div>
+  );
+}
+
+function TopCompanyCard({ profile, index }: { profile: BusinessProfile; index: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.4, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.4, delay: Math.min(index * 0.06, 0.4), ease: [0.22, 1, 0.36, 1] }}
     >
       <Link
-        to={org.to}
-        className="group flex flex-col items-center gap-3 rounded-2xl px-3 py-2 text-center transition-all hover:-translate-y-1"
+        to="/companies/$slug"
+        params={{ slug: profile.slug || profile.id }}
+        className="group flex h-full flex-col rounded-3xl border border-border bg-card p-5 shadow-soft transition hover:border-primary/40 hover:shadow-elevated"
       >
-        <div className="relative flex size-[76px] items-center justify-center overflow-hidden rounded-2xl border border-border bg-white p-1.5 shadow-soft grayscale transition-all duration-300 group-hover:grayscale-0 group-hover:shadow-glow sm:size-20">
-          <div className="absolute inset-0 rounded-2xl opacity-0 ring-2 ring-primary/40 transition-opacity duration-300 group-hover:opacity-100" />
-          <img src={org.logo} alt={org.name} className="size-full rounded-xl object-cover" />
-        </div>
-        <div>
-          <div className="max-w-[100px] truncate font-display text-[13px] font-semibold text-foreground/80 group-hover:text-foreground">
-            {org.name}
+        <div className="flex items-center gap-3">
+          <CompanyLogo profile={profile} />
+          <div className="min-w-0">
+            <p className="truncate font-display text-sm font-semibold text-foreground">
+              {companyName(profile)}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
+              {profile.mainCategory
+                ? MAIN_CATEGORY_LABEL[profile.mainCategory]
+                : PROFILE_TYPE_LABEL[profile.profileType]}
+            </p>
           </div>
-          <div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground/70">
-            {org.kind}
-          </div>
         </div>
+        {profile.badge?.status === "VALID" && (
+          <span className="mt-4 inline-flex w-fit items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+            <ShieldCheck className="size-3.5" /> Tasdiqlangan
+          </span>
+        )}
       </Link>
     </motion.div>
   );
@@ -44,11 +73,14 @@ function OrgAvatar({ org, index }: { org: Organization; index: number }) {
 
 export function OrganizationsCarousel() {
   const { t } = useTranslation();
-  const [orgs, setOrgs] = useState<Organization[]>([]);
+  const { data: profiles } = useQuery({
+    queryKey: ["business-profiles", "public-directory"],
+    queryFn: () => businessProfilesApi.listPublic({ verifiedOnly: true }),
+  });
 
-  useEffect(() => {
-    getOrganizations().then(setOrgs);
-  }, []);
+  const top5 = (profiles ?? []).filter((p) => p.subscriptionStatus === "ACTIVE").slice(0, 5);
+
+  if (top5.length === 0) return null;
 
   return (
     <section id="organizations" className="relative scroll-mt-24 px-6 py-16">
@@ -57,7 +89,7 @@ export function OrganizationsCarousel() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] border border-border bg-card/60 px-8 py-14 shadow-elevated backdrop-blur-xl sm:px-12"
+        className="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] border border-border bg-card/60 px-6 py-14 shadow-elevated backdrop-blur-xl sm:px-10"
       >
         <div className="gradient-mesh absolute inset-0 opacity-25" aria-hidden />
         <div className="absolute inset-x-0 top-0 -z-0 h-1/2 bg-[radial-gradient(ellipse_at_top,oklch(0.75_0.16_275_/_0.14),transparent_70%)]" />
@@ -77,9 +109,9 @@ export function OrganizationsCarousel() {
             })}
           </p>
 
-          <div className="mt-10 flex flex-wrap items-start justify-center gap-x-6 gap-y-6 sm:gap-x-10">
-            {orgs.map((o, i) => (
-              <OrgAvatar key={o.key} org={o} index={i} />
+          <div className="mt-10 grid grid-cols-1 gap-4 text-left sm:grid-cols-2 lg:grid-cols-5">
+            {top5.map((profile, i) => (
+              <TopCompanyCard key={profile.id} profile={profile} index={i} />
             ))}
           </div>
 

@@ -3,7 +3,7 @@
  * (`ActiveReturn`'s header/footer). lucide-react dropped brand/logo icons a while back, so these
  * are inline SVGs traced from that original markup rather than a lucide import.
  */
-function TelegramIcon() {
+export function TelegramIcon() {
   return (
     <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="size-[55%]">
       <path
@@ -14,7 +14,7 @@ function TelegramIcon() {
   );
 }
 
-function InstagramIcon() {
+export function InstagramIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="size-[55%]">
       <path
@@ -68,7 +68,7 @@ function TikTokIcon() {
   );
 }
 
-function FacebookIcon() {
+export function FacebookIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="size-[55%]">
       <path

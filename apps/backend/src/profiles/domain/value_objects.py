@@ -28,6 +28,22 @@ class ProfileType(StrEnum):
     SERVICE_PROVIDER = "SERVICE_PROVIDER"
 
 
+class MainCategory(StrEnum):
+    """Additive (Organizations Main-Category task, site-owner spec): a coarser, sector-facing
+    grouping distinct from `ProfileType` — `ProfileType` stays the frozen SRS Sec 4 vocabulary
+    (never touched here); this is a second, independent classification used only for the public
+    `/companies` directory's category tabs and the mandatory onboarding-wizard selector. Two of
+    the six sectors (finance/mortgage, real-estate agencies) have no corresponding `ProfileType`
+    at all, which is why this could not simply be derived from that enum."""
+
+    FINANCE_MORTGAGE = "FINANCE_MORTGAGE"
+    CONSTRUCTION_CONTRACTORS = "CONSTRUCTION_CONTRACTORS"
+    MANUFACTURERS_MATERIALS = "MANUFACTURERS_MATERIALS"
+    ARCHITECTURE_INTERIOR = "ARCHITECTURE_INTERIOR"
+    REPAIR_SERVICES = "REPAIR_SERVICES"
+    REAL_ESTATE_AGENCIES = "REAL_ESTATE_AGENCIES"
+
+
 class ProfileStatus(StrEnum):
     """Physical DB `profiles.business_profile.status` CHECK -- `Created -> Active -> Archived`
     (Database Architecture Sec "profiles schema": "owner closure/suspension follow-through").

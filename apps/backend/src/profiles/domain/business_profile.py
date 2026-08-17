@@ -29,7 +29,13 @@ from profiles.domain.exceptions import (
     PromoVideoNotFoundError,
 )
 from profiles.domain.portfolio_item import PortfolioItem
-from profiles.domain.value_objects import BadgeStatus, ProfileStatus, ProfileType, VerifiedBadge
+from profiles.domain.value_objects import (
+    BadgeStatus,
+    MainCategory,
+    ProfileStatus,
+    ProfileType,
+    VerifiedBadge,
+)
 from profiles.domain.verification_case import ApprovedVerificationProof
 from shared_kernel import BusinessProfileId, LocalizedText, UserId
 
@@ -90,6 +96,13 @@ class BusinessProfile:
     caption/position -- just an ordered (append-order) list of media references, capped at
     `MAX_PROMO_VIDEOS`. `create()` does not list this explicitly; it uses this default, same as
     `lock_version` above."""
+    main_category: MainCategory | None = None
+    """Additive (Organizations Main-Category task): the sector tab this profile appears under on
+    the public `/companies` directory. `None` on the handful of profiles that pre-date this field
+    (never backfilled -- they simply appear in no category tab, per the field's own read-side
+    filter). The onboarding wizard treats this as mandatory going forward
+    (`complete_onboarding` below refuses to finish without it for any profile still `None`), but
+    it is not a NOT NULL column -- see the migration's own docstring for why."""
 
     # --- factory (FR-PROF-001) ------------------------------------------------------------------
 
@@ -105,6 +118,7 @@ class BusinessProfile:
         address: str | None,
         slug: str,
         now: datetime,
+        main_category: MainCategory | None = None,
     ) -> BusinessProfile:
         """Always produces `CREATED` (see `value_objects.ProfileStatus`'s own docstring for why
         `application.ProfileUseCases.create_profile` immediately composes `.activate()`)."""
@@ -127,6 +141,7 @@ class BusinessProfile:
             trial_ends_at=None,
             created_at=now,
             updated_at=now,
+            main_category=main_category,
         )
 
     # --- lifecycle (Created -> Active -> Archived) ------------------------------------------------
@@ -152,11 +167,14 @@ class BusinessProfile:
         description: LocalizedText | None = None,
         contacts: dict[str, Any] | None = None,
         address: str | None = None,
+        main_category: MainCategory | None = None,
         now: datetime,
     ) -> BusinessProfile:
         """`updateBusinessProfile`: "profileType is immutable" (OpenAPI's own docstring) -- no
         parameter here can touch it. Refused once `ARCHIVED` (nothing to maintain on a closed
-        profile); legal in `CREATED` or `ACTIVE`."""
+        profile); legal in `CREATED` or `ACTIVE`. `main_category`, like the others, is
+        "unchanged if omitted" -- there is no way to clear it back to `None` once set, matching
+        that it is a one-way mandatory-onboarding field, not a nullable preference."""
         if self.status is ProfileStatus.ARCHIVED:
             raise IllegalProfileStatusTransitionError("update_details", self.status.value)
         return replace(
@@ -165,6 +183,7 @@ class BusinessProfile:
             description=description if description is not None else self.description,
             contacts=contacts if contacts is not None else self.contacts,
             address=address if address is not None else self.address,
+            main_category=main_category if main_category is not None else self.main_category,
             updated_at=now,
         )
 
@@ -307,6 +326,8 @@ class BusinessProfile:
             raise OnboardingIncompleteError("address")
         if not self.portfolio:
             raise OnboardingIncompleteError("portfolio")
+        if self.main_category is None:
+            raise OnboardingIncompleteError("mainCategory")
         trial_ends_at = now + timedelta(days=trial_days)
         return replace(
             self,

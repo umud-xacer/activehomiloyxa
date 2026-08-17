@@ -39,6 +39,10 @@ _PROFILE_TYPES = (
     "('CONSTRUCTION_COMPANY', 'MANUFACTURER', 'BUILDER', 'SUPPLIER', 'CONTRACTOR', 'ARCHITECT', "
     "'INTERIOR_DESIGNER', 'SERVICE_PROVIDER')"
 )
+_MAIN_CATEGORIES = (
+    "('FINANCE_MORTGAGE', 'CONSTRUCTION_CONTRACTORS', 'MANUFACTURERS_MATERIALS', "
+    "'ARCHITECTURE_INTERIOR', 'REPAIR_SERVICES', 'REAL_ESTATE_AGENCIES')"
+)
 _PROFILE_STATUSES = "('CREATED', 'ACTIVE', 'ARCHIVED')"
 _BADGE_STATUSES = "('VALID', 'EXPIRED', 'REVOKED')"
 _CASE_STATUSES = "('REQUESTED', 'IN_REVIEW', 'APPROVED', 'REJECTED')"
@@ -81,9 +85,19 @@ class BusinessProfileRow(ProfilesBase, AggregateMixin):  # type: ignore[misc,val
     """Additive (landing-page promo-video business rule): a small (<=2), ordered JSON array of
     media asset id strings -- no position/caption semantics needed, so a dedicated child table
     (`portfolio_item`'s pattern) would be pure overhead for this bounded collection."""
+    main_category: Mapped[str | None] = mapped_column(Text, nullable=True)
+    """Additive (Organizations Main-Category task). Nullable at the DB level (existing rows
+    predate this field and are never backfilled) even though the onboarding wizard treats it as
+    mandatory going forward -- that mandate is enforced in the domain layer
+    (`BusinessProfile.complete_onboarding`), the same "DB permissive, aggregate strict" split
+    `onboarding_completed_at`'s own sibling fields already use."""
 
     __table_args__ = (
         CheckConstraint(f"profile_type IN {_PROFILE_TYPES}", name="ck_business_profile_type"),
+        CheckConstraint(
+            f"main_category IS NULL OR main_category IN {_MAIN_CATEGORIES}",
+            name="ck_business_profile_main_category",
+        ),
         CheckConstraint(f"status IN {_PROFILE_STATUSES}", name="ck_business_profile_status"),
         CheckConstraint(
             f"badge_status IS NULL OR badge_status IN {_BADGE_STATUSES}",

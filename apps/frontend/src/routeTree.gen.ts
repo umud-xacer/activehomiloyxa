@@ -35,6 +35,7 @@ import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as OfferRouteImport } from './routes/offer'
+import { Route as OrganizationsRouteImport } from './routes/organizations'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -216,6 +217,11 @@ const NotificationsRoute = NotificationsRouteImport.update({
 const OfferRoute = OfferRouteImport.update({
   id: '/offer',
   path: '/offer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrganizationsRoute = OrganizationsRouteImport.update({
+  id: '/organizations',
+  path: '/organizations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PaymentsRoute = PaymentsRouteImport.update({
@@ -507,6 +513,7 @@ export interface FileRoutesByFullPath {
   '/news': typeof NewsRoute
   '/notifications': typeof NotificationsRoute
   '/offer': typeof OfferRoute
+  '/organizations': typeof OrganizationsRoute
   '/payments': typeof PaymentsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -587,6 +594,7 @@ export interface FileRoutesByTo {
   '/news': typeof NewsRoute
   '/notifications': typeof NotificationsRoute
   '/offer': typeof OfferRoute
+  '/organizations': typeof OrganizationsRoute
   '/payments': typeof PaymentsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -668,6 +676,7 @@ export interface FileRoutesById {
   '/news': typeof NewsRoute
   '/notifications': typeof NotificationsRoute
   '/offer': typeof OfferRoute
+  '/organizations': typeof OrganizationsRoute
   '/payments': typeof PaymentsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -750,6 +759,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/notifications'
     | '/offer'
+    | '/organizations'
     | '/payments'
     | '/pricing'
     | '/privacy'
@@ -830,6 +840,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/notifications'
     | '/offer'
+    | '/organizations'
     | '/payments'
     | '/pricing'
     | '/privacy'
@@ -910,6 +921,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/notifications'
     | '/offer'
+    | '/organizations'
     | '/payments'
     | '/pricing'
     | '/privacy'
@@ -991,6 +1003,7 @@ export interface RootRouteChildren {
   NewsRoute: typeof NewsRoute
   NotificationsRoute: typeof NotificationsRoute
   OfferRoute: typeof OfferRoute
+  OrganizationsRoute: typeof OrganizationsRoute
   PaymentsRoute: typeof PaymentsRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -1227,6 +1240,13 @@ declare module '@tanstack/react-router' {
       path: '/offer'
       fullPath: '/offer'
       preLoaderRoute: typeof OfferRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/organizations': {
+      id: '/organizations'
+      path: '/organizations'
+      fullPath: '/organizations'
+      preLoaderRoute: typeof OrganizationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/payments': {
@@ -1623,6 +1643,7 @@ const rootRouteChildren: RootRouteChildren = {
   NewsRoute: NewsRoute,
   NotificationsRoute: NotificationsRoute,
   OfferRoute: OfferRoute,
+  OrganizationsRoute: OrganizationsRoute,
   PaymentsRoute: PaymentsRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,

@@ -46,6 +46,19 @@ class TeamMember(CamelModel):
     invited_at: datetime | None = None
 
 
+MainCategoryLiteral = Literal[
+    "FINANCE_MORTGAGE",
+    "CONSTRUCTION_CONTRACTORS",
+    "MANUFACTURERS_MATERIALS",
+    "ARCHITECTURE_INTERIOR",
+    "REPAIR_SERVICES",
+    "REAL_ESTATE_AGENCIES",
+]
+"""Additive (Organizations Main-Category task) -- a second, independent sector classification
+alongside the frozen `profileType` vocabulary (see `profiles.domain.MainCategory`'s own
+docstring for why it could not simply be derived from that enum)."""
+
+
 class BusinessProfileCreateRequest(CamelModel):
     """OpenAPI `BusinessProfileCreateRequest`."""
 
@@ -63,6 +76,7 @@ class BusinessProfileCreateRequest(CamelModel):
     description: LocalizedText | None = None
     contacts: dict[str, Any] | None = None
     address: str | None = None
+    main_category: MainCategoryLiteral | None = None
 
 
 class BusinessProfile(CamelModel):
@@ -113,6 +127,9 @@ class BusinessProfile(CamelModel):
     """Additive (landing-page promo-video business rule): up to 2 media asset references, each
     resolved to a CDN url the same way `logo_media_asset_id`/`PortfolioItem.media_asset_id` are
     -- via `GET /media/{id}`, never a resolved URL inline here."""
+    main_category: MainCategoryLiteral | None = None
+    """Additive (Organizations Main-Category task): the sector tab this profile appears under on
+    the public /companies directory. Null on profiles that pre-date this field."""
     created_at: datetime
 
 
@@ -201,6 +218,7 @@ class BusinessProfileUpdateRequest(CamelModel):
     description: LocalizedText | None = None
     contacts: dict[str, Any] | None = None
     address: str | None = None
+    main_category: MainCategoryLiteral | None = None
 
 
 class BusinessProfileBrandingRequest(CamelModel):

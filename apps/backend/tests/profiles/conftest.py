@@ -17,7 +17,7 @@ from profiles.application.ports import (
     MediaAssetSnapshot,
     VerificationEligibilitySnapshot,
 )
-from profiles.domain import BusinessProfile, CaseStatus, ProfileType, VerificationCase
+from profiles.domain import BusinessProfile, CaseStatus, MainCategory, ProfileType, VerificationCase
 from shared_kernel import BusinessProfileId, EventEnvelope, UserId
 
 
@@ -46,6 +46,7 @@ class FakeBusinessProfileRepository:
         self,
         *,
         profile_type: ProfileType | None,
+        main_category: MainCategory | None = None,
         verified_only: bool,
         cursor: str | None,
         limit: int,
@@ -53,6 +54,8 @@ class FakeBusinessProfileRepository:
         items = [p for p in self.profiles.values() if p.status.value != "ARCHIVED"]
         if profile_type is not None:
             items = [p for p in items if p.profile_type == profile_type]
+        if main_category is not None:
+            items = [p for p in items if p.main_category == main_category]
         if verified_only:
             items = [p for p in items if p.badge is not None and p.badge.status.value == "VALID"]
         items.sort(key=lambda p: p.created_at)
