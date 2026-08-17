@@ -1,7 +1,8 @@
-import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { z } from "zod";
 import { Building2, Loader2, ShieldCheck } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -16,7 +17,17 @@ import {
   type MainCategory,
 } from "@/lib/business-profiles-client";
 
+const searchSchema = z.object({
+  // Plain `.optional().catch(undefined)` (no `fallback(...)`, which needs a same-typed default)
+  // -- an absent/invalid `category` just means "no filter", the same as never having the param.
+  category: z
+    .enum(MAIN_CATEGORIES as [MainCategory, ...MainCategory[]])
+    .optional()
+    .catch(undefined),
+});
+
 export const Route = createFileRoute("/companies/")({
+  validateSearch: zodValidator(searchSchema),
   head: () => ({
     meta: [
       { title: "Tashkilotlar — ActiveHome" },
@@ -144,7 +155,11 @@ function CategoryTabs({
 }
 
 function Page() {
-  const [selectedCategory, setSelectedCategory] = useState<MainCategory | null>(null);
+  const { category } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const selectedCategory = category ?? null;
+  const setSelectedCategory = (value: MainCategory | null) =>
+    navigate({ search: (prev) => ({ ...prev, category: value ?? undefined }) });
   const { data: profiles, isLoading } = useQuery({
     queryKey: ["business-profiles", "public-directory"],
     queryFn: () => businessProfilesApi.listPublic(),

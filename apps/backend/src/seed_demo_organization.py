@@ -1,11 +1,11 @@
-"""One-off management script (Organizations Main-Category task, BOSQICH 3): creates one fully
-filled-in demo LEGAL_ENTITY business profile -- "Vista Arxitektura Byurosi" -- under the
-Arxitektura va Interyer dizayn main category, with a real logo, HD banner, description, phone,
-address, 4 portfolio photos, and a real (parseable, <=30s) promo video. Ends with the profile
+"""One-off management script (Organizations Main-Category task): creates fully filled-in demo
+LEGAL_ENTITY business profiles -- one per `MainCategory` sector listed in `COMPANIES` below that
+doesn't already have a real organization -- each with a real logo, HD banner, description, phone,
+address, 4 portfolio photos, and a real (parseable, <=30s) promo video. Ends each profile
 onboarded, its owner account's registration approved, and a VALID verified badge issued, so it
-shows up correctly everywhere a real approved organization would: the homepage top-5 widget, the
-`/companies` directory (including its new category tab), and its own `/companies/$slug` portfolio
-page.
+shows up correctly everywhere a real approved organization would: the homepage per-category top-5
+widget, the `/companies` directory (including its category tab), and its own `/companies/$slug`
+portfolio page.
 
 Account registration/login/profile-CRUD go through the real HTTP API (same path the frontend
 wizard uses) via `requests` -- the two steps with no public API path (admin registration
@@ -24,7 +24,8 @@ Usage (same env-loading convention as `search_worker`/`bootstrap_admin`/`retire_
     python -m seed_demo_organization [base_url]
 `base_url` defaults to http://127.0.0.1:8000/api/v1 (local dev); pass the real one
 (https://activehome.uz/api/v1) to seed production. Not idempotent by design (a second run creates
-a second demo account with a fresh email) -- re-running is a deliberate choice, not a bug.
+a second demo account per company with a fresh email) -- re-running is a deliberate choice, not a
+bug; only run it again if a genuinely new demo company needs adding to `COMPANIES`.
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ import os
 import secrets
 import sys
 import time
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -61,22 +63,100 @@ ASSETS_DIR = Path(
     )
 )
 """Local dev default matches the dev machine's own scratchpad; production/other hosts must set
-`SEED_ASSETS_DIR` to wherever the 7 source files (logo.png, portfolio1..4.jpg, exterior.jpg,
-promo_video.mp4) were copied to on that host."""
+`SEED_ASSETS_DIR` to wherever each company's own subdirectory (see `DemoCompanyConfig.
+assets_subdir`) was copied to on that host."""
 
-EMAIL = f"vista.arxitektura+{int(time.time())}@activehome.test"
-PASSWORD = f"DemoOrg-{secrets.token_urlsafe(12)}"
-"""Generated per run, not a fixed literal -- a throwaway demo account still shouldn't have a
-guessable/repeated password, and a hardcoded string here would (correctly) trip bandit's
-B105 hardcoded-password check regardless of the account being non-sensitive."""
-COMPANY_NAME = "Vista Arxitektura Byurosi"
-DESCRIPTION = (
-    "Zamonaviy arxitektura va shahar rejalashtirish loyihalari — funksionallik va estetikani "
-    "uyg'unlashtiramiz. 2018-yildan buyon Toshkent va viloyatlarda turar-joy hamda tijorat "
-    "obyektlari uchun to'liq loyihalash xizmatlarini taqdim etamiz."
-)
-PHONE = "+998901234567"
-ADDRESS = "Toshkent shahar, Mirzo Ulug'bek tumani, Amir Temur shoh ko'chasi, 41-uy"
+
+@dataclass(frozen=True)
+class DemoCompanyConfig:
+    email_prefix: str
+    company_name: str
+    profile_type: str
+    main_category: str
+    description: str
+    phone: str
+    address: str
+    assets_subdir: str
+    """Relative to `ASSETS_DIR`; expects `logo.png`, `banner.jpg`, `portfolio1.jpg`..
+    `portfolio4.jpg`, `promo_video.mp4`."""
+
+
+COMPANIES: list[DemoCompanyConfig] = [
+    DemoCompanyConfig(
+        email_prefix="aktiv.moliya",
+        company_name="Aktiv Moliya va Ipoteka Markazi",
+        profile_type="SERVICE_PROVIDER",
+        main_category="FINANCE_MORTGAGE",
+        description=(
+            "Aktiv Moliya va Ipoteka Markazi — uy-joy sotib olish uchun ipoteka kreditlash, "
+            "moliyaviy konsalting va investitsiya xizmatlarini taqdim etadi. 2015-yildan buyon "
+            "minglab oilalarga o'z uyiga ega bo'lishda yordam berib kelmoqda, eng qulay ipoteka "
+            "shartlarini tanlab beradi."
+        ),
+        phone="+998901112233",
+        address="Toshkent shahar, Yunusobod tumani, Amir Temur shoh ko'chasi, 108-uy",
+        assets_subdir="finance",
+    ),
+    DemoCompanyConfig(
+        email_prefix="bunyodkor.qurilish",
+        company_name="Bunyodkor Qurilish Kompaniyasi",
+        profile_type="CONSTRUCTION_COMPANY",
+        main_category="CONSTRUCTION_CONTRACTORS",
+        description=(
+            "Bunyodkor Qurilish Kompaniyasi — ko'p qavatli turar-joy majmualari, tijorat "
+            "binolari va infratuzilma loyihalarini qurish bo'yicha to'liq pudratchi "
+            "xizmatlarini ko'rsatadi. 2012-yildan buyon Toshkent va boshqa viloyatlarda 50 dan "
+            "ortiq yirik loyihani muvaffaqiyatli yakunlagan."
+        ),
+        phone="+998901112244",
+        address="Toshkent shahar, Chilonzor tumani, Bunyodkor shoh ko'chasi, 24-uy",
+        assets_subdir="construction",
+    ),
+    DemoCompanyConfig(
+        email_prefix="tosh.beton",
+        company_name="Tosh-Beton Ishlab Chiqarish Zavodi",
+        profile_type="MANUFACTURER",
+        main_category="MANUFACTURERS_MATERIALS",
+        description=(
+            "Tosh-Beton Ishlab Chiqarish Zavodi — sifatli beton, g'isht va boshqa qurilish "
+            "materiallarini ishlab chiqaradi hamda yetkazib beradi. Zamonaviy uskunalar va "
+            "qat'iy sifat nazorati bilan har qanday hajmdagi buyurtmalarni bajaradi."
+        ),
+        phone="+998901112255",
+        address="Toshkent viloyati, Qibray tumani, Sanoat ko'chasi, 7-uy",
+        assets_subdir="materials",
+    ),
+    DemoCompanyConfig(
+        email_prefix="usta.pro",
+        company_name="Usta Pro Ta'mirlash Xizmati",
+        profile_type="SERVICE_PROVIDER",
+        main_category="REPAIR_SERVICES",
+        description=(
+            "Usta Pro Ta'mirlash Xizmati — kvartira va ofislarni kapital hamda kosmetik "
+            "ta'mirlash, santexnika, elektr va smart home tizimlarini o'rnatish bo'yicha "
+            "professional xizmatlar ko'rsatadi. Tajribali ustalar jamoasi har qanday "
+            "murakkablikdagi ishni sifatli va o'z vaqtida bajaradi."
+        ),
+        phone="+998901112266",
+        address="Toshkent shahar, Shayxontohur tumani, Navoiy ko'chasi, 56-uy",
+        assets_subdir="repair",
+    ),
+    DemoCompanyConfig(
+        email_prefix="makon.mulk",
+        company_name="Makon Ko'chmas Mulk Agentligi",
+        profile_type="SERVICE_PROVIDER",
+        main_category="REAL_ESTATE_AGENCIES",
+        description=(
+            "Makon Ko'chmas Mulk Agentligi — kvartira, uy va tijorat obyektlarini sotish, "
+            "sotib olish hamda ijaraga berish bo'yicha to'liq rieltorlik xizmatlarini "
+            "ko'rsatadi. Tajribali agentlar jamoasi mijozlarga eng maqbul ko'chmas mulk "
+            "variantlarini tanlab, bitim yuridik tozaligini ta'minlaydi."
+        ),
+        phone="+998901112277",
+        address="Toshkent shahar, Mirobod tumani, Mustaqillik shoh ko'chasi, 33-uy",
+        assets_subdir="realestate",
+    ),
+]
 
 
 def _content_type_for(path: Path) -> str:
@@ -127,17 +207,24 @@ async def _upload_media(path: Path, *, uploaded_by: UUID) -> str:
     return str(asset_id)
 
 
-async def main(base_url: str) -> None:
-    print(f"1) Registering {EMAIL} as LEGAL_ENTITY via {base_url} ...")
+async def _seed_company(base_url: str, config: DemoCompanyConfig) -> None:
+    email = f"{config.email_prefix}+{int(time.time())}@activehome.test"
+    password = f"DemoOrg-{secrets.token_urlsafe(12)}"
+    """Generated per run, not a fixed literal -- a throwaway demo account still shouldn't have a
+    guessable/repeated password, and a hardcoded string here would (correctly) trip bandit's
+    B105 hardcoded-password check regardless of the account being non-sensitive."""
+    assets_dir = ASSETS_DIR / config.assets_subdir
+
+    print(f"1) Registering {email} as LEGAL_ENTITY via {base_url} ...")
     session = requests.Session()
     resp = session.post(
         f"{base_url}/auth/register/email",
         json={
-            "email": EMAIL,
-            "password": PASSWORD,
-            "displayName": COMPANY_NAME,
+            "email": email,
+            "password": password,
+            "displayName": config.company_name,
             "accountKind": "LEGAL_ENTITY",
-            "anketa": {"companyName": COMPANY_NAME},
+            "anketa": {"companyName": config.company_name},
         },
         timeout=30,
     )
@@ -146,7 +233,7 @@ async def main(base_url: str) -> None:
     print("2) Logging in ...")
     resp = session.post(
         f"{base_url}/auth/login/email",
-        json={"email": EMAIL, "password": PASSWORD},
+        json={"email": email, "password": password},
         timeout=30,
     )
     resp.raise_for_status()
@@ -166,12 +253,12 @@ async def main(base_url: str) -> None:
     resp = session.post(
         f"{base_url}/business-profiles",
         json={
-            "profileType": "ARCHITECT",
-            "name": {"uz_latn": COMPANY_NAME},
-            "description": {"uz_latn": DESCRIPTION},
-            "contacts": {"phones": [PHONE]},
-            "address": ADDRESS,
-            "mainCategory": "ARCHITECTURE_INTERIOR",
+            "profileType": config.profile_type,
+            "name": {"uz_latn": config.company_name},
+            "description": {"uz_latn": config.description},
+            "contacts": {"phones": [config.phone]},
+            "address": config.address,
+            "mainCategory": config.main_category,
         },
         timeout=30,
     )
@@ -182,14 +269,14 @@ async def main(base_url: str) -> None:
 
     print("4) Uploading media assets ...")
     uploaded_by_uuid = UUID(account_id)
-    logo_id = await _upload_media(ASSETS_DIR / "logo.png", uploaded_by=uploaded_by_uuid)
-    banner_id = await _upload_media(ASSETS_DIR / "portfolio1.jpg", uploaded_by=uploaded_by_uuid)
+    logo_id = await _upload_media(assets_dir / "logo.png", uploaded_by=uploaded_by_uuid)
+    banner_id = await _upload_media(assets_dir / "banner.jpg", uploaded_by=uploaded_by_uuid)
     portfolio_ids = [
-        await _upload_media(ASSETS_DIR / name, uploaded_by=uploaded_by_uuid)
-        for name in ("portfolio2.jpg", "portfolio3.jpg", "portfolio4.jpg", "exterior.jpg")
+        await _upload_media(assets_dir / name, uploaded_by=uploaded_by_uuid)
+        for name in ("portfolio1.jpg", "portfolio2.jpg", "portfolio3.jpg", "portfolio4.jpg")
     ]
     promo_video_id = await _upload_media(
-        ASSETS_DIR / "promo_video.mp4", uploaded_by=uploaded_by_uuid
+        assets_dir / "promo_video.mp4", uploaded_by=uploaded_by_uuid
     )
 
     print("5) Setting branding (logo + banner) ...")
@@ -227,7 +314,7 @@ async def main(base_url: str) -> None:
     found_account_id: list[UserId] = []
     async for id_session in composition_root._identity_session():
         account = await SqlalchemyUserAccountRepository(id_session).get_by_email(
-            EmailAddress(value=EMAIL)
+            EmailAddress(value=email)
         )
         assert account is not None
         found_account_id.append(account.id)
@@ -277,9 +364,16 @@ async def main(base_url: str) -> None:
         await repo.save(badged)
 
     print()
-    print("Done. Demo organization is live:")
-    print(f"  Login:   {EMAIL} / {PASSWORD}")
+    print(f"Done. {config.company_name} is live:")
+    print(f"  Login:   {email} / {password}")
     print(f"  Profile: {profile_id} (slug: {profile['slug']})")
+
+
+async def main(base_url: str) -> None:
+    for config in COMPANIES:
+        print(f"=== {config.company_name} ({config.main_category}) ===")
+        await _seed_company(base_url, config)
+        print()
 
 
 if __name__ == "__main__":

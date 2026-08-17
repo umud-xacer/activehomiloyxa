@@ -1,71 +1,63 @@
 /**
- * Homepage "Tashkilotlar" widget -- the top 5 verified/approved business profiles, in the same
- * ActiveHome card idiom as `PropertyCard`/`CompanyCard` (`rounded-3xl border border-border
- * bg-card shadow-soft`, fade-up on scroll), each linking straight to its real portfolio page
- * (`/companies/$slug`). Real data via `businessProfilesApi.listPublic({ verifiedOnly: true })`
- * -- replaces the previous avatar-carousel demo-data widget (Portfolio & Navigation UI spec).
+ * Homepage "Tashkilotlar" widget -- one chip per `MainCategory` (the 6 fixed organization
+ * sectors), styled exactly like `CategoryCarousel.tsx`'s own `CategoryPill` (same rounded-2xl
+ * white-card image tile + bold label underneath, same fade-up-on-scroll motion), so the
+ * "Tashkilotlar" section visually reads as a sibling of the "Kategoriyalar" rail right above it,
+ * not a different widget. Each chip links to `/companies?category=<value>`, which pre-selects
+ * that sector's tab on the real directory page. Deliberately NOT one card per business profile --
+ * `MainCategory` is a fixed, admin-defined 6-value set (unlike catalog categories, which come
+ * from the CMS), so a representative photo per sector is picked once here rather than sourced
+ * per organization.
  */
-import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, Building2, ShieldCheck } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import {
-  businessProfilesApi,
+  MAIN_CATEGORIES,
   MAIN_CATEGORY_LABEL,
-  PROFILE_TYPE_LABEL,
-  type BusinessProfile,
+  type MainCategory,
 } from "@/lib/business-profiles-client";
-import { useMediaAsset } from "@/lib/use-media-asset";
 
-function companyName(profile: BusinessProfile): string {
-  return profile.name.uz_latn || profile.name.ru || profile.name.en || "Tashkilot";
-}
+const MAIN_CATEGORY_IMAGE: Record<MainCategory, string> = {
+  FINANCE_MORTGAGE:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Old_Town_Architecture_Reflected_in_Modern_Facade_-_Geneva_-_Switzerland.jpg/500px-Old_Town_Architecture_Reflected_in_Modern_Facade_-_Geneva_-_Switzerland.jpg",
+  CONSTRUCTION_CONTRACTORS:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Tower_crane_at_a_building_construction_site_in_Taichung_2023-05-13_01.jpg/500px-Tower_crane_at_a_building_construction_site_in_Taichung_2023-05-13_01.jpg",
+  MANUFACTURERS_MATERIALS:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Silo_of_the_factory_%E2%80%9EProfix%22_Tetovo%2C_North_Macedonia.jpg/500px-Silo_of_the_factory_%E2%80%9EProfix%22_Tetovo%2C_North_Macedonia.jpg",
+  ARCHITECTURE_INTERIOR:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/House_S_by_Minhwan_Park_%EB%B0%95%EB%AF%BC%ED%99%98_%EA%B1%B4%EC%B6%95_S_%EC%A3%BC%ED%83%9D.jpg/500px-House_S_by_Minhwan_Park_%EB%B0%95%EB%AF%BC%ED%99%98_%EA%B1%B4%EC%B6%95_S_%EC%A3%BC%ED%83%9D.jpg",
+  REPAIR_SERVICES:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Faubourg_Marigny%2C_New_Orleans_-_Interior_of_recently_renovated_house_-_04.jpg/500px-Faubourg_Marigny%2C_New_Orleans_-_Interior_of_recently_renovated_house_-_04.jpg",
+  REAL_ESTATE_AGENCIES:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Modern_living_room_with_stylish_furniture_and_a_view_of_the_outdoors_in_a_cozy_apartment_setting.jpg/500px-Modern_living_room_with_stylish_furniture_and_a_view_of_the_outdoors_in_a_cozy_apartment_setting.jpg",
+};
 
-function CompanyLogo({ profile }: { profile: BusinessProfile }) {
-  const logo = useMediaAsset(profile.logoMediaAssetId);
-  return (
-    <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-white p-1 shadow-soft">
-      {logo?.url ? (
-        <img src={logo.url} alt="" className="size-full object-contain" />
-      ) : (
-        <Building2 className="size-5 text-primary" />
-      )}
-    </div>
-  );
-}
-
-function TopCompanyCard({ profile, index }: { profile: BusinessProfile; index: number }) {
+function CategoryChip({ category, index }: { category: MainCategory; index: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.4, delay: Math.min(index * 0.06, 0.4), ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.35, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
     >
       <Link
-        to="/companies/$slug"
-        params={{ slug: profile.slug || profile.id }}
-        className="group flex h-full flex-col rounded-3xl border border-border bg-card p-5 shadow-soft transition hover:border-primary/40 hover:shadow-elevated"
+        to="/companies"
+        search={{ category }}
+        className="group flex w-24 shrink-0 flex-col items-center gap-2.5 rounded-2xl border border-transparent px-2 py-3 text-center transition-all hover:border-border hover:bg-card hover:shadow-soft sm:w-28"
       >
-        <div className="flex items-center gap-3">
-          <CompanyLogo profile={profile} />
-          <div className="min-w-0">
-            <p className="truncate font-display text-sm font-semibold text-foreground">
-              {companyName(profile)}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {profile.mainCategory
-                ? MAIN_CATEGORY_LABEL[profile.mainCategory]
-                : PROFILE_TYPE_LABEL[profile.profileType]}
-            </p>
-          </div>
+        <div className="relative flex size-16 items-center justify-center overflow-hidden rounded-2xl border border-border bg-white shadow-soft transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-glow sm:size-20">
+          <img
+            src={MAIN_CATEGORY_IMAGE[category]}
+            alt=""
+            className="size-full object-cover"
+            loading="lazy"
+          />
         </div>
-        {profile.badge?.status === "VALID" && (
-          <span className="mt-4 inline-flex w-fit items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
-            <ShieldCheck className="size-3.5" /> Tasdiqlangan
-          </span>
-        )}
+        <div className="font-display text-[12.5px] font-semibold leading-tight text-foreground/85 group-hover:text-foreground">
+          {MAIN_CATEGORY_LABEL[category]}
+        </div>
       </Link>
     </motion.div>
   );
@@ -73,14 +65,6 @@ function TopCompanyCard({ profile, index }: { profile: BusinessProfile; index: n
 
 export function OrganizationsCarousel() {
   const { t } = useTranslation();
-  const { data: profiles } = useQuery({
-    queryKey: ["business-profiles", "public-directory"],
-    queryFn: () => businessProfilesApi.listPublic({ verifiedOnly: true }),
-  });
-
-  const top5 = (profiles ?? []).filter((p) => p.subscriptionStatus === "ACTIVE").slice(0, 5);
-
-  if (top5.length === 0) return null;
 
   return (
     <section id="organizations" className="relative scroll-mt-24 px-6 py-16">
@@ -109,9 +93,9 @@ export function OrganizationsCarousel() {
             })}
           </p>
 
-          <div className="mt-10 grid grid-cols-1 gap-4 text-left sm:grid-cols-2 lg:grid-cols-5">
-            {top5.map((profile, i) => (
-              <TopCompanyCard key={profile.id} profile={profile} index={i} />
+          <div className="mt-10 flex flex-wrap items-start justify-center gap-1">
+            {MAIN_CATEGORIES.map((category, i) => (
+              <CategoryChip key={category} category={category} index={i} />
             ))}
           </div>
 
