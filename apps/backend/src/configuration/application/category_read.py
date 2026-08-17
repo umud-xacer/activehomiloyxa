@@ -15,6 +15,18 @@ from configuration.application.ports import ConfigHeadRepository, SnapshotCacheP
 from configuration.domain import ConfigEntityType
 
 
+def _category_sort_key(snapshot: dict[str, Any]) -> tuple[int, str]:
+    """`RedisSnapshotCache.list_current` reads its index off a Redis SET (`SMEMBERS`), which has
+    no guaranteed iteration order -- without an explicit sort here, `list_categories` returned
+    whatever order the set happened to hand back, different on every call (the reported "homepage
+    category chips shuffle on every refresh" bug). `display_order` ASC, `id` ASC as the tiebreak
+    -- both already present on every snapshot (`descriptor.display_order`/`id`), matching how
+    `SqlalchemyConfigHeadRepository.list_heads` orders its own (admin-only) Postgres query."""
+    descriptor = snapshot.get("descriptor") or {}
+    display_order = descriptor.get("display_order")
+    return (display_order if isinstance(display_order, int) else 0, str(snapshot.get("id", "")))
+
+
 class CategoryReadUseCases:
     def __init__(self, repo: ConfigHeadRepository, snapshot_cache: SnapshotCachePort) -> None:
         self._repo = repo
@@ -43,6 +55,7 @@ class CategoryReadUseCases:
                 if parent_id is None and snapshot_parent is not None:
                     continue
             results.append(snapshot)
+        results.sort(key=_category_sort_key)
         return results
 
     async def get_category(self, category_id: UUID) -> dict[str, Any] | None:

@@ -24,6 +24,7 @@ POSTGRES_*/REDIS_* environment as every other backbone entrypoint).
 from __future__ import annotations
 
 import asyncio
+import itertools
 import re
 from datetime import UTC, datetime
 from uuid import UUID
@@ -483,12 +484,17 @@ async def _seed_furniture_category(
     *,
     form_definition_id: UUID,
     now: datetime,
+    display_order: int = 1,
 ) -> UUID:
     """The "Mebel materiallari" (Furniture) top-level category, bound to the form above -- the
     exact path the frontend already hardcodes (`CategoryCarousel.tsx`'s `ICON_BY_PATH["/mebel-
     materiallari"]` and the `/furniture` route's `CATEGORY_PATH`), so both the homepage category
     rail and the dedicated furniture page resolve to real data once this has run. Returns the
-    head id either way (fresh or pre-existing) so callers can seed a subtree under it."""
+    head id either way (fresh or pre-existing) so callers can seed a subtree under it.
+
+    `display_order` defaults to 1 (this category is seeded first, before `_seed_catalog_taxonomy`'s
+    own 18 -- see `run_seed`'s call order) -- part of the same top-level sibling group as those, so
+    it needs a value from that same sequence, not its own separate one."""
     code = "mebel-materiallari"
     definition = {
         "descriptor": {
@@ -498,6 +504,7 @@ async def _seed_furniture_category(
                 "en": "Furniture",
             },
             "metadata": {"listingKind": "GOODS"},
+            "display_order": display_order,
         },
         "parent_category_id": None,
         "path": "/mebel-materiallari",
@@ -522,6 +529,14 @@ async def _seed_furniture_category(
             head_id=existing.id,
             current_version_id=existing.current_version_id,
             listing_kind="GOODS",
+            now=now,
+        )
+        await _backfill_display_order(
+            use_cases,
+            repo,
+            head_id=existing.id,
+            current_version_id=existing.current_version_id,
+            display_order=display_order,
             now=now,
         )
         return existing.id
@@ -883,6 +898,7 @@ async def _seed_category(
     form_definition_id: UUID,
     now: datetime,
     listing_kind: str | None = None,
+    display_order: int = 0,
 ) -> UUID:
     """Generic `Category` seeder. Always returns the head id (creating it, or looking it up by
     code if already seeded) -- unlike a bare "skip on duplicate", child categories below need a
@@ -892,8 +908,16 @@ async def _seed_category(
     the sanctioned inert key-value extension slot (`content.py`'s `ConfigDescriptor.metadata`
     docstring) -- which `lib/listing-kind.ts#listingKindOf` reads to pick a category's rendering
     shape. Omit (None) for the PROPERTY default (real estate), matching the frontend's own
-    documented fallback."""
-    descriptor: dict[str, object] = {"name": {"uz_latn": name}}
+    documented fallback.
+
+    `display_order` (1-based, scoped to this category's own sibling group -- every direct caller
+    below numbers each sibling list itself; `_seed_subtree` does the same for every subtree it
+    recurses through) fixes the "homepage category chips reshuffle on every refresh" bug:
+    `CategoryReadUseCases.list_categories` sorts on this field precisely because
+    `RedisSnapshotCache.list_current`'s own Redis-SET-backed iteration order is NOT stable across
+    calls. Left at the domain's own default (0) only intentionally -- every caller here passes a
+    real value."""
+    descriptor: dict[str, object] = {"name": {"uz_latn": name}, "display_order": display_order}
     if listing_kind is not None:
         descriptor["metadata"] = {"listingKind": listing_kind}
     definition = {
@@ -921,6 +945,14 @@ async def _seed_category(
             head_id=existing.id,
             current_version_id=existing.current_version_id,
             listing_kind=listing_kind,
+            now=now,
+        )
+        await _backfill_display_order(
+            use_cases,
+            repo,
+            head_id=existing.id,
+            current_version_id=existing.current_version_id,
+            display_order=display_order,
             now=now,
         )
         return existing.id
@@ -1003,6 +1035,61 @@ async def _backfill_listing_kind(
             actor_id=SEED_CHECKER_ID,
             actor_permission_keys=frozenset({manage_key, approve_key}),
             approval_note="seed: backfill listingKind metadata approval",
+            now=now,
+        )
+
+
+async def _backfill_display_order(
+    use_cases: ConfigurationUseCases,
+    repo: SqlalchemyConfigHeadRepository,
+    *,
+    head_id: UUID,
+    current_version_id: UUID | None,
+    display_order: int,
+    now: datetime,
+) -> None:
+    """Self-heal for a category seeded before `display_order` existed (every category already in
+    production has it stuck at the domain default, 0) -- same pattern as `_backfill_listing_kind`
+    just above: publish a new version only when the stored value doesn't already match, so this
+    settles to a no-op once a deploy has caught every category up."""
+    if current_version_id is None:
+        return
+    current = await repo.get_version(ConfigEntityType.CATEGORY, head_id, current_version_id)
+    if current is None:
+        return
+    current_descriptor = dict(current.definition_document.get("descriptor") or {})
+    if current_descriptor.get("display_order") == display_order:
+        return
+
+    new_descriptor = {**current_descriptor, "display_order": display_order}
+    new_document = {**current.definition_document, "descriptor": new_descriptor}
+
+    new_version = await use_cases.create_version_draft(
+        ConfigEntityType.CATEGORY,
+        head_id,
+        definition=new_document,
+        actor_id=SEED_MAKER_ID,
+        now=now,
+    )
+    manage_key = _registry.manage_permission_key(ConfigEntityType.CATEGORY.value)
+    approve_key = _registry.approve_permission_key(ConfigEntityType.CATEGORY.value)
+    step1 = await use_cases.publish(
+        ConfigEntityType.CATEGORY,
+        head_id,
+        new_version.id,
+        actor_id=SEED_MAKER_ID,
+        actor_permission_keys=frozenset({manage_key}),
+        approval_note="seed: backfill display_order",
+        now=now,
+    )
+    if step1.status.value == "APPROVAL":
+        await use_cases.publish(
+            ConfigEntityType.CATEGORY,
+            head_id,
+            step1.id,
+            actor_id=SEED_CHECKER_ID,
+            actor_permission_keys=frozenset({manage_key, approve_key}),
+            approval_note="seed: backfill display_order approval",
             now=now,
         )
 
@@ -3321,8 +3408,13 @@ async def _seed_subtree(
     same-named leaf (e.g. "2 xonali" under both `/hovlilar/sotuvdagi-hovlilar` and elsewhere)
     without a `DuplicateCodeError`. `listing_kind` propagates to every node in the subtree -- a
     subcategory renders through the same shape (`lib/listing-kind.ts`) as its top-level ancestor,
-    same as the flat map this replaced did implicitly for every path under a given prefix."""
-    for node in nodes:
+    same as the flat map this replaced did implicitly for every path under a given prefix.
+
+    `display_order` is assigned per sibling group via `enumerate` -- each recursive call gets its
+    own fresh 1-based count over its own `nodes`, so a subtree's own children rank amongst
+    themselves the same way `_seed_catalog_taxonomy` already ranks the top-level categories, and
+    in the literal order the taxonomy data below already lists them in."""
+    for order, node in enumerate(nodes, start=1):
         name, children = node if isinstance(node, tuple) else (node, [])
         path = f"{parent_path}/{_slugify(name)}"
         code = _slugify(path.lstrip("/"))
@@ -3336,6 +3428,7 @@ async def _seed_subtree(
             form_definition_id=form_definition_id,
             now=now,
             listing_kind=listing_kind,
+            display_order=order,
         )
         if children:
             await _seed_subtree(
@@ -4093,6 +4186,15 @@ async def _seed_catalog_taxonomy(
     its own field shape (`_property_fields`, `_goods_fields`, `_service_cv_fields`, ...) rather
     than one form for every category, so `catalogClient.listingsByCategoryPath` results are
     actually queryable/facetable by what that direction's audience cares about."""
+    top_level_order = itertools.count(2)
+    """One shared counter for every top-level (`parent_category_id=None`) category seeded below,
+    regardless of which block/loop creates it -- they are all siblings in the SAME group, so they
+    need one running sequence, not a fresh one per block. Starts at 2, not 1: `_seed_furniture_
+    category` (called earlier in `run_seed`, also `parent_category_id=None`) already claims 1 --
+    same top-level sibling group, same sequence. Assigns `display_order` in the exact order this
+    function already lists them in (unchanged from before this fix), fixing the homepage
+    category-chip reshuffle bug (`CategoryReadUseCases.list_categories` now sorts on this
+    field)."""
 
     # -- Residential/commercial buildings (a single shared form -- these differ by neighbourhood/
     # type, not by attribute shape).
@@ -4130,6 +4232,7 @@ async def _seed_catalog_taxonomy(
             parent_category_id=None,
             form_definition_id=re_form_id,
             now=now,
+            display_order=next(top_level_order),
         )
         await _seed_subtree(
             use_cases,
@@ -4159,6 +4262,7 @@ async def _seed_catalog_taxonomy(
         parent_category_id=None,
         form_definition_id=land_form_id,
         now=now,
+        display_order=next(top_level_order),
     )
     await _seed_subtree(
         use_cases,
@@ -4210,6 +4314,7 @@ async def _seed_catalog_taxonomy(
             form_definition_id=goods_form_id,
             now=now,
             listing_kind="GOODS",
+            display_order=next(top_level_order),
         )
         await _seed_subtree(
             use_cases,
@@ -4245,6 +4350,7 @@ async def _seed_catalog_taxonomy(
             form_definition_id=hosp_form_id,
             now=now,
             listing_kind="VENUE",
+            display_order=next(top_level_order),
         )
         await _seed_subtree(
             use_cases,
@@ -4276,6 +4382,7 @@ async def _seed_catalog_taxonomy(
         form_definition_id=business_form_id,
         now=now,
         listing_kind="GOODS",
+        display_order=next(top_level_order),
     )
     await _seed_subtree(
         use_cases,
@@ -4307,6 +4414,7 @@ async def _seed_catalog_taxonomy(
         form_definition_id=venue_form_id,
         now=now,
         listing_kind="VENUE",
+        display_order=next(top_level_order),
     )
     await _seed_subtree(
         use_cases,
@@ -4338,6 +4446,7 @@ async def _seed_catalog_taxonomy(
         form_definition_id=landshaft_form_id,
         now=now,
         listing_kind="SERVICE",
+        display_order=next(top_level_order),
     )
     await _seed_subtree(
         use_cases,
@@ -4370,6 +4479,7 @@ async def _seed_catalog_taxonomy(
         form_definition_id=ish_orni_form_id,
         now=now,
         listing_kind="SERVICE",
+        display_order=next(top_level_order),
     )
     await _seed_subtree(
         use_cases,
@@ -4404,6 +4514,7 @@ async def _seed_catalog_taxonomy(
         form_definition_id=services_form_id,
         now=now,
         listing_kind="SERVICE",
+        display_order=next(top_level_order),
     )
     await _seed_subtree(
         use_cases,
@@ -4454,6 +4565,11 @@ async def _seed_catalog_taxonomy(
         form_definition_id=tamirchi_form_id,
         now=now,
         listing_kind="SERVICE",
+        # 100+, not 1/2/3 -- these three are siblings of `_xizmat_korsatish_tree()`'s own nodes
+        # (also parented under `services_head_id`), which already number themselves 1..N via
+        # `_seed_subtree`'s own `enumerate`; a fixed high base keeps these three (seeded first,
+        # historically) sorting after that tree without needing to know its size.
+        display_order=100,
     )
 
     haydovchi_form_id = await _seed_form(
@@ -4502,6 +4618,7 @@ async def _seed_catalog_taxonomy(
         form_definition_id=haydovchi_form_id,
         now=now,
         listing_kind="SERVICE",
+        display_order=101,
     )
 
     yuk_haydovchi_form_id = await _seed_form(
@@ -4557,6 +4674,7 @@ async def _seed_catalog_taxonomy(
         form_definition_id=yuk_haydovchi_form_id,
         now=now,
         listing_kind="SERVICE",
+        display_order=102,
     )
 
     # -- Every top-level category gets its own themed hero image/tagline/accent color (Task:

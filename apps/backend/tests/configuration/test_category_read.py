@@ -218,6 +218,63 @@ async def test_get_category_form_returns_none_when_category_has_no_bound_form(
 
 
 @pytest.mark.asyncio
+async def test_list_categories_sorts_by_display_order_regardless_of_cache_iteration_order(
+    fake_cache: FakeSnapshotCache,
+    category_read_use_cases: CategoryReadUseCases,
+) -> None:
+    """Regression coverage: `RedisSnapshotCache.list_current` reads its index off a Redis SET
+    (`SMEMBERS`), which has no guaranteed iteration order -- production symptom was the homepage
+    category chips reshuffling on every refresh. Deliberately inserts into the fake cache in an
+    order that does NOT match `display_order`, proving `list_categories` sorts rather than just
+    happening to pass through an already-ordered fake."""
+    await fake_cache.put(
+        ConfigEntityType.CATEGORY,
+        "c",
+        {"code": "c", "id": "3", "parent_category_id": None, "descriptor": {"display_order": 3}},
+    )
+    await fake_cache.put(
+        ConfigEntityType.CATEGORY,
+        "a",
+        {"code": "a", "id": "1", "parent_category_id": None, "descriptor": {"display_order": 1}},
+    )
+    await fake_cache.put(
+        ConfigEntityType.CATEGORY,
+        "b",
+        {"code": "b", "id": "2", "parent_category_id": None, "descriptor": {"display_order": 2}},
+    )
+
+    top_level = await category_read_use_cases.list_categories(parent_id=None, include_retired=False)
+
+    assert [snapshot["code"] for snapshot in top_level] == ["a", "b", "c"]
+
+
+@pytest.mark.asyncio
+async def test_list_categories_ties_break_deterministically_on_id(
+    fake_cache: FakeSnapshotCache,
+    category_read_use_cases: CategoryReadUseCases,
+) -> None:
+    """Two categories tied at the same (or missing/default) `display_order` must still sort the
+    same way on every call -- `id` as the tiebreak, matching `SqlalchemyConfigHeadRepository.
+    list_heads`'s own `ORDER BY ..., id` convention for the admin-only Postgres path."""
+    await fake_cache.put(
+        ConfigEntityType.CATEGORY,
+        "z",
+        {"code": "z", "id": "zzzz", "parent_category_id": None, "descriptor": {}},
+    )
+    await fake_cache.put(
+        ConfigEntityType.CATEGORY,
+        "a",
+        {"code": "a", "id": "aaaa", "parent_category_id": None, "descriptor": {}},
+    )
+
+    first = await category_read_use_cases.list_categories(parent_id=None, include_retired=False)
+    second = await category_read_use_cases.list_categories(parent_id=None, include_retired=False)
+
+    assert [s["code"] for s in first] == ["a", "z"]
+    assert first == second
+
+
+@pytest.mark.asyncio
 async def test_get_category_form_returns_none_when_bound_form_head_does_not_exist(
     fake_repo: FakeConfigHeadRepository,
     fake_cache: FakeSnapshotCache,
