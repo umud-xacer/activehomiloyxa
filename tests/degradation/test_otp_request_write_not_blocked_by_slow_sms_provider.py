@@ -52,9 +52,10 @@ async def _identity_schema(engine: AsyncEngine) -> None:
 
 
 class _UnusedProvider:
-    """`AuthenticationUseCases.sessions`/`google_provider`/`email_provider`/`session_token_
-    generator` are constructed but never exercised by `request_otp` -- a fake that raises on ANY
-    attribute access catches a future accidental dependency instead of silently succeeding."""
+    """`AuthenticationUseCases.sessions`/`google_provider`/`apple_provider`/`email_provider`/
+    `session_token_generator`/`login_attempts` are constructed but never exercised by
+    `request_otp` -- a fake that raises on ANY attribute access catches a future accidental
+    dependency instead of silently succeeding."""
 
     def __getattr__(self, name: str) -> object:
         raise AssertionError(f"not exercised by this test: {name}")
@@ -62,7 +63,12 @@ class _UnusedProvider:
 
 class _FixedPlatformSettings:
     async def get_identity_settings(self) -> IdentityPlatformSettings:
-        return IdentityPlatformSettings(otp_expiry_minutes=5, session_expiry_hours=720)
+        return IdentityPlatformSettings(
+            otp_expiry_minutes=5,
+            session_expiry_hours=720,
+            login_lockout_max_attempts=5,
+            login_lockout_block_minutes=15,
+        )
 
 
 class _FixedOtpCodeGenerator:
@@ -94,10 +100,12 @@ async def test_request_otp_commits_the_challenge_before_the_slow_sms_call_return
             otp_sms_provider=_SlowSmsProvider(),
             email_provider=_UnusedProvider(),  # type: ignore[arg-type]
             google_provider=_UnusedProvider(),  # type: ignore[arg-type]
+            apple_provider=_UnusedProvider(),  # type: ignore[arg-type]
             password_hasher=Argon2PasswordHasherAdapter(),
             otp_code_generator=_FixedOtpCodeGenerator(),
             session_token_generator=_UnusedProvider(),  # type: ignore[arg-type]
             platform_settings=_FixedPlatformSettings(),
+            login_attempts=_UnusedProvider(),  # type: ignore[arg-type]
         )
 
         request_task = asyncio.create_task(

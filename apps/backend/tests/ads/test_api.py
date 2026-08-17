@@ -35,8 +35,6 @@ _OPERATOR_ACCOUNT = UserId(value=uuid4())
 _OPERATOR_TOKENS = {"operator-token"}
 _UNAUTHORIZED_TOKENS = {"unauthorized-token"}
 
-_NOW = datetime(2026, 7, 13, tzinfo=UTC)
-
 
 @pytest.fixture
 def client(
@@ -168,13 +166,19 @@ class TestScheduleLifecycle:
         slot = fake_slots.seed("HOMEPAGE_TOP")
         entitlement_id = uuid4()
 
+        # Anchored to real wall-clock time, same reasoning as `_create_request`'s own comment
+        # above -- `schedule_campaign` checks eligibility against `datetime.now(UTC)`, so a
+        # window fixed to the stale `_NOW` module constant eventually falls into the past and the
+        # campaign is legitimately no longer eligible to schedule.
+        seed_now = datetime.now(UTC)
+
         async def _seed() -> None:
             await fake_entitlement_projection.upsert(
                 EntitlementSnapshot(
                     entitlement_id=entitlement_id,
                     target_id=slot.head_id,
-                    valid_from=_NOW - timedelta(days=1),
-                    valid_until=_NOW + timedelta(days=30),
+                    valid_from=seed_now - timedelta(days=1),
+                    valid_until=seed_now + timedelta(days=30),
                     activation_state="ACTIVE",
                 )
             )

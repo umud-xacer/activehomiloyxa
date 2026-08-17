@@ -16,6 +16,7 @@ from uuid import uuid4
 
 import pytest_asyncio
 from opensearchpy import OpenSearch
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from search.application.ports import SearchConfigurationSnapshot
@@ -34,6 +35,12 @@ NOW = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
 
 @pytest_asyncio.fixture(autouse=True)
 async def _search_schema(engine: AsyncEngine) -> None:
+    # `ensure_clean_schema` is generic across every module's schema, so it doesn't know search's
+    # `listing_fallback_document.title` trigram GIN index needs `pg_trgm` -- same one-time
+    # extension creation as `apps/backend/tests/search/integration/conftest.py`, needed here too
+    # since this file lives outside that directory and doesn't inherit its fixtures.
+    async with engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
     await ensure_clean_schema(engine, "search", SearchBase)
 
 
@@ -99,6 +106,7 @@ async def test_search_degrades_to_the_postgres_fallback_when_opensearch_is_unrea
             SearchQuery(
                 q="studio",
                 category_id=None,
+                owner_profile_id=None,
                 listing_type=None,
                 filters={},
                 price_min=None,

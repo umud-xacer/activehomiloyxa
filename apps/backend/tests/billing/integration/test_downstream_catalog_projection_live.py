@@ -26,6 +26,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest_asyncio
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from billing.domain import (
@@ -46,6 +47,7 @@ from catalog.infrastructure.persistence.base import CatalogBase
 from catalog.infrastructure.persistence.models import SubscriptionProjectionRow
 from composition_root import make_billing_entitlement_fanout_handler
 from contracts.events.billing import EntitlementActivated
+from profiles.infrastructure.persistence.base import ProfilesBase
 from shared_kernel import BusinessProfileId, Money
 
 NOW = datetime(2026, 7, 12, tzinfo=UTC)
@@ -53,11 +55,18 @@ NOW = datetime(2026, 7, 12, tzinfo=UTC)
 
 @pytest_asyncio.fixture(autouse=True)
 async def _catalog_tables(engine: AsyncEngine) -> None:
-    """This ONE test file needs BOTH schemas -- `integration/conftest.py`'s own `engine` fixture
-    only creates billing's own tables (every other billing integration test needs nothing else).
-    catalog's `subscription_projection` table is the thing being asserted against here."""
+    """This ONE test file needs schemas beyond billing's own -- `integration/conftest.py`'s own
+    `engine` fixture only creates billing's own tables (every other billing integration test needs
+    nothing else). catalog's `subscription_projection` table is the thing being asserted against
+    here; profiles' tables (`processed_event` included) are needed too because an `ACTIVE_
+    SUBSCRIPTION` entitlement is ALSO routed to `handle_subscription_entitlement_event`
+    (`_PROFILES_SUBSCRIPTION_RELEVANT_ENTITLEMENT_TYPES`, `composition_root.py`) by the same real
+    fanout handler this test drives -- not just to catalog's branch, despite this file reusing
+    billing's own `session_factory` for the fanout handler's `profiles_session_factory` param."""
     async with engine.begin() as conn:
         await conn.run_sync(CatalogBase.metadata.create_all, checkfirst=True)
+        await conn.execute(text('CREATE SCHEMA IF NOT EXISTS "profiles"'))
+        await conn.run_sync(ProfilesBase.metadata.create_all, checkfirst=True)
 
 
 async def test_catalog_subscription_projection_reacts_to_a_real_entitlement_activated_event(
@@ -129,9 +138,12 @@ async def test_catalog_subscription_projection_reacts_to_a_real_entitlement_acti
     # this IS the composition root's real wiring -- the same handler
     # `provide_catalog_entitlement_projection_dispatcher` attaches to billing's outbox (Task P-11
     # broadened this handler to also route VERIFICATION_ELIGIBILITY events to profiles, Task P-14
-    # broadened it again for ads' BANNER_SLOT_BOOKING events; this ACTIVE_SUBSCRIPTION event only
-    # exercises catalog's own routing branch, so reusing billing's own `session_factory` for the
-    # unused `profiles_session_factory`/`ads_session_factory` parameters is safe here).
+    # broadened it again for ads' BANNER_SLOT_BOOKING events). This ACTIVE_SUBSCRIPTION event
+    # exercises BOTH catalog's routing branch AND profiles' subscription-eligibility branch
+    # (`_PROFILES_SUBSCRIPTION_RELEVANT_ENTITLEMENT_TYPES`) -- reusing billing's own
+    # `session_factory` for `profiles_session_factory` is safe because it is the SAME physical
+    # test database, just a different schema (`_catalog_tables` above creates both); ads'
+    # branch genuinely is unused here (no `BANNER_SLOT_BOOKING` entitlement type in this event).
     handler = make_billing_entitlement_fanout_handler(
         billing_session_factory=session_factory,
         profiles_session_factory=session_factory,
