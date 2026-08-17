@@ -222,6 +222,7 @@ def app(sms_provider: _CapturingSmsProvider) -> Any:
         "APPLE_PRIVATE_KEY": "unused-e2e-test-value",
         "YANDEX_MAPS_API_KEY": "unused-e2e-test-value",
         "MINIO_ENDPOINT": "localhost:9000",
+        "MINIO_PUBLIC_ENDPOINT_URL": "http://localhost:9000",
         "MINIO_ROOT_USER": "active_home",
         "MINIO_ROOT_PASSWORD": "active_home_local_dev_only",
         "MINIO_MEDIA_BUCKET": "active-home-media",
@@ -265,10 +266,12 @@ def app(sms_provider: _CapturingSmsProvider) -> Any:
                 otp_sms_provider=sms_provider,
                 email_provider=composition_root._email_provider(),
                 google_provider=composition_root._google_provider(),
+                apple_provider=composition_root._apple_provider(),
                 password_hasher=composition_root._password_hasher(),
                 otp_code_generator=composition_root._otp_code_generator(),
                 session_token_generator=composition_root._session_token_generator(),
                 platform_settings=composition_root._platform_settings_reader(),
+                login_attempts=composition_root._login_attempt_tracker(),
             )
 
     real_app.dependency_overrides[get_authentication_use_cases] = (

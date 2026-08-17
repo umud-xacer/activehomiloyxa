@@ -152,7 +152,7 @@ async def test_a_real_listing_published_event_is_indexed_and_becomes_searchable(
                 actor=owner_id.value,
                 aggregate_type="Listing",
                 aggregate_id=listing.id.value,
-                payload=use_cases._listing_payload(listing),
+                payload=await use_cases._listing_payload(listing),
             )
         )
         await session.commit()
@@ -203,6 +203,7 @@ async def test_a_real_listing_published_event_is_indexed_and_becomes_searchable(
         SearchQuery(
             q="studio",
             category_id=None,
+            owner_profile_id=None,
             listing_type=None,
             filters={},
             price_min=None,
