@@ -9,6 +9,7 @@ are persistence-ignorant: mapping lives in infrastructure/").
 from __future__ import annotations
 
 import base64
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -71,10 +72,15 @@ def _encode_cursor(created_at: Any, row_id: UUID) -> str:
     return base64.urlsafe_b64encode(raw.encode()).decode()
 
 
-def _decode_cursor(cursor: str) -> tuple[str, str]:
+def _decode_cursor(cursor: str) -> tuple[datetime, UUID]:
+    """Returns real `datetime`/`UUID` objects, not their string forms -- binding plain strings
+    into the `row(created_at, id) > row($1, $2)` comparison below left both sides untyped from
+    Postgres's perspective (`asyncpg` has no implicit `timestamptz > varchar`/`uuid > varchar`
+    cast), which raised `UndefinedFunctionError` on every page past the first. `_encode_cursor`
+    already starts from real `datetime`/`UUID` values -- this just inverts that back to them."""
     raw = base64.urlsafe_b64decode(cursor.encode()).decode()
-    created_at_str, row_id = raw.split("|", 1)
-    return created_at_str, row_id
+    created_at_str, row_id_str = raw.split("|", 1)
+    return datetime.fromisoformat(created_at_str), UUID(row_id_str)
 
 
 def _as_uuid(value: Any) -> UUID | None:
@@ -146,9 +152,9 @@ class SqlalchemyConfigHeadRepository:
         model = self._head_model(entity_type)
         stmt = select(model).order_by(model.created_at, model.id).limit(limit + 1)
         if cursor is not None:
-            created_at_str, row_id = _decode_cursor(cursor)
+            cursor_created_at, cursor_id = _decode_cursor(cursor)
             stmt = stmt.where(
-                func.row(model.created_at, model.id) > func.row(created_at_str, row_id)
+                func.row(model.created_at, model.id) > func.row(cursor_created_at, cursor_id)
             )
         result = await self._session.execute(stmt)
         rows = list(result.scalars().all())
