@@ -70,6 +70,10 @@ tags:
   description: Authoring of the eight configuration entities with the Head+Version lifecycle.
 - name: Administration
   description: Moderation, verification queue, user management, audit log, dashboard, and reports.
+- name: Platform
+  description: Public, unauthenticated platform-wide reads -- homepage proof-strip stats and the
+    owner-admin panel's slug-guess oracle. Deliberate, narrow exceptions to "no public read of
+    platform-settings" (see each operation's own description).
 paths:
   /auth/otp:
     post:
@@ -689,6 +693,35 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+  /business-profiles/{profileId}/branding:
+    patch:
+      tags:
+      - Business Profiles
+      operationId: updateBusinessProfileBranding
+      summary: Set a business profile's logo/banner
+      description: Sets the logo/banner media assets in one call, both applied verbatim (a null value
+        clears that one). Ownership is validated.
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessProfileBrandingRequest'
+      responses:
+        '200':
+          description: Updated profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /business-profiles/slug/{slug}:
     get:
       tags:
@@ -2534,6 +2567,53 @@ paths:
           description: Click recorded.
         '404':
           $ref: '#/components/responses/NotFound'
+  /public/platform-stats:
+    get:
+      tags:
+      - Platform
+      operationId: getPlatformStats
+      summary: Homepage proof-strip stats
+      description: Deliberate exception to "no public read of platform-settings" -- backs the
+        homepage proof strip. Exposes only three named stats.* keys, never the settings blob
+        wholesale. Defaults to 0 for a fresh DB that hasn't run the seed backfill yet, rather than
+        500ing. activeListings is deliberately absent -- the frontend reads that from GET /search's
+        own page.total instead, a real live count that already has a public source.
+      security: []
+      responses:
+        '200':
+          description: Platform stats.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformStatsResult'
+  /public/owner-admin-access/verify:
+    post:
+      tags:
+      - Platform
+      operationId: verifyOwnerAdminSlug
+      summary: Check a guessed owner-admin panel slug
+      description: 'The one deliberate exception to "no public read of platform-settings" -- a
+        yes/no oracle for a single guessed slug, never the real value, so the frontend''s
+        /$ownerAdminSlug route guard can tell a right guess from a wrong one without shipping the
+        real path in the client bundle. IP-scoped lockout applies (a purpose-specific throttle on
+        top of the generic global rate limit) since this endpoint''s entire purpose is answering
+        "is this guess right".'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnerAdminSlugCheckRequest'
+      responses:
+        '200':
+          description: Whether the guessed slug is correct.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OwnerAdminSlugCheckResult'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /admin/config/{entityType}:
     get:
       tags:
@@ -2756,6 +2836,45 @@ paths:
         (Super-Admin). Re-enters the validation gate; publish is refused if validation fails.
 
         '
+      parameters:
+      - $ref: '#/components/parameters/ConfigEntityTypePath'
+      - $ref: '#/components/parameters/ConfigHeadIdPath'
+      - $ref: '#/components/parameters/ConfigVersionIdPath'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigPublishRequest'
+      responses:
+        '200':
+          description: Published (now Current).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigurationVersion'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Validation gate failed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/config/{entityType}/{headId}/versions/{versionId}/publish-solo:
+    post:
+      tags:
+      - Configuration (Admin)
+      operationId: publishConfigVersionSolo
+      summary: Publish a version as a solo super-admin (maker + checker in one call)
+      description: A solo-super-admin convenience for the owner-admin panel, where one human runs
+        the entire authoring workflow instead of the two-person maker/checker team the generic
+        publish operation assumes. Requires the caller to hold both the manage AND approve
+        permission keys for this entity type; completes both maker and checker steps in one call
+        using a fixed system principal for the checker step, so the maker/checker "different
+        principal" invariant is satisfied for real rather than bypassed. Same semantics as publish
+        otherwise (re-enters the validation gate; refused if validation fails).
       parameters:
       - $ref: '#/components/parameters/ConfigEntityTypePath'
       - $ref: '#/components/parameters/ConfigHeadIdPath'
@@ -3234,6 +3353,63 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserAdminView'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/business-profiles:
+    get:
+      tags:
+      - Administration
+      operationId: adminListBusinessProfiles
+      summary: List business profiles (admin)
+      description: Owner-admin panel's full company list -- unlike the public listBusinessProfiles,
+        includes ARCHIVED profiles and reports a real page.total (used for the panel's "total
+        companies" stat card).
+      parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - CREATED
+          - ACTIVE
+          - ARCHIVED
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: A page of business profiles.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/BusinessProfile'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/business-profiles/{profileId}/archive:
+    post:
+      tags:
+      - Administration
+      operationId: adminArchiveBusinessProfile
+      summary: Archive a business profile (admin)
+      description: Owner-admin panel's "remove company" action. Archives rather than hard-deletes --
+        the profile disappears from every public listing immediately, its data/audit trail is kept.
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      responses:
+        '200':
+          description: Archived profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessProfile'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -4561,6 +4737,22 @@ components:
           - ARCHITECTURE_INTERIOR
           - REPAIR_SERVICES
           - REAL_ESTATE_AGENCIES
+      additionalProperties: false
+    BusinessProfileBrandingRequest:
+      type: object
+      description: Sets the logo/banner in one call, both applied verbatim (a null value clears
+        that one).
+      properties:
+        logoMediaAssetId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        bannerMediaAssetId:
+          type:
+          - string
+          - 'null'
+          format: uuid
       additionalProperties: false
     PortfolioItem:
       type: object
@@ -6286,6 +6478,40 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ValidationError'
+      additionalProperties: false
+    PlatformStatsResult:
+      type: object
+      description: Homepage proof-strip stats -- exposes only three named stats.* settings keys,
+        never the platform-settings-global blob wholesale.
+      required:
+      - cities
+      - partners
+      - satisfactionPercent
+      properties:
+        cities:
+          type: integer
+        partners:
+          type: integer
+        satisfactionPercent:
+          type: integer
+      additionalProperties: false
+    OwnerAdminSlugCheckRequest:
+      type: object
+      description: Carries only the visitor's guess, never the real stored value.
+      required:
+      - slug
+      properties:
+        slug:
+          type: string
+      additionalProperties: false
+    OwnerAdminSlugCheckResult:
+      type: object
+      description: A yes/no oracle only -- the real slug is never included in this response.
+      required:
+      - valid
+      properties:
+        valid:
+          type: boolean
       additionalProperties: false
     ConfigPublishRequest:
       type: object
