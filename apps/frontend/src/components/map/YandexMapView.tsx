@@ -203,6 +203,34 @@ function transitFallbackUrl(from: { lat: number; lng: number }, to: { lat: numbe
   return `https://yandex.com/maps/?rtext=${from.lat},${from.lng}~${to.lat},${to.lng}&rtt=mt`;
 }
 
+/** Yandex's native Polygon/Circle/Polyline renderer needs a literal `#rrggbb` color -- it throws
+ * "graphics.RGBAColor: формат данных не распознан" on a raw `var(--token)` string (which only
+ * resolves inside the browser's own CSS/style engine, not Yandex's shape parser). Newer Chrome
+ * also defeats the once-standard "read it back via getComputedStyle" trick: this project's tokens
+ * are declared with `oklch(...)`, and current Chrome now returns that oklch() string verbatim from
+ * getComputedStyle instead of down-converting to rgb() -- which Yandex's decade-old parser can't
+ * read either. Routing the value through a 1x1 canvas forces an actual color-space conversion
+ * (canvas 2D always rasterizes to concrete sRGB bytes), which is the only resolution step neither
+ * browser nor Yandex can skip. Re-run per draw session so it stays correct across theme swaps. */
+function resolveCssColor(varName: string): string {
+  const el = document.createElement("span");
+  el.style.color = `var(${varName})`;
+  document.body.appendChild(el);
+  const cssColor = getComputedStyle(el).color;
+  document.body.removeChild(el);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 1;
+  canvas.height = 1;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return "#6b46c1";
+  ctx.fillStyle = cssColor;
+  ctx.fillRect(0, 0, 1, 1);
+  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+  const hex = (n: number) => n.toString(16).padStart(2, "0");
+  return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+
 export function YandexMapView(props: Props) {
   return (
     <ClientOnly
@@ -584,6 +612,7 @@ function YandexMapViewClient({
     const map = mapRef.current;
     const ymapsNs = ymapsRef.current;
     if (!map || !ymapsNs) return;
+    const primaryColor = resolveCssColor("--primary");
     const state = drawStateRef.current;
     state.mode = drawMode;
     state.points = [];
@@ -594,10 +623,13 @@ function YandexMapViewClient({
       state.tempLayer = null;
     }
     if (drawMode === "none") {
-      map.behaviors.enable("drag");
+      map.behaviors.enable(["drag", "dblClickZoom"]);
       return;
     }
-    map.behaviors.disable("drag");
+    // dblClickZoom must go too -- polygon drawing finishes on a double-click, and left enabled it
+    // fires alongside ours, silently zooming/recentering the map out from under the shape the user
+    // just finished (and away from the vertices onClick already recorded, so nothing looks drawn).
+    map.behaviors.disable(["drag", "dblClickZoom"]);
 
     const finishPolygon = () => {
       if (state.points.length >= 3) {
@@ -605,9 +637,9 @@ function YandexMapViewClient({
           [state.points],
           {},
           {
-            fillColor: "var(--primary)",
+            fillColor: primaryColor,
             fillOpacity: 0.15,
-            strokeColor: "var(--primary)",
+            strokeColor: primaryColor,
             strokeWidth: 2,
           },
         );
@@ -640,7 +672,7 @@ function YandexMapViewClient({
       state.tempLayer = new ymapsNs.Polyline(
         state.points,
         {},
-        { strokeColor: "var(--primary)", strokeWidth: 2, strokeStyle: "shortdash" },
+        { strokeColor: primaryColor, strokeWidth: 2, strokeStyle: "shortdash" },
       );
       map.geoObjects.add(state.tempLayer as unknown as never);
     };
@@ -658,9 +690,9 @@ function YandexMapViewClient({
         [coords, 1],
         {},
         {
-          fillColor: "var(--primary)",
+          fillColor: primaryColor,
           fillOpacity: 0.12,
-          strokeColor: "var(--primary)",
+          strokeColor: primaryColor,
           strokeWidth: 2,
         },
       );
@@ -714,7 +746,7 @@ function YandexMapViewClient({
       map.events.remove("mousedown", onMouseDown);
       map.events.remove("mousemove", onMouseMove);
       map.events.remove("mouseup", onMouseUp);
-      map.behaviors.enable("drag");
+      map.behaviors.enable(["drag", "dblClickZoom"]);
     };
   }, [drawMode, onAreaSearch, mapReady]);
 
@@ -764,7 +796,7 @@ function YandexMapViewClient({
     const line = new ymapsNs.Polyline(
       coords,
       {},
-      { strokeColor: "var(--primary)", strokeWidth: 5, strokeLineCap: "round" },
+      { strokeColor: resolveCssColor("--primary"), strokeWidth: 5, strokeLineCap: "round" },
     );
     map.geoObjects.add(casing as unknown as never);
     map.geoObjects.add(line as unknown as never);
@@ -958,8 +990,13 @@ function YandexMapViewClient({
         <div ref={containerRef} className="absolute inset-0" />
       </div>
 
-      <div className="absolute inset-x-0 top-0 z-[500] flex items-start justify-between gap-2 p-3 sm:p-4">
-        <div className="relative shrink-0">
+      {/* This row's own box spans the full width and is as tall as its tallest column (the
+          right-side vertical toolbar) -- without pointer-events-none here, that invisible area
+          swallows clicks meant for the map underneath across the whole top strip, well past where
+          the search bar or buttons are actually drawn. Each child opts back into pointer-events so
+          the buttons/search box themselves stay clickable. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[500] flex items-start justify-between gap-2 p-3 sm:p-4">
+        <div className="pointer-events-auto relative shrink-0">
           <ToolButton
             active={layersOpen}
             onClick={() => setLayersOpen((v) => !v)}
@@ -1005,7 +1042,7 @@ function YandexMapViewClient({
         </div>
 
         {enableSearch ? (
-          <div className="glass min-w-0 max-w-md flex-1 overflow-hidden rounded-2xl shadow-soft">
+          <div className="glass pointer-events-auto min-w-0 max-w-md flex-1 overflow-hidden rounded-2xl shadow-soft">
             <div className="flex items-center gap-2 px-3 py-2.5">
               <Search className="size-3.5 shrink-0 text-muted-foreground" />
               <input
@@ -1096,7 +1133,7 @@ function YandexMapViewClient({
           <div className="flex-1" aria-hidden />
         )}
 
-        <div className="flex shrink-0 flex-col gap-2">
+        <div className="pointer-events-auto flex shrink-0 flex-col gap-2">
           <ToolButton
             onClick={() => setFullscreen((v) => !v)}
             label={fullscreen ? "Kichraytirish" : "To'liq ekran"}

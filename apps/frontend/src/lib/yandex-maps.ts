@@ -31,7 +31,10 @@ export interface YMapsEvent {
 export interface YMapsMap {
   geoObjects: YMapsGeoObjectCollection;
   events: YMapsEventManager;
-  behaviors: { enable(name: string): void; disable(name: string): void };
+  behaviors: {
+    enable(name: string | string[]): void;
+    disable(name: string | string[]): void;
+  };
   controls: { add(name: string, opts?: Record<string, unknown>): void; remove(name: string): void };
   setCenter(coords: [number, number], zoom?: number, opts?: { duration?: number }): Promise<void>;
   setZoom(zoom: number, opts?: { duration?: number }): Promise<void>;
