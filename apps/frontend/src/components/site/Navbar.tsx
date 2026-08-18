@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { GlobalSearchDialog } from "@/components/search/GlobalSearchDialog";
 import {
   Plus,
   Search,
@@ -51,6 +52,7 @@ export function Navbar() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const { data: account } = useMe();
   const invalidateAuth = useInvalidateAuth();
 
@@ -59,6 +61,17 @@ export function Navbar() {
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setSearchOpen((v) => !v);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
   const onLogout = async () => {
@@ -124,13 +137,14 @@ export function Navbar() {
 
             <Divider className="hidden lg:block" />
 
-            <Link
-              to="/properties"
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
               aria-label={t("nav.search", "Qidiruv")}
-              className="flex size-9 shrink-0 items-center justify-center rounded-full text-foreground/75 transition hover:bg-secondary hover:text-foreground lg:hidden"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full text-foreground/75 transition hover:bg-secondary hover:text-foreground"
             >
               <Search className="size-4.5" />
-            </Link>
+            </button>
 
             {!isLegalEntity && (
               <Link
@@ -231,6 +245,7 @@ export function Navbar() {
       </motion.header>
 
       <ChatAssistant />
+      <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </>
   );
 }

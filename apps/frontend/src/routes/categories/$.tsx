@@ -14,8 +14,10 @@ import {
   TrendingUp,
   Sparkles,
   BadgePercent,
+  Search as SearchIcon,
 } from "lucide-react";
 import { SortMenu, type HubOption } from "@/components/catalog/SortMenu";
+import { GlobalSearchDialog } from "@/components/search/GlobalSearchDialog";
 import { CategoryChip } from "@/components/catalog/CategoryChip";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -501,6 +503,7 @@ function CatalogDirectionView({
   const theme = KIND_THEME[kind];
   const [filters, setFilters] = useState<ListingFilterState>(emptyFilterState());
   const [sort, setSort] = useState<CatalogSort>("newest");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
   const {
@@ -589,6 +592,14 @@ function CatalogDirectionView({
             {!isLoading && <span className="opacity-70">· {sorted.length} ta e'lon</span>}
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Shu kategoriyada qidirish"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-foreground/70 transition hover:bg-secondary hover:text-foreground"
+            >
+              <SearchIcon className="size-4" />
+            </button>
             <SortMenu options={CATALOG_HUB_OPTIONS} value={sort} onChange={setSort} />
             {form && form.sections.length > 0 && (
               <CategoryFiltersSheet
@@ -688,6 +699,11 @@ function CatalogDirectionView({
           </Container>
         </section>
       )}
+      <GlobalSearchDialog
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        categoryPathPrefix={category.path}
+      />
     </AppShell>
   );
 }
