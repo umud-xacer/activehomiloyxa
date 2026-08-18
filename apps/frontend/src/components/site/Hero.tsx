@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
-import { useNavigate } from "@tanstack/react-router";
 import { Sparkles, Search } from "lucide-react";
 import worldMapBg from "@/assets/hero-bg-navy-map.jpg";
 import { CategoryCarousel } from "./CategoryCarousel";
 import { Container } from "@/components/layout/Container";
+import { GlobalSearchDialog } from "@/components/search/GlobalSearchDialog";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -18,15 +18,7 @@ const fadeUp = {
 
 export function Hero() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [query, setQuery] = useState("");
-
-  const runSearch = () => {
-    navigate({
-      to: "/properties",
-      search: { q: query.trim(), listing: "any", sort: "newest", page: 1 },
-    });
-  };
+  const [searchOpen, setSearchOpen] = useState(false);
 
   return (
     <section className="hero-dark relative isolate overflow-hidden bg-background pt-28 pb-14 text-foreground md:pt-32 md:pb-16">
@@ -85,13 +77,11 @@ export function Hero() {
                 </div>
                 <input
                   type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") runSearch();
-                  }}
+                  readOnly
+                  onFocus={() => setSearchOpen(true)}
+                  onClick={() => setSearchOpen(true)}
                   placeholder={t("hero.search_placeholder")}
-                  className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/80 focus:outline-none sm:text-[15px]"
+                  className="min-w-0 flex-1 cursor-pointer bg-transparent text-sm text-foreground placeholder:text-muted-foreground/80 focus:outline-none sm:text-[15px]"
                 />
                 <span className="hidden items-center gap-1 rounded-full bg-primary/8 px-2.5 py-1 text-[11px] font-semibold text-primary sm:inline-flex">
                   <Sparkles className="size-3" />
@@ -99,7 +89,7 @@ export function Hero() {
                 </span>
                 <button
                   type="button"
-                  onClick={runSearch}
+                  onClick={() => setSearchOpen(true)}
                   className="inline-flex items-center gap-1 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:shadow-glow"
                 >
                   {t("hero.search_button")}
@@ -113,6 +103,7 @@ export function Hero() {
       {/* Categories live inside Hero's own dark band -- continues the same navy gradient rather
           than handing off to a separate white section right below the search box. */}
       <CategoryCarousel />
+      <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </section>
   );
 }
