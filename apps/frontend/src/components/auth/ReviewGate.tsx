@@ -51,7 +51,7 @@ export function ReviewGate({ account, children }: { account: Account; children: 
             "Anketangiz ko'rib chiqildi, lekin hozircha tasdiqlanmadi. Qo'shimcha ma'lumot uchun qo'llab-quvvatlash xizmatiga murojaat qiling."}
         </motion.p>
         <Link
-          to="/support"
+          to="/contact"
           className="mt-7 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow"
         >
           <Mail className="size-4" /> Qo'llab-quvvatlash bilan bog'lanish

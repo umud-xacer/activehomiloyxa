@@ -7,18 +7,24 @@ import { SocialIconsExpanded } from "./SocialIcons";
 import { Container } from "@/components/layout/Container";
 import logoMark from "@/assets/logo-mark.png";
 
-/** Every link points at a real route. `null` means no page exists yet for that label (Terms,
- * Cookies) -- left unlinked rather than wired to `#` or a fabricated legal page. */
+/** Every link points at a real route. `null` means no page exists yet for that label -- left
+ * unlinked rather than wired to `#` or a fabricated page. Hotels/Build/Careers point at the real
+ * catalog category that actually covers that topic (`/hotels`, `/construction`, `/jobs` were
+ * always-empty top-level stubs; `/categories/mexmonxona`, `/categories/qurilish-materiallari`,
+ * `/categories/ish-orni` are the real, populated pages a visitor actually wants). "AI Search"
+ * points at the real site-wide search built this session (`/search`) rather than a page that
+ * never existed. Press has no real content anywhere in the app yet -- left unlinked rather than
+ * invent a redirect target for it. */
 const FOOTER_LINK_TO: Record<string, string | null> = {
   Buy: "/properties",
   Rent: "/properties",
-  Hotels: "/hotels",
-  Build: "/construction",
+  Hotels: "/categories/mexmonxona",
+  Build: "/categories/qurilish-materiallari",
   Shop: "/materials",
-  "AI Search": "/ai",
+  "AI Search": "/search",
   About: "/about",
-  Careers: "/jobs",
-  Press: "/news",
+  Careers: "/categories/ish-orni",
+  Press: null,
   Partners: "/list",
   Contact: "/contact",
 };
@@ -29,9 +35,8 @@ const QR_TARGET_URL = "https://taplink.cc/activehome.uz?from=qr";
 
 /** Legal/info links, split into two short, clearly-labeled groups (mirrors how every real
  * marketplace footer organizes this -- one glance answers "where are the rules" vs "where are
- * the policies"). Every entry links to a real route; the 5 that had no page yet (Terms, Rules,
- * Refund, Public Offer, Security Policy) got honest "coming soon" stubs rather than fabricated
- * legal text, same convention as the pre-existing Privacy/FAQ stubs. */
+ * the policies"). Every entry links to a real route with real content (Terms/Rules/Refund/Offer/
+ * Security Policy all live under `LegalPage`, see routes/terms.tsx etc.). */
 const LEGAL_GROUPS: { title: string; links: { label: string; to: string }[] }[] = [
   {
     title: "Yordam va qoidalar",

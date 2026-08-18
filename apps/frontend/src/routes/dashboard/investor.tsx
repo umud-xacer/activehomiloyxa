@@ -241,7 +241,7 @@ function Page() {
           <p className="text-center text-xs text-muted-foreground">
             Savollaringiz bo'lsa{" "}
             <Link
-              to="/support"
+              to="/contact"
               className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
             >
               qo'llab-quvvatlash <ArrowUpRight className="size-3" />
