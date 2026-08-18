@@ -45,7 +45,8 @@ _registry = WhitelistRegistry()
 
 
 async def _set_all_subcategories(target_status: str) -> None:
-    assert target_status in ("ACTIVE", "RETIRED")
+    if target_status not in ("ACTIVE", "RETIRED"):
+        raise ValueError(f"target_status must be ACTIVE or RETIRED, got {target_status!r}")
 
     engine = make_engine()
     session_factory = make_session_factory(engine)

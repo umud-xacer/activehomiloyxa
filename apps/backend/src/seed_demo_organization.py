@@ -316,7 +316,8 @@ async def _seed_company(base_url: str, config: DemoCompanyConfig) -> None:
         account = await SqlalchemyUserAccountRepository(id_session).get_by_email(
             EmailAddress(value=email)
         )
-        assert account is not None
+        if account is None:
+            raise RuntimeError(f"just-registered demo account {email!r} not found by email")
         found_account_id.append(account.id)
     async for use_cases in composition_root.provide_admin_identity_use_cases():
         await use_cases.decide_registration(
@@ -333,7 +334,8 @@ async def _seed_company(base_url: str, config: DemoCompanyConfig) -> None:
     async for pf_session in composition_root._profiles_session():
         repo = SqlalchemyBusinessProfileRepository(pf_session)
         biz_profile = await repo.get_by_id(BusinessProfileId(value=UUID(profile_id)))
-        assert biz_profile is not None
+        if biz_profile is None:
+            raise RuntimeError(f"just-created demo business profile {profile_id!r} not found")
         # `VerificationCase.create`'s factory requires >=1 document; a demo badge doesn't need a
         # real submitted document row, so this constructs the frozen dataclass directly (bypassing
         # only that factory-level guard, not `ApprovedVerificationProof`'s own I-13 structural

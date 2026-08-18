@@ -451,7 +451,8 @@ async def _seed_furniture_form(
         )
     except DuplicateCodeError:
         existing = await repo.get_head_by_code(ConfigEntityType.FORM_DEFINITION, code)
-        assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
+        if existing is None:
+            raise RuntimeError(f"seed marker {code!r} vanished between check and lookup")
         return existing.id
 
     manage_key = _registry.manage_permission_key(ConfigEntityType.FORM_DEFINITION.value)
@@ -522,7 +523,8 @@ async def _seed_furniture_category(
         )
     except DuplicateCodeError:
         existing = await repo.get_head_by_code(ConfigEntityType.CATEGORY, code)
-        assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
+        if existing is None:
+            raise RuntimeError(f"seed marker {code!r} vanished between check and lookup")
         await _backfill_listing_kind(
             use_cases,
             repo,
@@ -860,7 +862,8 @@ async def _seed_form(
         )
     except DuplicateCodeError:
         existing = await repo.get_head_by_code(ConfigEntityType.FORM_DEFINITION, code)
-        assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
+        if existing is None:
+            raise RuntimeError(f"seed marker {code!r} vanished between check and lookup")
         return existing.id
 
     manage_key = _registry.manage_permission_key(ConfigEntityType.FORM_DEFINITION.value)
@@ -938,7 +941,8 @@ async def _seed_category(
         )
     except DuplicateCodeError:
         existing = await repo.get_head_by_code(ConfigEntityType.CATEGORY, code)
-        assert existing is not None, f"seed marker {code!r} vanished between check and lookup"
+        if existing is None:
+            raise RuntimeError(f"seed marker {code!r} vanished between check and lookup")
         await _backfill_listing_kind(
             use_cases,
             repo,
