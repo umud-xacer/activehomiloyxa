@@ -67,11 +67,7 @@ function PromoVideoTile({
         disabled={removing}
         className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition group-hover:opacity-100 hover:bg-destructive disabled:opacity-100"
       >
-        {removing ? (
-          <Loader2 className="size-3.5 animate-spin" />
-        ) : (
-          <Trash2 className="size-3.5" />
-        )}
+        {removing ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
       </button>
     </div>
   );
@@ -171,9 +167,7 @@ export function PromoVideoFields({
         </p>
       )}
       {ids.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">
-          Hali promo video yo'q.
-        </p>
+        <p className="py-6 text-center text-sm text-muted-foreground">Hali promo video yo'q.</p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {ids.map((id) => (

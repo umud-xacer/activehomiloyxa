@@ -13,7 +13,11 @@
  * caller (`OrganizationsCarousel`) already treats it as async and doesn't care where the data
  * actually comes from.
  */
-import { businessProfilesApi, PROFILE_TYPE_LABEL, type BusinessProfile } from "@/lib/business-profiles-client";
+import {
+  businessProfilesApi,
+  PROFILE_TYPE_LABEL,
+  type BusinessProfile,
+} from "@/lib/business-profiles-client";
 import { getMediaAssetUrl } from "@/lib/media-client";
 
 export interface Organization {

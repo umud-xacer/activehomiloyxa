@@ -99,7 +99,11 @@ function Page() {
             disabled={loading}
             className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-soft hover:shadow-glow disabled:opacity-60"
           >
-            {loading ? <Loader2 className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}
+            {loading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <ArrowRight className="size-4" />
+            )}
             {loading ? "Yuborilmoqda…" : "Kod yuborish"}
           </button>
         </form>
@@ -131,7 +135,11 @@ function Page() {
             disabled={loading}
             className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-soft hover:shadow-glow disabled:opacity-60"
           >
-            {loading ? <Loader2 className="size-4 animate-spin" /> : <ArrowRight className="size-4" />}
+            {loading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <ArrowRight className="size-4" />
+            )}
             {loading ? "Tekshirilmoqda…" : "Tasdiqlash va kirish"}
           </button>
           <button

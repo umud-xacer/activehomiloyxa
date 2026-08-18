@@ -292,8 +292,7 @@ function PhoneOtpSignIn({ onSuccess }: { onSuccess: (account: Account) => void }
   return (
     <form onSubmit={verifyCode} className="mt-8 space-y-4">
       <p className="text-xs text-muted-foreground">
-        <span className="font-semibold text-foreground">{phoneNumber}</span> raqamiga kod
-        yuborildi.
+        <span className="font-semibold text-foreground">{phoneNumber}</span> raqamiga kod yuborildi.
       </p>
       <Field
         icon={KeyRound}
@@ -437,9 +436,7 @@ export function AuthShell({ children, side }: { children: React.ReactNode; side:
                   <span className="font-display text-lg font-semibold tracking-tight">
                     {s.value}
                   </span>
-                  <span className="text-[11px] uppercase tracking-wider opacity-70">
-                    {s.label}
-                  </span>
+                  <span className="text-[11px] uppercase tracking-wider opacity-70">{s.label}</span>
                 </div>
               ))}
             </motion.div>

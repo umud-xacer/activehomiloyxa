@@ -190,8 +190,7 @@ function PhoneSection({
   return (
     <SectionCard title="Telefon raqami" icon={Phone}>
       <p className="mb-4 text-xs text-muted-foreground">
-        Telefon raqamingizni biriktiring — parolni unutganingizda shu raqam orqali tizimga
-        kirasiz.
+        Telefon raqamingizni biriktiring — parolni unutganingizda shu raqam orqali tizimga kirasiz.
       </p>
       {step === "phone" ? (
         <form onSubmit={requestCode} className="space-y-4">
