@@ -47,10 +47,20 @@ from shared_kernel import BusinessProfileId, UserId
 def _registration_decision_from_row(row: UserAccountRow) -> RegistrationDecision:
     """Only called once `row.review_decision_outcome is not None`; the write path (`save()` below)
     always sets `reviewer_id`/`decided_at` alongside `outcome` in the same assignment, so the two
-    are non-null together in every row this repository itself ever wrote."""
-    assert row.review_decision_outcome is not None
-    assert row.review_decision_reviewer_id is not None
-    assert row.review_decision_decided_at is not None
+    are non-null together in every row this repository itself ever wrote.
+
+    Explicit `raise` rather than `assert` -- this runs on a normal read path, and `assert` is
+    stripped entirely under `python -O`/`PYTHONOPTIMIZE`, which would silently turn a genuine data-
+    integrity bug into a `None` fed straight into `RegistrationDecision`'s non-optional fields."""
+    if (
+        row.review_decision_outcome is None
+        or row.review_decision_reviewer_id is None
+        or row.review_decision_decided_at is None
+    ):
+        raise RuntimeError(
+            f"UserAccountRow {row.id} has review_decision_outcome set but is missing "
+            "reviewer_id/decided_at -- these three fields must be written together"
+        )
     return RegistrationDecision(
         outcome=RegistrationReviewStatus(row.review_decision_outcome),
         reason=row.review_decision_reason,

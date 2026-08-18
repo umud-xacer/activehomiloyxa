@@ -229,8 +229,17 @@ class ProfileUseCases:
         `apply_subscription_projection` uses for a paid entitlement, called directly here rather
         than round-tripped through profiles' own outbox, since both writes land in the same
         transaction on the same aggregate) and appends `TrialSubscriptionStarted` for catalog to
-        consume asynchronously."""
-        assert self._subscriptions is not None
+        consume asynchronously.
+
+        Explicit `raise` rather than `assert` on the `subscriptions` wiring check -- `assert` is
+        stripped under `python -O`/`PYTHONOPTIMIZE`, which would turn a composition-root wiring bug
+        (an instance built without a real `subscriptions` repo reaching this endpoint) into an
+        `AttributeError` on `None.upsert(...)` a few lines down instead of a clear failure here."""
+        if self._subscriptions is None:
+            raise RuntimeError(
+                "complete_onboarding requires ProfileUseCases to be constructed with a real "
+                "`subscriptions` repository -- this instance was built without one"
+            )
         profile = await self.get_profile(profile_id)
         _check_owner(profile, owner_user_id)
         updated = profile.complete_onboarding(now=now)
@@ -273,12 +282,20 @@ class ProfileUseCases:
         `trial_ends_at` are a historical record of the trial that was granted, not a live
         entitlement state, so nothing on the aggregate changes). Mirrors
         `sweep_expired_badges`'s own shape."""
-        assert self._subscriptions is not None
+        if self._subscriptions is None:
+            raise RuntimeError(
+                "sweep_expired_trials requires ProfileUseCases to be constructed with a real "
+                "`subscriptions` repository -- this instance was built without one"
+            )
         candidates = await self._profiles.list_trials_expiring(now=now, limit=batch_size)
         swept = 0
         for profile in candidates:
             snapshot = await self._subscriptions.get_for_profile(profile.id)
-            assert snapshot is not None  # guaranteed by list_trials_expiring's own join
+            if snapshot is None:
+                raise RuntimeError(
+                    f"list_trials_expiring returned profile {profile.id} but its own join "
+                    "guarantees a subscriptions snapshot -- the join and this lookup disagree"
+                )
             event_id = uuid4()
             await self._subscriptions.upsert(
                 SubscriptionEligibilitySnapshot(
@@ -496,7 +513,11 @@ class ProfileUseCases:
         own `idempotent_consume` ledger check against the *producing* billing event's own
         `event_id`. Mirrors `VerificationUseCases.apply_entitlement_projection`'s own one-line
         shape exactly."""
-        assert self._subscriptions is not None
+        if self._subscriptions is None:
+            raise RuntimeError(
+                "apply_subscription_projection requires ProfileUseCases to be constructed with a "
+                "real `subscriptions` repository -- this instance was built without one"
+            )
         await self._subscriptions.upsert(snapshot)
 
     async def get_subscription_status(
