@@ -9,7 +9,7 @@
  * the same building blocks the edit form (`dashboard/business-profile.tsx`) uses, so this wizard
  * and that form never drift apart on how a phone/logo/portfolio item is captured.
  */
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -451,6 +451,20 @@ function SetupWizardContent({
   useEffect(() => {
     if (existingProfile) setProfile(existingProfile);
   }, [existingProfile]);
+
+  // Resume at the right step after a refresh instead of always bouncing back to "basics" --
+  // every step's own data (name/phones, logo, portfolio items) is already saved server-side as
+  // soon as its "Davom etish" unlocks (BasicsStep calls create/update immediately, Branding/
+  // Portfolio upload straight to the media API), so the only thing a refresh used to lose was
+  // which step was showing, forcing a needless re-click through already-done steps. Runs once,
+  // guarded by a ref, so it doesn't fight the user's own back/forward clicks during the session.
+  const hasResumedRef = useRef(false);
+  useEffect(() => {
+    if (hasResumedRef.current || isLoading) return;
+    hasResumedRef.current = true;
+    if (!existingProfile) return;
+    setStep(existingProfile.logoMediaAssetId ? "portfolio" : "branding");
+  }, [existingProfile, isLoading]);
 
   useEffect(() => {
     if (account.accountKind !== "LEGAL_ENTITY") {
