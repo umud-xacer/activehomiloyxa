@@ -19,6 +19,7 @@ import { SectionCard } from "@/components/dashboard/SectionCard";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { adminUsersApi, type UserAdminView } from "@/lib/admin-users-client";
+import { listActiveRoles } from "@/lib/owner-admin-client";
 import { ApiError } from "@/lib/http";
 import { useMe } from "@/features/auth/useAuth";
 
@@ -41,12 +42,19 @@ const STATUS_CLASS: Record<UserAdminView["status"], string> = {
   CLOSED: "bg-muted text-muted-foreground",
 };
 
-const ROLE_SUGGESTIONS = ["administrator", "super-admin"];
-
 function RoleAssignForm({ userId, onDone }: { userId: string; onDone: () => void }) {
   const [roleCode, setRoleCode] = useState("");
+  const [manualEntry, setManualEntry] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Real, currently-published roles instead of two hardcoded guesses -- stays correct on its own
+  // as roles are added/retired via the owner-admin panel, with no frontend redeploy needed.
+  const { data: roles, isLoading: rolesLoading } = useQuery({
+    queryKey: ["admin", "roles"],
+    queryFn: listActiveRoles,
+    staleTime: 60_000,
+  });
 
   const submit = async () => {
     if (!roleCode.trim()) return;
@@ -62,24 +70,44 @@ function RoleAssignForm({ userId, onDone }: { userId: string; onDone: () => void
     }
   };
 
+  const showManualInput = manualEntry || (!rolesLoading && !roles?.length);
+
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-background/60 p-3">
-      <input
-        value={roleCode}
-        onChange={(e) => setRoleCode(e.target.value)}
-        placeholder="rol kodi, masalan: administrator"
-        className="min-w-[180px] flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs outline-none focus:border-primary"
-      />
-      {ROLE_SUGGESTIONS.map((r) => (
+      {rolesLoading ? (
+        <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
+      ) : showManualInput ? (
+        <input
+          value={roleCode}
+          onChange={(e) => setRoleCode(e.target.value)}
+          placeholder="rol kodi, masalan: administrator"
+          className="min-w-[180px] flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs outline-none focus:border-primary"
+        />
+      ) : (
+        <select
+          value={roleCode}
+          onChange={(e) => setRoleCode(e.target.value)}
+          className="min-w-[180px] flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs outline-none focus:border-primary"
+        >
+          <option value="" disabled>
+            Rolni tanlang
+          </option>
+          {roles?.map((r) => (
+            <option key={r.code} value={r.code}>
+              {r.roleName} ({r.code})
+            </option>
+          ))}
+        </select>
+      )}
+      {!rolesLoading && !!roles?.length && (
         <button
-          key={r}
           type="button"
-          onClick={() => setRoleCode(r)}
+          onClick={() => setManualEntry((v) => !v)}
           className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
         >
-          {r}
+          {manualEntry ? "Ro'yxatdan tanlash" : "Qo'lda kiritish"}
         </button>
-      ))}
+      )}
       <button
         type="button"
         disabled={busy || !roleCode.trim()}

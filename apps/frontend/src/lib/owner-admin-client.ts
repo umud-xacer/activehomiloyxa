@@ -37,7 +37,12 @@ export interface ConfigVersionDto {
 }
 
 type EntityType =
-  "category" | "form-definition" | "product-definition" | "placement-slot" | "platform-settings";
+  | "category"
+  | "form-definition"
+  | "product-definition"
+  | "placement-slot"
+  | "platform-settings"
+  | "role-definition";
 
 const base = (entityType: EntityType) => `/admin/config/${entityType}`;
 
@@ -231,6 +236,29 @@ export async function listAllCategoryVersions(): Promise<
 export async function listAllFormDefinitionHeads(): Promise<ConfigHeadDto[]> {
   const { items } = await listHeads("form-definition");
   return items;
+}
+
+export interface RoleOption {
+  code: string;
+  roleName: string;
+}
+
+/** Real, currently-published roles a super-admin can assign -- backs `/admin/users`' role picker,
+ * which used to be a bare free-text field with two hardcoded suggestion chips. `definition`/
+ * `snapshot` are raw passthrough JSON matching the domain content model's own (snake_case) field
+ * names, unlike the DTO envelope itself (`headId` etc., CamelModel) -- so this reads `role_name`,
+ * not `roleName`, off the version content. Only ACTIVE heads with a published version are
+ * offered; a head with no `currentVersionId` yet (draft never published) has nothing assignable. */
+export async function listActiveRoles(): Promise<RoleOption[]> {
+  const { items: heads } = await listHeads("role-definition");
+  const active = heads.filter((h) => h.status === "ACTIVE" && h.currentVersionId);
+  const versions = await Promise.all(
+    active.map((h) => getVersion("role-definition", h.id, h.currentVersionId as string)),
+  );
+  return active.map((h, i) => {
+    const content = (versions[i].snapshot ?? versions[i].definition) as { role_name?: string };
+    return { code: h.code, roleName: content.role_name || h.code };
+  });
 }
 
 /** Resolves the form-definition head's OWN current published version (not to be confused with
