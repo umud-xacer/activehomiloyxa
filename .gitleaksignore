@@ -1,0 +1,7 @@
+# QG-07 secret-scan false positives (gitleaks). One fingerprint per line: commit:file:rule:startLine.
+# See tools/security/gitleaks.toml for the broader allowlist (literal fixture values, doc paths).
+
+# apps/backend/pyproject.toml:43 -- a dependency-rationale comment mentioning "AES128GCM-encrypted"
+# (RFC 8291/8292 Web Push payload encryption, DEC-18) trips generic-api-key on the algorithm name's
+# entropy. Not a credential -- prose describing pywebpush's encryption scheme, never a live secret.
+fc801bf6e6d3ab9b531461cc8c11d32a7c6b3f7f:apps/backend/pyproject.toml:generic-api-key:43

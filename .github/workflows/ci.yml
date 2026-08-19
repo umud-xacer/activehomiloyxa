@@ -391,23 +391,10 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
-  qg10b-frontend-e2e:
-    name: "QG-10b frontend E2E (Playwright) -- merge to main + nightly"
-    needs: qg10-frontend
-    # Handbook Sec19: E2E runs on merge to main / nightly, not on every PR -- same cadence as
-    # qg03b-full-stack-e2e above, not part of the PR-blocking QG-10 gate itself.
-    if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/frontend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: apps/frontend/package-lock.json
-      - run: npm ci --legacy-peer-deps
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+  # qg10b-frontend-e2e (Handbook Sec19, same cadence as qg03b-full-stack-e2e) was removed here --
+  # same root cause as the QG-10 fix above: `npm run test:e2e` was never a real script (no
+  # Playwright dependency, no playwright.config.ts, zero spec files), so this job has failed on
+  # every single scheduled/main-push run since it was added, for no real signal. Per that same
+  # fix's precedent ("removed the two aspirational steps rather than fabricate a script/test
+  # suite that isn't real"), removed rather than papered over with a placeholder spec. Re-add
+  # once a real Playwright E2E suite exists as its own dedicated follow-up work.
