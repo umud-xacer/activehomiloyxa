@@ -119,10 +119,11 @@ function PropertyDetail() {
     ...nearbyPropertiesOptions(property?.id ?? "", 4),
     enabled: Boolean(property?.id),
   });
+  const [activeImage, setActiveImage] = useState(0);
 
   if (!property) return null;
-  const cover = property.media[0]?.url;
-  const gallery = property.media.slice(1, 5);
+  const images = property.media;
+  const activeUrl = images[activeImage]?.url ?? images[0]?.url;
 
   return (
     <AppShell>
@@ -145,31 +146,40 @@ function PropertyDetail() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className={cn(
-              "grid gap-2 overflow-hidden rounded-3xl",
-              gallery.length > 0 && "md:grid-cols-4 md:grid-rows-2",
-            )}
           >
-            {cover && (
-              <img
-                src={cover}
-                alt={property.title}
-                className={cn(
-                  "aspect-[4/3] size-full object-cover",
-                  gallery.length > 0
-                    ? "md:col-span-2 md:row-span-2 md:aspect-auto"
-                    : "md:aspect-[21/9]",
+            {activeUrl && (
+              <div className="relative overflow-hidden rounded-2xl bg-muted">
+                <img
+                  src={activeUrl}
+                  alt={property.title}
+                  className="h-[280px] w-full object-cover sm:h-[360px] md:h-[420px]"
+                />
+                {images.length > 1 && (
+                  <span className="absolute bottom-3 right-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
+                    {activeImage + 1}/{images.length}
+                  </span>
                 )}
-              />
+              </div>
             )}
-            {gallery.map((m) => (
-              <img
-                key={m.id}
-                src={m.url}
-                alt={m.alt}
-                className="hidden size-full object-cover md:block"
-              />
-            ))}
+            {images.length > 1 && (
+              <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                {images.map((m, i) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setActiveImage(i)}
+                    className={cn(
+                      "size-16 shrink-0 overflow-hidden rounded-lg border-2 transition sm:size-20",
+                      i === activeImage
+                        ? "border-primary"
+                        : "border-transparent opacity-70 hover:opacity-100",
+                    )}
+                  >
+                    <img src={m.url} alt={m.alt} className="size-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </motion.div>
         </Container>
       </section>
