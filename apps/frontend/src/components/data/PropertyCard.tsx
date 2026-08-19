@@ -23,7 +23,7 @@ export function PropertyCard({ property, index = 0 }: Props) {
     >
       <Link
         to="/properties/$slug"
-        params={{ slug: property.slug }}
+        params={{ slug: property.id }}
         className="block"
         aria-label={property.title}
       >
@@ -80,17 +80,25 @@ export function PropertyCard({ property, index = 0 }: Props) {
         <div className="p-4">
           <h3 className="line-clamp-1 text-sm font-semibold text-foreground">{property.title}</h3>
           <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{property.address}</p>
-          <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <BedDouble className="size-3.5" /> {property.bedrooms}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Bath className="size-3.5" /> {property.bathrooms}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Maximize2 className="size-3.5" /> {formatArea(property.area_m2)}
-            </span>
-          </div>
+          {(property.bedrooms > 0 || property.bathrooms > 0 || property.area_m2 > 0) && (
+            <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+              {property.bedrooms > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <BedDouble className="size-3.5" /> {property.bedrooms}
+                </span>
+              )}
+              {property.bathrooms > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <Bath className="size-3.5" /> {property.bathrooms}
+                </span>
+              )}
+              {property.area_m2 > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <Maximize2 className="size-3.5" /> {formatArea(property.area_m2)}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </Link>
     </motion.div>

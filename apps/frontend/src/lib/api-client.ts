@@ -132,8 +132,8 @@ function createPropertyFromBackend(
   const attributes = listing.attributes ?? {};
   const price = parseNumber(listing.price?.amount, 0);
   const area_m2 = parseNumber(attributes.area_m2 as string | number | undefined, 0);
-  const bedrooms = parseNumber(attributes.rooms as string | number | undefined, 1);
-  const bathrooms = parseNumber(attributes.bathrooms as string | number | undefined, 1);
+  const bedrooms = parseNumber(attributes.rooms as string | number | undefined, 0);
+  const bathrooms = parseNumber(attributes.bathrooms as string | number | undefined, 0);
   const kind = mapPropertyKind(listing.categoryPath);
   const listing_type = mapListingType(listing.listingType);
   const area = attributes.area as string | number | undefined;

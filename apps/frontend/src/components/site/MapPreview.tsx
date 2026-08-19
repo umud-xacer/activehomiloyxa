@@ -22,7 +22,7 @@ export function MapPreview() {
         title: p.title,
         subtitle: `${p.city}, ${p.country}`,
         image: p.media[0]?.url,
-        href: `/properties/${p.slug}`,
+        href: `/properties/${p.id}`,
       })),
     [properties],
   );

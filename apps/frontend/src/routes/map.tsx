@@ -35,7 +35,7 @@ function toMarker(p: Property): MapMarker {
     title: p.title,
     subtitle: `${p.city}, ${p.country}`,
     image: p.media[0]?.url,
-    href: `/properties/${p.slug}`,
+    href: `/properties/${p.id}`,
     category,
     accent: MAP_CATEGORIES.find((c) => c.key === category)?.accent,
   };

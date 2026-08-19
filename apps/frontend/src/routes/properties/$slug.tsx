@@ -194,7 +194,7 @@ function PropertyDetail() {
               <div className="flex items-center gap-2">
                 <FavoriteButton listingId={property.id} variant="outline" className="size-10" />
                 <ShareButton
-                  url={`https://activehome.uz/properties/${property.slug}`}
+                  url={`https://activehome.uz/properties/${property.id}`}
                   title={property.title}
                   variant="outline"
                   className="size-10"
@@ -202,12 +202,20 @@ function PropertyDetail() {
               </div>
             </header>
 
-            {/* Stat row */}
+            {/* Stat row -- bedrooms/bathrooms/area only render when the listing actually has
+                that attribute (non-real-estate catalog items, e.g. goods/services, don't; showing
+                a fabricated "1" for those looked like real, wrong data, not an empty state). */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
-                { icon: BedDouble, label: "Bedrooms", value: property.bedrooms },
-                { icon: Bath, label: "Bathrooms", value: property.bathrooms },
-                { icon: Maximize2, label: "Area", value: formatArea(property.area_m2) },
+                ...(property.bedrooms > 0
+                  ? [{ icon: BedDouble, label: "Bedrooms", value: property.bedrooms }]
+                  : []),
+                ...(property.bathrooms > 0
+                  ? [{ icon: Bath, label: "Bathrooms", value: property.bathrooms }]
+                  : []),
+                ...(property.area_m2 > 0
+                  ? [{ icon: Maximize2, label: "Area", value: formatArea(property.area_m2) }]
+                  : []),
                 { icon: Star, label: "Rating", value: property.rating.toFixed(1) },
               ].map((s) => (
                 <div

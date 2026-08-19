@@ -215,7 +215,7 @@ function buildMarkers(properties: Property[]): MapMarker[] {
     title: p.title,
     subtitle: [p.city, p.country].filter(Boolean).join(", "),
     image: p.media[0]?.url,
-    href: `/properties/${p.slug}`,
+    href: `/properties/${p.id}`,
   }));
 }
 
