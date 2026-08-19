@@ -11,7 +11,7 @@ import { PlatformStatsBand } from "@/components/site/PlatformStatsBand";
 import { Footer } from "@/components/site/Footer";
 import { AdSlot } from "@/components/site/AdSlot";
 import { PromoBanner } from "@/components/site/PromoBanner";
-import promoUyTamirlash from "@/assets/banners/promo-uy-tamirlash.jpg";
+import promoUyTamirlash from "@/assets/banners/promo-uy-tamirlash.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -59,11 +59,7 @@ function Index() {
 
       <Hero />
       <AudienceSplit />
-      <PromoBanner
-        src={promoUyTamirlash}
-        alt="Uy ta'mirlash bosh og'riq emas!"
-        aspect="aspect-[16/5]"
-      />
+      <PromoBanner src={promoUyTamirlash} alt="Uy ta'mirlash bosh og'riq emas!" fit="contain" />
       <OrganizationsCarousel />
       <AdSlot slotKey="HOMEPAGE_BANNER_1" />
       <MapPreview />
