@@ -587,6 +587,38 @@ paths:
           - ARCHITECTURE_INTERIOR
           - REPAIR_SERVICES
           - REAL_ESTATE_AGENCIES
+      - name: subCategory
+        in: query
+        schema:
+          type: string
+          enum:
+          - COMMERCIAL_BANK
+          - MORTGAGE_CENTER
+          - MICROFINANCE
+          - INSURANCE
+          - LEASING
+          - GENERAL_CONTRACTOR
+          - SUBCONTRACTOR
+          - CIVIL_ENGINEERING
+          - RENOVATION_CONTRACTOR
+          - INFRASTRUCTURE_CONSTRUCTION
+          - BUILDING_MATERIALS_MANUFACTURER
+          - FURNITURE_MANUFACTURER
+          - METAL_PRODUCTS_MANUFACTURER
+          - CONCRETE_CEMENT_MANUFACTURER
+          - GLASS_ALUMINUM_MANUFACTURER
+          - ARCHITECTURE_STUDIO
+          - INTERIOR_DESIGN_STUDIO
+          - LANDSCAPE_DESIGN_STUDIO
+          - ENGINEERING_DESIGN_STUDIO
+          - HOME_REPAIR_SERVICE
+          - PLUMBING_ELECTRICAL_SERVICE
+          - CLEANING_SERVICE
+          - APPLIANCE_REPAIR_SERVICE
+          - RESIDENTIAL_AGENCY
+          - COMMERCIAL_AGENCY
+          - PROPERTY_MANAGEMENT
+          - VALUATION_SERVICE
       - name: verifiedOnly
         in: query
         schema:
@@ -4660,6 +4692,40 @@ components:
           - ARCHITECTURE_INTERIOR
           - REPAIR_SERVICES
           - REAL_ESTATE_AGENCIES
+        subCategory:
+          type:
+          - string
+          - 'null'
+          description: Additive (Organizations Sub-Category task). A finer classification
+            within mainCategory — always optional, null on profiles that have not set one.
+          enum:
+          - COMMERCIAL_BANK
+          - MORTGAGE_CENTER
+          - MICROFINANCE
+          - INSURANCE
+          - LEASING
+          - GENERAL_CONTRACTOR
+          - SUBCONTRACTOR
+          - CIVIL_ENGINEERING
+          - RENOVATION_CONTRACTOR
+          - INFRASTRUCTURE_CONSTRUCTION
+          - BUILDING_MATERIALS_MANUFACTURER
+          - FURNITURE_MANUFACTURER
+          - METAL_PRODUCTS_MANUFACTURER
+          - CONCRETE_CEMENT_MANUFACTURER
+          - GLASS_ALUMINUM_MANUFACTURER
+          - ARCHITECTURE_STUDIO
+          - INTERIOR_DESIGN_STUDIO
+          - LANDSCAPE_DESIGN_STUDIO
+          - ENGINEERING_DESIGN_STUDIO
+          - HOME_REPAIR_SERVICE
+          - PLUMBING_ELECTRICAL_SERVICE
+          - CLEANING_SERVICE
+          - APPLIANCE_REPAIR_SERVICE
+          - RESIDENTIAL_AGENCY
+          - COMMERCIAL_AGENCY
+          - PROPERTY_MANAGEMENT
+          - VALUATION_SERVICE
         createdAt:
           type: string
           format: date-time
@@ -4712,6 +4778,38 @@ components:
           - ARCHITECTURE_INTERIOR
           - REPAIR_SERVICES
           - REAL_ESTATE_AGENCIES
+        subCategory:
+          type:
+          - string
+          - 'null'
+          enum:
+          - COMMERCIAL_BANK
+          - MORTGAGE_CENTER
+          - MICROFINANCE
+          - INSURANCE
+          - LEASING
+          - GENERAL_CONTRACTOR
+          - SUBCONTRACTOR
+          - CIVIL_ENGINEERING
+          - RENOVATION_CONTRACTOR
+          - INFRASTRUCTURE_CONSTRUCTION
+          - BUILDING_MATERIALS_MANUFACTURER
+          - FURNITURE_MANUFACTURER
+          - METAL_PRODUCTS_MANUFACTURER
+          - CONCRETE_CEMENT_MANUFACTURER
+          - GLASS_ALUMINUM_MANUFACTURER
+          - ARCHITECTURE_STUDIO
+          - INTERIOR_DESIGN_STUDIO
+          - LANDSCAPE_DESIGN_STUDIO
+          - ENGINEERING_DESIGN_STUDIO
+          - HOME_REPAIR_SERVICE
+          - PLUMBING_ELECTRICAL_SERVICE
+          - CLEANING_SERVICE
+          - APPLIANCE_REPAIR_SERVICE
+          - RESIDENTIAL_AGENCY
+          - COMMERCIAL_AGENCY
+          - PROPERTY_MANAGEMENT
+          - VALUATION_SERVICE
       additionalProperties: false
     BusinessProfileUpdateRequest:
       type: object
@@ -4737,6 +4835,38 @@ components:
           - ARCHITECTURE_INTERIOR
           - REPAIR_SERVICES
           - REAL_ESTATE_AGENCIES
+        subCategory:
+          type:
+          - string
+          - 'null'
+          enum:
+          - COMMERCIAL_BANK
+          - MORTGAGE_CENTER
+          - MICROFINANCE
+          - INSURANCE
+          - LEASING
+          - GENERAL_CONTRACTOR
+          - SUBCONTRACTOR
+          - CIVIL_ENGINEERING
+          - RENOVATION_CONTRACTOR
+          - INFRASTRUCTURE_CONSTRUCTION
+          - BUILDING_MATERIALS_MANUFACTURER
+          - FURNITURE_MANUFACTURER
+          - METAL_PRODUCTS_MANUFACTURER
+          - CONCRETE_CEMENT_MANUFACTURER
+          - GLASS_ALUMINUM_MANUFACTURER
+          - ARCHITECTURE_STUDIO
+          - INTERIOR_DESIGN_STUDIO
+          - LANDSCAPE_DESIGN_STUDIO
+          - ENGINEERING_DESIGN_STUDIO
+          - HOME_REPAIR_SERVICE
+          - PLUMBING_ELECTRICAL_SERVICE
+          - CLEANING_SERVICE
+          - APPLIANCE_REPAIR_SERVICE
+          - RESIDENTIAL_AGENCY
+          - COMMERCIAL_AGENCY
+          - PROPERTY_MANAGEMENT
+          - VALUATION_SERVICE
       additionalProperties: false
     BusinessProfileBrandingRequest:
       type: object
@@ -5440,7 +5570,26 @@ components:
           items:
             $ref: '#/components/schemas/Facet'
         page:
-          $ref: '#/components/schemas/CursorPage'
+          type: object
+          description: Cursor pagination metadata (not the full `CursorPage` envelope -- `items`
+            already lives at `SearchResult.items`, so nesting another `CursorPage` here would
+            duplicate it uselessly).
+          required:
+          - limit
+          properties:
+            limit:
+              type: integer
+            nextCursor:
+              type:
+              - string
+              - 'null'
+              description: Pass as `cursor` to fetch the next page; null when exhausted.
+            total:
+              type:
+              - integer
+              - 'null'
+              description: Present only where cheap to compute; may be null.
+          additionalProperties: false
         degraded:
           type: boolean
           default: false
@@ -6981,11 +7130,9 @@ components:
           - value: '3'
             count: 180
         page:
-          items: []
-          page:
-            limit: 20
-            nextCursor: eyJvZmZzZXQiOjIwfQ
-            total: 540
+          limit: 20
+          nextCursor: eyJvZmZzZXQiOjIwfQ
+          total: 540
         degraded: false
     SessionEstablishedExample:
       summary: Session issued after OTP verification

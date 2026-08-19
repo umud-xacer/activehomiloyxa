@@ -17,6 +17,7 @@ from profiles.domain.exceptions import (
     PortfolioItemLimitExceededError,
     PortfolioItemNotFoundError,
     ProfilesDomainError,
+    SubCategoryNotInMainCategoryError,
     TerminalVerificationCaseError,
 )
 from profiles.domain.policies import (
@@ -27,6 +28,7 @@ from profiles.domain.policies import (
 from profiles.domain.portfolio_item import PortfolioItem
 from profiles.domain.submitted_document import SubmittedDocument
 from profiles.domain.value_objects import (
+    SUB_CATEGORIES_BY_MAIN_CATEGORY,
     TERMINAL_CASE_STATUSES,
     BadgeStatus,
     CaseStatus,
@@ -34,6 +36,7 @@ from profiles.domain.value_objects import (
     MainCategory,
     ProfileStatus,
     ProfileType,
+    SubCategory,
     VerifiedBadge,
 )
 from profiles.domain.verification_case import (
@@ -45,6 +48,7 @@ from profiles.domain.verification_case import (
 __all__ = [
     "MAX_DOCUMENTS",
     "MAX_PORTFOLIO_ITEMS",
+    "SUB_CATEGORIES_BY_MAIN_CATEGORY",
     "TERMINAL_CASE_STATUSES",
     "VERIFICATION_SLA_HOURS",
     "ApprovedVerificationProof",
@@ -65,6 +69,8 @@ __all__ = [
     "ProfileStatus",
     "ProfileType",
     "ProfilesDomainError",
+    "SubCategory",
+    "SubCategoryNotInMainCategoryError",
     "SubmittedDocument",
     "TerminalVerificationCaseError",
     "VerificationCase",

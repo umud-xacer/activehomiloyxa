@@ -33,6 +33,19 @@ class PortfolioItemLimitExceededError(ProfilesDomainError):
         super().__init__(f"a business profile may hold at most {limit} portfolio items")
 
 
+class SubCategoryNotInMainCategoryError(ProfilesDomainError):
+    """`sub_category` must be one of `SUB_CATEGORIES_BY_MAIN_CATEGORY[main_category]` -- raised
+    when a caller supplies a sub-category that belongs to a different main category (or supplies
+    one while `main_category` is still `None`)."""
+
+    def __init__(self, sub_category: str, main_category: str | None) -> None:
+        self.sub_category = sub_category
+        self.main_category = main_category
+        super().__init__(
+            f"sub_category {sub_category!r} is not valid under main_category {main_category!r}"
+        )
+
+
 class PortfolioItemNotFoundError(ProfilesDomainError):
     def __init__(self, item_id: UUID) -> None:
         self.item_id = item_id

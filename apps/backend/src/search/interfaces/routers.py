@@ -33,7 +33,6 @@ from search.application import (
 from search.domain import GeoFilter, ListingType, SearchQuery, SortOption
 from search.interfaces.di import get_search_use_cases
 from search.interfaces.dto import (
-    CursorPage,
     CursorPagePage,
     Facet,
     FacetBuckets,
@@ -118,10 +117,7 @@ def _to_search_result(outcome: SearchOutcome, *, limit: int) -> SearchResult:
     return SearchResult(
         items=[_to_search_hit(hit) for hit in outcome.hits],
         facets=[_to_facet_dto(f) for f in outcome.facets],
-        page=CursorPage(
-            items=[],
-            page=CursorPagePage(limit=limit, next_cursor=outcome.next_cursor, total=outcome.total),
-        ),
+        page=CursorPagePage(limit=limit, next_cursor=outcome.next_cursor, total=outcome.total),
         degraded=outcome.degraded,
     )
 

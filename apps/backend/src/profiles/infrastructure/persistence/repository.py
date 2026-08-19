@@ -27,6 +27,7 @@ from profiles.domain import (
     PortfolioItem,
     ProfileStatus,
     ProfileType,
+    SubCategory,
     SubmittedDocument,
     VerificationCase,
     VerifiedBadge,
@@ -115,6 +116,7 @@ def _profile_to_domain(
         lock_version=row.lock_version,
         promo_video_media_asset_ids=tuple(UUID(v) for v in (row.promo_video_media_asset_ids or [])),
         main_category=MainCategory(row.main_category) if row.main_category else None,
+        sub_category=SubCategory(row.sub_category) if row.sub_category else None,
     )
 
 
@@ -139,6 +141,7 @@ def _apply_profile_fields(row: BusinessProfileRow, profile: BusinessProfile) -> 
     row.trial_ends_at = profile.trial_ends_at
     row.promo_video_media_asset_ids = [str(v) for v in profile.promo_video_media_asset_ids]
     row.main_category = profile.main_category.value if profile.main_category else None
+    row.sub_category = profile.sub_category.value if profile.sub_category else None
     row.updated_at = profile.updated_at
 
 
@@ -202,6 +205,7 @@ class SqlalchemyBusinessProfileRepository:
         *,
         profile_type: ProfileType | None,
         main_category: MainCategory | None,
+        sub_category: SubCategory | None,
         verified_only: bool,
         cursor: str | None,
         limit: int,
@@ -216,6 +220,8 @@ class SqlalchemyBusinessProfileRepository:
             stmt = stmt.where(BusinessProfileRow.profile_type == profile_type.value)
         if main_category is not None:
             stmt = stmt.where(BusinessProfileRow.main_category == main_category.value)
+        if sub_category is not None:
+            stmt = stmt.where(BusinessProfileRow.sub_category == sub_category.value)
         if verified_only:
             stmt = stmt.where(BusinessProfileRow.badge_status == BadgeStatus.VALID.value)
         if cursor is not None:

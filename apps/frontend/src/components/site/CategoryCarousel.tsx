@@ -15,8 +15,9 @@ import { useRef, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Link } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Tag, Trees, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Tag, type LucideIcon } from "lucide-react";
 import { catalogClient, type CategorySummary } from "@/lib/catalog-client";
+import { ICON_BY_NAME } from "@/lib/listing-kind";
 import { Container } from "@/components/layout/Container";
 
 import iconKopQavatli from "@/assets/categories/Artboard_1_rtGKuRl.png";
@@ -36,6 +37,7 @@ import iconUniforma from "@/assets/categories/Artboard_1_copy_18_JmQ8b7A.png";
 import iconMebelSalon from "@/assets/categories/Artboard_1_copy_19_XG9yRiO.png";
 import iconHostel from "@/assets/categories/Hostel.png";
 import iconMexmonxona from "@/assets/categories/Hotel.png";
+import iconDamOlish from "@/assets/categories/dam-olish-maskanlari-icon.png";
 
 type Cat = {
   key: string;
@@ -124,7 +126,7 @@ const CATS: Cat[] = [
   { key: "mexmonxona", image: iconMexmonxona, to: "/categories/mexmonxona", label: "Mexmonxona" },
   {
     key: "dam-olish-maskanlari",
-    Icon: Trees,
+    image: iconDamOlish,
     to: "/categories/dam-olish-maskanlari",
     label: "Dam olish maskanlari",
   },
@@ -139,7 +141,11 @@ const ICON_BY_PATH: Record<string, string> = {
   "/bosh-yerlar": iconBoshYer,
   "/xizmat-korsatish": iconXizmat,
   "/ish-orni": iconIshOrni,
-  "/chakana-savdo": iconQurilishMollari,
+  // Was keyed "/chakana-savdo", a path this category no longer has (renamed at some point,
+  // leaving the mapping dead -- confirmed via a live categories fetch, 2026-08-19). Retargeted so
+  // "Qurilish materiallari" actually gets its designed icon artwork instead of falling through to
+  // the generic/named-icon tiers below.
+  "/qurilish-materiallari": iconQurilishMollari,
   "/mebel-materiallari": iconMebelMollari,
   "/maishiy-texnikalar": iconMaishiyTexnika,
   "/uy-bezaklari": iconUyBezaklari,
@@ -148,6 +154,15 @@ const ICON_BY_PATH: Record<string, string> = {
   "/mebel-salonlari": iconMebelSalon,
   "/hostel": iconHostel,
   "/mexmonxona": iconMexmonxona,
+  // Composited 2026-08-19: no bespoke brand icon existed for this category (unlike its 16
+  // siblings above), so a bare Lucide icon rendered as a thin, near-invisible outline against the
+  // dark hero background -- looked like the icon had gone missing entirely, worse than the
+  // mismatched raw-photo icon it replaced. Built to match the sibling set's actual visual
+  // language (a themed photo cut to the same silhouette, not a flat square crop): a keyless beach
+  // photo composited through the alpha mask lifted from `Artboard_1_copy_24.png`
+  // (`iconQurilishMollari`) -- every sibling PNG shares that identical cutout shape, only the
+  // photo differs, so reusing it as a stencil reproduces the family style exactly.
+  "/dam-olish-maskanlari": iconDamOlish,
 };
 
 export function categoryLabel(name: Record<string, string>, lang: string): string {
@@ -162,10 +177,16 @@ export function categoryLabel(name: Record<string, string>, lang: string): strin
 
 function apiCategoryToCat(cat: CategorySummary, lang: string): Cat {
   const image = cat.iconUrl || ICON_BY_PATH[cat.path];
+  // Falls to a named Lucide icon (admin-picked, `lib/listing-kind.ts`'s `ICON_BY_NAME` registry)
+  // before the generic Tag -- same registry `resolveCategoryIcon` already uses for subcategory
+  // pages, so a category with no uploaded photo and no bespoke PNG still gets something on-theme
+  // instead of a blank tag.
+  const namedIcon = cat.iconName ? ICON_BY_NAME[cat.iconName] : undefined;
+  const Icon = image ? undefined : namedIcon || Tag;
   return {
     key: cat.id,
     image,
-    Icon: image ? undefined : Tag,
+    Icon,
     to: `/categories/${cat.path.replace(/^\//, "")}`,
     label: categoryLabel(cat.name, lang),
   };

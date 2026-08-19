@@ -16,7 +16,14 @@ from datetime import datetime
 from typing import Literal, Protocol
 from uuid import UUID
 
-from profiles.domain import BusinessProfile, CaseStatus, MainCategory, ProfileType, VerificationCase
+from profiles.domain import (
+    BusinessProfile,
+    CaseStatus,
+    MainCategory,
+    ProfileType,
+    SubCategory,
+    VerificationCase,
+)
 from shared_kernel import BusinessProfileId, UserId
 
 
@@ -44,6 +51,7 @@ class BusinessProfileRepository(Protocol):
         *,
         profile_type: ProfileType | None,
         main_category: MainCategory | None,
+        sub_category: SubCategory | None,
         verified_only: bool,
         cursor: str | None,
         limit: int,
@@ -52,7 +60,10 @@ class BusinessProfileRepository(Protocol):
         `verified_only` filters to `badge.status == VALID`. `main_category` (additive,
         Organizations Main-Category task) filters to that sector tab -- a profile with `None`
         main_category never matches any non-null filter value, same as any other None-vs-value
-        equality filter."""
+        equality filter. `sub_category` (additive, Organizations Sub-Category task) is the same
+        kind of filter one level finer -- callers are expected to only pass a `sub_category` that
+        actually belongs to the `main_category` they also passed (the directory UI's dependent
+        dropdown enforces this; this port does not re-validate it)."""
         ...
 
     async def list_admin(

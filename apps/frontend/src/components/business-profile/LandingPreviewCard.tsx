@@ -16,9 +16,11 @@ import {
 import {
   MAIN_CATEGORY_LABEL,
   PROFILE_TYPE_LABEL,
+  SUB_CATEGORY_LABEL,
   type BusinessProfile,
   type MainCategory,
   type PortfolioItem,
+  type SubCategory,
 } from "@/lib/business-profiles-client";
 import { useMediaAsset } from "@/lib/use-media-asset";
 
@@ -31,6 +33,7 @@ export interface ProfileDraft {
   website: string;
   workingHours: string;
   mainCategory: MainCategory | "";
+  subCategory: SubCategory | "";
   socialTelegram: string;
   socialInstagram: string;
   socialFacebook: string;
@@ -137,6 +140,11 @@ export function LandingPreviewCard({
             {draft.mainCategory && (
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                 {MAIN_CATEGORY_LABEL[draft.mainCategory]}
+              </span>
+            )}
+            {draft.subCategory && (
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                {SUB_CATEGORY_LABEL[draft.subCategory]}
               </span>
             )}
             {profile.badge?.status === "VALID" && (

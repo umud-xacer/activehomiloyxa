@@ -37,7 +37,7 @@ from profiles.application.ports import (
     SubscriptionEligibilityRepository,
     SubscriptionEligibilitySnapshot,
 )
-from profiles.domain import BusinessProfile, MainCategory, ProfileType
+from profiles.domain import BusinessProfile, MainCategory, ProfileType, SubCategory
 from shared_kernel import BusinessProfileId, LocalizedText, OutboxPort, UserId
 
 SubscriptionStatus = Literal["ACTIVE", "EXPIRED", "NONE"]
@@ -81,6 +81,7 @@ class ProfileUseCases:
         address: str | None,
         now: datetime,
         main_category: MainCategory | None = None,
+        sub_category: SubCategory | None = None,
     ) -> BusinessProfile:
         profile_id = BusinessProfileId(value=uuid4())
         slug = _generate_slug(name, profile_id.value)
@@ -95,6 +96,7 @@ class ProfileUseCases:
             slug=slug,
             now=now,
             main_category=main_category,
+            sub_category=sub_category,
         )
         profile = profile.activate(now=now)
         await self._profiles.add(profile)
@@ -135,10 +137,12 @@ class ProfileUseCases:
         cursor: str | None,
         limit: int,
         main_category: MainCategory | None = None,
+        sub_category: SubCategory | None = None,
     ) -> tuple[list[BusinessProfile], str | None]:
         return await self._profiles.list_public(
             profile_type=profile_type,
             main_category=main_category,
+            sub_category=sub_category,
             verified_only=verified_only,
             cursor=cursor,
             limit=limit,
@@ -171,6 +175,7 @@ class ProfileUseCases:
         address: str | None,
         now: datetime,
         main_category: MainCategory | None = None,
+        sub_category: SubCategory | None = None,
     ) -> BusinessProfile:
         profile = await self.get_profile(profile_id)
         _check_owner(profile, owner_user_id)
@@ -180,6 +185,7 @@ class ProfileUseCases:
             contacts=contacts,
             address=address,
             main_category=main_category,
+            sub_category=sub_category,
             now=now,
         )
         return await self._profiles.save(updated)

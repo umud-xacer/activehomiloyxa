@@ -73,6 +73,7 @@ class DemoCompanyConfig:
     company_name: str
     profile_type: str
     main_category: str
+    sub_category: str
     description: str
     phone: str
     address: str
@@ -87,6 +88,7 @@ COMPANIES: list[DemoCompanyConfig] = [
         company_name="Aktiv Moliya va Ipoteka Markazi",
         profile_type="SERVICE_PROVIDER",
         main_category="FINANCE_MORTGAGE",
+        sub_category="MORTGAGE_CENTER",
         description=(
             "Aktiv Moliya va Ipoteka Markazi — uy-joy sotib olish uchun ipoteka kreditlash, "
             "moliyaviy konsalting va investitsiya xizmatlarini taqdim etadi. 2015-yildan buyon "
@@ -102,6 +104,7 @@ COMPANIES: list[DemoCompanyConfig] = [
         company_name="Bunyodkor Qurilish Kompaniyasi",
         profile_type="CONSTRUCTION_COMPANY",
         main_category="CONSTRUCTION_CONTRACTORS",
+        sub_category="GENERAL_CONTRACTOR",
         description=(
             "Bunyodkor Qurilish Kompaniyasi — ko'p qavatli turar-joy majmualari, tijorat "
             "binolari va infratuzilma loyihalarini qurish bo'yicha to'liq pudratchi "
@@ -117,6 +120,7 @@ COMPANIES: list[DemoCompanyConfig] = [
         company_name="Tosh-Beton Ishlab Chiqarish Zavodi",
         profile_type="MANUFACTURER",
         main_category="MANUFACTURERS_MATERIALS",
+        sub_category="CONCRETE_CEMENT_MANUFACTURER",
         description=(
             "Tosh-Beton Ishlab Chiqarish Zavodi — sifatli beton, g'isht va boshqa qurilish "
             "materiallarini ishlab chiqaradi hamda yetkazib beradi. Zamonaviy uskunalar va "
@@ -131,6 +135,7 @@ COMPANIES: list[DemoCompanyConfig] = [
         company_name="Usta Pro Ta'mirlash Xizmati",
         profile_type="SERVICE_PROVIDER",
         main_category="REPAIR_SERVICES",
+        sub_category="HOME_REPAIR_SERVICE",
         description=(
             "Usta Pro Ta'mirlash Xizmati — kvartira va ofislarni kapital hamda kosmetik "
             "ta'mirlash, santexnika, elektr va smart home tizimlarini o'rnatish bo'yicha "
@@ -146,6 +151,7 @@ COMPANIES: list[DemoCompanyConfig] = [
         company_name="Makon Ko'chmas Mulk Agentligi",
         profile_type="SERVICE_PROVIDER",
         main_category="REAL_ESTATE_AGENCIES",
+        sub_category="RESIDENTIAL_AGENCY",
         description=(
             "Makon Ko'chmas Mulk Agentligi — kvartira, uy va tijorat obyektlarini sotish, "
             "sotib olish hamda ijaraga berish bo'yicha to'liq rieltorlik xizmatlarini "
@@ -259,6 +265,7 @@ async def _seed_company(base_url: str, config: DemoCompanyConfig) -> None:
             "contacts": {"phones": [config.phone]},
             "address": config.address,
             "mainCategory": config.main_category,
+            "subCategory": config.sub_category,
         },
         timeout=30,
     )

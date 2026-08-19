@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from search.interfaces.dto import (
-    CursorPage,
     CursorPagePage,
     Facet,
     FacetBuckets,
@@ -21,7 +20,6 @@ from search.interfaces.ports import (
 from search.interfaces.routers import search_router
 
 __all__ = [
-    "CursorPage",
     "CursorPagePage",
     "Facet",
     "FacetBuckets",

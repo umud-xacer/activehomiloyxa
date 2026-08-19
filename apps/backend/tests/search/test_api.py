@@ -111,7 +111,7 @@ class TestSearchListingsGet:
     def test_I05_limit_above_the_maximum_is_clamped_not_rejected(self, client: TestClient) -> None:
         response = client.get("/api/v1/search", params={"limit": 500})
         assert response.status_code == 200
-        assert response.json()["page"]["page"]["limit"] == 100
+        assert response.json()["page"]["limit"] == 100
 
     def test_I06_a_promoted_hit_carries_its_promotion_label(
         self, client: TestClient, fake_index: FakeSearchIndex

@@ -15,9 +15,10 @@ import {
   Sparkles,
   BadgePercent,
   Search as SearchIcon,
+  X,
 } from "lucide-react";
 import { SortMenu, type HubOption } from "@/components/catalog/SortMenu";
-import { GlobalSearchDialog } from "@/components/search/GlobalSearchDialog";
+import { SearchResultsPanel } from "@/components/search/SearchResultsPanel";
 import { CategoryChip } from "@/components/catalog/CategoryChip";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -492,6 +493,7 @@ function CatalogDirectionView({
   category: CategorySummary;
   kind: Exclude<ListingKind, "PROPERTY">;
 }) {
+  const navigate = useNavigate();
   const { children, siblings, ancestors, byId } = useCategoryTree(category.id, category.parentId);
   const hero = resolveHeroImage(category, byId);
   const name = categoryLabel(category.name, "uz");
@@ -504,6 +506,7 @@ function CatalogDirectionView({
   const [filters, setFilters] = useState<ListingFilterState>(emptyFilterState());
   const [sort, setSort] = useState<CatalogSort>("newest");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
   const {
@@ -592,14 +595,57 @@ function CatalogDirectionView({
             {!isLoading && <span className="opacity-70">· {sorted.length} ta e'lon</span>}
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              aria-label="Shu kategoriyada qidirish"
-              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-foreground/70 transition hover:bg-secondary hover:text-foreground"
-            >
-              <SearchIcon className="size-4" />
-            </button>
+            <motion.div layout className="relative flex shrink-0 items-center">
+              {searchOpen ? (
+                <motion.div
+                  initial={{ width: 36, opacity: 0 }}
+                  animate={{ width: "auto", opacity: 1 }}
+                  transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                  className="flex items-center gap-1.5 overflow-hidden rounded-full border border-primary bg-card py-1.5 pl-3 pr-1.5"
+                >
+                  <SearchIcon className="size-4 shrink-0 text-primary" />
+                  <input
+                    autoFocus
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") setSearchOpen(false);
+                      if (e.key === "Enter" && searchQuery.trim()) {
+                        setSearchOpen(false);
+                        navigate({ to: "/search", search: { q: searchQuery.trim() } });
+                      }
+                    }}
+                    placeholder="Shu kategoriyada qidirish"
+                    className="w-40 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/70 sm:w-56"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSearchOpen(false)}
+                    aria-label="Yopish"
+                    className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </motion.div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  aria-label="Shu kategoriyada qidirish"
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-foreground/70 transition hover:bg-secondary hover:text-foreground"
+                >
+                  <SearchIcon className="size-4" />
+                </button>
+              )}
+              <SearchResultsPanel
+                open={searchOpen}
+                onOpenChange={setSearchOpen}
+                categoryPathPrefix={category.path}
+                externalQuery={searchQuery}
+                onExternalQueryChange={setSearchQuery}
+                className="absolute right-0 top-full z-50 mt-2 w-[calc(100vw-2rem)] max-w-md overflow-hidden rounded-2xl border border-slate-100 bg-card shadow-xl sm:w-[420px]"
+              />
+            </motion.div>
             <SortMenu options={CATALOG_HUB_OPTIONS} value={sort} onChange={setSort} />
             {form && form.sections.length > 0 && (
               <CategoryFiltersSheet
@@ -699,11 +745,6 @@ function CatalogDirectionView({
           </Container>
         </section>
       )}
-      <GlobalSearchDialog
-        open={searchOpen}
-        onOpenChange={setSearchOpen}
-        categoryPathPrefix={category.path}
-      />
     </AppShell>
   );
 }

@@ -8,9 +8,12 @@
 # pressure. `nginx` runs as a host package (not this compose's skeleton nginx image, which
 # only serves /healthz) so it can reverse-proxy to the host-level api/web processes.
 #
-# Datastore ports bind to 127.0.0.1 only (never exposed to the internet) except MinIO, which
-# the browser uploads to directly via presigned URLs (media/README.md) and therefore must be
-# reachable from the public internet on this single-host topology.
+# All datastore ports bind to 127.0.0.1 only -- never exposed to the internet directly. MinIO
+# used to be the one exception (presigned browser uploads hit it directly), but that changed
+# once nginx grew a local reverse-proxy path for it (deployment/nginx/activehome.conf's
+# /active-home-media/ and /media-cdn/ blocks, MINIO_PUBLIC_ENDPOINT_URL now points at
+# https://activehome.uz) -- the 0.0.0.0 binding below was a stale leftover from before that
+# fix, tightened to 127.0.0.1 on 2026-08-19 (confirmed live: nothing references :9000 directly).
 #
 # Run: docker compose -f deployment/compose/docker-compose.production.yml --env-file deployment/env/.env.production up -d
 
@@ -89,7 +92,7 @@ services:
     volumes:
       - minio-data:/data
     ports:
-      - "0.0.0.0:9000:9000"
+      - "127.0.0.1:9000:9000"
       - "127.0.0.1:9001:9001"
     networks: [active-home]
     healthcheck:

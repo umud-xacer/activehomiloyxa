@@ -43,6 +43,18 @@ _MAIN_CATEGORIES = (
     "('FINANCE_MORTGAGE', 'CONSTRUCTION_CONTRACTORS', 'MANUFACTURERS_MATERIALS', "
     "'ARCHITECTURE_INTERIOR', 'REPAIR_SERVICES', 'REAL_ESTATE_AGENCIES')"
 )
+_SUB_CATEGORIES = (
+    "('COMMERCIAL_BANK', 'MORTGAGE_CENTER', 'MICROFINANCE', 'INSURANCE', 'LEASING', "
+    "'GENERAL_CONTRACTOR', 'SUBCONTRACTOR', 'CIVIL_ENGINEERING', 'RENOVATION_CONTRACTOR', "
+    "'INFRASTRUCTURE_CONSTRUCTION', "
+    "'BUILDING_MATERIALS_MANUFACTURER', 'FURNITURE_MANUFACTURER', 'METAL_PRODUCTS_MANUFACTURER', "
+    "'CONCRETE_CEMENT_MANUFACTURER', 'GLASS_ALUMINUM_MANUFACTURER', "
+    "'ARCHITECTURE_STUDIO', 'INTERIOR_DESIGN_STUDIO', 'LANDSCAPE_DESIGN_STUDIO', "
+    "'ENGINEERING_DESIGN_STUDIO', "
+    "'HOME_REPAIR_SERVICE', 'PLUMBING_ELECTRICAL_SERVICE', 'CLEANING_SERVICE', "
+    "'APPLIANCE_REPAIR_SERVICE', "
+    "'RESIDENTIAL_AGENCY', 'COMMERCIAL_AGENCY', 'PROPERTY_MANAGEMENT', 'VALUATION_SERVICE')"
+)
 _PROFILE_STATUSES = "('CREATED', 'ACTIVE', 'ARCHIVED')"
 _BADGE_STATUSES = "('VALID', 'EXPIRED', 'REVOKED')"
 _CASE_STATUSES = "('REQUESTED', 'IN_REVIEW', 'APPROVED', 'REJECTED')"
@@ -91,12 +103,21 @@ class BusinessProfileRow(ProfilesBase, AggregateMixin):  # type: ignore[misc,val
     mandatory going forward -- that mandate is enforced in the domain layer
     (`BusinessProfile.complete_onboarding`), the same "DB permissive, aggregate strict" split
     `onboarding_completed_at`'s own sibling fields already use."""
+    sub_category: Mapped[str | None] = mapped_column(Text, nullable=True)
+    """Additive (Organizations Sub-Category task). Nullable and stays nullable -- unlike
+    `main_category`, never required by onboarding. The cross-field "this code belongs to that
+    main_category" rule is a domain-layer invariant, not expressed by this column's own CHECK
+    (a flat membership check only, mirroring `ck_business_profile_main_category`'s own shape)."""
 
     __table_args__ = (
         CheckConstraint(f"profile_type IN {_PROFILE_TYPES}", name="ck_business_profile_type"),
         CheckConstraint(
             f"main_category IS NULL OR main_category IN {_MAIN_CATEGORIES}",
             name="ck_business_profile_main_category",
+        ),
+        CheckConstraint(
+            f"sub_category IS NULL OR sub_category IN {_SUB_CATEGORIES}",
+            name="ck_business_profile_sub_category",
         ),
         CheckConstraint(f"status IN {_PROFILE_STATUSES}", name="ck_business_profile_status"),
         CheckConstraint(

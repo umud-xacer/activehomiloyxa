@@ -35,7 +35,6 @@ import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as OfferRouteImport } from './routes/offer'
-import { Route as OrganizationsRouteImport } from './routes/organizations'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -84,6 +83,8 @@ import { Route as ListIndexRouteImport } from './routes/list/index'
 import { Route as ListListingIdRouteImport } from './routes/list/$listingId'
 import { Route as ListingListingIdRouteImport } from './routes/listing/$listingId'
 import { Route as OrganizationSetupRouteImport } from './routes/organization/setup'
+import { Route as OrganizationsIndexRouteImport } from './routes/organizations/index'
+import { Route as OrganizationsCategorySlugRouteImport } from './routes/organizations/$categorySlug'
 import { Route as PropertiesIndexRouteImport } from './routes/properties/index'
 import { Route as PropertiesSlugRouteImport } from './routes/properties/$slug'
 import { Route as AuthCallbackAppleRouteImport } from './routes/auth/callback/apple'
@@ -217,11 +218,6 @@ const NotificationsRoute = NotificationsRouteImport.update({
 const OfferRoute = OfferRouteImport.update({
   id: '/offer',
   path: '/offer',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OrganizationsRoute = OrganizationsRouteImport.update({
-  id: '/organizations',
-  path: '/organizations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PaymentsRoute = PaymentsRouteImport.update({
@@ -465,6 +461,17 @@ const OrganizationSetupRoute = OrganizationSetupRouteImport.update({
   path: '/organization/setup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrganizationsIndexRoute = OrganizationsIndexRouteImport.update({
+  id: '/organizations/',
+  path: '/organizations/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrganizationsCategorySlugRoute =
+  OrganizationsCategorySlugRouteImport.update({
+    id: '/organizations/$categorySlug',
+    path: '/organizations/$categorySlug',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
   id: '/properties/',
   path: '/properties/',
@@ -513,7 +520,6 @@ export interface FileRoutesByFullPath {
   '/news': typeof NewsRoute
   '/notifications': typeof NotificationsRoute
   '/offer': typeof OfferRoute
-  '/organizations': typeof OrganizationsRoute
   '/payments': typeof PaymentsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -554,6 +560,7 @@ export interface FileRoutesByFullPath {
   '/list/$listingId': typeof ListListingIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
   '/organization/setup': typeof OrganizationSetupRoute
+  '/organizations/$categorySlug': typeof OrganizationsCategorySlugRoute
   '/properties/$slug': typeof PropertiesSlugRoute
   '/$ownerAdminSlug/': typeof OwnerAdminSlugIndexRoute
   '/admin/': typeof AdminIndexRoute
@@ -563,6 +570,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof DashboardIndexRoute
   '/invest/': typeof InvestIndexRoute
   '/list/': typeof ListIndexRoute
+  '/organizations/': typeof OrganizationsIndexRoute
   '/properties/': typeof PropertiesIndexRoute
   '/auth/callback/apple': typeof AuthCallbackAppleRoute
   '/auth/callback/google': typeof AuthCallbackGoogleRoute
@@ -594,7 +602,6 @@ export interface FileRoutesByTo {
   '/news': typeof NewsRoute
   '/notifications': typeof NotificationsRoute
   '/offer': typeof OfferRoute
-  '/organizations': typeof OrganizationsRoute
   '/payments': typeof PaymentsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -635,6 +642,7 @@ export interface FileRoutesByTo {
   '/list/$listingId': typeof ListListingIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
   '/organization/setup': typeof OrganizationSetupRoute
+  '/organizations/$categorySlug': typeof OrganizationsCategorySlugRoute
   '/properties/$slug': typeof PropertiesSlugRoute
   '/$ownerAdminSlug': typeof OwnerAdminSlugIndexRoute
   '/admin': typeof AdminIndexRoute
@@ -644,6 +652,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardIndexRoute
   '/invest': typeof InvestIndexRoute
   '/list': typeof ListIndexRoute
+  '/organizations': typeof OrganizationsIndexRoute
   '/properties': typeof PropertiesIndexRoute
   '/auth/callback/apple': typeof AuthCallbackAppleRoute
   '/auth/callback/google': typeof AuthCallbackGoogleRoute
@@ -676,7 +685,6 @@ export interface FileRoutesById {
   '/news': typeof NewsRoute
   '/notifications': typeof NotificationsRoute
   '/offer': typeof OfferRoute
-  '/organizations': typeof OrganizationsRoute
   '/payments': typeof PaymentsRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -717,6 +725,7 @@ export interface FileRoutesById {
   '/list/$listingId': typeof ListListingIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
   '/organization/setup': typeof OrganizationSetupRoute
+  '/organizations/$categorySlug': typeof OrganizationsCategorySlugRoute
   '/properties/$slug': typeof PropertiesSlugRoute
   '/$ownerAdminSlug/': typeof OwnerAdminSlugIndexRoute
   '/admin/': typeof AdminIndexRoute
@@ -726,6 +735,7 @@ export interface FileRoutesById {
   '/dashboard/': typeof DashboardIndexRoute
   '/invest/': typeof InvestIndexRoute
   '/list/': typeof ListIndexRoute
+  '/organizations/': typeof OrganizationsIndexRoute
   '/properties/': typeof PropertiesIndexRoute
   '/auth/callback/apple': typeof AuthCallbackAppleRoute
   '/auth/callback/google': typeof AuthCallbackGoogleRoute
@@ -759,7 +769,6 @@ export interface FileRouteTypes {
     | '/news'
     | '/notifications'
     | '/offer'
-    | '/organizations'
     | '/payments'
     | '/pricing'
     | '/privacy'
@@ -800,6 +809,7 @@ export interface FileRouteTypes {
     | '/list/$listingId'
     | '/listing/$listingId'
     | '/organization/setup'
+    | '/organizations/$categorySlug'
     | '/properties/$slug'
     | '/$ownerAdminSlug/'
     | '/admin/'
@@ -809,6 +819,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/invest/'
     | '/list/'
+    | '/organizations/'
     | '/properties/'
     | '/auth/callback/apple'
     | '/auth/callback/google'
@@ -840,7 +851,6 @@ export interface FileRouteTypes {
     | '/news'
     | '/notifications'
     | '/offer'
-    | '/organizations'
     | '/payments'
     | '/pricing'
     | '/privacy'
@@ -881,6 +891,7 @@ export interface FileRouteTypes {
     | '/list/$listingId'
     | '/listing/$listingId'
     | '/organization/setup'
+    | '/organizations/$categorySlug'
     | '/properties/$slug'
     | '/$ownerAdminSlug'
     | '/admin'
@@ -890,6 +901,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/invest'
     | '/list'
+    | '/organizations'
     | '/properties'
     | '/auth/callback/apple'
     | '/auth/callback/google'
@@ -921,7 +933,6 @@ export interface FileRouteTypes {
     | '/news'
     | '/notifications'
     | '/offer'
-    | '/organizations'
     | '/payments'
     | '/pricing'
     | '/privacy'
@@ -962,6 +973,7 @@ export interface FileRouteTypes {
     | '/list/$listingId'
     | '/listing/$listingId'
     | '/organization/setup'
+    | '/organizations/$categorySlug'
     | '/properties/$slug'
     | '/$ownerAdminSlug/'
     | '/admin/'
@@ -971,6 +983,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/invest/'
     | '/list/'
+    | '/organizations/'
     | '/properties/'
     | '/auth/callback/apple'
     | '/auth/callback/google'
@@ -1003,7 +1016,6 @@ export interface RootRouteChildren {
   NewsRoute: typeof NewsRoute
   NotificationsRoute: typeof NotificationsRoute
   OfferRoute: typeof OfferRoute
-  OrganizationsRoute: typeof OrganizationsRoute
   PaymentsRoute: typeof PaymentsRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -1044,6 +1056,7 @@ export interface RootRouteChildren {
   ListListingIdRoute: typeof ListListingIdRoute
   ListingListingIdRoute: typeof ListingListingIdRoute
   OrganizationSetupRoute: typeof OrganizationSetupRoute
+  OrganizationsCategorySlugRoute: typeof OrganizationsCategorySlugRoute
   PropertiesSlugRoute: typeof PropertiesSlugRoute
   OwnerAdminSlugIndexRoute: typeof OwnerAdminSlugIndexRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -1053,6 +1066,7 @@ export interface RootRouteChildren {
   DashboardIndexRoute: typeof DashboardIndexRoute
   InvestIndexRoute: typeof InvestIndexRoute
   ListIndexRoute: typeof ListIndexRoute
+  OrganizationsIndexRoute: typeof OrganizationsIndexRoute
   PropertiesIndexRoute: typeof PropertiesIndexRoute
   AuthCallbackAppleRoute: typeof AuthCallbackAppleRoute
   AuthCallbackGoogleRoute: typeof AuthCallbackGoogleRoute
@@ -1240,13 +1254,6 @@ declare module '@tanstack/react-router' {
       path: '/offer'
       fullPath: '/offer'
       preLoaderRoute: typeof OfferRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/organizations': {
-      id: '/organizations'
-      path: '/organizations'
-      fullPath: '/organizations'
-      preLoaderRoute: typeof OrganizationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/payments': {
@@ -1585,6 +1592,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrganizationSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/organizations/': {
+      id: '/organizations/'
+      path: '/organizations'
+      fullPath: '/organizations/'
+      preLoaderRoute: typeof OrganizationsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/organizations/$categorySlug': {
+      id: '/organizations/$categorySlug'
+      path: '/organizations/$categorySlug'
+      fullPath: '/organizations/$categorySlug'
+      preLoaderRoute: typeof OrganizationsCategorySlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/properties/': {
       id: '/properties/'
       path: '/properties'
@@ -1643,7 +1664,6 @@ const rootRouteChildren: RootRouteChildren = {
   NewsRoute: NewsRoute,
   NotificationsRoute: NotificationsRoute,
   OfferRoute: OfferRoute,
-  OrganizationsRoute: OrganizationsRoute,
   PaymentsRoute: PaymentsRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
@@ -1684,6 +1704,7 @@ const rootRouteChildren: RootRouteChildren = {
   ListListingIdRoute: ListListingIdRoute,
   ListingListingIdRoute: ListingListingIdRoute,
   OrganizationSetupRoute: OrganizationSetupRoute,
+  OrganizationsCategorySlugRoute: OrganizationsCategorySlugRoute,
   PropertiesSlugRoute: PropertiesSlugRoute,
   OwnerAdminSlugIndexRoute: OwnerAdminSlugIndexRoute,
   AdminIndexRoute: AdminIndexRoute,
@@ -1693,6 +1714,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardIndexRoute: DashboardIndexRoute,
   InvestIndexRoute: InvestIndexRoute,
   ListIndexRoute: ListIndexRoute,
+  OrganizationsIndexRoute: OrganizationsIndexRoute,
   PropertiesIndexRoute: PropertiesIndexRoute,
   AuthCallbackAppleRoute: AuthCallbackAppleRoute,
   AuthCallbackGoogleRoute: AuthCallbackGoogleRoute,

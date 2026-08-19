@@ -42,7 +42,7 @@ export function AudienceSplit() {
           transition={{ duration: 0.5, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
         >
           <Link
-            to="/companies"
+            to="/organizations"
             className="group flex h-full items-center gap-5 overflow-hidden rounded-3xl border border-border bg-card p-7 shadow-soft transition hover:border-primary/40 hover:shadow-elevated"
           >
             <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">

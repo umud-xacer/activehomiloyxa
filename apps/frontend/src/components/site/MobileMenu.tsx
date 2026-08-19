@@ -33,7 +33,7 @@ const PRIMARY_LINKS = [
   { to: "/", label: "Bosh sahifa", icon: Home },
   { to: "/properties", label: "Ko'chmas mulk", icon: Building2 },
   { to: "/categories", label: "Barcha kategoriyalar", icon: LayoutGrid },
-  { to: "/companies", label: "Tashkilotlar", icon: Landmark },
+  { to: "/organizations", label: "Tashkilotlar", icon: Landmark },
   { to: "/invest", label: "Investorlar", icon: TrendingUp },
   { to: "/map", label: "Xarita", icon: MapPin },
 ] as const;

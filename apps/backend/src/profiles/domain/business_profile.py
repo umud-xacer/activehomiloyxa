@@ -27,13 +27,16 @@ from profiles.domain.exceptions import (
     PortfolioItemNotFoundError,
     PromoVideoLimitExceededError,
     PromoVideoNotFoundError,
+    SubCategoryNotInMainCategoryError,
 )
 from profiles.domain.portfolio_item import PortfolioItem
 from profiles.domain.value_objects import (
+    SUB_CATEGORIES_BY_MAIN_CATEGORY,
     BadgeStatus,
     MainCategory,
     ProfileStatus,
     ProfileType,
+    SubCategory,
     VerifiedBadge,
 )
 from profiles.domain.verification_case import ApprovedVerificationProof
@@ -47,6 +50,18 @@ MAX_PROMO_VIDEOS = 2
 promotional videos per business profile, each independently capped to 30 seconds -- enforced at
 attach-time by `application.ProfileUseCases.add_promo_video` (duration is a fact about the
 referenced media asset, not something this aggregate can check on its own)."""
+
+
+def _require_valid_sub_category(
+    main_category: MainCategory | None, sub_category: SubCategory | None
+) -> None:
+    if sub_category is None:
+        return
+    allowed = SUB_CATEGORIES_BY_MAIN_CATEGORY.get(main_category) if main_category else None
+    if not allowed or sub_category not in allowed:
+        raise SubCategoryNotInMainCategoryError(
+            sub_category.value, main_category.value if main_category else None
+        )
 
 
 @dataclass(frozen=True)
@@ -103,6 +118,12 @@ class BusinessProfile:
     filter). The onboarding wizard treats this as mandatory going forward
     (`complete_onboarding` below refuses to finish without it for any profile still `None`), but
     it is not a NOT NULL column -- see the migration's own docstring for why."""
+    sub_category: SubCategory | None = None
+    """Additive (Organizations Sub-Category task): a finer classification within `main_category`
+    (`SUB_CATEGORIES_BY_MAIN_CATEGORY`), backing the public directory's secondary filter dropdown
+    and card chip. Unlike `main_category`, always optional -- never required by onboarding, and
+    `update_details` validates it against whatever `main_category` the profile has (current or
+    newly-set in the same call), not the other way around."""
 
     # --- factory (FR-PROF-001) ------------------------------------------------------------------
 
@@ -119,9 +140,11 @@ class BusinessProfile:
         slug: str,
         now: datetime,
         main_category: MainCategory | None = None,
+        sub_category: SubCategory | None = None,
     ) -> BusinessProfile:
         """Always produces `CREATED` (see `value_objects.ProfileStatus`'s own docstring for why
         `application.ProfileUseCases.create_profile` immediately composes `.activate()`)."""
+        _require_valid_sub_category(main_category, sub_category)
         return BusinessProfile(
             id=profile_id,
             owner_user_id=owner_user_id,
@@ -142,6 +165,7 @@ class BusinessProfile:
             created_at=now,
             updated_at=now,
             main_category=main_category,
+            sub_category=sub_category,
         )
 
     # --- lifecycle (Created -> Active -> Archived) ------------------------------------------------
@@ -168,22 +192,29 @@ class BusinessProfile:
         contacts: dict[str, Any] | None = None,
         address: str | None = None,
         main_category: MainCategory | None = None,
+        sub_category: SubCategory | None = None,
         now: datetime,
     ) -> BusinessProfile:
         """`updateBusinessProfile`: "profileType is immutable" (OpenAPI's own docstring) -- no
         parameter here can touch it. Refused once `ARCHIVED` (nothing to maintain on a closed
         profile); legal in `CREATED` or `ACTIVE`. `main_category`, like the others, is
         "unchanged if omitted" -- there is no way to clear it back to `None` once set, matching
-        that it is a one-way mandatory-onboarding field, not a nullable preference."""
+        that it is a one-way mandatory-onboarding field, not a nullable preference.
+        `sub_category` is validated against whichever `main_category` this call ends up with
+        (the newly-passed one if given, else the profile's existing one)."""
         if self.status is ProfileStatus.ARCHIVED:
             raise IllegalProfileStatusTransitionError("update_details", self.status.value)
+        effective_main_category = main_category if main_category is not None else self.main_category
+        effective_sub_category = sub_category if sub_category is not None else self.sub_category
+        _require_valid_sub_category(effective_main_category, effective_sub_category)
         return replace(
             self,
             name=name if name is not None else self.name,
             description=description if description is not None else self.description,
             contacts=contacts if contacts is not None else self.contacts,
             address=address if address is not None else self.address,
-            main_category=main_category if main_category is not None else self.main_category,
+            main_category=effective_main_category,
+            sub_category=effective_sub_category,
             updated_at=now,
         )
 

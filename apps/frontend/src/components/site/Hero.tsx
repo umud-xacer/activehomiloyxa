@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Sparkles, Search } from "lucide-react";
 import worldMapBg from "@/assets/hero-bg-navy-map.jpg";
 import { CategoryCarousel } from "./CategoryCarousel";
 import { Container } from "@/components/layout/Container";
-import { GlobalSearchDialog } from "@/components/search/GlobalSearchDialog";
+import { SearchResultsPanel } from "@/components/search/SearchResultsPanel";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -18,7 +19,19 @@ const fadeUp = {
 
 export function Hero() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  function submitFullSearch() {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setSearchOpen(true);
+      return;
+    }
+    setSearchOpen(false);
+    navigate({ to: "/search", search: { q: trimmed } });
+  }
 
   return (
     <section className="hero-dark relative isolate overflow-hidden bg-background pt-28 pb-14 text-foreground md:pt-32 md:pb-16">
@@ -77,11 +90,15 @@ export function Hero() {
                 </div>
                 <input
                   type="text"
-                  readOnly
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setSearchOpen(true);
+                  }}
                   onFocus={() => setSearchOpen(true)}
-                  onClick={() => setSearchOpen(true)}
+                  onKeyDown={(e) => e.key === "Enter" && submitFullSearch()}
                   placeholder={t("hero.search_placeholder")}
-                  className="min-w-0 flex-1 cursor-pointer bg-transparent text-sm text-foreground placeholder:text-muted-foreground/80 focus:outline-none sm:text-[15px]"
+                  className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/80 focus:outline-none sm:text-[15px]"
                 />
                 <span className="hidden items-center gap-1 rounded-full bg-primary/8 px-2.5 py-1 text-[11px] font-semibold text-primary sm:inline-flex">
                   <Sparkles className="size-3" />
@@ -89,12 +106,21 @@ export function Hero() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => setSearchOpen(true)}
+                  onClick={submitFullSearch}
                   className="inline-flex items-center gap-1 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:shadow-glow"
                 >
                   {t("hero.search_button")}
                 </button>
               </div>
+              {/* Controlled mode -- this input above IS the search box, so the dropdown renders
+                  results only, seamlessly attached right under it (no second embedded input). */}
+              <SearchResultsPanel
+                open={searchOpen}
+                onOpenChange={setSearchOpen}
+                externalQuery={query}
+                onExternalQueryChange={setQuery}
+                className="absolute inset-x-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-slate-100 bg-card text-left shadow-xl"
+              />
             </div>
           </motion.div>
         </motion.div>
@@ -103,7 +129,6 @@ export function Hero() {
       {/* Categories live inside Hero's own dark band -- continues the same navy gradient rather
           than handing off to a separate white section right below the search box. */}
       <CategoryCarousel />
-      <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </section>
   );
 }

@@ -39,9 +39,12 @@ import {
   MAIN_CATEGORIES,
   MAIN_CATEGORY_LABEL,
   PROFILE_TYPE_LABEL,
+  SUB_CATEGORIES_BY_MAIN_CATEGORY,
+  SUB_CATEGORY_LABEL,
   type BusinessProfile,
   type MainCategory,
   type PortfolioItem,
+  type SubCategory,
 } from "@/lib/business-profiles-client";
 
 interface SearchHitLite {
@@ -80,6 +83,7 @@ function draftFromProfile(profile: BusinessProfile): ProfileDraft {
     website: profile.contacts?.website || "",
     workingHours: profile.contacts?.workingHours || "",
     mainCategory: profile.mainCategory || "",
+    subCategory: profile.subCategory || "",
     socialTelegram: profile.contacts?.socialLinks?.telegram || "",
     socialInstagram: profile.contacts?.socialLinks?.instagram || "",
     socialFacebook: profile.contacts?.socialLinks?.facebook || "",
@@ -301,6 +305,7 @@ function ProfileForm({
           socialLinks: Object.values(socialLinks).some(Boolean) ? socialLinks : undefined,
         },
         mainCategory: draft.mainCategory || undefined,
+        subCategory: draft.subCategory || undefined,
       });
       await queryClient.invalidateQueries({ queryKey: ["business-profiles"] });
       setSaved(true);
@@ -341,7 +346,17 @@ function ProfileForm({
           <label className="text-xs font-medium text-muted-foreground">Asosiy kategoriya</label>
           <select
             value={draft.mainCategory}
-            onChange={(e) => patch({ mainCategory: e.target.value as MainCategory })}
+            onChange={(e) => {
+              const next = e.target.value as MainCategory;
+              const stillValid = SUB_CATEGORIES_BY_MAIN_CATEGORY[next]?.includes(
+                draft.subCategory as SubCategory,
+              );
+              onDraftChange({
+                ...draft,
+                mainCategory: next,
+                subCategory: stillValid ? draft.subCategory : "",
+              });
+            }}
             className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary/30"
           >
             <option value="" disabled>
@@ -357,6 +372,24 @@ function ProfileForm({
             Tashkilotlar katalogida shu bo'lim ostida ko'rinasiz.
           </p>
         </div>
+
+        {draft.mainCategory && (
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Yo'nalish turi</label>
+            <select
+              value={draft.subCategory}
+              onChange={(e) => patch({ subCategory: e.target.value as SubCategory })}
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">Tanlanmagan</option>
+              {SUB_CATEGORIES_BY_MAIN_CATEGORY[draft.mainCategory].map((value) => (
+                <option key={value} value={value}>
+                  {SUB_CATEGORY_LABEL[value]}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="text-xs font-medium text-muted-foreground">Tavsif</label>

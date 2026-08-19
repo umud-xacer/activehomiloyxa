@@ -44,6 +44,94 @@ class MainCategory(StrEnum):
     REAL_ESTATE_AGENCIES = "REAL_ESTATE_AGENCIES"
 
 
+class SubCategory(StrEnum):
+    """Additive (Organizations Sub-Category task, site-owner spec): a finer classification
+    *within* one `MainCategory` (e.g. "Tijorat banki" vs. "Ipoteka markazi", both under
+    `FINANCE_MORTGAGE`) -- used only for the public `/companies` directory's secondary filter
+    dropdown. Always optional (unlike `main_category`, never required by onboarding): a profile
+    with `main_category` set but `sub_category` still `None` simply shows no sub-category chip
+    and matches every sub-category filter within its main category. `SUB_CATEGORIES_BY_MAIN_
+    CATEGORY` below is the authoritative "which values are legal under which main category"
+    mapping the domain layer validates against (`BusinessProfile.update_details`)."""
+
+    # -- FINANCE_MORTGAGE ------------------------------------------------------------------------
+    COMMERCIAL_BANK = "COMMERCIAL_BANK"
+    MORTGAGE_CENTER = "MORTGAGE_CENTER"
+    MICROFINANCE = "MICROFINANCE"
+    INSURANCE = "INSURANCE"
+    LEASING = "LEASING"
+    # -- CONSTRUCTION_CONTRACTORS -----------------------------------------------------------------
+    GENERAL_CONTRACTOR = "GENERAL_CONTRACTOR"
+    SUBCONTRACTOR = "SUBCONTRACTOR"
+    CIVIL_ENGINEERING = "CIVIL_ENGINEERING"
+    RENOVATION_CONTRACTOR = "RENOVATION_CONTRACTOR"
+    INFRASTRUCTURE_CONSTRUCTION = "INFRASTRUCTURE_CONSTRUCTION"
+    # -- MANUFACTURERS_MATERIALS ------------------------------------------------------------------
+    BUILDING_MATERIALS_MANUFACTURER = "BUILDING_MATERIALS_MANUFACTURER"
+    FURNITURE_MANUFACTURER = "FURNITURE_MANUFACTURER"
+    METAL_PRODUCTS_MANUFACTURER = "METAL_PRODUCTS_MANUFACTURER"
+    CONCRETE_CEMENT_MANUFACTURER = "CONCRETE_CEMENT_MANUFACTURER"
+    GLASS_ALUMINUM_MANUFACTURER = "GLASS_ALUMINUM_MANUFACTURER"
+    # -- ARCHITECTURE_INTERIOR --------------------------------------------------------------------
+    ARCHITECTURE_STUDIO = "ARCHITECTURE_STUDIO"
+    INTERIOR_DESIGN_STUDIO = "INTERIOR_DESIGN_STUDIO"
+    LANDSCAPE_DESIGN_STUDIO = "LANDSCAPE_DESIGN_STUDIO"
+    ENGINEERING_DESIGN_STUDIO = "ENGINEERING_DESIGN_STUDIO"
+    # -- REPAIR_SERVICES ---------------------------------------------------------------------------
+    HOME_REPAIR_SERVICE = "HOME_REPAIR_SERVICE"
+    PLUMBING_ELECTRICAL_SERVICE = "PLUMBING_ELECTRICAL_SERVICE"
+    CLEANING_SERVICE = "CLEANING_SERVICE"
+    APPLIANCE_REPAIR_SERVICE = "APPLIANCE_REPAIR_SERVICE"
+    # -- REAL_ESTATE_AGENCIES ----------------------------------------------------------------------
+    RESIDENTIAL_AGENCY = "RESIDENTIAL_AGENCY"
+    COMMERCIAL_AGENCY = "COMMERCIAL_AGENCY"
+    PROPERTY_MANAGEMENT = "PROPERTY_MANAGEMENT"
+    VALUATION_SERVICE = "VALUATION_SERVICE"
+
+
+SUB_CATEGORIES_BY_MAIN_CATEGORY: dict[MainCategory, tuple[SubCategory, ...]] = {
+    MainCategory.FINANCE_MORTGAGE: (
+        SubCategory.COMMERCIAL_BANK,
+        SubCategory.MORTGAGE_CENTER,
+        SubCategory.MICROFINANCE,
+        SubCategory.INSURANCE,
+        SubCategory.LEASING,
+    ),
+    MainCategory.CONSTRUCTION_CONTRACTORS: (
+        SubCategory.GENERAL_CONTRACTOR,
+        SubCategory.SUBCONTRACTOR,
+        SubCategory.CIVIL_ENGINEERING,
+        SubCategory.RENOVATION_CONTRACTOR,
+        SubCategory.INFRASTRUCTURE_CONSTRUCTION,
+    ),
+    MainCategory.MANUFACTURERS_MATERIALS: (
+        SubCategory.BUILDING_MATERIALS_MANUFACTURER,
+        SubCategory.FURNITURE_MANUFACTURER,
+        SubCategory.METAL_PRODUCTS_MANUFACTURER,
+        SubCategory.CONCRETE_CEMENT_MANUFACTURER,
+        SubCategory.GLASS_ALUMINUM_MANUFACTURER,
+    ),
+    MainCategory.ARCHITECTURE_INTERIOR: (
+        SubCategory.ARCHITECTURE_STUDIO,
+        SubCategory.INTERIOR_DESIGN_STUDIO,
+        SubCategory.LANDSCAPE_DESIGN_STUDIO,
+        SubCategory.ENGINEERING_DESIGN_STUDIO,
+    ),
+    MainCategory.REPAIR_SERVICES: (
+        SubCategory.HOME_REPAIR_SERVICE,
+        SubCategory.PLUMBING_ELECTRICAL_SERVICE,
+        SubCategory.CLEANING_SERVICE,
+        SubCategory.APPLIANCE_REPAIR_SERVICE,
+    ),
+    MainCategory.REAL_ESTATE_AGENCIES: (
+        SubCategory.RESIDENTIAL_AGENCY,
+        SubCategory.COMMERCIAL_AGENCY,
+        SubCategory.PROPERTY_MANAGEMENT,
+        SubCategory.VALUATION_SERVICE,
+    ),
+}
+
+
 class ProfileStatus(StrEnum):
     """Physical DB `profiles.business_profile.status` CHECK -- `Created -> Active -> Archived`
     (Database Architecture Sec "profiles schema": "owner closure/suspension follow-through").

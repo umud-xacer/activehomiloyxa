@@ -11,7 +11,7 @@ import { PlatformStatsBand } from "@/components/site/PlatformStatsBand";
 import { Footer } from "@/components/site/Footer";
 import { AdSlot } from "@/components/site/AdSlot";
 import { PromoBanner } from "@/components/site/PromoBanner";
-import promoUyTamirlash from "@/assets/banners/promo-uy-tamirlash.png";
+import promoIpoteka from "@/assets/banners/promo-ipoteka.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -59,7 +59,7 @@ function Index() {
 
       <Hero />
       <AudienceSplit />
-      <PromoBanner src={promoUyTamirlash} alt="Uy ta'mirlash bosh og'riq emas!" fit="contain" />
+      <PromoBanner src={promoIpoteka} alt="Orzuingizdagi uyni ipoteka orqali oling" />
       <OrganizationsCarousel />
       <AdSlot slotKey="HOMEPAGE_BANNER_1" />
       <MapPreview />

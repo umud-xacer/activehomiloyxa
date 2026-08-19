@@ -35,7 +35,14 @@ class SearchResult(CamelModel):
 
     items: list[SearchHit]
     facets: list[Facet]
-    page: CursorPage
+    # Deliberately `CursorPagePage` (the flat metadata), not the composed `CursorPage` envelope --
+    # `items` already lives at this model's own top level, so nesting a second (always-empty)
+    # `items` under `page` would just double it up uselessly. Was `CursorPage` until 2026-08-19,
+    # which made every real response double-nest as `page.page.{limit,nextCursor,total}` --
+    # `search-client.ts`'s frontend type had always assumed the flat shape (never updated to match
+    # the bug), so pagination silently read `undefined` off `page.nextCursor` and could never
+    # advance past the first page.
+    page: CursorPagePage
     degraded: bool | None = False
     """True when served from the DB fallback (reduced result set)."""
 
@@ -59,13 +66,6 @@ class SearchHitPromoted(CamelModel):
     """Present and labelled when the hit is a capped promoted result (BRULE-10)."""
 
     kind: Literal["PREMIUM", "FEATURED", "TOP_PLACEMENT"] | None = None
-
-
-class CursorPage(CamelModel):
-    """Cursor pagination envelope (opaque forward cursor)."""
-
-    items: list[Any]
-    page: CursorPagePage
 
 
 class CursorPagePage(CamelModel):

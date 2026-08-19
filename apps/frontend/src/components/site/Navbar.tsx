@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { GlobalSearchDialog } from "@/components/search/GlobalSearchDialog";
+import { SearchResultsPanel } from "@/components/search/SearchResultsPanel";
 import {
   Plus,
   Search,
+  X,
   UserRound,
   LayoutDashboard,
   Heart,
@@ -53,6 +54,7 @@ export function Navbar() {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { data: account } = useMe();
   const invalidateAuth = useInvalidateAuth();
 
@@ -137,14 +139,59 @@ export function Navbar() {
 
             <Divider className="hidden lg:block" />
 
-            <button
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              aria-label={t("nav.search", "Qidiruv")}
-              className="flex size-9 shrink-0 items-center justify-center rounded-full text-foreground/75 transition hover:bg-secondary hover:text-foreground"
-            >
-              <Search className="size-4.5" />
-            </button>
+            <motion.div layout className="relative flex shrink-0 items-center">
+              {searchOpen ? (
+                <motion.div
+                  initial={{ width: 36, opacity: 0 }}
+                  animate={{ width: "auto", opacity: 1 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                  className="flex items-center gap-1.5 overflow-hidden rounded-full bg-secondary/70 py-1.5 pl-3 pr-1.5"
+                >
+                  <Search className="size-4 shrink-0 text-foreground/60" />
+                  <input
+                    autoFocus
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") setSearchOpen(false);
+                      if (e.key === "Enter" && searchQuery.trim()) {
+                        setSearchOpen(false);
+                        navigate({ to: "/search", search: { q: searchQuery.trim() } });
+                      }
+                    }}
+                    placeholder={t("nav.search", "Qidiruv")}
+                    className="w-36 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/70 sm:w-56"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSearchOpen(false)}
+                    aria-label="Yopish"
+                    className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-background hover:text-foreground"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </motion.div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  aria-label={t("nav.search", "Qidiruv")}
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full text-foreground/75 transition hover:bg-secondary hover:text-foreground"
+                >
+                  <Search className="size-4.5" />
+                </button>
+              )}
+              {/* Controlled mode -- the inline input above IS the search box; this renders
+                  results only, attached directly under it (no second embedded input, and no
+                  detached-looking floating card the way a modal's own input used to). */}
+              <SearchResultsPanel
+                open={searchOpen}
+                onOpenChange={setSearchOpen}
+                externalQuery={searchQuery}
+                onExternalQueryChange={setSearchQuery}
+                className="absolute right-0 top-full z-50 mt-2 w-[calc(100vw-2rem)] max-w-md overflow-hidden rounded-2xl border border-slate-100 bg-card shadow-xl sm:w-[420px]"
+              />
+            </motion.div>
 
             {!isLegalEntity && (
               <Link
@@ -245,7 +292,6 @@ export function Navbar() {
       </motion.header>
 
       <ChatAssistant />
-      <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </>
   );
 }

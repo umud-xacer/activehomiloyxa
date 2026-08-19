@@ -16,23 +16,10 @@ import { ArrowUpRight } from "lucide-react";
 import {
   MAIN_CATEGORIES,
   MAIN_CATEGORY_LABEL,
+  MAIN_CATEGORY_IMAGE,
+  MAIN_CATEGORY_SLUG,
   type MainCategory,
 } from "@/lib/business-profiles-client";
-
-const MAIN_CATEGORY_IMAGE: Record<MainCategory, string> = {
-  FINANCE_MORTGAGE:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Old_Town_Architecture_Reflected_in_Modern_Facade_-_Geneva_-_Switzerland.jpg/500px-Old_Town_Architecture_Reflected_in_Modern_Facade_-_Geneva_-_Switzerland.jpg",
-  CONSTRUCTION_CONTRACTORS:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Tower_crane_at_a_building_construction_site_in_Taichung_2023-05-13_01.jpg/500px-Tower_crane_at_a_building_construction_site_in_Taichung_2023-05-13_01.jpg",
-  MANUFACTURERS_MATERIALS:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Silo_of_the_factory_%E2%80%9EProfix%22_Tetovo%2C_North_Macedonia.jpg/500px-Silo_of_the_factory_%E2%80%9EProfix%22_Tetovo%2C_North_Macedonia.jpg",
-  ARCHITECTURE_INTERIOR:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/House_S_by_Minhwan_Park_%EB%B0%95%EB%AF%BC%ED%99%98_%EA%B1%B4%EC%B6%95_S_%EC%A3%BC%ED%83%9D.jpg/500px-House_S_by_Minhwan_Park_%EB%B0%95%EB%AF%BC%ED%99%98_%EA%B1%B4%EC%B6%95_S_%EC%A3%BC%ED%83%9D.jpg",
-  REPAIR_SERVICES:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Faubourg_Marigny%2C_New_Orleans_-_Interior_of_recently_renovated_house_-_04.jpg/500px-Faubourg_Marigny%2C_New_Orleans_-_Interior_of_recently_renovated_house_-_04.jpg",
-  REAL_ESTATE_AGENCIES:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Modern_living_room_with_stylish_furniture_and_a_view_of_the_outdoors_in_a_cozy_apartment_setting.jpg/500px-Modern_living_room_with_stylish_furniture_and_a_view_of_the_outdoors_in_a_cozy_apartment_setting.jpg",
-};
 
 function CategoryChip({ category, index }: { category: MainCategory; index: number }) {
   return (
@@ -43,8 +30,8 @@ function CategoryChip({ category, index }: { category: MainCategory; index: numb
       transition={{ duration: 0.35, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] }}
     >
       <Link
-        to="/companies"
-        search={{ category }}
+        to="/organizations/$categorySlug"
+        params={{ categorySlug: MAIN_CATEGORY_SLUG[category] }}
         className="group flex w-24 shrink-0 flex-col items-center gap-2.5 rounded-2xl border border-transparent px-2 py-3 text-center transition-all hover:border-border hover:bg-card hover:shadow-soft sm:w-28"
       >
         <div className="relative flex size-16 items-center justify-center overflow-hidden rounded-2xl border border-border bg-white shadow-soft transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-glow sm:size-20">
@@ -101,7 +88,7 @@ export function OrganizationsCarousel() {
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Link
-              to="/companies"
+              to="/organizations"
               className="group inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow"
             >
               {t("organizations.view_all", { defaultValue: "Barcha tashkilotlarni ko'rish" })}

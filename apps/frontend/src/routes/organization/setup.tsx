@@ -27,9 +27,12 @@ import {
   MAIN_CATEGORIES,
   MAIN_CATEGORY_LABEL,
   PROFILE_TYPE_LABEL,
+  SUB_CATEGORIES_BY_MAIN_CATEGORY,
+  SUB_CATEGORY_LABEL,
   type BusinessProfile,
   type MainCategory,
   type ProfileType,
+  type SubCategory,
 } from "@/lib/business-profiles-client";
 
 export const Route = createFileRoute("/organization/setup")({
@@ -117,6 +120,9 @@ function BasicsStep({
   const [mainCategory, setMainCategory] = useState<MainCategory | "">(
     existingProfile?.mainCategory || "",
   );
+  const [subCategory, setSubCategory] = useState<SubCategory | "">(
+    existingProfile?.subCategory || "",
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -134,6 +140,7 @@ function BasicsStep({
             address,
             contacts: { phones: cleanPhones },
             mainCategory: mainCategory || undefined,
+            subCategory: subCategory || undefined,
           })
         : await businessProfilesApi.create({
             profileType,
@@ -142,6 +149,7 @@ function BasicsStep({
             contacts: { phones: cleanPhones },
             address,
             mainCategory: mainCategory || undefined,
+            subCategory: subCategory || undefined,
           });
       onCreated(profile);
     } catch (err) {
@@ -189,7 +197,13 @@ function BasicsStep({
           <label className="text-xs font-medium text-muted-foreground">Asosiy kategoriya *</label>
           <select
             value={mainCategory}
-            onChange={(e) => setMainCategory(e.target.value as MainCategory)}
+            onChange={(e) => {
+              const next = e.target.value as MainCategory;
+              setMainCategory(next);
+              if (!SUB_CATEGORIES_BY_MAIN_CATEGORY[next]?.includes(subCategory as SubCategory)) {
+                setSubCategory("");
+              }
+            }}
             className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary/30"
           >
             <option value="" disabled>
@@ -205,6 +219,24 @@ function BasicsStep({
             Tashkilotingiz Tashkilotlar katalogida shu bo'lim ostida ko'rinadi.
           </p>
         </div>
+
+        {mainCategory && (
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Yo'nalish turi</label>
+            <select
+              value={subCategory}
+              onChange={(e) => setSubCategory(e.target.value as SubCategory)}
+              className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">Tanlanmagan</option>
+              {SUB_CATEGORIES_BY_MAIN_CATEGORY[mainCategory].map((value) => (
+                <option key={value} value={value}>
+                  {SUB_CATEGORY_LABEL[value]}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="text-xs font-medium text-muted-foreground">Kompaniya haqida *</label>

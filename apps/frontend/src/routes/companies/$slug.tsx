@@ -372,7 +372,7 @@ function Page() {
           <p className="max-w-sm text-sm text-muted-foreground">
             Bu sahifa mavjud emas yoki tashkilotning obuna muddati tugagan bo'lishi mumkin.
           </p>
-          <Link to="/companies" className="mt-2 text-sm text-primary hover:underline">
+          <Link to="/organizations" className="mt-2 text-sm text-primary hover:underline">
             Tashkilotlar ro'yxatiga qaytish
           </Link>
         </div>

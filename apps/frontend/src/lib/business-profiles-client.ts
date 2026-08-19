@@ -46,6 +46,229 @@ export const MAIN_CATEGORIES: MainCategory[] = [
   "REAL_ESTATE_AGENCIES",
 ];
 
+/** URL slug for each `MainCategory` -- backs `/organizations/$categorySlug` (the dedicated
+ * per-category directory page). Kept as an explicit map rather than derived from the label
+ * (transliterating "Qurilish kompaniyalari va Pudratchilar" verbatim would produce an unwieldy
+ * URL) -- short, stable, hand-picked instead. */
+export const MAIN_CATEGORY_SLUG: Record<MainCategory, string> = {
+  FINANCE_MORTGAGE: "finans-va-ipoteka",
+  CONSTRUCTION_CONTRACTORS: "qurilish-kompaniyalari",
+  MANUFACTURERS_MATERIALS: "ishlab-chiqaruvchilar",
+  ARCHITECTURE_INTERIOR: "arxitektura-dizayn",
+  REPAIR_SERVICES: "tamirlash-xizmatlari",
+  REAL_ESTATE_AGENCIES: "kochmas-mulk",
+};
+
+const SLUG_TO_MAIN_CATEGORY: Record<string, MainCategory> = Object.fromEntries(
+  MAIN_CATEGORIES.map((c) => [MAIN_CATEGORY_SLUG[c], c]),
+) as Record<string, MainCategory>;
+
+export function mainCategoryBySlug(slug: string): MainCategory | null {
+  return SLUG_TO_MAIN_CATEGORY[slug] ?? null;
+}
+
+/** One representative photo per sector -- `MainCategory` is a fixed, admin-defined 6-value set
+ * (unlike catalog categories, which come from the CMS and carry their own `heroImageUrl`), so a
+ * photo is picked once here rather than sourced per organization. Shared by the homepage
+ * `OrganizationsCarousel` and the `/organizations` hub page so both read as the same taxonomy. */
+export const MAIN_CATEGORY_IMAGE: Record<MainCategory, string> = {
+  FINANCE_MORTGAGE:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Old_Town_Architecture_Reflected_in_Modern_Facade_-_Geneva_-_Switzerland.jpg/500px-Old_Town_Architecture_Reflected_in_Modern_Facade_-_Geneva_-_Switzerland.jpg",
+  CONSTRUCTION_CONTRACTORS:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Tower_crane_at_a_building_construction_site_in_Taichung_2023-05-13_01.jpg/500px-Tower_crane_at_a_building_construction_site_in_Taichung_2023-05-13_01.jpg",
+  MANUFACTURERS_MATERIALS:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Silo_of_the_factory_%E2%80%9EProfix%22_Tetovo%2C_North_Macedonia.jpg/500px-Silo_of_the_factory_%E2%80%9EProfix%22_Tetovo%2C_North_Macedonia.jpg",
+  ARCHITECTURE_INTERIOR:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/House_S_by_Minhwan_Park_%EB%B0%95%EB%AF%BC%ED%99%98_%EA%B1%B4%EC%B6%95_S_%EC%A3%BC%ED%83%9D.jpg/500px-House_S_by_Minhwan_Park_%EB%B0%95%EB%AF%BC%ED%99%98_%EA%B1%B4%EC%B6%95_S_%EC%A3%BC%ED%83%9D.jpg",
+  REPAIR_SERVICES:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Faubourg_Marigny%2C_New_Orleans_-_Interior_of_recently_renovated_house_-_04.jpg/500px-Faubourg_Marigny%2C_New_Orleans_-_Interior_of_recently_renovated_house_-_04.jpg",
+  REAL_ESTATE_AGENCIES:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Modern_living_room_with_stylish_furniture_and_a_view_of_the_outdoors_in_a_cozy_apartment_setting.jpg/500px-Modern_living_room_with_stylish_furniture_and_a_view_of_the_outdoors_in_a_cozy_apartment_setting.jpg",
+};
+
+/** One-line description per sector -- the hub grid card's subtitle and the detail page's own
+ * header description. */
+export const MAIN_CATEGORY_DESCRIPTION: Record<MainCategory, string> = {
+  FINANCE_MORTGAGE: "Tijorat banklari, ipoteka markazlari va moliya tashkilotlari",
+  CONSTRUCTION_CONTRACTORS: "Bosh pudratchilar, sub-pudratchilar va qurilish kompaniyalari",
+  MANUFACTURERS_MATERIALS: "Qurilish materiallari va mebel ishlab chiqaruvchilar",
+  ARCHITECTURE_INTERIOR: "Arxitektura, interyer va landshaft dizayn studiyalari",
+  REPAIR_SERVICES: "Uy ta'mirlash, santexnika va boshqa xizmat ko'rsatuvchilar",
+  REAL_ESTATE_AGENCIES: "Turar-joy va tijorat ko'chmas mulk agentliklari",
+};
+
+/** One accent color per sector -- 6-digit hex (not oklch/named) because `PageHeader` and the hub
+ * grid card both append an alpha suffix directly to the string (`${accentColor}26`), which is
+ * only well-formed for hex. Backs the `/organizations` hub cards and each
+ * `/organizations/$categorySlug` page's `PageHeader` tint. */
+export const MAIN_CATEGORY_ACCENT: Record<MainCategory, string> = {
+  FINANCE_MORTGAGE: "#2563eb",
+  CONSTRUCTION_CONTRACTORS: "#ea580c",
+  MANUFACTURERS_MATERIALS: "#65a30d",
+  ARCHITECTURE_INTERIOR: "#7c3aed",
+  REPAIR_SERVICES: "#0891b2",
+  REAL_ESTATE_AGENCIES: "#db2777",
+};
+
+/** Additive (Organizations Sub-Category task) -- a finer classification *within* one
+ * `MainCategory` (e.g. "Tijorat banki" vs. "Ipoteka markazi", both under `FINANCE_MORTGAGE`).
+ * Always optional, unlike `MainCategory` -- a profile can have a main category set and no
+ * sub-category. See `SUB_CATEGORIES_BY_MAIN_CATEGORY` for which codes are legal under which
+ * main category (mirrors the backend's own `profiles.domain.SUB_CATEGORIES_BY_MAIN_CATEGORY`). */
+export type SubCategory =
+  | "COMMERCIAL_BANK"
+  | "MORTGAGE_CENTER"
+  | "MICROFINANCE"
+  | "INSURANCE"
+  | "LEASING"
+  | "GENERAL_CONTRACTOR"
+  | "SUBCONTRACTOR"
+  | "CIVIL_ENGINEERING"
+  | "RENOVATION_CONTRACTOR"
+  | "INFRASTRUCTURE_CONSTRUCTION"
+  | "BUILDING_MATERIALS_MANUFACTURER"
+  | "FURNITURE_MANUFACTURER"
+  | "METAL_PRODUCTS_MANUFACTURER"
+  | "CONCRETE_CEMENT_MANUFACTURER"
+  | "GLASS_ALUMINUM_MANUFACTURER"
+  | "ARCHITECTURE_STUDIO"
+  | "INTERIOR_DESIGN_STUDIO"
+  | "LANDSCAPE_DESIGN_STUDIO"
+  | "ENGINEERING_DESIGN_STUDIO"
+  | "HOME_REPAIR_SERVICE"
+  | "PLUMBING_ELECTRICAL_SERVICE"
+  | "CLEANING_SERVICE"
+  | "APPLIANCE_REPAIR_SERVICE"
+  | "RESIDENTIAL_AGENCY"
+  | "COMMERCIAL_AGENCY"
+  | "PROPERTY_MANAGEMENT"
+  | "VALUATION_SERVICE";
+
+export const SUB_CATEGORY_LABEL: Record<SubCategory, string> = {
+  COMMERCIAL_BANK: "Tijorat banki",
+  MORTGAGE_CENTER: "Ipoteka markazi",
+  MICROFINANCE: "Mikromoliya tashkiloti",
+  INSURANCE: "Sug'urta kompaniyasi",
+  LEASING: "Lizing kompaniyasi",
+  GENERAL_CONTRACTOR: "Bosh pudratchi",
+  SUBCONTRACTOR: "Sub-pudratchi",
+  CIVIL_ENGINEERING: "Muhandislik-qurilish",
+  RENOVATION_CONTRACTOR: "Ta'mirlash pudratchisi",
+  INFRASTRUCTURE_CONSTRUCTION: "Infratuzilma qurilishi",
+  BUILDING_MATERIALS_MANUFACTURER: "Qurilish materiallari ishlab chiqaruvchi",
+  FURNITURE_MANUFACTURER: "Mebel ishlab chiqaruvchi",
+  METAL_PRODUCTS_MANUFACTURER: "Metall mahsulotlari ishlab chiqaruvchi",
+  CONCRETE_CEMENT_MANUFACTURER: "Beton va sement ishlab chiqaruvchi",
+  GLASS_ALUMINUM_MANUFACTURER: "Shisha va alyuminiy konstruksiyalar",
+  ARCHITECTURE_STUDIO: "Arxitektura studiyasi",
+  INTERIOR_DESIGN_STUDIO: "Interyer dizayn studiyasi",
+  LANDSCAPE_DESIGN_STUDIO: "Landshaft dizayni studiyasi",
+  ENGINEERING_DESIGN_STUDIO: "Muhandislik loyihalash",
+  HOME_REPAIR_SERVICE: "Uy ta'mirlash xizmati",
+  PLUMBING_ELECTRICAL_SERVICE: "Santexnika va elektr xizmati",
+  CLEANING_SERVICE: "Tozalash xizmati",
+  APPLIANCE_REPAIR_SERVICE: "Maishiy texnika ta'mirlash",
+  RESIDENTIAL_AGENCY: "Turar-joy agentligi",
+  COMMERCIAL_AGENCY: "Tijorat ko'chmas mulki agentligi",
+  PROPERTY_MANAGEMENT: "Mulkni boshqarish",
+  VALUATION_SERVICE: "Baholash xizmati",
+};
+
+/** One representative photo per sub-category, hand-verified against Wikimedia Commons file
+ * titles/descriptions (same sourcing convention as `MAIN_CATEGORY_IMAGE` -- never a random
+ * keyword-matched stock photo; see that map's own docstring for why this project avoids those).
+ * Deliberately a `Partial` -- two codes (`PROPERTY_MANAGEMENT`, `VALUATION_SERVICE`) have no
+ * confidently-matching real photo on Commons, so they fall back to `SUB_CATEGORY_ICON`'s
+ * gradient+icon tile (`routes/organizations/$categorySlug.tsx`) rather than force a mismatch. */
+export const SUB_CATEGORY_IMAGE: Partial<Record<SubCategory, string>> = {
+  COMMERCIAL_BANK:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/United_States_National_Bank_Building%2C_Portland%2C_Oregon_%282012%29_-_01.JPG/500px-United_States_National_Bank_Building%2C_Portland%2C_Oregon_%282012%29_-_01.JPG",
+  MORTGAGE_CENTER:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Fannie_Mae_Headquarters.JPG/500px-Fannie_Mae_Headquarters.JPG",
+  MICROFINANCE:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Aryavart_Gramin_Bank_Barabanki_Regional_Office.jpg/500px-Aryavart_Gramin_Bank_Barabanki_Regional_Office.jpg",
+  INSURANCE:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/New_York_Life_Insurance_Company_Building_from_east.jpg/500px-New_York_Life_Insurance_Company_Building_from_east.jpg",
+  LEASING:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/FleetPride_Truck_%2838851789722%29.jpg/500px-FleetPride_Truck_%2838851789722%29.jpg",
+  GENERAL_CONTRACTOR:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Construction_Site.JPG/500px-Construction_Site.JPG",
+  SUBCONTRACTOR:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Construction_Worker_Ladder_%2854070790%29.jpeg/500px-Construction_Worker_Ladder_%2854070790%29.jpeg",
+  CIVIL_ENGINEERING:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Bridge_Construction_workers.jpg/500px-Bridge_Construction_workers.jpg",
+  RENOVATION_CONTRACTOR:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/1._Warfield_House_Restoration._%2899cf7820-82fa-4113-8a7e-8a72abfacbdf%29.JPG/500px-1._Warfield_House_Restoration._%2899cf7820-82fa-4113-8a7e-8a72abfacbdf%29.JPG",
+  INFRASTRUCTURE_CONSTRUCTION:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Road_construction_in_progress.jpg/500px-Road_construction_in_progress.jpg",
+  BUILDING_MATERIALS_MANUFACTURER:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Brick_Factory_-_Kathmandu_-_Nepal_%2814515420731%29.jpg/500px-Brick_Factory_-_Kathmandu_-_Nepal_%2814515420731%29.jpg",
+  FURNITURE_MANUFACTURER:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Klein_Custom_Woodworking-_Two_Rivers%2C_WI_-_Flickr_-_MichaelSteeber.jpg/500px-Klein_Custom_Woodworking-_Two_Rivers%2C_WI_-_Flickr_-_MichaelSteeber.jpg",
+  METAL_PRODUCTS_MANUFACTURER:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Llanwern_Steel_works.jpg/500px-Llanwern_Steel_works.jpg",
+  CONCRETE_CEMENT_MANUFACTURER:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Holcim_cement_plant%2C_Portland%2C_Colorado.JPG/500px-Holcim_cement_plant%2C_Portland%2C_Colorado.JPG",
+  GLASS_ALUMINUM_MANUFACTURER:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Hallidie_Building_facade_2026_San_Francisco_dllu.jpg/500px-Hallidie_Building_facade_2026_San_Francisco_dllu.jpg",
+  ARCHITECTURE_STUDIO:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Interior_View_of_Drafting_Room_in_ERB_-_GPN-2000-001447.jpg/500px-Interior_View_of_Drafting_Room_in_ERB_-_GPN-2000-001447.jpg",
+  INTERIOR_DESIGN_STUDIO:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Graphasel_Design_Studio_01.jpg/500px-Graphasel_Design_Studio_01.jpg",
+  LANDSCAPE_DESIGN_STUDIO:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Modern_Landscaped_Garden_Path_Along_Poolside_Perth_WA_2026.jpg/500px-Modern_Landscaped_Garden_Path_Along_Poolside_Perth_WA_2026.jpg",
+  ENGINEERING_DESIGN_STUDIO:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/RCoE_-_mechanical_-_Workshop.jpg/500px-RCoE_-_mechanical_-_Workshop.jpg",
+  HOME_REPAIR_SERVICE:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/The_Handyman%2C_Sandbeds%2C_Queensbury_%288702037721%29.jpg/500px-The_Handyman%2C_Sandbeds%2C_Queensbury_%288702037721%29.jpg",
+  PLUMBING_ELECTRICAL_SERVICE:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Plumber_at_work.jpg/500px-Plumber_at_work.jpg",
+  CLEANING_SERVICE:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Window_Cleaner.jpg/500px-Window_Cleaner.jpg",
+  APPLIANCE_REPAIR_SERVICE:
+    "https://upload.wikimedia.org/wikipedia/commons/1/1e/Electronics_repair_shop_on_Lamington_Road.jpg",
+  RESIDENTIAL_AGENCY:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Joy_Lee_Apartments_Front.jpg/500px-Joy_Lee_Apartments_Front.jpg",
+  COMMERCIAL_AGENCY:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Bright_and_spacious_hallway_in_a_modern_office.jpg/500px-Bright_and_spacious_hallway_in_a_modern_office.jpg",
+};
+
+export const SUB_CATEGORIES_BY_MAIN_CATEGORY: Record<MainCategory, SubCategory[]> = {
+  FINANCE_MORTGAGE: ["COMMERCIAL_BANK", "MORTGAGE_CENTER", "MICROFINANCE", "INSURANCE", "LEASING"],
+  CONSTRUCTION_CONTRACTORS: [
+    "GENERAL_CONTRACTOR",
+    "SUBCONTRACTOR",
+    "CIVIL_ENGINEERING",
+    "RENOVATION_CONTRACTOR",
+    "INFRASTRUCTURE_CONSTRUCTION",
+  ],
+  MANUFACTURERS_MATERIALS: [
+    "BUILDING_MATERIALS_MANUFACTURER",
+    "FURNITURE_MANUFACTURER",
+    "METAL_PRODUCTS_MANUFACTURER",
+    "CONCRETE_CEMENT_MANUFACTURER",
+    "GLASS_ALUMINUM_MANUFACTURER",
+  ],
+  ARCHITECTURE_INTERIOR: [
+    "ARCHITECTURE_STUDIO",
+    "INTERIOR_DESIGN_STUDIO",
+    "LANDSCAPE_DESIGN_STUDIO",
+    "ENGINEERING_DESIGN_STUDIO",
+  ],
+  REPAIR_SERVICES: [
+    "HOME_REPAIR_SERVICE",
+    "PLUMBING_ELECTRICAL_SERVICE",
+    "CLEANING_SERVICE",
+    "APPLIANCE_REPAIR_SERVICE",
+  ],
+  REAL_ESTATE_AGENCIES: [
+    "RESIDENTIAL_AGENCY",
+    "COMMERCIAL_AGENCY",
+    "PROPERTY_MANAGEMENT",
+    "VALUATION_SERVICE",
+  ],
+};
+
 export interface LocalizedText {
   uz_latn?: string;
   uz_cyrl?: string;
@@ -109,6 +332,8 @@ export interface BusinessProfile {
   promoVideoMediaAssetIds?: string[];
   /** Additive (Organizations Main-Category task). Null on profiles that predate this field. */
   mainCategory?: MainCategory | null;
+  /** Additive (Organizations Sub-Category task). Always optional -- null whenever not set. */
+  subCategory?: SubCategory | null;
   createdAt?: string;
 }
 
@@ -147,6 +372,7 @@ interface UpdatePayload {
   contacts?: BusinessProfileContacts;
   address?: string;
   mainCategory?: MainCategory;
+  subCategory?: SubCategory;
 }
 
 export const businessProfilesApi = {
@@ -158,6 +384,7 @@ export const businessProfilesApi = {
   listPublic(params?: {
     profileType?: ProfileType;
     mainCategory?: MainCategory;
+    subCategory?: SubCategory;
     verifiedOnly?: boolean;
   }): Promise<BusinessProfile[]> {
     return http
@@ -165,6 +392,7 @@ export const businessProfilesApi = {
         params: {
           profileType: params?.profileType,
           mainCategory: params?.mainCategory,
+          subCategory: params?.subCategory,
           verifiedOnly: params?.verifiedOnly,
           limit: 100,
         },
@@ -192,6 +420,7 @@ export const businessProfilesApi = {
     contacts?: BusinessProfileContacts;
     address?: string;
     mainCategory?: MainCategory;
+    subCategory?: SubCategory;
   }): Promise<BusinessProfile> {
     return http.post<BusinessProfile>(
       "/business-profiles",
@@ -202,6 +431,7 @@ export const businessProfilesApi = {
         contacts: input.contacts,
         address: input.address || undefined,
         mainCategory: input.mainCategory,
+        subCategory: input.subCategory,
       },
       { idempotent: true },
     );
@@ -215,6 +445,7 @@ export const businessProfilesApi = {
       contacts: input.contacts,
       address: input.address,
       mainCategory: input.mainCategory,
+      subCategory: input.subCategory,
     });
   },
 

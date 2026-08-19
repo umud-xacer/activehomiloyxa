@@ -58,6 +58,39 @@ MainCategoryLiteral = Literal[
 alongside the frozen `profileType` vocabulary (see `profiles.domain.MainCategory`'s own
 docstring for why it could not simply be derived from that enum)."""
 
+SubCategoryLiteral = Literal[
+    "COMMERCIAL_BANK",
+    "MORTGAGE_CENTER",
+    "MICROFINANCE",
+    "INSURANCE",
+    "LEASING",
+    "GENERAL_CONTRACTOR",
+    "SUBCONTRACTOR",
+    "CIVIL_ENGINEERING",
+    "RENOVATION_CONTRACTOR",
+    "INFRASTRUCTURE_CONSTRUCTION",
+    "BUILDING_MATERIALS_MANUFACTURER",
+    "FURNITURE_MANUFACTURER",
+    "METAL_PRODUCTS_MANUFACTURER",
+    "CONCRETE_CEMENT_MANUFACTURER",
+    "GLASS_ALUMINUM_MANUFACTURER",
+    "ARCHITECTURE_STUDIO",
+    "INTERIOR_DESIGN_STUDIO",
+    "LANDSCAPE_DESIGN_STUDIO",
+    "ENGINEERING_DESIGN_STUDIO",
+    "HOME_REPAIR_SERVICE",
+    "PLUMBING_ELECTRICAL_SERVICE",
+    "CLEANING_SERVICE",
+    "APPLIANCE_REPAIR_SERVICE",
+    "RESIDENTIAL_AGENCY",
+    "COMMERCIAL_AGENCY",
+    "PROPERTY_MANAGEMENT",
+    "VALUATION_SERVICE",
+]
+"""Additive (Organizations Sub-Category task) -- a finer classification within one
+`MainCategoryLiteral` value; see `profiles.domain.SUB_CATEGORIES_BY_MAIN_CATEGORY` for which
+codes are legal under which main category (enforced at the domain layer, not by this Literal)."""
+
 
 class BusinessProfileCreateRequest(CamelModel):
     """OpenAPI `BusinessProfileCreateRequest`."""
@@ -77,6 +110,7 @@ class BusinessProfileCreateRequest(CamelModel):
     contacts: dict[str, Any] | None = None
     address: str | None = None
     main_category: MainCategoryLiteral | None = None
+    sub_category: SubCategoryLiteral | None = None
 
 
 class BusinessProfile(CamelModel):
@@ -130,6 +164,9 @@ class BusinessProfile(CamelModel):
     main_category: MainCategoryLiteral | None = None
     """Additive (Organizations Main-Category task): the sector tab this profile appears under on
     the public /companies directory. Null on profiles that pre-date this field."""
+    sub_category: SubCategoryLiteral | None = None
+    """Additive (Organizations Sub-Category task): a finer classification within `main_category`.
+    Null on profiles that have not set one -- always optional, unlike `main_category`."""
     created_at: datetime
 
 
@@ -219,6 +256,7 @@ class BusinessProfileUpdateRequest(CamelModel):
     contacts: dict[str, Any] | None = None
     address: str | None = None
     main_category: MainCategoryLiteral | None = None
+    sub_category: SubCategoryLiteral | None = None
 
 
 class BusinessProfileBrandingRequest(CamelModel):

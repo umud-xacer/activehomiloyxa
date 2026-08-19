@@ -151,8 +151,31 @@ def _build_query_body(query: SearchQuery, *, facet_specs: tuple[FacetSpec, ...])
                                 ],
                             }
                         },
-                        {"match": {"title_normalized_latin": {"query": q_latin, "boost": 2}}},
-                        {"match": {"title_normalized_cyrillic": {"query": q_cyrillic, "boost": 2}}},
+                        # Character-level typo tolerance ("mibel" -> "mebel", "katel" -> "kotej"
+                        # within edit distance) -- `fuzziness: AUTO` is OpenSearch's own built-in
+                        # Damerau-Levenshtein match (0 for len<3, 1 for len<6, else 2), applied only
+                        # on the exact-title fields since fuzzy + multi_match's own phrase scoring
+                        # would double-fuzz and blow up irrelevant matches. A near-exact hit still
+                        # outranks a fuzzy one -- `boost: 2` here is deliberately lower than the
+                        # `^3` on the exact `multi_match` title fields above.
+                        {
+                            "match": {
+                                "title_normalized_latin": {
+                                    "query": q_latin,
+                                    "boost": 2,
+                                    "fuzziness": "AUTO",
+                                }
+                            }
+                        },
+                        {
+                            "match": {
+                                "title_normalized_cyrillic": {
+                                    "query": q_cyrillic,
+                                    "boost": 2,
+                                    "fuzziness": "AUTO",
+                                }
+                            }
+                        },
                     ],
                     "minimum_should_match": 1,
                 }

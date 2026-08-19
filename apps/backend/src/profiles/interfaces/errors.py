@@ -30,6 +30,7 @@ from profiles.domain.exceptions import (
     PortfolioItemNotFoundError,
     PromoVideoLimitExceededError,
     PromoVideoNotFoundError,
+    SubCategoryNotInMainCategoryError,
     TerminalVerificationCaseError,
 )
 
@@ -90,6 +91,14 @@ def register_profiles_exception_mappings(mapper: ExceptionMapper) -> None:
             status=422,
             code="VALIDATION_FAILED",
             title="Media asset has not finished processing yet",
+        ),
+    )
+    mapper.register(
+        SubCategoryNotInMainCategoryError,
+        simple_problem_builder(
+            status=422,
+            code="VALIDATION_FAILED",
+            title="Sub-category does not belong to the profile's main category",
         ),
     )
 
