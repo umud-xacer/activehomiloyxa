@@ -27,6 +27,7 @@ import { formatArea, formatCurrency, formatPriceWithUnit } from "@/lib/format";
 import { useMe } from "@/features/auth/useAuth";
 import { messagingApi, ensureConversationForListing } from "@/lib/messaging-client";
 import { ApiError } from "@/lib/http";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/properties/$slug")({
   loader: async ({ context, params }) => {
@@ -144,13 +145,21 @@ function PropertyDetail() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="grid gap-2 overflow-hidden rounded-3xl md:grid-cols-4 md:grid-rows-2"
+            className={cn(
+              "grid gap-2 overflow-hidden rounded-3xl",
+              gallery.length > 0 && "md:grid-cols-4 md:grid-rows-2",
+            )}
           >
             {cover && (
               <img
                 src={cover}
                 alt={property.title}
-                className="aspect-[4/3] size-full object-cover md:col-span-2 md:row-span-2 md:aspect-auto"
+                className={cn(
+                  "aspect-[4/3] size-full object-cover",
+                  gallery.length > 0
+                    ? "md:col-span-2 md:row-span-2 md:aspect-auto"
+                    : "md:aspect-[21/9]",
+                )}
               />
             )}
             {gallery.map((m) => (
