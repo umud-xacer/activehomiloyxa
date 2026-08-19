@@ -93,8 +93,10 @@ function PropertiesPage() {
   ).length;
   const [draftMinPrice, setDraftMinPrice] = useState(search.minPrice?.toString() ?? "");
   const [draftMaxPrice, setDraftMaxPrice] = useState(search.maxPrice?.toString() ?? "");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const applyFilters = () => {
+    setFiltersOpen(false);
     navigate({
       search: (prev: typeof search) => ({
         ...prev,
@@ -108,6 +110,7 @@ function PropertiesPage() {
   const clearFilters = () => {
     setDraftMinPrice("");
     setDraftMaxPrice("");
+    setFiltersOpen(false);
     navigate({
       search: (prev: typeof search) => ({
         ...prev,
@@ -139,7 +142,7 @@ function PropertiesPage() {
             >
               <Map className="size-4" /> Map view
             </Link>
-            <Popover>
+            <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
               <PopoverTrigger asChild>
                 <button className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:shadow-glow">
                   <SlidersHorizontal className="size-4" /> Filters
@@ -182,14 +185,12 @@ function PropertiesPage() {
                   >
                     Clear
                   </button>
-                  <PopoverTrigger asChild>
-                    <button
-                      onClick={applyFilters}
-                      className="rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground hover:shadow-glow"
-                    >
-                      Apply
-                    </button>
-                  </PopoverTrigger>
+                  <button
+                    onClick={applyFilters}
+                    className="rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground hover:shadow-glow"
+                  >
+                    Apply
+                  </button>
                 </div>
               </PopoverContent>
             </Popover>
