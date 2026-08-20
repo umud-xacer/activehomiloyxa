@@ -88,15 +88,8 @@ export function OrganizationsCarousel() {
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Link
-              to="/organizations"
-              className="group inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow"
-            >
-              {t("organizations.view_all", { defaultValue: "Barcha tashkilotlarni ko'rish" })}
-              <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-            </Link>
-            <Link
               to="/list"
-              className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card/80 px-4 py-2 text-xs font-semibold text-foreground/80 backdrop-blur transition hover:border-primary/40 hover:text-foreground"
+              className="group inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow"
             >
               {t("organizations.cta", { defaultValue: "Hamkor sifatida qo'shiling" })}
               <ArrowUpRight className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
