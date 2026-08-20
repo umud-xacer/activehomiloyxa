@@ -379,10 +379,24 @@ async def _seed_company(base_url: str, config: BulkCompanyConfig, *, verify: boo
 async def main(base_url: str, per_subcategory: int) -> None:
     companies = _build_companies(per_subcategory)
     print(f"Seeding {len(companies)} demo organizations ({per_subcategory} per sub-category)...")
+    failed: list[str] = []
     for i, config in enumerate(companies):
         # Verify roughly 2 in 3 so the directory shows a realistic mix of verified/unverified cards.
-        await _seed_company(base_url, config, verify=(i % 3 != 0))
-    print("Done.")
+        for attempt in (1, 2):
+            try:
+                await _seed_company(base_url, config, verify=(i % 3 != 0))
+                break
+            except Exception as exc:
+                print(f"  FAILED ({attempt}/2) {config.company_name}: {exc!r}")
+                if attempt == 2:
+                    failed.append(config.company_name)
+                else:
+                    await asyncio.sleep(1)
+        await asyncio.sleep(0.3)  # small throttle between companies
+    if failed:
+        print(f"Done with {len(failed)} failure(s): {failed}")
+    else:
+        print("Done, all succeeded.")
 
 
 if __name__ == "__main__":
