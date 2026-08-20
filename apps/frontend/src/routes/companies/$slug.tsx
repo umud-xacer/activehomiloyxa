@@ -42,6 +42,7 @@ import { useMediaAsset } from "@/lib/use-media-asset";
 import { formatDuration, useVideoDuration } from "@/lib/use-video-duration";
 import { searchPlaces } from "@/lib/geocoding";
 import { ListingLocationSection } from "@/components/listing/ListingLocationSection";
+import { AdSlot } from "@/components/site/AdSlot";
 import type { MapMarker } from "@/components/map/YandexMapView";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/state/EmptyState";
@@ -878,72 +879,77 @@ function Page() {
             Kontaktlar va manzil
           </h2>
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 lg:items-start">
-            <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-soft lg:col-span-2">
-              <div className="space-y-1 p-4">
-                {profile.address && (
-                  <div className="flex items-start gap-3 rounded-xl px-2 py-2 text-sm text-muted-foreground">
-                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground/70">
-                      <MapPin className="size-4" />
-                    </span>
-                    <span className="pt-1">{profile.address}</span>
-                  </div>
-                )}
-                {workingHours && (
-                  <div className="flex items-start gap-3 rounded-xl px-2 py-2 text-sm text-muted-foreground">
-                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground/70">
-                      <Clock className="size-4" />
-                    </span>
-                    <span className="whitespace-pre-line pt-1">{workingHours}</span>
-                  </div>
-                )}
-                {profile.contacts?.phones?.map((phone) => (
-                  <a
-                    key={phone}
-                    href={`tel:${phone.replace(/\s+/g, "")}`}
-                    className="flex items-center gap-3 rounded-xl px-2 py-2 text-sm text-muted-foreground transition hover:bg-muted hover:text-primary"
-                  >
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground/70">
-                      <Phone className="size-4" />
-                    </span>
-                    {phone}
-                  </a>
-                ))}
-                {profile.contacts?.emails?.map((email) => (
-                  <a
-                    key={email}
-                    href={`mailto:${email}`}
-                    className="flex items-center gap-3 rounded-xl px-2 py-2 text-sm text-muted-foreground transition hover:bg-muted hover:text-primary"
-                  >
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground/70">
-                      <Mail className="size-4" />
-                    </span>
-                    {email}
-                  </a>
-                ))}
-                {website && (
-                  <a
-                    href={website}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-3 rounded-xl px-2 py-2 text-sm text-muted-foreground transition hover:bg-muted hover:text-primary"
-                  >
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground/70">
-                      <Globe className="size-4" />
-                    </span>
-                    <span className="truncate">{website}</span>
-                  </a>
-                )}
-                {!profile.address &&
-                  !workingHours &&
-                  !profile.contacts?.phones?.length &&
-                  !profile.contacts?.emails?.length &&
-                  !website && (
-                    <p className="px-2 py-2 text-sm text-muted-foreground">
-                      Aloqa ma'lumotlari kiritilmagan.
-                    </p>
+            <div className="space-y-4 lg:col-span-2">
+              <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-soft">
+                <div className="space-y-1 p-4">
+                  {profile.address && (
+                    <div className="flex items-start gap-3 rounded-xl px-2 py-2 text-sm text-muted-foreground">
+                      <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground/70">
+                        <MapPin className="size-4" />
+                      </span>
+                      <span className="pt-1">{profile.address}</span>
+                    </div>
                   )}
+                  {workingHours && (
+                    <div className="flex items-start gap-3 rounded-xl px-2 py-2 text-sm text-muted-foreground">
+                      <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground/70">
+                        <Clock className="size-4" />
+                      </span>
+                      <span className="whitespace-pre-line pt-1">{workingHours}</span>
+                    </div>
+                  )}
+                  {profile.contacts?.phones?.map((phone) => (
+                    <a
+                      key={phone}
+                      href={`tel:${phone.replace(/\s+/g, "")}`}
+                      className="flex items-center gap-3 rounded-xl px-2 py-2 text-sm text-muted-foreground transition hover:bg-muted hover:text-primary"
+                    >
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground/70">
+                        <Phone className="size-4" />
+                      </span>
+                      {phone}
+                    </a>
+                  ))}
+                  {profile.contacts?.emails?.map((email) => (
+                    <a
+                      key={email}
+                      href={`mailto:${email}`}
+                      className="flex items-center gap-3 rounded-xl px-2 py-2 text-sm text-muted-foreground transition hover:bg-muted hover:text-primary"
+                    >
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground/70">
+                        <Mail className="size-4" />
+                      </span>
+                      {email}
+                    </a>
+                  ))}
+                  {website && (
+                    <a
+                      href={website}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-3 rounded-xl px-2 py-2 text-sm text-muted-foreground transition hover:bg-muted hover:text-primary"
+                    >
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground/70">
+                        <Globe className="size-4" />
+                      </span>
+                      <span className="truncate">{website}</span>
+                    </a>
+                  )}
+                  {!profile.address &&
+                    !workingHours &&
+                    !profile.contacts?.phones?.length &&
+                    !profile.contacts?.emails?.length &&
+                    !website && (
+                      <p className="px-2 py-2 text-sm text-muted-foreground">
+                        Aloqa ma'lumotlari kiritilmagan.
+                      </p>
+                    )}
+                </div>
+                {socialLinks && <CompanySocialLinks links={socialLinks} />}
               </div>
-              {socialLinks && <CompanySocialLinks links={socialLinks} />}
+              <div className="flex justify-center">
+                <AdSlot slotKey="ORGANIZATION_SIDEBAR" variant="sidebar" />
+              </div>
             </div>
 
             <div className="lg:col-span-3">
@@ -969,6 +975,8 @@ function Page() {
           </div>
         </div>
       </section>
+
+      <AdSlot slotKey="ORGANIZATION_DETAILS_FOOTER" />
     </AppShell>
   );
 }

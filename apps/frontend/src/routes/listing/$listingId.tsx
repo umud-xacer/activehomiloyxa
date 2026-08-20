@@ -17,6 +17,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ErrorState } from "@/components/state/ErrorState";
 import type { MapMarker } from "@/components/map/YandexMapView";
 import { ListingLocationSection } from "@/components/listing/ListingLocationSection";
+import { AdSlot } from "@/components/site/AdSlot";
 import { GoodsCard, ServiceCard, VenueCard } from "@/components/catalog/ListingCards";
 import {
   catalogClient,
@@ -387,6 +388,9 @@ function Page() {
                     <MapPin className="size-3.5" /> Xaritada joylashuvi mavjud
                   </div>
                 )}
+              </div>
+              <div className="mt-6 flex justify-center">
+                <AdSlot slotKey="LISTING_DETAIL_SIDEBAR" variant="sidebar" />
               </div>
             </div>
           )}

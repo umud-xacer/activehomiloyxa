@@ -35,6 +35,7 @@ import {
   type ListingFilterState,
 } from "@/components/catalog/CategoryFilters";
 import { TopCompanies, useTopCompanies } from "@/components/catalog/TopCompanies";
+import { AdSlot } from "@/components/site/AdSlot";
 import { Container } from "@/components/layout/Container";
 import { apiClient } from "@/lib/api-client";
 import { propertyListOptions } from "@/features/properties/queries";
@@ -341,6 +342,8 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
           </>
         )}
       </Container>
+
+      <AdSlot slotKey="CATALOG_LIST_MID" />
 
       <section className="py-16">
         <Container wide>
@@ -723,6 +726,8 @@ function CatalogDirectionView({
           onSelect={setSelectedCompanyId}
         />
       </Container>
+
+      <AdSlot slotKey="CATALOG_LIST_MID" />
 
       {markers.length > 0 && (
         <section className="pb-20">
