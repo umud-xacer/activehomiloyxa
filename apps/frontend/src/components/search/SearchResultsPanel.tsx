@@ -23,7 +23,13 @@ import {
   ArrowRight,
   ShieldCheck,
 } from "lucide-react";
-import { Command, CommandInput, CommandList, CommandGroup, CommandItem } from "@/components/ui/command";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
 import { searchApi, type Suggestion, type SearchHit } from "@/lib/search-client";
 import { catalogClient, formatUzs, type CategorySummary } from "@/lib/catalog-client";
 import { categoryLabel } from "@/components/site/CategoryCarousel";
@@ -127,7 +133,10 @@ export function SearchResultsPanel({
     }
     orgsCache ??= businessProfilesApi.listPublic().catch(() => []);
     orgsCache.then(setOrgs);
-    catalogClient.listCategories().then(setCategories).catch(() => {});
+    catalogClient
+      .listCategories()
+      .then(setCategories)
+      .catch(() => {});
   }, [open]);
 
   useEffect(() => {
@@ -284,8 +293,9 @@ export function SearchResultsPanel({
               className="flex w-full items-center gap-2 border-b border-slate-100 bg-blue-50/50 px-4 py-2.5 text-left text-sm text-foreground transition hover:bg-blue-50"
             >
               <SearchIcon className="size-3.5 shrink-0 text-primary" />
-              Balki{" "}
-              <span className="font-semibold text-primary">&quot;{didYouMean}&quot;</span>{" "}
+              Balki <span className="font-semibold text-primary">
+                &quot;{didYouMean}&quot;
+              </span>{" "}
               demoqchi bo'lgandirsiz?
             </button>
           )}

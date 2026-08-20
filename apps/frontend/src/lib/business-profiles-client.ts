@@ -4,6 +4,37 @@
  * Used by the legal-entity dashboard (ADR-0007's LEGAL_ENTITY workspace) and the
  * Landing Page / Business Profile edit form (`routes/dashboard/business-profile.tsx`).
  */
+import {
+  Armchair,
+  Blocks,
+  Boxes,
+  Building,
+  Building2,
+  Calculator,
+  Coins,
+  Compass,
+  Factory,
+  Hammer,
+  HardHat,
+  Home,
+  KeyRound,
+  KeySquare,
+  Landmark,
+  Layers,
+  PaintRoller,
+  PenTool,
+  Ruler,
+  Settings2,
+  ShieldCheck,
+  Shield,
+  Sofa,
+  Sparkles,
+  TrafficCone,
+  Trees,
+  Wrench,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import { http } from "./http";
 
 export type ProfileType =
@@ -268,6 +299,90 @@ export const SUB_CATEGORIES_BY_MAIN_CATEGORY: Record<MainCategory, SubCategory[]
     "VALUATION_SERVICE",
   ],
 };
+
+/** Watermark/fallback-tile icon per sub-category -- shared by the `$categorySlug` grid's card
+ * tiles and the `$subCategorySlug` detail page's `PageHeader` icon. */
+export const SUB_CATEGORY_ICON: Record<SubCategory, LucideIcon> = {
+  COMMERCIAL_BANK: Landmark,
+  MORTGAGE_CENTER: KeyRound,
+  MICROFINANCE: Coins,
+  INSURANCE: Shield,
+  LEASING: Building,
+  GENERAL_CONTRACTOR: HardHat,
+  SUBCONTRACTOR: Hammer,
+  CIVIL_ENGINEERING: Ruler,
+  RENOVATION_CONTRACTOR: PaintRoller,
+  INFRASTRUCTURE_CONSTRUCTION: TrafficCone,
+  BUILDING_MATERIALS_MANUFACTURER: Boxes,
+  FURNITURE_MANUFACTURER: Armchair,
+  METAL_PRODUCTS_MANUFACTURER: Factory,
+  CONCRETE_CEMENT_MANUFACTURER: Blocks,
+  GLASS_ALUMINUM_MANUFACTURER: Layers,
+  ARCHITECTURE_STUDIO: Compass,
+  INTERIOR_DESIGN_STUDIO: Sofa,
+  LANDSCAPE_DESIGN_STUDIO: Trees,
+  ENGINEERING_DESIGN_STUDIO: PenTool,
+  HOME_REPAIR_SERVICE: Wrench,
+  PLUMBING_ELECTRICAL_SERVICE: Zap,
+  CLEANING_SERVICE: Sparkles,
+  APPLIANCE_REPAIR_SERVICE: Settings2,
+  RESIDENTIAL_AGENCY: Home,
+  COMMERCIAL_AGENCY: Building,
+  PROPERTY_MANAGEMENT: KeySquare,
+  VALUATION_SERVICE: Calculator,
+};
+
+/** Generic placeholder icon for a `BusinessProfile` card with no logo yet -- shared by every
+ * organization-listing surface (category grid, sub-category detail grid). */
+export const ORGANIZATION_PLACEHOLDER_ICON: LucideIcon = Building2;
+export const VERIFIED_BADGE_ICON: LucideIcon = ShieldCheck;
+
+/** URL slug for each `SubCategory` -- backs `/organizations/$categorySlug/$subCategorySlug` (the
+ * dedicated per-sub-category organizations directory). Explicit map, same convention as
+ * `MAIN_CATEGORY_SLUG` (short, stable, hand-picked rather than derived from the label). */
+export const SUB_CATEGORY_SLUG: Record<SubCategory, string> = {
+  COMMERCIAL_BANK: "tijorat-banklari",
+  MORTGAGE_CENTER: "ipoteka-markazlari",
+  MICROFINANCE: "mikromoliya",
+  INSURANCE: "sugurta",
+  LEASING: "lizing",
+  GENERAL_CONTRACTOR: "bosh-pudratchilar",
+  SUBCONTRACTOR: "sub-pudratchilar",
+  CIVIL_ENGINEERING: "muhandislik-qurilish",
+  RENOVATION_CONTRACTOR: "tamirlash-pudratchilari",
+  INFRASTRUCTURE_CONSTRUCTION: "infratuzilma-qurilishi",
+  BUILDING_MATERIALS_MANUFACTURER: "qurilish-materiallari",
+  FURNITURE_MANUFACTURER: "mebel-ishlab-chiqarish",
+  METAL_PRODUCTS_MANUFACTURER: "metall-mahsulotlari",
+  CONCRETE_CEMENT_MANUFACTURER: "beton-sement",
+  GLASS_ALUMINUM_MANUFACTURER: "shisha-alyuminiy",
+  ARCHITECTURE_STUDIO: "arxitektura-studiyalari",
+  INTERIOR_DESIGN_STUDIO: "interyer-dizayn",
+  LANDSCAPE_DESIGN_STUDIO: "landshaft-dizayni",
+  ENGINEERING_DESIGN_STUDIO: "muhandislik-loyihalash",
+  HOME_REPAIR_SERVICE: "uy-tamirlash",
+  PLUMBING_ELECTRICAL_SERVICE: "santexnika-elektr",
+  CLEANING_SERVICE: "tozalash-xizmati",
+  APPLIANCE_REPAIR_SERVICE: "texnika-tamirlash",
+  RESIDENTIAL_AGENCY: "turar-joy-agentligi",
+  COMMERCIAL_AGENCY: "tijorat-mulk-agentligi",
+  PROPERTY_MANAGEMENT: "mulkni-boshqarish",
+  VALUATION_SERVICE: "baholash-xizmati",
+};
+
+const SLUG_TO_SUB_CATEGORY: Record<string, SubCategory> = Object.fromEntries(
+  (Object.keys(SUB_CATEGORY_SLUG) as SubCategory[]).map((c) => [SUB_CATEGORY_SLUG[c], c]),
+) as Record<string, SubCategory>;
+
+/** Resolves a `$subCategorySlug` route param to a `SubCategory`, but only if it's actually a
+ * legal sub-category of the given `MainCategory` -- guards against a URL like
+ * `/organizations/finans-va-ipoteka/uy-tamirlash` (a real slug, wrong sector) resolving to a
+ * cross-sector mismatch. */
+export function subCategoryBySlug(mainCategory: MainCategory, slug: string): SubCategory | null {
+  const resolved = SLUG_TO_SUB_CATEGORY[slug];
+  if (!resolved) return null;
+  return SUB_CATEGORIES_BY_MAIN_CATEGORY[mainCategory].includes(resolved) ? resolved : null;
+}
 
 export interface LocalizedText {
   uz_latn?: string;

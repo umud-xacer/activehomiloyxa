@@ -89,6 +89,7 @@ import { Route as PropertiesIndexRouteImport } from './routes/properties/index'
 import { Route as PropertiesSlugRouteImport } from './routes/properties/$slug'
 import { Route as AuthCallbackAppleRouteImport } from './routes/auth/callback/apple'
 import { Route as AuthCallbackGoogleRouteImport } from './routes/auth/callback/google'
+import { Route as OrganizationsCategorySlugSubCategorySlugRouteImport } from './routes/organizations/$categorySlug.$subCategorySlug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -492,6 +493,12 @@ const AuthCallbackGoogleRoute = AuthCallbackGoogleRouteImport.update({
   path: '/auth/callback/google',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrganizationsCategorySlugSubCategorySlugRoute =
+  OrganizationsCategorySlugSubCategorySlugRouteImport.update({
+    id: '/$subCategorySlug',
+    path: '/$subCategorySlug',
+    getParentRoute: () => OrganizationsCategorySlugRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -560,7 +567,7 @@ export interface FileRoutesByFullPath {
   '/list/$listingId': typeof ListListingIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
   '/organization/setup': typeof OrganizationSetupRoute
-  '/organizations/$categorySlug': typeof OrganizationsCategorySlugRoute
+  '/organizations/$categorySlug': typeof OrganizationsCategorySlugRouteWithChildren
   '/properties/$slug': typeof PropertiesSlugRoute
   '/$ownerAdminSlug/': typeof OwnerAdminSlugIndexRoute
   '/admin/': typeof AdminIndexRoute
@@ -574,6 +581,7 @@ export interface FileRoutesByFullPath {
   '/properties/': typeof PropertiesIndexRoute
   '/auth/callback/apple': typeof AuthCallbackAppleRoute
   '/auth/callback/google': typeof AuthCallbackGoogleRoute
+  '/organizations/$categorySlug/$subCategorySlug': typeof OrganizationsCategorySlugSubCategorySlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -642,7 +650,7 @@ export interface FileRoutesByTo {
   '/list/$listingId': typeof ListListingIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
   '/organization/setup': typeof OrganizationSetupRoute
-  '/organizations/$categorySlug': typeof OrganizationsCategorySlugRoute
+  '/organizations/$categorySlug': typeof OrganizationsCategorySlugRouteWithChildren
   '/properties/$slug': typeof PropertiesSlugRoute
   '/$ownerAdminSlug': typeof OwnerAdminSlugIndexRoute
   '/admin': typeof AdminIndexRoute
@@ -656,6 +664,7 @@ export interface FileRoutesByTo {
   '/properties': typeof PropertiesIndexRoute
   '/auth/callback/apple': typeof AuthCallbackAppleRoute
   '/auth/callback/google': typeof AuthCallbackGoogleRoute
+  '/organizations/$categorySlug/$subCategorySlug': typeof OrganizationsCategorySlugSubCategorySlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -725,7 +734,7 @@ export interface FileRoutesById {
   '/list/$listingId': typeof ListListingIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
   '/organization/setup': typeof OrganizationSetupRoute
-  '/organizations/$categorySlug': typeof OrganizationsCategorySlugRoute
+  '/organizations/$categorySlug': typeof OrganizationsCategorySlugRouteWithChildren
   '/properties/$slug': typeof PropertiesSlugRoute
   '/$ownerAdminSlug/': typeof OwnerAdminSlugIndexRoute
   '/admin/': typeof AdminIndexRoute
@@ -739,6 +748,7 @@ export interface FileRoutesById {
   '/properties/': typeof PropertiesIndexRoute
   '/auth/callback/apple': typeof AuthCallbackAppleRoute
   '/auth/callback/google': typeof AuthCallbackGoogleRoute
+  '/organizations/$categorySlug/$subCategorySlug': typeof OrganizationsCategorySlugSubCategorySlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -823,6 +833,7 @@ export interface FileRouteTypes {
     | '/properties/'
     | '/auth/callback/apple'
     | '/auth/callback/google'
+    | '/organizations/$categorySlug/$subCategorySlug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -905,6 +916,7 @@ export interface FileRouteTypes {
     | '/properties'
     | '/auth/callback/apple'
     | '/auth/callback/google'
+    | '/organizations/$categorySlug/$subCategorySlug'
   id:
     | '__root__'
     | '/'
@@ -987,6 +999,7 @@ export interface FileRouteTypes {
     | '/properties/'
     | '/auth/callback/apple'
     | '/auth/callback/google'
+    | '/organizations/$categorySlug/$subCategorySlug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1056,7 +1069,7 @@ export interface RootRouteChildren {
   ListListingIdRoute: typeof ListListingIdRoute
   ListingListingIdRoute: typeof ListingListingIdRoute
   OrganizationSetupRoute: typeof OrganizationSetupRoute
-  OrganizationsCategorySlugRoute: typeof OrganizationsCategorySlugRoute
+  OrganizationsCategorySlugRoute: typeof OrganizationsCategorySlugRouteWithChildren
   PropertiesSlugRoute: typeof PropertiesSlugRoute
   OwnerAdminSlugIndexRoute: typeof OwnerAdminSlugIndexRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -1634,8 +1647,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackGoogleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/organizations/$categorySlug/$subCategorySlug': {
+      id: '/organizations/$categorySlug/$subCategorySlug'
+      path: '/$subCategorySlug'
+      fullPath: '/organizations/$categorySlug/$subCategorySlug'
+      preLoaderRoute: typeof OrganizationsCategorySlugSubCategorySlugRouteImport
+      parentRoute: typeof OrganizationsCategorySlugRoute
+    }
   }
 }
+
+interface OrganizationsCategorySlugRouteChildren {
+  OrganizationsCategorySlugSubCategorySlugRoute: typeof OrganizationsCategorySlugSubCategorySlugRoute
+}
+
+const OrganizationsCategorySlugRouteChildren: OrganizationsCategorySlugRouteChildren =
+  {
+    OrganizationsCategorySlugSubCategorySlugRoute:
+      OrganizationsCategorySlugSubCategorySlugRoute,
+  }
+
+const OrganizationsCategorySlugRouteWithChildren =
+  OrganizationsCategorySlugRoute._addFileChildren(
+    OrganizationsCategorySlugRouteChildren,
+  )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -1704,7 +1739,7 @@ const rootRouteChildren: RootRouteChildren = {
   ListListingIdRoute: ListListingIdRoute,
   ListingListingIdRoute: ListingListingIdRoute,
   OrganizationSetupRoute: OrganizationSetupRoute,
-  OrganizationsCategorySlugRoute: OrganizationsCategorySlugRoute,
+  OrganizationsCategorySlugRoute: OrganizationsCategorySlugRouteWithChildren,
   PropertiesSlugRoute: PropertiesSlugRoute,
   OwnerAdminSlugIndexRoute: OwnerAdminSlugIndexRoute,
   AdminIndexRoute: AdminIndexRoute,

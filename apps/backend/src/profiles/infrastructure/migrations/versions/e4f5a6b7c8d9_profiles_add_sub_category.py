@@ -65,7 +65,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_constraint(
+    op.drop_constraint(  # approved-destructive: reverses this migration's own additive constraint
         "ck_business_profile_sub_category", "business_profile", schema="profiles", type_="check"
     )
-    op.drop_column("business_profile", "sub_category", schema="profiles")
+    op.drop_column(  # approved-destructive: reverses this migration's own additive column
+        "business_profile", "sub_category", schema="profiles"
+    )

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ChevronRight, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 import { Container } from "./Container";
@@ -20,6 +20,12 @@ interface Props {
   description?: string;
   crumbs?: Crumb[];
   actions?: ReactNode;
+  /** Optional explicit "go back" link rendered above the crumbs trail (e.g. "Kategoriyalarga
+   * qaytish") -- distinct from `crumbs`, which are a full path trail; this is for pages one level
+   * deep in a drill-down flow (Bosqich 3 organization directories) that want an unambiguous single
+   * step back, not just an implicit crumb click. */
+  backTo?: string;
+  backLabel?: string;
   /** Admin-authored per-category Hero background (`Category.heroImageUrl`) -- when set, replaces
    * the generic gradient-mesh with a full-bleed cover image + dark overlay so text stays legible,
    * giving each category its own "vizual muhit" without a bespoke per-category component. */
@@ -42,6 +48,8 @@ export function PageHeader({
   description,
   crumbs,
   actions,
+  backTo,
+  backLabel = "Orqaga",
   backgroundImageUrl,
   accentColor,
   icon: Icon,
@@ -83,6 +91,18 @@ export function PageHeader({
       )}
       {!themed && <div className="absolute inset-0 -z-20 bg-card/40" aria-hidden />}
       <Container>
+        {backTo && (
+          <Link
+            to={backTo}
+            className={`mb-4 inline-flex items-center gap-1 text-sm font-medium transition ${
+              themed
+                ? "text-white/80 hover:text-white"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <ChevronLeft className="size-4" /> {backLabel}
+          </Link>
+        )}
         {crumbs && crumbs.length > 0 && (
           <nav
             className={`mb-4 flex items-center gap-1 text-xs ${themed ? "text-white/70" : "text-muted-foreground"}`}
