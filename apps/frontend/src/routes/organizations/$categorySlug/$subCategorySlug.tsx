@@ -52,35 +52,17 @@ function profileName(profile: BusinessProfile): string {
   return profile.name.uz_latn || profile.name.ru || profile.name.en || "Tashkilot";
 }
 
-/** Premium organization card: a themed cover banner (the org's own `bannerMediaAssetId` when set,
- * else `fallbackBanner` -- the sub-category's own real hero photo, tastefully reused as a
- * contextual backdrop rather than left blank, same "swap point" philosophy as everywhere else in
- * this project that has no per-entity photo yet) with the logo overlapping its bottom edge in a
- * bordered/shadowed tile, a verified badge chip on the banner itself, and a real "Bog'lanish"
- * `tel:` link that must stay independently clickable. Two sibling `Link`s (banner+details, and the
- * CTA row) rather than one link wrapping everything -- an `<a>` (`tel:`) can't validly nest inside
- * another `<a>`/`Link`, and a "stretched full-card link with real content stacked visually above
- * it" approach silently swallows every click on that foreground content (each of those elements is
- * its own positioned/in-flow stacking box and becomes the hit target instead of passing the click
- * through) unless every one of them is individually marked `pointer-events-none` -- two real,
- * always-clickable siblings is simpler and doesn't depend on getting that exactly right. Two
- * `Link`s to the same destination is an intentional, harmless duplication, not a mistake.
- * Deliberately no star rating / review count -- no such field exists anywhere in the backend
- * (confirmed before building the company landing-page redesign), so none is shown here either. */
-function OrganizationCard({
-  profile,
-  index,
-  fallbackBanner,
-  accent,
-}: {
-  profile: BusinessProfile;
-  index: number;
-  fallbackBanner?: string;
-  accent: string;
-}) {
+/** Premium organization card, logo-led (no cover banner -- site owner's explicit call: a
+ * fabricated/reused-photo banner on every card in a grid read as noisy and repetitive, the
+ * tashkilot's own real logo is the one thing that's genuinely per-organization here). Logo sits
+ * centered up top in a bordered, soft-shadowed white tile; a real "Bog'lanish" `tel:` link must
+ * stay independently clickable, so two sibling `Link`s (logo+details, and the CTA row) are used
+ * rather than one link wrapping everything -- an `<a>` (`tel:`) can't validly nest inside another
+ * `<a>`/`Link`. Deliberately no star rating / review count -- no such field exists anywhere in the
+ * backend (confirmed before building the company landing-page redesign), so none is shown here
+ * either. */
+function OrganizationCard({ profile, index }: { profile: BusinessProfile; index: number }) {
   const logo = useMediaAsset(profile.logoMediaAssetId);
-  const banner = useMediaAsset(profile.bannerMediaAssetId);
-  const bannerUrl = banner?.url || fallbackBanner;
   const name = profileName(profile);
   const description =
     profile.description?.uz_latn || profile.description?.ru || profile.description?.en || "";
@@ -90,53 +72,33 @@ function OrganizationCard({
   const verified = profile.badge?.status === "VALID";
 
   const cardBody = (
-    <>
-      <div className="relative h-28 shrink-0 overflow-hidden">
-        {bannerUrl ? (
-          <img
-            src={bannerUrl}
-            alt=""
-            loading="lazy"
-            className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+    <div className="flex flex-1 flex-col items-center px-6 pb-2 pt-8 text-center">
+      <span className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-white text-muted-foreground shadow-md transition-transform duration-300 group-hover:scale-105">
+        {logo?.url ? (
+          <img src={logo.url} alt="" className="size-full object-cover" />
         ) : (
-          <div
-            className="flex size-full items-center justify-center"
-            style={{ background: `linear-gradient(135deg, ${accent}40 0%, ${accent}12 100%)` }}
-          />
+          <PlaceholderIcon className="size-8" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent" />
-        {verified && (
-          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-primary shadow-sm backdrop-blur">
-            <VerifiedIcon className="size-3.5" /> Tasdiqlangan
-          </span>
-        )}
-      </div>
+      </span>
 
-      <div className="flex flex-1 flex-col px-5">
-        <span className="-mt-8 flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border-4 border-card bg-white text-muted-foreground shadow-sm">
-          {logo?.url ? (
-            <img src={logo.url} alt="" className="size-full object-cover" />
-          ) : (
-            <PlaceholderIcon className="size-6" />
-          )}
+      <h3 className="font-display mt-4 line-clamp-1 text-base font-semibold text-foreground">
+        {name}
+      </h3>
+      {verified && (
+        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+          <VerifiedIcon className="size-3.5" /> Tasdiqlangan
         </span>
-
-        <h3 className="font-display mt-3 truncate text-base font-semibold text-foreground">
-          {name}
-        </h3>
-        {description && (
-          <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{description}</p>
-        )}
-
-        {profile.address && (
-          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-            <MapPin className="size-3.5 shrink-0" />
-            <span className="truncate">{profile.address}</span>
-          </div>
-        )}
-      </div>
-    </>
+      )}
+      {description && (
+        <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{description}</p>
+      )}
+      {profile.address && (
+        <div className="mt-3 flex max-w-full items-center gap-1.5 text-xs text-muted-foreground">
+          <MapPin className="size-3.5 shrink-0" />
+          <span className="truncate">{profile.address}</span>
+        </div>
+      )}
+    </div>
   );
 
   return (
@@ -288,13 +250,7 @@ function Page() {
             ) : (
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredProfiles.map((profile, i) => (
-                  <OrganizationCard
-                    key={profile.id}
-                    profile={profile}
-                    index={i}
-                    fallbackBanner={SUB_CATEGORY_IMAGE[subCategory]}
-                    accent={accent}
-                  />
+                  <OrganizationCard key={profile.id} profile={profile} index={i} />
                 ))}
               </div>
             )}
