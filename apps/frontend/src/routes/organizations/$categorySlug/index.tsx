@@ -71,31 +71,39 @@ function SubCategoryCard({
       <Link
         to="/organizations/$categorySlug/$subCategorySlug"
         params={{ categorySlug, subCategorySlug: SUB_CATEGORY_SLUG[subCategory] }}
-        className="group flex h-full flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-soft transition hover:-translate-y-0.5 hover:shadow-lg"
+        className="group relative flex h-40 flex-col justify-end overflow-hidden rounded-3xl border border-border shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-elevated"
       >
         {image ? (
-          <div className="relative h-28 overflow-hidden">
-            <img src={image} alt="" loading="lazy" className="size-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/0 to-transparent" />
-          </div>
+          <img
+            src={image}
+            alt=""
+            loading="lazy"
+            className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
         ) : (
           <div
-            className="relative flex h-28 items-center justify-center"
-            style={{ background: `linear-gradient(135deg, ${accent}33 0%, ${accent}0d 100%)` }}
-          >
-            <Icon className="size-10" style={{ color: accent }} strokeWidth={1.6} />
-          </div>
+            className="absolute inset-0"
+            style={{ background: `linear-gradient(135deg, ${accent}55 0%, ${accent}14 100%)` }}
+          />
         )}
-        <div className="flex flex-1 items-center justify-between gap-3 p-4">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+        {!image && (
+          <Icon
+            className="absolute right-4 top-4 size-9 text-white/25"
+            strokeWidth={1.5}
+            aria-hidden
+          />
+        )}
+        <div className="relative flex items-center justify-between gap-3 p-4">
           <div className="min-w-0">
-            <h3 className="font-display text-sm font-semibold text-foreground">
+            <h3 className="font-display text-sm font-semibold text-white drop-shadow-sm">
               {SUB_CATEGORY_LABEL[subCategory]}
             </h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="mt-0.5 text-xs text-white/80">
               {count > 0 ? `${count} ta tashkilot` : "Hozircha tashkilotlar yo'q"}
             </p>
           </div>
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
+          <ChevronRight className="size-4 shrink-0 text-white/70 transition group-hover:translate-x-0.5 group-hover:text-white" />
         </div>
       </Link>
     </motion.div>

@@ -104,7 +104,7 @@ export function mainCategoryBySlug(slug: string): MainCategory | null {
  * `OrganizationsCarousel` and the `/organizations` hub page so both read as the same taxonomy. */
 export const MAIN_CATEGORY_IMAGE: Record<MainCategory, string> = {
   FINANCE_MORTGAGE:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Old_Town_Architecture_Reflected_in_Modern_Facade_-_Geneva_-_Switzerland.jpg/500px-Old_Town_Architecture_Reflected_in_Modern_Facade_-_Geneva_-_Switzerland.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/500_East_Main_Street%28Norfolk%2C_Virginia%29.jpg/500px-500_East_Main_Street%28Norfolk%2C_Virginia%29.jpg",
   CONSTRUCTION_CONTRACTORS:
     "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Tower_crane_at_a_building_construction_site_in_Taichung_2023-05-13_01.jpg/500px-Tower_crane_at_a_building_construction_site_in_Taichung_2023-05-13_01.jpg",
   MANUFACTURERS_MATERIALS:
@@ -205,12 +205,13 @@ export const SUB_CATEGORY_LABEL: Record<SubCategory, string> = {
   VALUATION_SERVICE: "Baholash xizmati",
 };
 
-/** One representative photo per sub-category, hand-verified against Wikimedia Commons file
- * titles/descriptions (same sourcing convention as `MAIN_CATEGORY_IMAGE` -- never a random
- * keyword-matched stock photo; see that map's own docstring for why this project avoids those).
- * Deliberately a `Partial` -- two codes (`PROPERTY_MANAGEMENT`, `VALUATION_SERVICE`) have no
- * confidently-matching real photo on Commons, so they fall back to `SUB_CATEGORY_ICON`'s
- * gradient+icon tile (`routes/organizations/$categorySlug.tsx`) rather than force a mismatch. */
+/** One representative photo per sub-category, hand-verified (downloaded and visually checked, not
+ * just keyword-matched) against Wikimedia Commons -- same sourcing convention as
+ * `MAIN_CATEGORY_IMAGE`, never a random keyword-matched stock photo. Still a `Partial` in case a
+ * future sub-category is added before a confidently-matching photo is found for it; every current
+ * code has one (2026-08-20 premium visual pass filled in `PROPERTY_MANAGEMENT`/
+ * `VALUATION_SERVICE`, the two that previously fell back to `SUB_CATEGORY_ICON`'s gradient+icon
+ * tile). */
 export const SUB_CATEGORY_IMAGE: Partial<Record<SubCategory, string>> = {
   COMMERCIAL_BANK:
     "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/United_States_National_Bank_Building%2C_Portland%2C_Oregon_%282012%29_-_01.JPG/500px-United_States_National_Bank_Building%2C_Portland%2C_Oregon_%282012%29_-_01.JPG",
@@ -262,6 +263,10 @@ export const SUB_CATEGORY_IMAGE: Partial<Record<SubCategory, string>> = {
     "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Joy_Lee_Apartments_Front.jpg/500px-Joy_Lee_Apartments_Front.jpg",
   COMMERCIAL_AGENCY:
     "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Bright_and_spacious_hallway_in_a_modern_office.jpg/500px-Bright_and_spacious_hallway_in_a_modern_office.jpg",
+  PROPERTY_MANAGEMENT:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/2016-_The_Victoria_Towers%28%E6%B8%AF%E6%99%AF%E5%B3%B0%29%2C_Tsim_Sha_Tsui%2C_Hong_Kong_%28_Ank_Kumar_%29_01.jpg/500px-2016-_The_Victoria_Towers%28%E6%B8%AF%E6%99%AF%E5%B3%B0%29%2C_Tsim_Sha_Tsui%2C_Hong_Kong_%28_Ank_Kumar_%29_01.jpg",
+  VALUATION_SERVICE:
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Couples_in_Real_Estate_Agent%27s_Office.jpg/500px-Couples_in_Real_Estate_Agent%27s_Office.jpg",
 };
 
 export const SUB_CATEGORIES_BY_MAIN_CATEGORY: Record<MainCategory, SubCategory[]> = {

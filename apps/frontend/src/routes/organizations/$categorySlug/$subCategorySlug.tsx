@@ -52,8 +52,31 @@ function profileName(profile: BusinessProfile): string {
   return profile.name.uz_latn || profile.name.ru || profile.name.en || "Tashkilot";
 }
 
-function OrganizationCard({ profile, index }: { profile: BusinessProfile; index: number }) {
+/** Premium organization card: a themed cover banner (the org's own `bannerMediaAssetId` when set,
+ * else `fallbackBanner` -- the sub-category's own real hero photo, tastefully reused as a
+ * contextual backdrop rather than left blank, same "swap point" philosophy as everywhere else in
+ * this project that has no per-entity photo yet) with the logo overlapping its bottom edge in a
+ * bordered/shadowed tile, a verified badge chip on the banner itself, and a "Bog'lanish" quick
+ * action that must stay clickable independent of the card's own whole-card link -- solved with the
+ * "stretched link" pattern (an absolutely-positioned invisible `Link` under everything, real
+ * interactive elements sitting above it in normal flow) instead of nesting an `<a>` inside the
+ * card's own link, which the DOM disallows. Deliberately no star rating / review count -- no such
+ * field exists anywhere in the backend (confirmed before building the company landing-page
+ * redesign), so none is shown here either. */
+function OrganizationCard({
+  profile,
+  index,
+  fallbackBanner,
+  accent,
+}: {
+  profile: BusinessProfile;
+  index: number;
+  fallbackBanner?: string;
+  accent: string;
+}) {
   const logo = useMediaAsset(profile.logoMediaAssetId);
+  const banner = useMediaAsset(profile.bannerMediaAssetId);
+  const bannerUrl = banner?.url || fallbackBanner;
   const name = profileName(profile);
   const description =
     profile.description?.uz_latn || profile.description?.ru || profile.description?.en || "";
@@ -62,69 +85,84 @@ function OrganizationCard({ profile, index }: { profile: BusinessProfile; index:
   const VerifiedIcon = VERIFIED_BADGE_ICON;
   const verified = profile.badge?.status === "VALID";
 
-  const card = (
+  return (
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.4), ease: [0.22, 1, 0.36, 1] }}
-      className="group flex h-full flex-col rounded-3xl border border-border bg-card p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lg"
+      className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-elevated"
     >
-      <div className="flex items-start gap-3">
-        <span className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-white text-muted-foreground">
+      {profile.slug && (
+        <Link
+          to="/companies/$slug"
+          params={{ slug: profile.slug }}
+          className="absolute inset-0 z-0 rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          aria-label={name}
+        />
+      )}
+
+      <div className="relative h-28 shrink-0 overflow-hidden">
+        {bannerUrl ? (
+          <img
+            src={bannerUrl}
+            alt=""
+            loading="lazy"
+            className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div
+            className="flex size-full items-center justify-center"
+            style={{ background: `linear-gradient(135deg, ${accent}40 0%, ${accent}12 100%)` }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/5 to-transparent" />
+        {verified && (
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-primary shadow-sm backdrop-blur">
+            <VerifiedIcon className="size-3.5" /> Tasdiqlangan
+          </span>
+        )}
+      </div>
+
+      <div className="relative flex flex-1 flex-col px-5 pb-5">
+        <span className="-mt-8 flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border-4 border-card bg-white text-muted-foreground shadow-sm">
           {logo?.url ? (
             <img src={logo.url} alt="" className="size-full object-cover" />
           ) : (
             <PlaceholderIcon className="size-6" />
           )}
         </span>
-        <div className="min-w-0 pt-1">
-          <h3 className="font-display truncate text-base font-semibold text-foreground">{name}</h3>
-          {verified && (
-            <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary">
-              <VerifiedIcon className="size-3.5" /> Tasdiqlangan
-            </span>
-          )}
-        </div>
-      </div>
 
-      {description && (
-        <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{description}</p>
-      )}
-
-      <div className="mt-4 space-y-1.5 text-sm text-muted-foreground">
-        {phone && (
-          <div className="flex items-center gap-2">
-            <Phone className="size-3.5 shrink-0" />
-            <span className="truncate">{phone}</span>
-          </div>
+        <h3 className="font-display mt-3 truncate text-base font-semibold text-foreground">
+          {name}
+        </h3>
+        {description && (
+          <p className="mt-1.5 line-clamp-2 text-sm text-muted-foreground">{description}</p>
         )}
+
         {profile.address && (
-          <div className="flex items-center gap-2">
+          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
             <MapPin className="size-3.5 shrink-0" />
             <span className="truncate">{profile.address}</span>
           </div>
         )}
-      </div>
 
-      <div className="mt-4 pt-1">
-        <span className="inline-flex items-center text-sm font-medium text-primary transition group-hover:underline">
-          Portfolioni ko'rish →
-        </span>
+        <div className="relative z-10 mt-4 flex items-center gap-2 pt-1">
+          <span className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-primary/10 px-4 py-2 text-xs font-semibold text-primary transition-colors duration-300 group-hover:bg-primary group-hover:text-primary-foreground">
+            Portfolioni ko'rish
+          </span>
+          {phone && (
+            <a
+              href={`tel:${phone.replace(/\s+/g, "")}`}
+              title="Bog'lanish"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:border-primary/40 hover:text-primary"
+            >
+              <Phone className="size-4" />
+            </a>
+          )}
+        </div>
       </div>
     </motion.div>
-  );
-
-  if (!profile.slug) return card;
-
-  return (
-    <Link
-      to="/companies/$slug"
-      params={{ slug: profile.slug }}
-      className="block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-3xl"
-    >
-      {card}
-    </Link>
   );
 }
 
@@ -229,7 +267,13 @@ function Page() {
             ) : (
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredProfiles.map((profile, i) => (
-                  <OrganizationCard key={profile.id} profile={profile} index={i} />
+                  <OrganizationCard
+                    key={profile.id}
+                    profile={profile}
+                    index={i}
+                    fallbackBanner={SUB_CATEGORY_IMAGE[subCategory]}
+                    accent={accent}
+                  />
                 ))}
               </div>
             )}
