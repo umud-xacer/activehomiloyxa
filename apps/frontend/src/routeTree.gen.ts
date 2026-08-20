@@ -84,12 +84,12 @@ import { Route as ListListingIdRouteImport } from './routes/list/$listingId'
 import { Route as ListingListingIdRouteImport } from './routes/listing/$listingId'
 import { Route as OrganizationSetupRouteImport } from './routes/organization/setup'
 import { Route as OrganizationsIndexRouteImport } from './routes/organizations/index'
-import { Route as OrganizationsCategorySlugRouteImport } from './routes/organizations/$categorySlug'
 import { Route as PropertiesIndexRouteImport } from './routes/properties/index'
 import { Route as PropertiesSlugRouteImport } from './routes/properties/$slug'
 import { Route as AuthCallbackAppleRouteImport } from './routes/auth/callback/apple'
 import { Route as AuthCallbackGoogleRouteImport } from './routes/auth/callback/google'
-import { Route as OrganizationsCategorySlugSubCategorySlugRouteImport } from './routes/organizations/$categorySlug.$subCategorySlug'
+import { Route as OrganizationsCategorySlugIndexRouteImport } from './routes/organizations/$categorySlug/index'
+import { Route as OrganizationsCategorySlugSubCategorySlugRouteImport } from './routes/organizations/$categorySlug/$subCategorySlug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -467,12 +467,6 @@ const OrganizationsIndexRoute = OrganizationsIndexRouteImport.update({
   path: '/organizations/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OrganizationsCategorySlugRoute =
-  OrganizationsCategorySlugRouteImport.update({
-    id: '/organizations/$categorySlug',
-    path: '/organizations/$categorySlug',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const PropertiesIndexRoute = PropertiesIndexRouteImport.update({
   id: '/properties/',
   path: '/properties/',
@@ -493,11 +487,17 @@ const AuthCallbackGoogleRoute = AuthCallbackGoogleRouteImport.update({
   path: '/auth/callback/google',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrganizationsCategorySlugIndexRoute =
+  OrganizationsCategorySlugIndexRouteImport.update({
+    id: '/organizations/$categorySlug/',
+    path: '/organizations/$categorySlug/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const OrganizationsCategorySlugSubCategorySlugRoute =
   OrganizationsCategorySlugSubCategorySlugRouteImport.update({
-    id: '/$subCategorySlug',
-    path: '/$subCategorySlug',
-    getParentRoute: () => OrganizationsCategorySlugRoute,
+    id: '/organizations/$categorySlug/$subCategorySlug',
+    path: '/organizations/$categorySlug/$subCategorySlug',
+    getParentRoute: () => rootRouteImport,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -567,7 +567,6 @@ export interface FileRoutesByFullPath {
   '/list/$listingId': typeof ListListingIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
   '/organization/setup': typeof OrganizationSetupRoute
-  '/organizations/$categorySlug': typeof OrganizationsCategorySlugRouteWithChildren
   '/properties/$slug': typeof PropertiesSlugRoute
   '/$ownerAdminSlug/': typeof OwnerAdminSlugIndexRoute
   '/admin/': typeof AdminIndexRoute
@@ -582,6 +581,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback/apple': typeof AuthCallbackAppleRoute
   '/auth/callback/google': typeof AuthCallbackGoogleRoute
   '/organizations/$categorySlug/$subCategorySlug': typeof OrganizationsCategorySlugSubCategorySlugRoute
+  '/organizations/$categorySlug/': typeof OrganizationsCategorySlugIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -650,7 +650,6 @@ export interface FileRoutesByTo {
   '/list/$listingId': typeof ListListingIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
   '/organization/setup': typeof OrganizationSetupRoute
-  '/organizations/$categorySlug': typeof OrganizationsCategorySlugRouteWithChildren
   '/properties/$slug': typeof PropertiesSlugRoute
   '/$ownerAdminSlug': typeof OwnerAdminSlugIndexRoute
   '/admin': typeof AdminIndexRoute
@@ -665,6 +664,7 @@ export interface FileRoutesByTo {
   '/auth/callback/apple': typeof AuthCallbackAppleRoute
   '/auth/callback/google': typeof AuthCallbackGoogleRoute
   '/organizations/$categorySlug/$subCategorySlug': typeof OrganizationsCategorySlugSubCategorySlugRoute
+  '/organizations/$categorySlug': typeof OrganizationsCategorySlugIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -734,7 +734,6 @@ export interface FileRoutesById {
   '/list/$listingId': typeof ListListingIdRoute
   '/listing/$listingId': typeof ListingListingIdRoute
   '/organization/setup': typeof OrganizationSetupRoute
-  '/organizations/$categorySlug': typeof OrganizationsCategorySlugRouteWithChildren
   '/properties/$slug': typeof PropertiesSlugRoute
   '/$ownerAdminSlug/': typeof OwnerAdminSlugIndexRoute
   '/admin/': typeof AdminIndexRoute
@@ -749,6 +748,7 @@ export interface FileRoutesById {
   '/auth/callback/apple': typeof AuthCallbackAppleRoute
   '/auth/callback/google': typeof AuthCallbackGoogleRoute
   '/organizations/$categorySlug/$subCategorySlug': typeof OrganizationsCategorySlugSubCategorySlugRoute
+  '/organizations/$categorySlug/': typeof OrganizationsCategorySlugIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -819,7 +819,6 @@ export interface FileRouteTypes {
     | '/list/$listingId'
     | '/listing/$listingId'
     | '/organization/setup'
-    | '/organizations/$categorySlug'
     | '/properties/$slug'
     | '/$ownerAdminSlug/'
     | '/admin/'
@@ -834,6 +833,7 @@ export interface FileRouteTypes {
     | '/auth/callback/apple'
     | '/auth/callback/google'
     | '/organizations/$categorySlug/$subCategorySlug'
+    | '/organizations/$categorySlug/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -902,7 +902,6 @@ export interface FileRouteTypes {
     | '/list/$listingId'
     | '/listing/$listingId'
     | '/organization/setup'
-    | '/organizations/$categorySlug'
     | '/properties/$slug'
     | '/$ownerAdminSlug'
     | '/admin'
@@ -917,6 +916,7 @@ export interface FileRouteTypes {
     | '/auth/callback/apple'
     | '/auth/callback/google'
     | '/organizations/$categorySlug/$subCategorySlug'
+    | '/organizations/$categorySlug'
   id:
     | '__root__'
     | '/'
@@ -985,7 +985,6 @@ export interface FileRouteTypes {
     | '/list/$listingId'
     | '/listing/$listingId'
     | '/organization/setup'
-    | '/organizations/$categorySlug'
     | '/properties/$slug'
     | '/$ownerAdminSlug/'
     | '/admin/'
@@ -1000,6 +999,7 @@ export interface FileRouteTypes {
     | '/auth/callback/apple'
     | '/auth/callback/google'
     | '/organizations/$categorySlug/$subCategorySlug'
+    | '/organizations/$categorySlug/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1069,7 +1069,6 @@ export interface RootRouteChildren {
   ListListingIdRoute: typeof ListListingIdRoute
   ListingListingIdRoute: typeof ListingListingIdRoute
   OrganizationSetupRoute: typeof OrganizationSetupRoute
-  OrganizationsCategorySlugRoute: typeof OrganizationsCategorySlugRouteWithChildren
   PropertiesSlugRoute: typeof PropertiesSlugRoute
   OwnerAdminSlugIndexRoute: typeof OwnerAdminSlugIndexRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -1083,6 +1082,8 @@ export interface RootRouteChildren {
   PropertiesIndexRoute: typeof PropertiesIndexRoute
   AuthCallbackAppleRoute: typeof AuthCallbackAppleRoute
   AuthCallbackGoogleRoute: typeof AuthCallbackGoogleRoute
+  OrganizationsCategorySlugSubCategorySlugRoute: typeof OrganizationsCategorySlugSubCategorySlugRoute
+  OrganizationsCategorySlugIndexRoute: typeof OrganizationsCategorySlugIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1612,13 +1613,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrganizationsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/organizations/$categorySlug': {
-      id: '/organizations/$categorySlug'
-      path: '/organizations/$categorySlug'
-      fullPath: '/organizations/$categorySlug'
-      preLoaderRoute: typeof OrganizationsCategorySlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/properties/': {
       id: '/properties/'
       path: '/properties'
@@ -1647,30 +1641,22 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackGoogleRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/organizations/$categorySlug/': {
+      id: '/organizations/$categorySlug/'
+      path: '/organizations/$categorySlug'
+      fullPath: '/organizations/$categorySlug/'
+      preLoaderRoute: typeof OrganizationsCategorySlugIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/organizations/$categorySlug/$subCategorySlug': {
       id: '/organizations/$categorySlug/$subCategorySlug'
-      path: '/$subCategorySlug'
+      path: '/organizations/$categorySlug/$subCategorySlug'
       fullPath: '/organizations/$categorySlug/$subCategorySlug'
       preLoaderRoute: typeof OrganizationsCategorySlugSubCategorySlugRouteImport
-      parentRoute: typeof OrganizationsCategorySlugRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-interface OrganizationsCategorySlugRouteChildren {
-  OrganizationsCategorySlugSubCategorySlugRoute: typeof OrganizationsCategorySlugSubCategorySlugRoute
-}
-
-const OrganizationsCategorySlugRouteChildren: OrganizationsCategorySlugRouteChildren =
-  {
-    OrganizationsCategorySlugSubCategorySlugRoute:
-      OrganizationsCategorySlugSubCategorySlugRoute,
-  }
-
-const OrganizationsCategorySlugRouteWithChildren =
-  OrganizationsCategorySlugRoute._addFileChildren(
-    OrganizationsCategorySlugRouteChildren,
-  )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -1739,7 +1725,6 @@ const rootRouteChildren: RootRouteChildren = {
   ListListingIdRoute: ListListingIdRoute,
   ListingListingIdRoute: ListingListingIdRoute,
   OrganizationSetupRoute: OrganizationSetupRoute,
-  OrganizationsCategorySlugRoute: OrganizationsCategorySlugRouteWithChildren,
   PropertiesSlugRoute: PropertiesSlugRoute,
   OwnerAdminSlugIndexRoute: OwnerAdminSlugIndexRoute,
   AdminIndexRoute: AdminIndexRoute,
@@ -1753,6 +1738,9 @@ const rootRouteChildren: RootRouteChildren = {
   PropertiesIndexRoute: PropertiesIndexRoute,
   AuthCallbackAppleRoute: AuthCallbackAppleRoute,
   AuthCallbackGoogleRoute: AuthCallbackGoogleRoute,
+  OrganizationsCategorySlugSubCategorySlugRoute:
+    OrganizationsCategorySlugSubCategorySlugRoute,
+  OrganizationsCategorySlugIndexRoute: OrganizationsCategorySlugIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

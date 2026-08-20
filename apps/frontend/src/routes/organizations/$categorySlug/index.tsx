@@ -29,7 +29,7 @@ import {
   type SubCategory,
 } from "@/lib/business-profiles-client";
 
-export const Route = createFileRoute("/organizations/$categorySlug")({
+export const Route = createFileRoute("/organizations/$categorySlug/")({
   head: ({ params }) => {
     const category = mainCategoryBySlug(params.categorySlug);
     return {
