@@ -1,10 +1,8 @@
 /**
  * Bosqich 1 -- the "Tashkilotlar" hub: exactly 6 `MainCategory` cards, no organization listings
  * (those live one level down, per category, at `/organizations/$categorySlug`). Reachable from
- * every "Tashkilotlar" nav item (`Navbar`, `MobileMenu`, `AudienceSplit`) and, on the homepage
- * itself, from any `OrganizationsCarousel` category chip (each links straight into its own
- * `/organizations/$categorySlug` -- the widget deliberately has no separate "view all" link of
- * its own since the chips already cover that).
+ * the homepage `OrganizationsCarousel`'s "Barcha tashkilotlarni ko'rish" link and every
+ * "Tashkilotlar" nav item (`Navbar`, `MobileMenu`, `AudienceSplit`).
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
