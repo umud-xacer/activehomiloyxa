@@ -104,17 +104,17 @@ export function mainCategoryBySlug(slug: string): MainCategory | null {
  * `OrganizationsCarousel` and the `/organizations` hub page so both read as the same taxonomy. */
 export const MAIN_CATEGORY_IMAGE: Record<MainCategory, string> = {
   FINANCE_MORTGAGE:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/500_East_Main_Street%28Norfolk%2C_Virginia%29.jpg/500px-500_East_Main_Street%28Norfolk%2C_Virginia%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Standard_Bank_Branch_in_Cape_Town.jpg/500px-Standard_Bank_Branch_in_Cape_Town.jpg",
   CONSTRUCTION_CONTRACTORS:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Tower_crane_at_a_building_construction_site_in_Taichung_2023-05-13_01.jpg/500px-Tower_crane_at_a_building_construction_site_in_Taichung_2023-05-13_01.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Tottenham_Hotspur_Football_Club_new_ground_construction_January_2018_01.jpg/500px-Tottenham_Hotspur_Football_Club_new_ground_construction_January_2018_01.jpg",
   MANUFACTURERS_MATERIALS:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Silo_of_the_factory_%E2%80%9EProfix%22_Tetovo%2C_North_Macedonia.jpg/500px-Silo_of_the_factory_%E2%80%9EProfix%22_Tetovo%2C_North_Macedonia.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Factory_of_National_Cement_Share_Company.jpg/500px-Factory_of_National_Cement_Share_Company.jpg",
   ARCHITECTURE_INTERIOR:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/House_S_by_Minhwan_Park_%EB%B0%95%EB%AF%BC%ED%99%98_%EA%B1%B4%EC%B6%95_S_%EC%A3%BC%ED%83%9D.jpg/500px-House_S_by_Minhwan_Park_%EB%B0%95%EB%AF%BC%ED%99%98_%EA%B1%B4%EC%B6%95_S_%EC%A3%BC%ED%83%9D.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Bonn%2C_Post-Tower_--_2017_--_2128.jpg/500px-Bonn%2C_Post-Tower_--_2017_--_2128.jpg",
   REPAIR_SERVICES:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Faubourg_Marigny%2C_New_Orleans_-_Interior_of_recently_renovated_house_-_04.jpg/500px-Faubourg_Marigny%2C_New_Orleans_-_Interior_of_recently_renovated_house_-_04.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Kitchen_Renovation_Marlton_New_Jersey.jpg/500px-Kitchen_Renovation_Marlton_New_Jersey.jpg",
   REAL_ESTATE_AGENCIES:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Modern_living_room_with_stylish_furniture_and_a_view_of_the_outdoors_in_a_cozy_apartment_setting.jpg/500px-Modern_living_room_with_stylish_furniture_and_a_view_of_the_outdoors_in_a_cozy_apartment_setting.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Douglas_Elliman_CA_HQ.jpg/500px-Douglas_Elliman_CA_HQ.jpg",
 };
 
 /** One-line description per sector -- the hub grid card's subtitle and the detail page's own
@@ -214,53 +214,53 @@ export const SUB_CATEGORY_LABEL: Record<SubCategory, string> = {
  * tile). */
 export const SUB_CATEGORY_IMAGE: Partial<Record<SubCategory, string>> = {
   COMMERCIAL_BANK:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/United_States_National_Bank_Building%2C_Portland%2C_Oregon_%282012%29_-_01.JPG/500px-United_States_National_Bank_Building%2C_Portland%2C_Oregon_%282012%29_-_01.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/A_Simmons_Bank_location_in_Sweetwater%2C_Tennessee.jpg/500px-A_Simmons_Bank_location_in_Sweetwater%2C_Tennessee.jpg",
   MORTGAGE_CENTER:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Fannie_Mae_Headquarters.JPG/500px-Fannie_Mae_Headquarters.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Mortgage_Sure_office_in_Caerphilly_-_geograph.org.uk_-_6022884.jpg/500px-Mortgage_Sure_office_in_Caerphilly_-_geograph.org.uk_-_6022884.jpg",
   MICROFINANCE:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Aryavart_Gramin_Bank_Barabanki_Regional_Office.jpg/500px-Aryavart_Gramin_Bank_Barabanki_Regional_Office.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Community-based_savings_bank_in_Cambodia.jpg/500px-Community-based_savings_bank_in_Cambodia.jpg",
   INSURANCE:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/New_York_Life_Insurance_Company_Building_from_east.jpg/500px-New_York_Life_Insurance_Company_Building_from_east.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Building_of_the_head_office_of_the_insurance_company_IMPEX_INSURANCE.jpg/500px-Building_of_the_head_office_of_the_insurance_company_IMPEX_INSURANCE.jpg",
   LEASING:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/FleetPride_Truck_%2838851789722%29.jpg/500px-FleetPride_Truck_%2838851789722%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/National_Leasing_Head_Office_Building.jpg/500px-National_Leasing_Head_Office_Building.jpg",
   GENERAL_CONTRACTOR:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Construction_Site.JPG/500px-Construction_Site.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/A_seaside_construction_site_in_Busan.jpg/500px-A_seaside_construction_site_in_Busan.jpg",
   SUBCONTRACTOR:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Construction_Worker_Ladder_%2854070790%29.jpeg/500px-Construction_Worker_Ladder_%2854070790%29.jpeg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/FEMA_-_38954_-_A_worker_installs_a_blue_tarp_on_a_roof_in_Texas.jpg/500px-FEMA_-_38954_-_A_worker_installs_a_blue_tarp_on_a_roof_in_Texas.jpg",
   CIVIL_ENGINEERING:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Bridge_Construction_workers.jpg/500px-Bridge_Construction_workers.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Matakohe_No.2_Bridge_under_construction.jpg/500px-Matakohe_No.2_Bridge_under_construction.jpg",
   RENOVATION_CONTRACTOR:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/1._Warfield_House_Restoration._%2899cf7820-82fa-4113-8a7e-8a72abfacbdf%29.JPG/500px-1._Warfield_House_Restoration._%2899cf7820-82fa-4113-8a7e-8a72abfacbdf%29.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/California_Kitchen_Demo%2BReconstruction_08.jpg/500px-California_Kitchen_Demo%2BReconstruction_08.jpg",
   INFRASTRUCTURE_CONSTRUCTION:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Road_construction_in_progress.jpg/500px-Road_construction_in_progress.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/King%27s_Cross_Central_development_tower_cranes%2C_London%2C_England_01.jpg/500px-King%27s_Cross_Central_development_tower_cranes%2C_London%2C_England_01.jpg",
   BUILDING_MATERIALS_MANUFACTURER:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Brick_Factory_-_Kathmandu_-_Nepal_%2814515420731%29.jpg/500px-Brick_Factory_-_Kathmandu_-_Nepal_%2814515420731%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Arnold_Laver_Timber_World_-_Pontefract_Road_-_geograph.org.uk_-_3725097.jpg/500px-Arnold_Laver_Timber_World_-_Pontefract_Road_-_geograph.org.uk_-_3725097.jpg",
   FURNITURE_MANUFACTURER:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Klein_Custom_Woodworking-_Two_Rivers%2C_WI_-_Flickr_-_MichaelSteeber.jpg/500px-Klein_Custom_Woodworking-_Two_Rivers%2C_WI_-_Flickr_-_MichaelSteeber.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Berkey_and_Gay_Furniture_Company_Factory_-1.jpg/500px-Berkey_and_Gay_Furniture_Company_Factory_-1.jpg",
   METAL_PRODUCTS_MANUFACTURER:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Llanwern_Steel_works.jpg/500px-Llanwern_Steel_works.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/A_metal_fabricator_cutting_metal_plate_in_to_shape.jpg/500px-A_metal_fabricator_cutting_metal_plate_in_to_shape.jpg",
   CONCRETE_CEMENT_MANUFACTURER:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Holcim_cement_plant%2C_Portland%2C_Colorado.JPG/500px-Holcim_cement_plant%2C_Portland%2C_Colorado.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Cement_Plant%2C_Brookshire%2C_Texas.jpg/500px-Cement_Plant%2C_Brookshire%2C_Texas.jpg",
   GLASS_ALUMINUM_MANUFACTURER:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Hallidie_Building_facade_2026_San_Francisco_dllu.jpg/500px-Hallidie_Building_facade_2026_San_Francisco_dllu.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Nedal-aluminium_at_the_Amsterdam-Rijnkanaal_in_Utrecht.jpg/500px-Nedal-aluminium_at_the_Amsterdam-Rijnkanaal_in_Utrecht.jpg",
   ARCHITECTURE_STUDIO:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Interior_View_of_Drafting_Room_in_ERB_-_GPN-2000-001447.jpg/500px-Interior_View_of_Drafting_Room_in_ERB_-_GPN-2000-001447.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Studio_Wing%2C_Paul_Schweiker_House_and_Studio%2C_Meacham_Road%2C_Schaumburg%2C_IL.jpg/500px-Studio_Wing%2C_Paul_Schweiker_House_and_Studio%2C_Meacham_Road%2C_Schaumburg%2C_IL.jpg",
   INTERIOR_DESIGN_STUDIO:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Graphasel_Design_Studio_01.jpg/500px-Graphasel_Design_Studio_01.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Apartment-in-Berlin-by-Dezest-design-01.jpg/500px-Apartment-in-Berlin-by-Dezest-design-01.jpg",
   LANDSCAPE_DESIGN_STUDIO:
     "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Modern_Landscaped_Garden_Path_Along_Poolside_Perth_WA_2026.jpg/500px-Modern_Landscaped_Garden_Path_Along_Poolside_Perth_WA_2026.jpg",
   ENGINEERING_DESIGN_STUDIO:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/RCoE_-_mechanical_-_Workshop.jpg/500px-RCoE_-_mechanical_-_Workshop.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Multiconsult.JPG/500px-Multiconsult.JPG",
   HOME_REPAIR_SERVICE:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/The_Handyman%2C_Sandbeds%2C_Queensbury_%288702037721%29.jpg/500px-The_Handyman%2C_Sandbeds%2C_Queensbury_%288702037721%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Handyman_measuring_a_board.jpg/500px-Handyman_measuring_a_board.jpg",
   PLUMBING_ELECTRICAL_SERVICE:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Plumber_at_work.jpg/500px-Plumber_at_work.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Plumber_at_work_2010_USA.jpg/500px-Plumber_at_work_2010_USA.jpg",
   CLEANING_SERVICE:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Window_Cleaner.jpg/500px-Window_Cleaner.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Cleaning_service-1229.jpg/500px-Cleaning_service-1229.jpg",
   APPLIANCE_REPAIR_SERVICE:
-    "https://upload.wikimedia.org/wikipedia/commons/1/1e/Electronics_repair_shop_on_Lamington_Road.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Person_repairs_a_kitchen_appliance_in_a_home_kitchen.jpg/500px-Person_repairs_a_kitchen_appliance_in_a_home_kitchen.jpg",
   RESIDENTIAL_AGENCY:
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Joy_Lee_Apartments_Front.jpg/500px-Joy_Lee_Apartments_Front.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Commercial_cleaning_Sydney.jpg/500px-Commercial_cleaning_Sydney.jpg",
   COMMERCIAL_AGENCY:
     "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Bright_and_spacious_hallway_in_a_modern_office.jpg/500px-Bright_and_spacious_hallway_in_a_modern_office.jpg",
   PROPERTY_MANAGEMENT:
