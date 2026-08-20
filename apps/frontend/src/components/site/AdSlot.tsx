@@ -71,16 +71,23 @@ export function AdSlot({
   if (!banner) return null;
 
   const onClick = () => recordBannerClick(banner.campaignId);
+  // Never a hardcoded aspect-ratio box -- an admin-uploaded creative can be any real proportion
+  // (the actual seeded sidebar creatives are a tall 205x1024, nowhere near a 160:420 box; the
+  // center one is 1920x544), and a fixed aspect-ratio container forces `object-cover` to crop
+  // whatever doesn't match it. `h-auto` lets each container's height follow the image's own
+  // intrinsic ratio at its fixed width instead, so nothing is ever cropped; `object-contain` is
+  // a pure safety net for the (rare) case a `max-h` constraint below ever clips a very tall
+  // upload -- it letterboxes rather than crops even then.
   const image = (
-    <img src={banner.imageUrl} alt="" className="size-full object-cover" loading="lazy" />
+    <img src={banner.imageUrl} alt="" className="h-auto w-full object-contain" loading="lazy" />
   );
 
   if (variant === "sidebar") {
-    // Fixed-width gutter (only ever shown on 2xl+ screens, see routes/index.tsx), but the
-    // creative itself still scales fluidly to whatever height that width implies via
-    // aspect-ratio rather than a hardcoded px height fighting an arbitrary upload's own ratio.
+    // Fixed-width gutter (only ever shown on 2xl+ screens, see GlobalAdSidebars), height follows
+    // the creative's own real aspect ratio -- capped so an unusually tall upload can't run past
+    // the sticky container's own scroll-stop boundary and get visually clipped by it.
     return (
-      <div className="aspect-[160/420] w-[160px] overflow-hidden rounded-2xl border border-border/70 bg-card/30">
+      <div className="max-h-[70vh] w-[160px] overflow-hidden rounded-2xl border border-border/70 bg-card/30">
         {banner.targetUrl ? (
           <a href={banner.targetUrl} target="_blank" rel="noopener noreferrer" onClick={onClick}>
             {image}
@@ -94,7 +101,7 @@ export function AdSlot({
 
   return (
     <div className="px-6">
-      <div className="mx-auto aspect-[16/3] max-w-7xl overflow-hidden rounded-2xl border border-border/70 bg-card/30">
+      <div className="mx-auto max-h-[70vh] max-w-7xl overflow-hidden rounded-2xl border border-border/70 bg-card/30">
         {banner.targetUrl ? (
           <a href={banner.targetUrl} target="_blank" rel="noopener noreferrer" onClick={onClick}>
             {image}
