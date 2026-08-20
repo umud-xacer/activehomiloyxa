@@ -46,8 +46,14 @@ function Index() {
   // gutters on very wide screens. The `relative` wrapper below is deliberately everything EXCEPT
   // `<Footer/>` -- see `GlobalAdSidebars`' own docstring for why that's what makes the sticky
   // sidebars stop at the footer instead of riding over it.
+  // No `overflow-x-hidden` here (nor anywhere else up this tree) -- setting overflow on EITHER
+  // axis forces the other to compute to `auto` per spec, which makes the browser treat this
+  // element as a scroll container for `position: sticky` purposes even though it never actually
+  // gets its own internal scrollbar (nothing constrains its height). Confirmed live: with it
+  // present, GlobalAdSidebars' sticky child stopped sticking entirely -- it just scrolled
+  // normally with the page instead of pinning near the viewport top.
   return (
-    <main className="min-h-screen overflow-x-hidden bg-background text-foreground">
+    <main className="min-h-screen bg-background text-foreground">
       <div className="relative">
         <Navbar />
         <GlobalAdSidebars />
