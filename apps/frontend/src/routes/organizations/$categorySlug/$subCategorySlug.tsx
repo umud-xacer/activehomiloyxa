@@ -56,13 +56,17 @@ function profileName(profile: BusinessProfile): string {
  * else `fallbackBanner` -- the sub-category's own real hero photo, tastefully reused as a
  * contextual backdrop rather than left blank, same "swap point" philosophy as everywhere else in
  * this project that has no per-entity photo yet) with the logo overlapping its bottom edge in a
- * bordered/shadowed tile, a verified badge chip on the banner itself, and a "Bog'lanish" quick
- * action that must stay clickable independent of the card's own whole-card link -- solved with the
- * "stretched link" pattern (an absolutely-positioned invisible `Link` under everything, real
- * interactive elements sitting above it in normal flow) instead of nesting an `<a>` inside the
- * card's own link, which the DOM disallows. Deliberately no star rating / review count -- no such
- * field exists anywhere in the backend (confirmed before building the company landing-page
- * redesign), so none is shown here either. */
+ * bordered/shadowed tile, a verified badge chip on the banner itself, and a real "Bog'lanish"
+ * `tel:` link that must stay independently clickable. Two sibling `Link`s (banner+details, and the
+ * CTA row) rather than one link wrapping everything -- an `<a>` (`tel:`) can't validly nest inside
+ * another `<a>`/`Link`, and a "stretched full-card link with real content stacked visually above
+ * it" approach silently swallows every click on that foreground content (each of those elements is
+ * its own positioned/in-flow stacking box and becomes the hit target instead of passing the click
+ * through) unless every one of them is individually marked `pointer-events-none` -- two real,
+ * always-clickable siblings is simpler and doesn't depend on getting that exactly right. Two
+ * `Link`s to the same destination is an intentional, harmless duplication, not a mistake.
+ * Deliberately no star rating / review count -- no such field exists anywhere in the backend
+ * (confirmed before building the company landing-page redesign), so none is shown here either. */
 function OrganizationCard({
   profile,
   index,
@@ -85,23 +89,8 @@ function OrganizationCard({
   const VerifiedIcon = VERIFIED_BADGE_ICON;
   const verified = profile.badge?.status === "VALID";
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.4), ease: [0.22, 1, 0.36, 1] }}
-      className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-elevated"
-    >
-      {profile.slug && (
-        <Link
-          to="/companies/$slug"
-          params={{ slug: profile.slug }}
-          className="absolute inset-0 z-0 rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          aria-label={name}
-        />
-      )}
-
+  const cardBody = (
+    <>
       <div className="relative h-28 shrink-0 overflow-hidden">
         {bannerUrl ? (
           <img
@@ -124,7 +113,7 @@ function OrganizationCard({
         )}
       </div>
 
-      <div className="relative flex flex-1 flex-col px-5 pb-5">
+      <div className="flex flex-1 flex-col px-5">
         <span className="-mt-8 flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border-4 border-card bg-white text-muted-foreground shadow-sm">
           {logo?.url ? (
             <img src={logo.url} alt="" className="size-full object-cover" />
@@ -146,21 +135,53 @@ function OrganizationCard({
             <span className="truncate">{profile.address}</span>
           </div>
         )}
+      </div>
+    </>
+  );
 
-        <div className="relative z-10 mt-4 flex items-center gap-2 pt-1">
-          <span className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-primary/10 px-4 py-2 text-xs font-semibold text-primary transition-colors duration-300 group-hover:bg-primary group-hover:text-primary-foreground">
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.4), ease: [0.22, 1, 0.36, 1] }}
+      className="group flex h-full flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-elevated"
+    >
+      {profile.slug ? (
+        <Link
+          to="/companies/$slug"
+          params={{ slug: profile.slug }}
+          className="flex flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          {cardBody}
+        </Link>
+      ) : (
+        <div className="flex flex-1 flex-col">{cardBody}</div>
+      )}
+
+      <div className="flex items-center gap-2 px-5 pb-5 pt-4">
+        {profile.slug ? (
+          <Link
+            to="/companies/$slug"
+            params={{ slug: profile.slug }}
+            className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-primary/10 px-4 py-2 text-xs font-semibold text-primary transition-colors duration-300 hover:bg-primary hover:text-primary-foreground"
+          >
             Portfolioni ko'rish
+          </Link>
+        ) : (
+          <span className="flex-1 rounded-full bg-muted px-4 py-2 text-center text-xs font-semibold text-muted-foreground">
+            Portfolio mavjud emas
           </span>
-          {phone && (
-            <a
-              href={`tel:${phone.replace(/\s+/g, "")}`}
-              title="Bog'lanish"
-              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:border-primary/40 hover:text-primary"
-            >
-              <Phone className="size-4" />
-            </a>
-          )}
-        </div>
+        )}
+        {phone && (
+          <a
+            href={`tel:${phone.replace(/\s+/g, "")}`}
+            title="Bog'lanish"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:border-primary/40 hover:text-primary"
+          >
+            <Phone className="size-4" />
+          </a>
+        )}
       </div>
     </motion.div>
   );
