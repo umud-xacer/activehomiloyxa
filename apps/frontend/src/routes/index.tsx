@@ -11,8 +11,24 @@ import { PlatformStatsBand } from "@/components/site/PlatformStatsBand";
 import { Footer } from "@/components/site/Footer";
 import { AdSlot } from "@/components/site/AdSlot";
 import { GlobalAdSidebars } from "@/components/site/GlobalAdSidebars";
-import { PromoBanner } from "@/components/site/PromoBanner";
+import { PromoCarousel, type PromoSlide } from "@/components/site/PromoCarousel";
 import promoIpoteka from "@/assets/banners/promo-ipoteka.png";
+import promoUyTamirlash from "@/assets/banners/promo-uy-tamirlash.png";
+
+const PROMO_SLIDES: PromoSlide[] = [
+  {
+    src: promoIpoteka,
+    alt: "Orzuingizdagi uyni ipoteka orqali oling",
+    href: "tel:+998555000406",
+    fit: "cover",
+  },
+  {
+    src: promoUyTamirlash,
+    alt: "Uy ta'mirlash bosh og'riq emas — mutaxassislarga qo'ng'iroq qiling",
+    href: "tel:+998555000406",
+    fit: "contain",
+  },
+];
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -39,7 +55,7 @@ export const Route = createFileRoute("/")({
 function Index() {
   // Order: Navbar -> Hero (search + Categories both live inside Hero's own dark band now, so
   // there's no separate white "categories" section handing off from the search box) ->
-  // AudienceSplit -> the promo banner -> Organizations -> Map -> the 12-process ecosystem ->
+  // AudienceSplit -> the promo carousel -> Organizations -> Map -> the 12-process ecosystem ->
   // MissionBand -> the stats "proof strip" (its own section, below MissionBand) -> CTA/Footer.
   // An AdSlot sits between later sections, plus the two sticky sidebar slots
   // (`GlobalAdSidebars`, shared with `AppShell` so every page gets the same ones) in the side
@@ -54,21 +70,25 @@ function Index() {
   // normally with the page instead of pinning near the viewport top.
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <div className="relative">
+      {/* `2xl:grid-cols-[200px_minmax(0,1fr)_200px]` reserves real column space for the sidebar
+       * ad slots instead of overlaying them -- see GlobalAdSidebars.tsx for why. */}
+      <div className="relative grid grid-cols-1 2xl:grid-cols-[200px_minmax(0,1fr)_200px]">
         <Navbar />
         <GlobalAdSidebars />
 
-        <Hero />
-        <AudienceSplit />
-        <PromoBanner src={promoIpoteka} alt="Orzuingizdagi uyni ipoteka orqali oling" />
-        <OrganizationsCarousel />
-        <AdSlot slotKey="HOMEPAGE_BANNER_1" />
-        <MapPreview />
-        <AdSlot slotKey="HOMEPAGE_BANNER_2" />
-        <EcosystemGrid />
-        <AdSlot slotKey="HOMEPAGE_BANNER_3" />
-        <MissionBand />
-        <PlatformStatsBand />
+        <div className="min-w-0 col-start-1 row-start-1 2xl:col-start-2">
+          <Hero />
+          <AudienceSplit />
+          <PromoCarousel slides={PROMO_SLIDES} />
+          <OrganizationsCarousel />
+          <AdSlot slotKey="HOMEPAGE_BANNER_1" />
+          <MapPreview />
+          <AdSlot slotKey="HOMEPAGE_BANNER_2" />
+          <EcosystemGrid />
+          <AdSlot slotKey="HOMEPAGE_BANNER_3" />
+          <MissionBand />
+          <PlatformStatsBand />
+        </div>
       </div>
       <Footer />
     </main>
