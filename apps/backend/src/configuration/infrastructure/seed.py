@@ -354,6 +354,105 @@ async def _backfill_platform_settings_defaults(
         )
 
 
+_SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
+    "brand": "Brend",
+    "material": "Material",
+    "condition": "Holati",
+    "delivery_available": "Yetkazib berish mavjud",
+    "rooms": "Xonalar soni",
+    "area_sqm": "Maydon (m2)",
+    "deal_type": "Bitim turi",
+    "area_sotix": "Maydon (sotix)",
+    "land_purpose": "Yer maqsadi",
+    "has_documents": "Hujjatlari bor",
+    "room_capacity": "Xona sig'imi (kishi)",
+    "amenities": "Qulayliklar",
+    "venue_type": "Maskan turi",
+    "capacity": "Sig'imi (kishi)",
+    "experience_years": "Tajriba (yil)",
+    "specialization": "Mutaxassislik",
+    "rate_type": "Narx turi",
+    "available_now": "Hozir band emas",
+}
+"""Every `field_code` marked `facetEligible: true` on some category's real, published
+`FormDefinition`, as of the 2026-08-22 filter-panel work (`components/catalog/
+CategoryFilterPanel.tsx`) -- collected live via `GET /categories/{id}/form` across all 18
+top-level categories, not invented. `search.domain.query.SearchQuery.filters` term-matches
+against `attributes.<code>`, always alongside a `category_id` filter in the same query
+(`search/infrastructure/opensearch_index.py`'s `_build_query_body`), so one shared global list is
+safe: a code from category A's form simply never matches category B's documents, which don't
+carry that attribute at all. Without this, `filters[code]=value` is silently a no-op for every
+code not in the currently-published `global-search` config's `facets` list (confirmed live: real
+estate's `filters[condition]=<any value, even nonexistent>` returned the identical result count
+as no filter at all) -- the field being real and `facetEligible: true` on its own form is a
+precondition, not the actual enforcement; only being in a published `SearchConfiguration.facets`
+list is."""
+
+
+async def _backfill_search_configuration_facets(
+    use_cases: ConfigurationUseCases,
+    repo: SqlalchemyConfigHeadRepository,
+    *,
+    now: datetime,
+) -> None:
+    """Adds any `_SEARCH_CONFIGURATION_ADDITIVE_FACETS` entry missing from the published
+    `global-search` head's `facets` list. Additive-only, same convention as
+    `_backfill_platform_settings_defaults` above -- never removes or reorders an already-published
+    facet, so a future owner-admin panel edit to this list is never silently reverted by a later
+    deploy re-running this seed."""
+    head = await repo.get_head_by_code(ConfigEntityType.SEARCH_CONFIGURATION, "global-search")
+    if head is None or head.current_version_id is None:
+        return
+    current = await repo.get_version(
+        ConfigEntityType.SEARCH_CONFIGURATION, head.id, head.current_version_id
+    )
+    if current is None:
+        return
+    current_facets: list[dict[str, object]] = list(current.definition_document.get("facets") or [])
+    existing_codes = {f.get("field_code") for f in current_facets}
+    missing = {
+        code: label
+        for code, label in _SEARCH_CONFIGURATION_ADDITIVE_FACETS.items()
+        if code not in existing_codes
+    }
+    if not missing:
+        return
+
+    new_facets = current_facets + [
+        {"field_code": code, "label": {"uz_latn": label}, "order": len(current_facets) + i}
+        for i, (code, label) in enumerate(missing.items())
+    ]
+    new_document = {**current.definition_document, "facets": new_facets}
+    new_version = await use_cases.create_version_draft(
+        ConfigEntityType.SEARCH_CONFIGURATION,
+        head.id,
+        definition=new_document,
+        actor_id=SEED_MAKER_ID,
+        now=now,
+    )
+    manage_key = _registry.manage_permission_key(ConfigEntityType.SEARCH_CONFIGURATION.value)
+    approve_key = _registry.approve_permission_key(ConfigEntityType.SEARCH_CONFIGURATION.value)
+    step1 = await use_cases.publish(
+        ConfigEntityType.SEARCH_CONFIGURATION,
+        head.id,
+        new_version.id,
+        actor_id=SEED_MAKER_ID,
+        actor_permission_keys=frozenset({manage_key}),
+        approval_note="seed: backfill missing search-configuration facets",
+        now=now,
+    )
+    if step1.status.value == "APPROVAL":
+        await use_cases.publish(
+            ConfigEntityType.SEARCH_CONFIGURATION,
+            head.id,
+            step1.id,
+            actor_id=SEED_CHECKER_ID,
+            actor_permission_keys=frozenset({manage_key, approve_key}),
+            approval_note="seed: backfill missing search-configuration facets approval",
+            now=now,
+        )
+
+
 async def _seed_furniture_form(
     use_cases: ConfigurationUseCases,
     repo: SqlalchemyConfigHeadRepository,
@@ -4741,6 +4840,7 @@ async def run_seed() -> None:
                 )
                 await _seed_platform_settings(use_cases, now=now)
                 await _backfill_platform_settings_defaults(use_cases, repo, now=now)
+                await _backfill_search_configuration_facets(use_cases, repo, now=now)
 
                 furniture_form_id = await _seed_furniture_form(use_cases, repo, now=now)
                 furniture_head_id = await _seed_furniture_category(
