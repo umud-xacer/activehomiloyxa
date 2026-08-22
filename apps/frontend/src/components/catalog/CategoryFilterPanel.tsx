@@ -5,9 +5,10 @@
  * the real per-category dynamic-form-field set an admin already defines in the owner-admin panel
  * -- there is no hardcoded per-category config here, so a category with different attributes
  * (e.g. "Mebel materiallari" vs "Ish o'rni" vs "Ko'p qavatli binolar") automatically renders a
- * different field set with zero code changes. Only fields the admin marked `facetEligible: true`
- * are offered -- a field can be a real, filled-in listing attribute without being filterable
- * (e.g. real estate's `floor`/`total_floors`), see `FormField.facetEligible`'s own doc comment.
+ * different field set with zero code changes. `fields` is trusted as-is here -- any restriction
+ * to only the fields a given filtering mechanism can actually honor (e.g. the real-estate
+ * direction's server-side search facets) is the caller's job, done before `fields` is ever passed
+ * in (see `PropertyDirectionView` in `routes/categories/$.tsx`), not this component's.
  *
  * The subcategory select is NOT a `fields` entry -- picking one navigates to a different category
  * page entirely (a different real taxonomy node, with its own real `fields`), which is what makes
@@ -65,10 +66,19 @@ export function CategoryFilterPanel({
     onChange: (value: string) => void;
   };
 }) {
+  // `facetEligible` is deliberately NOT checked here -- it only matters for a filter that goes
+  // through the backend's search-facet whitelist (the real-estate/property direction, which
+  // pre-filters `fields` against `GET /search/facets` itself before ever passing them in here).
+  // For the catalog/goods-service-venue direction `fields` come from, filtering happens
+  // client-side against attributes already fetched with the listing, so it works regardless of
+  // facetEligible -- gating on it here too was a real bug: most categories' fields are marked
+  // facetEligible: false (that flag tracks search-facet config, not "can a human filter by this
+  // at all"), so it silently emptied the panel for every category except the one whose fields
+  // happened to be facetEligible (confirmed live: "Mebel salonlari"'s all-3-fields were
+  // facetEligible: false, "Hostel"'s price_unit was too).
   const filterableFields = useMemo(
     () =>
       fields.filter((f) => {
-        if (f.facetEligible === false) return false;
         if (!SUPPORTED_FIELD_TYPES.has(f.fieldType)) return false;
         if ((f.fieldType === "select" || f.fieldType === "multiselect") && !f.options?.length) {
           return false;
