@@ -10,7 +10,6 @@ import { MissionBand } from "@/components/site/MissionBand";
 import { PlatformStatsBand } from "@/components/site/PlatformStatsBand";
 import { Footer } from "@/components/site/Footer";
 import { AdSlot } from "@/components/site/AdSlot";
-import { GlobalAdSidebars } from "@/components/site/GlobalAdSidebars";
 import { PromoCarousel, type PromoSlide } from "@/components/site/PromoCarousel";
 import promoIpoteka from "@/assets/banners/promo-ipoteka.png";
 import promoUyTamirlash from "@/assets/banners/promo-uy-tamirlash.png";
@@ -57,38 +56,29 @@ function Index() {
   // there's no separate white "categories" section handing off from the search box) ->
   // AudienceSplit -> the promo carousel -> Organizations -> Map -> the 12-process ecosystem ->
   // MissionBand -> the stats "proof strip" (its own section, below MissionBand) -> CTA/Footer.
-  // An AdSlot sits between later sections, plus the two sticky sidebar slots
-  // (`GlobalAdSidebars`, shared with `AppShell` so every page gets the same ones) in the side
-  // gutters on very wide screens. The `relative` wrapper below is deliberately everything EXCEPT
-  // `<Footer/>` -- see `GlobalAdSidebars`' own docstring for why that's what makes the sticky
-  // sidebars stop at the footer instead of riding over it.
-  // No `overflow-x-hidden` here (nor anywhere else up this tree) -- setting overflow on EITHER
-  // axis forces the other to compute to `auto` per spec, which makes the browser treat this
-  // element as a scroll container for `position: sticky` purposes even though it never actually
-  // gets its own internal scrollbar (nothing constrains its height). Confirmed live: with it
-  // present, GlobalAdSidebars' sticky child stopped sticking entirely -- it just scrolled
-  // normally with the page instead of pinning near the viewport top.
+  // An AdSlot sits between later sections. The two sidebar ad slots
+  // (HOMEPAGE_SIDEBAR_LEFT/RIGHT) live INSIDE Hero itself now, not here -- see Hero.tsx. They
+  // used to be a page-spanning sticky overlay (`GlobalAdSidebars`), but that meant reserving a
+  // column for them across the ENTIRE page, which shrank every section's own full-bleed
+  // background (Hero's navy band included) to make room. Scoping them to Hero keeps Hero's
+  // background a true `w-full` edge-to-edge section while still making overlap with its content
+  // impossible (real flex-reserved width, not an overlay) -- see Hero.tsx's own comment.
   return (
     <main className="min-h-screen bg-background text-foreground">
-      {/* `2xl:grid-cols-[200px_minmax(0,1fr)_200px]` reserves real column space for the sidebar
-       * ad slots instead of overlaying them -- see GlobalAdSidebars.tsx for why. */}
-      <div className="relative grid grid-cols-1 2xl:grid-cols-[200px_minmax(0,1fr)_200px]">
+      <div className="relative">
         <Navbar />
-        <GlobalAdSidebars />
 
-        <div className="min-w-0 col-start-1 row-start-1 2xl:col-start-2">
-          <Hero />
-          <AudienceSplit />
-          <PromoCarousel slides={PROMO_SLIDES} />
-          <OrganizationsCarousel />
-          <AdSlot slotKey="HOMEPAGE_BANNER_1" />
-          <MapPreview />
-          <AdSlot slotKey="HOMEPAGE_BANNER_2" />
-          <EcosystemGrid />
-          <AdSlot slotKey="HOMEPAGE_BANNER_3" />
-          <MissionBand />
-          <PlatformStatsBand />
-        </div>
+        <Hero />
+        <AudienceSplit />
+        <PromoCarousel slides={PROMO_SLIDES} />
+        <OrganizationsCarousel />
+        <AdSlot slotKey="HOMEPAGE_BANNER_1" />
+        <MapPreview />
+        <AdSlot slotKey="HOMEPAGE_BANNER_2" />
+        <EcosystemGrid />
+        <AdSlot slotKey="HOMEPAGE_BANNER_3" />
+        <MissionBand />
+        <PlatformStatsBand />
       </div>
       <Footer />
     </main>
