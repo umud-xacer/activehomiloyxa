@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, notFound, useNavigate, Link } from "@tanstack/react-router";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { useSuspenseQuery, useQuery, useInfiniteQuery } from "@tanstack/react-query";
@@ -238,7 +238,20 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
   // (`PropertyQuery.min_price`/`max_price`, forwarded to `/search` by `apiClient.properties.list`),
   // so `fields` stays empty and the seller-kind tabs stay off (search hits don't carry
   // `ownerProfileId` today, so "Biznes"/"Jismoniy shaxs" would have nothing real to filter by).
-  const [priceFilter, setPriceFilter] = useState<ListingFilterState>(emptyFilterState());
+  //
+  // `priceDraft` (what the input is bound to) is deliberately separate from `priceCommitted`
+  // (what actually feeds `query`/`useSuspenseQuery` below): `useSuspenseQuery` re-suspends this
+  // whole component -- including the `<input>` itself -- on every query-key change, so wiring the
+  // input directly to `query` unmounted+remounted it on every keystroke, dropping focus after the
+  // very first character typed (confirmed live: typing "100" into the price field only ever
+  // committed "1"). Debouncing the commit lets typing itself stay instant/uninterrupted while the
+  // real (suspending) query only fires once the user pauses.
+  const [priceDraft, setPriceDraft] = useState<ListingFilterState>(emptyFilterState());
+  const [priceCommitted, setPriceCommitted] = useState<ListingFilterState>(emptyFilterState());
+  useEffect(() => {
+    const t = setTimeout(() => setPriceCommitted(priceDraft), 500);
+    return () => clearTimeout(t);
+  }, [priceDraft]);
   const hero = resolveHeroImage(category, byId);
   // A leaf category (no children of its own) falls back to showing its siblings, current one
   // highlighted, so lateral navigation never disappears just because a subcategory has no
@@ -253,8 +266,8 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
     sort: search.sort,
     page: search.page,
     page_size: 24,
-    min_price: priceFilter.priceMin ? Number(priceFilter.priceMin) : undefined,
-    max_price: priceFilter.priceMax ? Number(priceFilter.priceMax) : undefined,
+    min_price: priceCommitted.priceMin ? Number(priceCommitted.priceMin) : undefined,
+    max_price: priceCommitted.priceMax ? Number(priceCommitted.priceMax) : undefined,
   };
   const { data } = useSuspenseQuery(propertyListOptions(query));
   const items = useMemo(
@@ -324,8 +337,8 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
       <Container wide className="pb-2">
         <CategoryFilterPanel
           fields={[]}
-          state={priceFilter}
-          onChange={setPriceFilter}
+          state={priceDraft}
+          onChange={setPriceDraft}
           showSellerKindTabs={false}
         />
       </Container>
