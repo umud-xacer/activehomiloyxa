@@ -1119,6 +1119,7 @@ async def _backfill_form_definition_fields(
     *,
     code: str,
     fields: list[dict[str, object]],
+    force_facet_eligible: frozenset[str] = frozenset(),
     now: datetime,
 ) -> None:
     """Adds any field from `fields` missing (by `code`) from the published `FormDefinition` head
@@ -1128,7 +1129,15 @@ async def _backfill_form_definition_fields(
     table now describes it differently, so a future owner-admin panel edit is never silently
     reverted by a later deploy re-running this seed. `_seed_form`'s own `DuplicateCodeError`
     early-return means it never touches an already-existing head again -- this is the only thing
-    that actually pushes new fields onto one that's already live in production."""
+    that actually pushes new fields onto one that's already live in production.
+
+    `force_facet_eligible` is the one deliberate exception to "additive-only": a named, narrow set
+    of ALREADY-published field codes whose `facet_eligible` flag gets forced to `True` (one
+    direction only, never back to `False`) even though the field itself isn't new. Everything else
+    about that field (options, label, required-ness) stays exactly as published -- this exists
+    only because `_property_fields()`'s own `floor`/`total_floors` genuinely needed this real
+    correction (2026-08-22) and there was no other field of theirs to change, not because this is
+    meant as a general update mechanism."""
     head = await repo.get_head_by_code(ConfigEntityType.FORM_DEFINITION, code)
     if head is None or head.current_version_id is None:
         return
@@ -1142,10 +1151,16 @@ async def _backfill_form_definition_fields(
     )
     existing_codes = {f.get("code") for f in current_fields}
     missing = [f for f in fields if f.get("code") not in existing_codes]
-    if not missing:
+    forced = [
+        {**f, "facet_eligible": True}
+        if f.get("code") in force_facet_eligible and f.get("facet_eligible") is not True
+        else f
+        for f in current_fields
+    ]
+    if not missing and forced == current_fields:
         return
 
-    new_document = {**current.definition_document, "fields": current_fields + missing}
+    new_document = {**current.definition_document, "fields": forced + missing}
     new_version = await use_cases.create_version_draft(
         ConfigEntityType.FORM_DEFINITION,
         head.id,
@@ -4514,6 +4529,7 @@ async def _seed_catalog_taxonomy(
         repo,
         code="ko-chmas-mulk-form",
         fields=_property_fields(),
+        force_facet_eligible=frozenset({"floor", "total_floors"}),
         now=now,
     )
     for code, name, path, tree in [
