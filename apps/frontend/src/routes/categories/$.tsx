@@ -29,11 +29,11 @@ import { ErrorState } from "@/components/state/ErrorState";
 import { YandexMapView, type MapMarker } from "@/components/map/YandexMapView";
 import { GoodsCard, ServiceCard, VenueCard } from "@/components/catalog/ListingCards";
 import {
-  CategoryFiltersSheet,
   applyListingFilters,
   emptyFilterState,
   type ListingFilterState,
 } from "@/components/catalog/CategoryFilters";
+import { CategoryFilterPanel } from "@/components/catalog/CategoryFilterPanel";
 import { TopCompanies, useTopCompanies } from "@/components/catalog/TopCompanies";
 import { AdSlot } from "@/components/site/AdSlot";
 import { Container } from "@/components/layout/Container";
@@ -233,6 +233,12 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
   const navigate = useNavigate({ from: Route.fullPath });
   const { children, siblings, ancestors, byId } = useCategoryTree(category.id, category.parentId);
   const [featuredOnly, setFeaturedOnly] = useState(false);
+  // Real estate has no per-category dynamic-field system (that's catalog/goods-service-venue
+  // only, see CatalogDirectionView) -- only price is a real, backend-wired filter here
+  // (`PropertyQuery.min_price`/`max_price`, forwarded to `/search` by `apiClient.properties.list`),
+  // so `fields` stays empty and the seller-kind tabs stay off (search hits don't carry
+  // `ownerProfileId` today, so "Biznes"/"Jismoniy shaxs" would have nothing real to filter by).
+  const [priceFilter, setPriceFilter] = useState<ListingFilterState>(emptyFilterState());
   const hero = resolveHeroImage(category, byId);
   // A leaf category (no children of its own) falls back to showing its siblings, current one
   // highlighted, so lateral navigation never disappears just because a subcategory has no
@@ -247,6 +253,8 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
     sort: search.sort,
     page: search.page,
     page_size: 24,
+    min_price: priceFilter.priceMin ? Number(priceFilter.priceMin) : undefined,
+    max_price: priceFilter.priceMax ? Number(priceFilter.priceMax) : undefined,
   };
   const { data } = useSuspenseQuery(propertyListOptions(query));
   const items = useMemo(
@@ -311,6 +319,15 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
             }}
           />
         </div>
+      </Container>
+
+      <Container wide className="pb-2">
+        <CategoryFilterPanel
+          fields={[]}
+          state={priceFilter}
+          onChange={setPriceFilter}
+          showSellerKindTabs={false}
+        />
       </Container>
 
       <Container wide className="py-8">
@@ -650,16 +667,16 @@ function CatalogDirectionView({
               />
             </motion.div>
             <SortMenu options={CATALOG_HUB_OPTIONS} value={sort} onChange={setSort} />
-            {form && form.sections.length > 0 && (
-              <CategoryFiltersSheet
-                fields={form.sections.flatMap((s) => s.fields)}
-                state={filters}
-                onChange={setFilters}
-                resultCount={filtered.length}
-              />
-            )}
           </div>
         </div>
+      </Container>
+
+      <Container wide className="pb-2">
+        <CategoryFilterPanel
+          fields={form?.sections.flatMap((s) => s.fields) ?? []}
+          state={filters}
+          onChange={setFilters}
+        />
       </Container>
 
       <Container wide className="py-8 pb-24">
