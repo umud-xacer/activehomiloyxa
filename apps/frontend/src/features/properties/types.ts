@@ -101,6 +101,12 @@ export interface PropertyQuery {
   min_area?: number;
   max_area?: number;
   amenities?: string[];
+  /** Real per-category dynamic-field facets (`FormField.code` -> exact value), e.g.
+   * `{ rooms: "3", condition: "new" }` for a real-estate category -- forwarded as-is to
+   * `/search`'s `filters[code]=value` query params. Only fields the category's own form marks
+   * `facetEligible: true` should ever end up here (see `FormField.facetEligible`'s doc comment);
+   * the backend validates against the current facet config regardless. */
+  filters?: Record<string, string>;
   bbox?: [number, number, number, number]; // [west, south, east, north]
   sort?: "newest" | "price_asc" | "price_desc" | "ai_score" | "popular";
   page?: number;

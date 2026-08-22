@@ -7,7 +7,6 @@ import { motion } from "framer-motion";
 import {
   Map as MapIcon,
   Tag,
-  Layers,
   Loader2,
   Clock,
   TrendingDown,
@@ -19,7 +18,6 @@ import {
 } from "lucide-react";
 import { SortMenu, type HubOption } from "@/components/catalog/SortMenu";
 import { SearchResultsPanel } from "@/components/search/SearchResultsPanel";
-import { CategoryChip } from "@/components/catalog/CategoryChip";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PropertyCard } from "@/components/data/PropertyCard";
@@ -129,46 +127,31 @@ function categoryHref(path: string): string {
   return `/categories/${path.replace(/^\//, "")}`;
 }
 
-function ChildrenGrid({
+/** Builds the subcategory `<select>` options for `CategoryFilterPanel` from either this
+ * category's real children (drilling down) or, for a leaf with none, its real siblings
+ * (switching laterally) -- same real taxonomy data `ChildrenGrid` used to render as a chip row;
+ * now it's the panel's first field instead of a separate block above it. */
+function subcategorySelectProps({
   items,
-  byId,
   activeId,
-  label = "Bo'lim ichidagi kichik kategoriyalar",
+  label,
+  navigate,
 }: {
   items: CategorySummary[];
-  byId: Map<string, CategorySummary>;
-  /** Set when `items` are siblings (not children) of the page's own category -- the current
-   * category, wherever it appears in `items`, renders in an active/highlighted style instead of
-   * as a plain navigation link. */
   activeId?: string;
-  label?: string;
+  label: string;
+  navigate: (opts: { to: string }) => void;
 }) {
-  if (items.length === 0) return null;
-  return (
-    <Container wide className="pt-8">
-      <div className="mb-4 flex items-center gap-2 text-sm font-medium text-muted-foreground">
-        <Layers className="size-4" />
-        {label}
-        <span className="opacity-60">· {items.length}</span>
-      </div>
-      {/* Compact real-photo pills, same at every width -- a grid of large icon-over-label cards
-       * (the original design) pushed real listings below the fold on mobile and read as
-       * oversized, generic-looking blocks even on desktop. `flex-wrap` lets the row reflow
-       * naturally instead of needing separate mobile/desktop layouts. */}
-      <div className="flex flex-wrap gap-2">
-        {items.map((item, i) => (
-          <CategoryChip
-            key={item.id}
-            category={item}
-            href={categoryHref(item.path)}
-            isActive={item.id === activeId}
-            accentColor={resolveAccentColor(item, byId)}
-            index={i}
-          />
-        ))}
-      </div>
-    </Container>
-  );
+  if (items.length === 0) return undefined;
+  return {
+    label,
+    value: activeId ?? "",
+    options: items.map((item) => ({ value: item.id, label: categoryLabel(item.name, "uz") })),
+    onChange: (id: string) => {
+      const target = items.find((item) => item.id === id);
+      if (target) navigate({ to: categoryHref(target.path) });
+    },
+  };
 }
 
 function useCategoryTree(categoryId: string, parentId: string | null) {
@@ -233,25 +216,30 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
   const navigate = useNavigate({ from: Route.fullPath });
   const { children, siblings, ancestors, byId } = useCategoryTree(category.id, category.parentId);
   const [featuredOnly, setFeaturedOnly] = useState(false);
-  // Real estate has no per-category dynamic-field system (that's catalog/goods-service-venue
-  // only, see CatalogDirectionView) -- only price is a real, backend-wired filter here
-  // (`PropertyQuery.min_price`/`max_price`, forwarded to `/search` by `apiClient.properties.list`),
-  // so `fields` stays empty and the seller-kind tabs stay off (search hits don't carry
-  // `ownerProfileId` today, so "Biznes"/"Jismoniy shaxs" would have nothing real to filter by).
-  //
-  // `priceDraft` (what the input is bound to) is deliberately separate from `priceCommitted`
+  // Real estate DOES have the same per-category dynamic-field system as goods/service/venue
+  // (`catalogClient.getCategoryForm` works for any category id, real estate included -- confirmed
+  // live: "Ko'p qavatli binolar" has real `rooms`/`condition`/`deal_type`/etc fields, each with a
+  // real `facetEligible` flag). The seller-kind tabs stay off regardless -- search hits don't
+  // carry `ownerProfileId` today, so "Biznes"/"Jismoniy shaxs" would have nothing real to filter
+  // by (unlike the catalog direction's client-side list, which does have it per item).
+  const { data: form } = useQuery({
+    queryKey: ["catalog", "category-form", category.id],
+    queryFn: () => catalogClient.getCategoryForm(category.id),
+  });
+  const facetFields = useMemo(() => form?.sections.flatMap((s) => s.fields) ?? [], [form]);
+  // `filterDraft` (what the inputs are bound to) is deliberately separate from `filterCommitted`
   // (what actually feeds `query`/`useSuspenseQuery` below): `useSuspenseQuery` re-suspends this
-  // whole component -- including the `<input>` itself -- on every query-key change, so wiring the
-  // input directly to `query` unmounted+remounted it on every keystroke, dropping focus after the
-  // very first character typed (confirmed live: typing "100" into the price field only ever
-  // committed "1"). Debouncing the commit lets typing itself stay instant/uninterrupted while the
-  // real (suspending) query only fires once the user pauses.
-  const [priceDraft, setPriceDraft] = useState<ListingFilterState>(emptyFilterState());
-  const [priceCommitted, setPriceCommitted] = useState<ListingFilterState>(emptyFilterState());
+  // whole component -- including the `<input>`s themselves -- on every query-key change, so
+  // wiring an input directly to `query` unmounted+remounted it on every keystroke, dropping focus
+  // after the very first character typed (confirmed live: typing "100" into the price field only
+  // ever committed "1"). Debouncing the commit lets typing/selecting itself stay
+  // instant/uninterrupted while the real (suspending) query only fires once the user pauses.
+  const [filterDraft, setFilterDraft] = useState<ListingFilterState>(emptyFilterState());
+  const [filterCommitted, setFilterCommitted] = useState<ListingFilterState>(emptyFilterState());
   useEffect(() => {
-    const t = setTimeout(() => setPriceCommitted(priceDraft), 500);
+    const t = setTimeout(() => setFilterCommitted(filterDraft), 500);
     return () => clearTimeout(t);
-  }, [priceDraft]);
+  }, [filterDraft]);
   const hero = resolveHeroImage(category, byId);
   // A leaf category (no children of its own) falls back to showing its siblings, current one
   // highlighted, so lateral navigation never disappears just because a subcategory has no
@@ -260,14 +248,25 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
   const subcategoryActiveId = children.length > 0 ? undefined : category.id;
   const subcategoryLabel =
     children.length > 0 ? "Bo'lim ichidagi kichik kategoriyalar" : "Shu turkumdagi bo'limlar";
+  const subcategory = subcategorySelectProps({
+    items: subcategoryItems,
+    activeId: subcategoryActiveId,
+    label: subcategoryLabel,
+    navigate,
+  });
 
   const query: PropertyQuery = {
     category_id: category.id,
     sort: search.sort,
     page: search.page,
     page_size: 24,
-    min_price: priceCommitted.priceMin ? Number(priceCommitted.priceMin) : undefined,
-    max_price: priceCommitted.priceMax ? Number(priceCommitted.priceMax) : undefined,
+    min_price: filterCommitted.priceMin ? Number(filterCommitted.priceMin) : undefined,
+    max_price: filterCommitted.priceMax ? Number(filterCommitted.priceMax) : undefined,
+    filters: Object.fromEntries(
+      Object.entries(filterCommitted.attrs)
+        .filter(([, v]) => v.length > 0)
+        .map(([code, v]) => [code, v[0]]),
+    ),
   };
   const { data } = useSuspenseQuery(propertyListOptions(query));
   const items = useMemo(
@@ -304,13 +303,6 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
         icon={resolveCategoryIcon(category)}
       />
 
-      <ChildrenGrid
-        items={subcategoryItems}
-        byId={byId}
-        activeId={subcategoryActiveId}
-        label={subcategoryLabel}
-      />
-
       <Container wide className="pt-8 pb-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/70">
@@ -336,10 +328,11 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
 
       <Container wide className="pb-2">
         <CategoryFilterPanel
-          fields={[]}
-          state={priceDraft}
-          onChange={setPriceDraft}
+          fields={facetFields}
+          state={filterDraft}
+          onChange={setFilterDraft}
           showSellerKindTabs={false}
+          subcategory={subcategory}
         />
       </Container>
 
@@ -534,6 +527,12 @@ function CatalogDirectionView({
   const subcategoryActiveId = children.length > 0 ? undefined : category.id;
   const subcategoryLabel =
     children.length > 0 ? "Bo'lim ichidagi kichik kategoriyalar" : "Shu turkumdagi bo'limlar";
+  const subcategory = subcategorySelectProps({
+    items: subcategoryItems,
+    activeId: subcategoryActiveId,
+    label: subcategoryLabel,
+    navigate,
+  });
   const Icon = KIND_ICON[kind];
   const theme = KIND_THEME[kind];
   const [filters, setFilters] = useState<ListingFilterState>(emptyFilterState());
@@ -611,13 +610,6 @@ function CatalogDirectionView({
         icon={resolveCategoryIcon(category)}
       />
 
-      <ChildrenGrid
-        items={subcategoryItems}
-        byId={byId}
-        activeId={subcategoryActiveId}
-        label={subcategoryLabel}
-      />
-
       <Container wide className="pt-8 pb-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div
@@ -689,6 +681,7 @@ function CatalogDirectionView({
           fields={form?.sections.flatMap((s) => s.fields) ?? []}
           state={filters}
           onChange={setFilters}
+          subcategory={subcategory}
         />
       </Container>
 

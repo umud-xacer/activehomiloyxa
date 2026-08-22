@@ -284,6 +284,9 @@ export const apiClient = {
       if (query.amenities?.length) {
         params["filters[amenities]"] = query.amenities;
       }
+      for (const [code, value] of Object.entries(query.filters ?? {})) {
+        if (value) params[`filters[${code}]`] = value;
+      }
 
       const response = await http.get<BackendSearchResult>("/search", { params });
       const items = response.items.slice((page - 1) * page_size, page * page_size);

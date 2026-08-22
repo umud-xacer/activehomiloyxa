@@ -86,6 +86,13 @@ export interface FormField {
   order?: number;
   defaultValue?: unknown;
   options?: FormFieldOption[];
+  /** Admin-set on the field definition itself (owner-admin panel) -- true only for the subset of
+   * fields the backend's search facet config actually indexes/accepts as a `filters[code]=value`
+   * query param (`search.domain.query.SearchQuery`'s own doc comment: "filters keys must be
+   * facet-eligible field codes... never arbitrary attributes"). A field can be a real, filled-in
+   * listing attribute without being facet-eligible (e.g. real estate's `floor`/`total_floors`) --
+   * only facet-eligible fields should ever be offered as filter controls. */
+  facetEligible?: boolean;
 }
 
 export interface FormSection {

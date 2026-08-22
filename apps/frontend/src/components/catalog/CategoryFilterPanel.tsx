@@ -1,23 +1,33 @@
 /**
- * Inline "Filtrlar" card -- one universal layout (title, a responsive grid of price/select
- * inputs, a bottom row of listing-type sub-tabs + a reset button) whose actual FIELDS change per
- * category. The dynamism comes entirely from `fields: FormField[]`, the real per-category
- * dynamic-form-field set an admin already defines in the owner-admin panel -- there is no
- * hardcoded per-category config here, so a category with different attributes (e.g. "Mebel
- * materiallari" vs "Ish o'rni") automatically renders a different field set with zero code
- * changes.
+ * Inline "Filtrlar" card -- one universal layout (title, a subcategory select, a responsive grid
+ * of price/select/text/number inputs, a bottom row of listing-type sub-tabs + a reset button)
+ * whose actual FIELDS change per category. The dynamism comes entirely from `fields: FormField[]`,
+ * the real per-category dynamic-form-field set an admin already defines in the owner-admin panel
+ * -- there is no hardcoded per-category config here, so a category with different attributes
+ * (e.g. "Mebel materiallari" vs "Ish o'rni" vs "Ko'p qavatli binolar") automatically renders a
+ * different field set with zero code changes. Only fields the admin marked `facetEligible: true`
+ * are offered -- a field can be a real, filled-in listing attribute without being filterable
+ * (e.g. real estate's `floor`/`total_floors`), see `FormField.facetEligible`'s own doc comment.
  *
- * Price and the seller-kind sub-tabs are NOT part of `fields` -- they're first-class listing
- * attributes present on every category (price) or derived from a real always-present listing
- * field (`ownerProfileId`), not admin-configured per-category data, so they're handled once here
- * rather than needing to be declared per category.
+ * The subcategory select is NOT a `fields` entry -- picking one navigates to a different category
+ * page entirely (a different real taxonomy node, with its own real `fields`), which is what makes
+ * "cascading" filters work here: no nested per-subcategory config to maintain, the next page's own
+ * `fields` fetch does that for free.
+ *
+ * Price and the seller-kind sub-tabs are NOT part of `fields` either -- they're first-class
+ * listing attributes present on every category (price) or derived from a real always-present
+ * listing field (`ownerProfileId`), not admin-configured per-category data, so they're handled
+ * once here rather than needing to be declared per category.
  */
 import { useMemo } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import type { FormField } from "@/lib/catalog-client";
 import { emptyFilterState, type ListingFilterState, type SellerKind } from "./CategoryFilters";
 
-const FILTERABLE_TYPES = new Set(["select", "multiselect", "boolean"]);
+/** `date`/`range`/`location`/`file` fields have no simple, honest single-control UI here (a real
+ * range needs its own dan/gacha pair like price already gets, a location needs a map picker,
+ * etc.) -- skipped rather than faked. */
+const SUPPORTED_FIELD_TYPES = new Set(["select", "multiselect", "boolean", "text", "number"]);
 
 const SELLER_KIND_TABS: { value: SellerKind; label: string }[] = [
   { value: "all", label: "Hamma e'lonlar" },
@@ -25,15 +35,19 @@ const SELLER_KIND_TABS: { value: SellerKind; label: string }[] = [
   { value: "individual", label: "Jismoniy shaxs" },
 ];
 
+export interface SubcategoryOption {
+  value: string;
+  label: string;
+}
+
 export function CategoryFilterPanel({
   fields,
   state,
   onChange,
   showSellerKindTabs = true,
+  subcategory,
 }: {
-  /** Real per-category dynamic fields. Pass `[]` for a domain with no such system (e.g. real
-   * estate today) -- the panel still renders correctly with just price + (optionally) the
-   * seller-kind tabs. */
+  /** Real per-category dynamic fields. Pass `[]` for a category whose form has none. */
   fields: FormField[];
   state: ListingFilterState;
   onChange: (next: ListingFilterState) => void;
@@ -41,9 +55,26 @@ export function CategoryFilterPanel({
    * already fetched (true for the catalog/goods-service-venue direction). Omit it (pass `false`)
    * for a listing source where that would silently do nothing. */
   showSellerKindTabs?: boolean;
+  /** Renders as the panel's first field when the current category has real children or siblings
+   * to switch between. Selecting one is a real navigation (a different category page), not a
+   * client-side filter -- the caller owns `onChange`/what "selecting" means. */
+  subcategory?: {
+    label: string;
+    value: string;
+    options: SubcategoryOption[];
+    onChange: (value: string) => void;
+  };
 }) {
   const filterableFields = useMemo(
-    () => fields.filter((f) => FILTERABLE_TYPES.has(f.fieldType) && (f.options?.length ?? 0) > 0),
+    () =>
+      fields.filter((f) => {
+        if (f.facetEligible === false) return false;
+        if (!SUPPORTED_FIELD_TYPES.has(f.fieldType)) return false;
+        if ((f.fieldType === "select" || f.fieldType === "multiselect") && !f.options?.length) {
+          return false;
+        }
+        return true;
+      }),
     [fields],
   );
 
@@ -54,6 +85,9 @@ export function CategoryFilterPanel({
     onChange({ ...state, attrs });
   };
 
+  const fieldInputClass =
+    "mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30";
+
   return (
     <div className="rounded-3xl border border-border bg-card p-5 shadow-soft sm:p-6">
       <div className="flex items-center gap-2 text-base font-semibold text-foreground">
@@ -61,7 +95,25 @@ export function CategoryFilterPanel({
         Filtrlar
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {subcategory && subcategory.options.length > 0 && (
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">{subcategory.label}</label>
+            <select
+              value={subcategory.value}
+              onChange={(e) => subcategory.onChange(e.target.value)}
+              className={fieldInputClass}
+            >
+              {!subcategory.value && <option value="">Hammasi</option>}
+              {subcategory.options.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div>
           <label className="text-xs font-medium text-muted-foreground">Narx (so'm)</label>
           <div className="mt-1.5 flex items-center gap-2">
@@ -85,20 +137,61 @@ export function CategoryFilterPanel({
 
         {filterableFields.map((field) => {
           const value = state.attrs[field.code]?.[0] ?? "";
+          const label = field.label.uz_latn ?? field.code;
+
+          if (field.fieldType === "text") {
+            return (
+              <div key={field.code}>
+                <label className="text-xs font-medium text-muted-foreground">{label}</label>
+                <input
+                  value={value}
+                  onChange={(e) => setAttr(field.code, e.target.value)}
+                  className={fieldInputClass}
+                />
+              </div>
+            );
+          }
+
+          if (field.fieldType === "number") {
+            return (
+              <div key={field.code}>
+                <label className="text-xs font-medium text-muted-foreground">{label}</label>
+                <input
+                  value={value}
+                  onChange={(e) => setAttr(field.code, e.target.value)}
+                  inputMode="numeric"
+                  className={fieldInputClass}
+                />
+              </div>
+            );
+          }
+
+          // select / multiselect (real admin-defined options) / boolean (always exactly two
+          // states, so a fixed Ha/Yo'q pair is honest even though the field itself has no
+          // `options` list of its own).
+          const options =
+            field.fieldType === "boolean"
+              ? [
+                  { value: "true", label: "Ha" },
+                  { value: "false", label: "Yo'q" },
+                ]
+              : (field.options ?? []).map((opt) => ({
+                  value: opt.value,
+                  label: opt.label.uz_latn ?? opt.value,
+                }));
+
           return (
             <div key={field.code}>
-              <label className="text-xs font-medium text-muted-foreground">
-                {field.label.uz_latn ?? field.code}
-              </label>
+              <label className="text-xs font-medium text-muted-foreground">{label}</label>
               <select
                 value={value}
                 onChange={(e) => setAttr(field.code, e.target.value)}
-                className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+                className={fieldInputClass}
               >
                 <option value="">Hammasi</option>
-                {(field.options ?? []).map((opt) => (
+                {options.map((opt) => (
                   <option key={opt.value} value={opt.value}>
-                    {opt.label.uz_latn ?? opt.value}
+                    {opt.label}
                   </option>
                 ))}
               </select>
