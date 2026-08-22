@@ -36,6 +36,7 @@ import { TopCompanies, useTopCompanies } from "@/components/catalog/TopCompanies
 import { AdSlot } from "@/components/site/AdSlot";
 import { Container } from "@/components/layout/Container";
 import { apiClient } from "@/lib/api-client";
+import { searchApi } from "@/lib/search-client";
 import { propertyListOptions } from "@/features/properties/queries";
 import type { Property, PropertyQuery } from "@/features/properties/types";
 import {
@@ -219,14 +220,30 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
   // Real estate DOES have the same per-category dynamic-field system as goods/service/venue
   // (`catalogClient.getCategoryForm` works for any category id, real estate included -- confirmed
   // live: "Ko'p qavatli binolar" has real `rooms`/`condition`/`deal_type`/etc fields, each with a
-  // real `facetEligible` flag). The seller-kind tabs stay off regardless -- search hits don't
-  // carry `ownerProfileId` today, so "Biznes"/"Jismoniy shaxs" would have nothing real to filter
-  // by (unlike the catalog direction's client-side list, which does have it per item).
+  // `facetEligible` flag). But `FormField.facetEligible` and what `/search` actually enforces are
+  // two SEPARATE admin-config entities that turned out to be out of sync in production: the
+  // search module's own `filters[code]=value` handling silently drops any code not in that
+  // category's *published* `SearchConfiguration.facet_field_codes` (`search/infrastructure/
+  // opensearch_index.py`'s `_build_query_body`, gated on `facet_specs`) -- confirmed live by
+  // sending `filters[condition]=<bogus value>` and getting the SAME result count back as no
+  // filter at all. `GET /search/facets` is the one place that reflects the REAL, currently-
+  // enforced facet set (empty for this category today, per that same live check -- no
+  // `SearchConfiguration` has ever been published for it, a known gap: item 16 of the 2026-08-18
+  // audit, "no admin UI for ... SEARCH_CONFIGURATION"). Intersecting against it here means this
+  // panel only ever offers a real-estate filter control that actually filters something, instead
+  // of a convincing-looking dropdown that silently does nothing.
   const { data: form } = useQuery({
     queryKey: ["catalog", "category-form", category.id],
     queryFn: () => catalogClient.getCategoryForm(category.id),
   });
-  const facetFields = useMemo(() => form?.sections.flatMap((s) => s.fields) ?? [], [form]);
+  const { data: realFacets } = useQuery({
+    queryKey: ["search", "facets", category.id],
+    queryFn: () => searchApi.facets(category.id),
+  });
+  const facetFields = useMemo(() => {
+    const enforced = new Set((realFacets ?? []).map((f) => f.fieldCode));
+    return (form?.sections.flatMap((s) => s.fields) ?? []).filter((f) => enforced.has(f.code));
+  }, [form, realFacets]);
   // `filterDraft` (what the inputs are bound to) is deliberately separate from `filterCommitted`
   // (what actually feeds `query`/`useSuspenseQuery` below): `useSuspenseQuery` re-suspends this
   // whole component -- including the `<input>`s themselves -- on every query-key change, so
