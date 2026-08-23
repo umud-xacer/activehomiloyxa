@@ -381,6 +381,9 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "building_type": "Bino turi",
     "has_basement": "Podval / Yerto'la",
     "balcony": "Balkon",
+    "lot_size_sotix": "Yer maydoni (sotix)",
+    "has_attic": "Mansarda",
+    "basement_type": "Podval turi",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -758,6 +761,28 @@ _TASHKENT_DISTRICTS: list[tuple[str, str]] = [
 coordinates fall inside Tashkent city, and these are the actual district names (not invented
 options), used wherever a real-estate category needs a "Tuman" facet."""
 
+_TASHKENT_REGION_DISTRICTS: list[tuple[str, str]] = [
+    ("bekobod-tumani", "Bekobod tumani"),
+    ("bostonliq", "Bo'stonliq tumani"),
+    ("qibray", "Qibray tumani"),
+    ("ohangaron-tumani", "Ohangaron tumani"),
+    ("oqqorgon", "Oqqo'rg'on tumani"),
+    ("parkent", "Parkent tumani"),
+    ("piskent", "Piskent tumani"),
+    ("chinoz", "Chinoz tumani"),
+    ("quyi-chirchiq", "Quyi Chirchiq tumani"),
+    ("orta-chirchiq", "O'rta Chirchiq tumani"),
+    ("yuqori-chirchiq", "Yuqori Chirchiq tumani"),
+    ("yangiyol-tumani", "Yangiyo'l tumani"),
+    ("zangiota", "Zangiota tumani"),
+]
+"""Toshkent viloyati's real tumanlari (13) -- appended onto the shared `_property_fields()`
+"district" field's existing Tashkent-*city*-only options via `_backfill_form_definition_field_
+options` (2026-08-23, "Kotejlar" TZ: cottages are disproportionately located in the region, not
+the city). Deliberately excludes cities of regional subordination (Angren/Olmaliq/Chirchiq-shahar/
+etc.) and doesn't attempt "Toshkent tumani" -- kept to the well-established tuman list to avoid
+guessing at administrative-division edge cases."""
+
 
 def _property_fields() -> list[dict[str, object]]:
     """Ko'p qavatli binolar / kotejlar / hovlilar / noturar binolar / dala hovlilar -- the
@@ -840,6 +865,54 @@ def _property_fields() -> list[dict[str, object]]:
                 ("none", "Yo'q"),
                 ("one", "Bor"),
                 ("two_plus", "2 va undan ortiq"),
+            ],
+        ),
+        _field(
+            "lot_size_sotix",
+            "asosiy",
+            "Yer maydoni (sotix)",
+            "number",
+            facet=True,
+            order=11,
+        ),
+        _field(
+            "has_attic",
+            "asosiy",
+            "Mansarda",
+            "boolean",
+            facet=True,
+            order=12,
+            default=False,
+        ),
+        _field(
+            "basement_type",
+            "asosiy",
+            "Podval turi",
+            "select",
+            facet=True,
+            order=13,
+            options=[
+                ("none", "Yo'q"),
+                ("livable", "Bor (Turar joy qilingan)"),
+                ("storage", "Bor (Omborxona/Texnik)"),
+            ],
+        ),
+        _field(
+            "amenities",
+            "asosiy",
+            "Qulayliklar",
+            "multiselect",
+            facet=True,
+            order=14,
+            options=[
+                ("pool_outdoor", "Basseyn (ochiq)"),
+                ("pool_indoor", "Basseyn (yopiq)"),
+                ("sauna", "Sauna / Hammom"),
+                ("garage", "Garaj / Avtoturargoh"),
+                ("summer_kitchen", "Yozgi oshxona"),
+                ("terrace", "Terrasa"),
+                ("utilities_uninterrupted", "Gaz, suv, elektr (uzliksiz)"),
+                ("sewage", "Kanalizatsiya tizimi"),
             ],
         ),
     ]
@@ -1189,6 +1262,93 @@ async def _backfill_form_definition_fields(
             actor_id=SEED_CHECKER_ID,
             actor_permission_keys=frozenset({manage_key, approve_key}),
             approval_note=f"seed: backfill missing fields for {code} approval",
+            now=now,
+        )
+
+
+async def _backfill_form_definition_field_options(
+    use_cases: ConfigurationUseCases,
+    repo: SqlalchemyConfigHeadRepository,
+    *,
+    code: str,
+    field_options: dict[str, list[tuple[str, str]]],
+    now: datetime,
+) -> None:
+    """Appends new option VALUES onto already-published fields' `options` lists, matched by field
+    `code`. Additive-only in the same one-directional sense as `_backfill_form_definition_fields`
+    above: an option value already present (matched by its `value`, not its label) is left
+    untouched, existing options are never reordered or removed, and a field whose `code` isn't a
+    key in `field_options` isn't touched at all. Exists for the narrow, real case (2026-08-23,
+    "Kotejlar" TZ) of an already-published SHARED field (`deal_type`/`condition`/`district` on
+    `_property_fields()`) needing new enum values that a *different* category cares about than the
+    one the field was first written for -- adding a whole new field code would be wrong (it's
+    still fundamentally "Bitim turi"/"Holati"/"Tuman"), and `_backfill_form_definition_fields`
+    can't reach it since the field's `code` already exists on the published head."""
+    head = await repo.get_head_by_code(ConfigEntityType.FORM_DEFINITION, code)
+    if head is None or head.current_version_id is None:
+        return
+    current = await repo.get_version(
+        ConfigEntityType.FORM_DEFINITION, head.id, head.current_version_id
+    )
+    if current is None:
+        return
+    current_fields: list[dict[str, object]] = list(
+        current.definition_document.get("fields") or []
+    )
+    changed = False
+    new_fields: list[dict[str, object]] = []
+    for f in current_fields:
+        additions = field_options.get(str(f.get("code")))
+        if not additions:
+            new_fields.append(f)
+            continue
+        raw_options = f.get("options")
+        existing_options: list[dict[str, object]] = (
+            list(raw_options) if isinstance(raw_options, list) else []
+        )
+        existing_values = {o.get("value") for o in existing_options}
+        to_add = [
+            {"value": v, "label": {"uz_latn": lbl}}
+            for v, lbl in additions
+            if v not in existing_values
+        ]
+        if not to_add:
+            new_fields.append(f)
+            continue
+        changed = True
+        new_fields.append({**f, "options": existing_options + to_add})
+    if not changed:
+        return
+
+    new_document = {**current.definition_document, "fields": new_fields}
+    new_version = await use_cases.create_version_draft(
+        ConfigEntityType.FORM_DEFINITION,
+        head.id,
+        definition=new_document,
+        actor_id=SEED_MAKER_ID,
+        now=now,
+    )
+    manage_key = _registry.manage_permission_key(ConfigEntityType.FORM_DEFINITION.value)
+    approve_key = _registry.approve_permission_key(
+        ConfigEntityType.FORM_DEFINITION.value
+    )
+    step1 = await use_cases.publish(
+        ConfigEntityType.FORM_DEFINITION,
+        head.id,
+        new_version.id,
+        actor_id=SEED_MAKER_ID,
+        actor_permission_keys=frozenset({manage_key}),
+        approval_note=f"seed: backfill new option values for {code}",
+        now=now,
+    )
+    if step1.status.value == "APPROVAL":
+        await use_cases.publish(
+            ConfigEntityType.FORM_DEFINITION,
+            head.id,
+            step1.id,
+            actor_id=SEED_CHECKER_ID,
+            actor_permission_keys=frozenset({manage_key, approve_key}),
+            approval_note=f"seed: backfill new option values for {code} approval",
             now=now,
         )
 
@@ -4530,6 +4690,21 @@ async def _seed_catalog_taxonomy(
         code="ko-chmas-mulk-form",
         fields=_property_fields(),
         force_facet_eligible=frozenset({"floor", "total_floors"}),
+        now=now,
+    )
+    await _backfill_form_definition_field_options(
+        use_cases,
+        repo,
+        code="ko-chmas-mulk-form",
+        field_options={
+            "deal_type": [("daily_rent", "Sutkalik ijara (Dam olish uchun)")],
+            "condition": [
+                ("euro_renovation", "Evrota'mir"),
+                ("designer_project", "Mualliflik loyihasi"),
+                ("shell_no_renovation", "Ta'mirsiz (Korobka)"),
+            ],
+            "district": _TASHKENT_REGION_DISTRICTS,
+        },
         now=now,
     )
     for code, name, path, tree in [
