@@ -385,6 +385,11 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "has_attic": "Mansarda",
     "basement_type": "Podval turi",
     "utilities": "Kommunikatsiya",
+    "commercial_floor": "Bino joylashgan qavat",
+    "building_position_type": "Bino turi / Joylashuvi",
+    "sewage_water": "Kanalizatsiya va Suv",
+    "power_capacity": "Elektr quvvati",
+    "parking": "Avtoturargoh",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -946,6 +951,139 @@ def _property_fields() -> list[dict[str, object]]:
     ]
 
 
+def _commercial_fields() -> list[dict[str, object]]:
+    """Noturar binolar (tijorat ko'chmas mulki) -- 2026-08-23 split off from the shared
+    `_property_fields()` residential form into its own `FormDefinition` ("tijorat-mulk-form").
+    Two reasons, not one: (a) commercial listings need fields with no residential equivalent
+    (floor-*type* select, not a numeric floor; building-position-type; power capacity; parking),
+    and (b) the real reason for a full split rather than just adding fields -- `order` lives on
+    the FIELD, shared by every category on one form, so `deal_type`/`district`/`condition`
+    (fields this direction DOES share with residential) needed a genuinely different priority
+    order than Kotejlar/Hovlilar's already-confirmed one. A dedicated form gives this direction
+    its own independent order sequence, same principle as `_land_fields()` already being separate
+    from `_property_fields()`. `district` reuses the same real option lists (Tashkent city +
+    region) rather than re-typing them."""
+    return [
+        _field(
+            "district",
+            "asosiy",
+            "Tuman",
+            "select",
+            facet=True,
+            order=1,
+            options=_TASHKENT_DISTRICTS + _TASHKENT_REGION_DISTRICTS,
+        ),
+        _field(
+            "deal_type",
+            "asosiy",
+            "Bitim turi",
+            "select",
+            required=True,
+            facet=True,
+            order=2,
+            options=[
+                ("sale", "Sotiladi"),
+                ("rent", "Ijaraga beriladi (Uzoq muddatli)"),
+                ("daily_rent", "Sutkalik ijara"),
+            ],
+        ),
+        _field(
+            "area_sqm", "asosiy", "Umumiy maydon (m2)", "number", facet=True, order=3
+        ),
+        _field(
+            "commercial_floor",
+            "asosiy",
+            "Bino joylashgan qavat",
+            "select",
+            facet=True,
+            order=4,
+            options=[
+                ("basement", "Cokol (Yerto'la qavati)"),
+                ("floor_1", "1-qavat"),
+                ("floor_2", "2-qavat"),
+                ("floor_3_plus", "3+ qavat"),
+                ("whole_building", "Butun bino"),
+            ],
+        ),
+        _field(
+            "building_position_type",
+            "asosiy",
+            "Bino turi / Joylashuvi",
+            "select",
+            facet=True,
+            order=5,
+            options=[
+                ("business_center", "Biznes markazida"),
+                ("residential_ground_floor", "Turar joy binosining 1-qavatida"),
+                ("standalone", "Alohida turgan bino"),
+            ],
+        ),
+        _field(
+            "condition",
+            "asosiy",
+            "Ta'mir holati",
+            "select",
+            facet=True,
+            order=6,
+            options=[
+                ("euro_renovation", "Evrota'mir"),
+                ("designer_project", "Mualliflik dizayni"),
+                ("good", "O'rtacha"),
+                ("shell_no_renovation", "Ta'mirsiz (Shell & Core / Korobka)"),
+            ],
+        ),
+        _field(
+            "sewage_water",
+            "asosiy",
+            "Kanalizatsiya va Suv",
+            "select",
+            facet=True,
+            order=7,
+            options=[("yes", "Bor"), ("no", "Yo'q")],
+        ),
+        _field(
+            "power_capacity",
+            "asosiy",
+            "Elektr quvvati",
+            "select",
+            facet=True,
+            order=8,
+            options=[
+                ("220v", "220V (Standart)"),
+                ("380v", "380V (Sanoat/Yuqori quvvat)"),
+            ],
+        ),
+        _field(
+            "parking",
+            "asosiy",
+            "Avtoturargoh",
+            "select",
+            facet=True,
+            order=9,
+            options=[
+                ("own", "Bor (Alohida/Shaxsiy)"),
+                ("shared", "Bor (Umumiy)"),
+                ("none", "Yo'q"),
+            ],
+        ),
+        _field(
+            "amenities",
+            "asosiy",
+            "Qulayliklar",
+            "multiselect",
+            facet=True,
+            order=10,
+            options=[
+                ("air_conditioner", "Konditsioner"),
+                ("security_camera", "Signalizatsiya/Kamera"),
+                ("fiber_internet", "Internet (Optika)"),
+                ("freight_elevator", "Yuk lifti"),
+                ("separate_entrance", "Alohida kirish joyi"),
+            ],
+        ),
+    ]
+
+
 def _land_fields() -> list[dict[str, object]]:
     return [
         _field(
@@ -1388,6 +1526,63 @@ async def _backfill_form_definition_field_options(
             actor_id=SEED_CHECKER_ID,
             actor_permission_keys=frozenset({manage_key, approve_key}),
             approval_note=f"seed: backfill new option values for {code} approval",
+            now=now,
+        )
+
+
+async def _backfill_category_form_definition(
+    use_cases: ConfigurationUseCases,
+    repo: SqlalchemyConfigHeadRepository,
+    *,
+    code: str,
+    form_definition_id: UUID,
+    now: datetime,
+) -> None:
+    """Repoints an already-published `Category` head's `form_definition_id` to a different
+    `FormDefinition` -- the one-off counterpart to `_seed_category`'s own creation-time binding,
+    needed when a category's field shape has outgrown its original shared form (2026-08-23,
+    "Noturar binolar" split off `_property_fields()`/"ko-chmas-mulk-form" into its own
+    `_commercial_fields()`/"tijorat-mulk-form" -- see that function's docstring for why).
+    Idempotent: a no-op once the category already points at the given form."""
+    head = await repo.get_head_by_code(ConfigEntityType.CATEGORY, code)
+    if head is None or head.current_version_id is None:
+        return
+    current = await repo.get_version(
+        ConfigEntityType.CATEGORY, head.id, head.current_version_id
+    )
+    if current is None:
+        return
+    definition = dict(current.definition_document)
+    if definition.get("form_definition_id") == str(form_definition_id):
+        return
+
+    definition["form_definition_id"] = str(form_definition_id)
+    new_version = await use_cases.create_version_draft(
+        ConfigEntityType.CATEGORY,
+        head.id,
+        definition=definition,
+        actor_id=SEED_MAKER_ID,
+        now=now,
+    )
+    manage_key = _registry.manage_permission_key(ConfigEntityType.CATEGORY.value)
+    approve_key = _registry.approve_permission_key(ConfigEntityType.CATEGORY.value)
+    step1 = await use_cases.publish(
+        ConfigEntityType.CATEGORY,
+        head.id,
+        new_version.id,
+        actor_id=SEED_MAKER_ID,
+        actor_permission_keys=frozenset({manage_key}),
+        approval_note=f"seed: repoint {code} to new form_definition_id",
+        now=now,
+    )
+    if step1.status.value == "APPROVAL":
+        await use_cases.publish(
+            ConfigEntityType.CATEGORY,
+            head.id,
+            step1.id,
+            actor_id=SEED_CHECKER_ID,
+            actor_permission_keys=frozenset({manage_key, approve_key}),
+            approval_note=f"seed: repoint {code} to new form_definition_id approval",
             now=now,
         )
 
@@ -4041,47 +4236,18 @@ def _hovlilar_tree() -> list[Node]:
 
 
 def _noturar_binolar_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Ofis binolari/Savdo markazlari/Omborxonalar branches, plus
+    leaves like "Zavod va fabrikalar"/"Ko'ngilochar markazlar" not really distinct commercial-
+    listing categories) with 7 real ones covering how tijorat ko'chmas mulk is actually browsed."""
     return [
-        (
-            "Ofis binolari",
-            [
-                "Business Center",
-                "Coworking",
-                "Premium Office",
-                "Open Space",
-                "Alohida ofislar",
-            ],
-        ),
-        (
-            "Savdo markazlari",
-            [
-                "Butiklar",
-                "Supermarketlar",
-                "Showroomlar",
-                "Savdo pavilyonlari",
-                "Food court joylari",
-            ],
-        ),
-        "Do'kon va butiklar",
-        "Restoran va kafelar",
-        "Mehmonxonalar",
-        (
-            "Omborxonalar",
-            [
-                "Logistika omborlari",
-                "Sovutkich omborlari",
-                "Distribyutor markazlari",
-                "Sanoat omborlari",
-            ],
-        ),
-        "Ishlab chiqarish binolari",
-        "Zavod va fabrikalar",
-        "Tibbiyot markazlari",
-        "Ta'lim muassasalari",
-        "Avtoservis va avtosalonlar",
-        "Sport va fitness markazlari",
-        "Ko'ngilochar markazlar",
-        "Investitsiya obyektlari",
+        "Ofis va Biznes markazlar",
+        "Do'kon, Shop-room va Savdo maydonlari",
+        "Omborxona va Ishlab chiqarish joylari (Baza/Sklad)",
+        "Restoran, Kafe va Umumiy ovqatlanish joylari",
+        "Avtoservis, Moyka va Garaj majmualari",
+        "Alohida turgan tijorat binosi / Bino qismi",
+        "Boshqa tijorat ob'ektlari",
     ]
 
 
@@ -4737,13 +4903,6 @@ async def _seed_catalog_taxonomy(
         ),
         ("kotejlar", "Kotejlar", "/kotejlar", _kotejlar_tree()),
         ("hovlilar", "Hovlilar", "/hovlilar", _hovlilar_tree()),
-        (
-            "noturar-binolar",
-            "Noturar binolar",
-            "/noturar-binolar",
-            _noturar_binolar_tree(),
-        ),
-        ("dala-hovlilar", "Dala hovlilar", "/dala-hovlilar", _dala_hovlilar_tree()),
     ]:
         head_id = await _seed_category(
             use_cases,
@@ -4765,6 +4924,68 @@ async def _seed_catalog_taxonomy(
             form_definition_id=re_form_id,
             now=now,
         )
+
+    # -- Commercial real estate (own form, split off `re_form_id` 2026-08-23 -- see
+    # `_commercial_fields()`'s docstring for why).
+    commercial_form_id = await _seed_form(
+        use_cases,
+        repo,
+        code="tijorat-mulk-form",
+        name="Tijorat ko'chmas mulki",
+        fields=_commercial_fields(),
+        now=now,
+    )
+    await _backfill_category_form_definition(
+        use_cases,
+        repo,
+        code="noturar-binolar",
+        form_definition_id=commercial_form_id,
+        now=now,
+    )
+    noturar_binolar_head_id = await _seed_category(
+        use_cases,
+        repo,
+        code="noturar-binolar",
+        name="Noturar binolar",
+        path="/noturar-binolar",
+        parent_category_id=None,
+        form_definition_id=commercial_form_id,
+        now=now,
+        display_order=next(top_level_order),
+    )
+    await _seed_subtree(
+        use_cases,
+        repo,
+        _noturar_binolar_tree(),
+        parent_id=noturar_binolar_head_id,
+        parent_path="/noturar-binolar",
+        form_definition_id=commercial_form_id,
+        now=now,
+    )
+
+    # -- Dala hovlilar (back on the shared residential form -- same direction as kotejlar/
+    # hovlilar, just not looped together with them since `noturar-binolar` now sits between them
+    # in `top_level_order`'s sequence).
+    dala_hovlilar_head_id = await _seed_category(
+        use_cases,
+        repo,
+        code="dala-hovlilar",
+        name="Dala hovlilar",
+        path="/dala-hovlilar",
+        parent_category_id=None,
+        form_definition_id=re_form_id,
+        now=now,
+        display_order=next(top_level_order),
+    )
+    await _seed_subtree(
+        use_cases,
+        repo,
+        _dala_hovlilar_tree(),
+        parent_id=dala_hovlilar_head_id,
+        parent_path="/dala-hovlilar",
+        form_definition_id=re_form_id,
+        now=now,
+    )
 
     # -- Land.
     land_form_id = await _seed_form(
