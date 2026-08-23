@@ -410,6 +410,7 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "appliance_brand": "Brend / Markasi",
     "warranty": "Kafolat (Garantiya)",
     "delivery_install": "Yetkazib berish va O'rnatish",
+    "style": "Dizayn uslubi (Stil)",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -1603,6 +1604,91 @@ def _home_appliances_fields() -> list[dict[str, object]]:
                 ("free_delivery_install", "Yetkazib berish va o'rnatish bepul"),
                 ("delivery_only", "Faqat yetkazib berish bor"),
                 ("pickup", "Olib ketish (Samovivoz)"),
+            ],
+        ),
+    ]
+
+
+def _home_decor_fields() -> list[dict[str, object]]:
+    """Uy bezaklari -- 2026-08-23 split off from `_goods_fields()` into its own "home-decor-form",
+    same reason as `_building_materials_fields()`/`_home_appliances_fields()` above."""
+    return [
+        _field(
+            "district",
+            "asosiy",
+            "Tuman",
+            "select",
+            facet=True,
+            order=1,
+            options=_TASHKENT_DISTRICTS + _TASHKENT_REGION_DISTRICTS,
+        ),
+        _field(
+            "condition",
+            "asosiy",
+            "Mahsulot holati",
+            "select",
+            required=True,
+            facet=True,
+            order=2,
+            options=[
+                ("new", "Yangi (Qadoqda)"),
+                ("ideal", "Ideal holatda"),
+                ("average", "O'rtacha (B/U)"),
+                ("antique_showroom", "Antikvariat / Do'kon ekspozitsiyasi"),
+            ],
+        ),
+        _field(
+            "style",
+            "asosiy",
+            "Dizayn uslubi (Stil)",
+            "select",
+            facet=True,
+            order=3,
+            options=[
+                ("modern_hitech", "Zamonaviy (Modern/Hi-Tech)"),
+                ("classic", "Klassik"),
+                ("neoclassic", "Neoklassika"),
+                ("loft_minimalism", "Loft / Minimalizm"),
+                ("national_oriental", "Milliy / Sharqona uslub"),
+            ],
+        ),
+        _field(
+            "seller_type",
+            "asosiy",
+            "Sotuvchi turi",
+            "select",
+            facet=True,
+            order=4,
+            options=[
+                ("official_store_showroom", "Rasmiy do'kon / Shou-rum"),
+                ("handmade_master", "Qo'l mehnati ustasi (Handmade)"),
+                ("individual", "Jismoniy shaxs"),
+            ],
+        ),
+        _field(
+            "delivery",
+            "asosiy",
+            "Yetkazib berish (Dostavka)",
+            "select",
+            facet=True,
+            order=5,
+            options=[
+                ("free", "Bor (Bepul)"),
+                ("paid", "Bor (Alohida to'lovli)"),
+                ("pickup", "Olib ketish (Samovivoz)"),
+            ],
+        ),
+        _field(
+            "payment_method",
+            "asosiy",
+            "To'lov shakli",
+            "select",
+            facet=True,
+            order=6,
+            options=[
+                ("cash", "Naqd pul"),
+                ("bank_transfer", "Pul o'tkazish (Perechisleniye)"),
+                ("app_payment", "Ilova orqali (Click/Payme)"),
             ],
         ),
     ]
@@ -4770,42 +4856,17 @@ def _maishiy_texnikalar_tree() -> list[Node]:
 
 
 def _uy_bezaklari_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Devor bezaklari/Pardalar va jalyuzilar/Dekorativ yoritish
+    branches) with 7 real ones grouped by decor category."""
     return [
-        (
-            "Devor bezaklari",
-            [
-                "3D panellar",
-                "Dekorativ yog'och panellar",
-                "Metall dekorlar",
-                "Stikerlar",
-                "Premium devor kompozitsiyalari",
-            ],
-        ),
-        "Rasmlar va kartinalar",
-        "Ko'zgular",
-        (
-            "Pardalar va jalyuzilar",
-            ["Zamonaviy", "Klassik", "Blackout", "Avtomatik", "Premium kolleksiyalar"],
-        ),
-        "Gilam va pol qoplamalari",
-        (
-            "Dekorativ yoritish",
-            [
-                "LED yoritish",
-                "Osma chiroqlar",
-                "Tungi lampalar",
-                "Dizayner lampalari",
-                "Aqlli yoritish tizimlari",
-            ],
-        ),
-        "Gullar va dekorativ o'simliklar",
-        "Vaza va haykallar",
-        "Soatlar",
-        "Shamdon va dekor aksessuarlari",
-        "Oshxona bezaklari",
-        "Yotoqxona dekorlari",
-        "Hammom aksessuarlari",
-        "Smart dekor mahsulotlari",
+        "Gilamlar va poyandozlar (Gilam, Kovrolin, Dorojka)",
+        "Pardalar, jaluzi va tyullar",
+        "Uy tekstili (O'rin-ko'rpa to'plamlari, Yastik, Plad, Dasturxon)",
+        "Yoritish vositalari (Lyustra, Svetilnik, Torsher, LED)",
+        "Devor bezaklari (Soat, Kartina, Panno, Ko'zgular/Zerkalo)",
+        "Vazalar, haykalchalar va suvenir dekorlar",
+        "Boshqa uy bezaklari",
     ]
 
 
@@ -5465,6 +5526,46 @@ async def _seed_catalog_taxonomy(
         listing_kind="GOODS",
     )
 
+    # -- Uy bezaklari (own form, split off "mahsulot-form" 2026-08-23 -- see
+    # `_home_decor_fields()`'s docstring for why).
+    home_decor_form_id = await _seed_form(
+        use_cases,
+        repo,
+        code="home-decor-form",
+        name="Uy bezaklari",
+        fields=_home_decor_fields(),
+        now=now,
+    )
+    await _backfill_category_form_definition(
+        use_cases,
+        repo,
+        code="uy-bezaklari",
+        form_definition_id=home_decor_form_id,
+        now=now,
+    )
+    uy_bezaklari_head_id = await _seed_category(
+        use_cases,
+        repo,
+        code="uy-bezaklari",
+        name="Uy bezaklari",
+        path="/uy-bezaklari",
+        parent_category_id=None,
+        form_definition_id=home_decor_form_id,
+        now=now,
+        listing_kind="GOODS",
+        display_order=next(top_level_order),
+    )
+    await _seed_subtree(
+        use_cases,
+        repo,
+        _uy_bezaklari_tree(),
+        parent_id=uy_bezaklari_head_id,
+        parent_path="/uy-bezaklari",
+        form_definition_id=home_decor_form_id,
+        now=now,
+        listing_kind="GOODS",
+    )
+
     # -- Goods (physical-unit sales).
     goods_form_id = await _seed_form(
         use_cases,
@@ -5475,7 +5576,6 @@ async def _seed_catalog_taxonomy(
         now=now,
     )
     for code, name, path, tree in [
-        ("uy-bezaklari", "Uy bezaklari", "/uy-bezaklari", _uy_bezaklari_tree()),
         (
             "uniforma-va-maxsus-kiyimlar",
             "Uniforma va maxsus kiyimlar",
