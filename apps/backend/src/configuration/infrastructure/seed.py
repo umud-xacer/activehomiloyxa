@@ -6912,6 +6912,14 @@ async def _seed_product_definition(
             raise RuntimeError(
                 f"seed marker {code!r} vanished between check and lookup"
             ) from None
+        await _backfill_product_definition_term_days(
+            use_cases,
+            repo,
+            head_id=existing.id,
+            current_version_id=existing.current_version_id,
+            term_days=term_days,
+            now=now,
+        )
         return existing.id
 
     manage_key = _registry.manage_permission_key(
@@ -6942,6 +6950,68 @@ async def _seed_product_definition(
     return head.id
 
 
+async def _backfill_product_definition_term_days(
+    use_cases: ConfigurationUseCases,
+    repo: SqlalchemyConfigHeadRepository,
+    *,
+    head_id: UUID,
+    current_version_id: UUID | None,
+    term_days: int | None,
+    now: datetime,
+) -> None:
+    """Self-heal for a product-definition seeded before its real `term_days` requirement was
+    understood (real bug, caught live 2026-08-23: `EntitlementFactory.activate_from_paid_order`'s
+    own `_compute_validity` raises `MissingTermError` for every product type except
+    `BANNER_PLACEMENT` when `term_days is None` -- there is no "entitlement never expires"
+    concept, so a `LISTING_PUBLICATION`/`LISTING_CREDIT_PACK` row genuinely cannot be paid for
+    without one). Same self-heal shape as `_backfill_display_order`/`_backfill_listing_kind`:
+    publish a corrected version only when the stored value doesn't already match, so this
+    settles to a no-op once a deploy has caught every row up."""
+    if current_version_id is None:
+        return
+    current = await repo.get_version(
+        ConfigEntityType.PRODUCT_DEFINITION, head_id, current_version_id
+    )
+    if current is None:
+        return
+    if current.definition_document.get("term_days") == term_days:
+        return
+
+    new_document = {**current.definition_document, "term_days": term_days}
+    new_version = await use_cases.create_version_draft(
+        ConfigEntityType.PRODUCT_DEFINITION,
+        head_id,
+        definition=new_document,
+        actor_id=SEED_MAKER_ID,
+        now=now,
+    )
+    manage_key = _registry.manage_permission_key(
+        ConfigEntityType.PRODUCT_DEFINITION.value
+    )
+    approve_key = _registry.approve_permission_key(
+        ConfigEntityType.PRODUCT_DEFINITION.value
+    )
+    step1 = await use_cases.publish(
+        ConfigEntityType.PRODUCT_DEFINITION,
+        head_id,
+        new_version.id,
+        actor_id=SEED_MAKER_ID,
+        actor_permission_keys=frozenset({manage_key}),
+        approval_note="seed: backfill term_days",
+        now=now,
+    )
+    if step1.status.value == "APPROVAL":
+        await use_cases.publish(
+            ConfigEntityType.PRODUCT_DEFINITION,
+            head_id,
+            step1.id,
+            actor_id=SEED_CHECKER_ID,
+            actor_permission_keys=frozenset({manage_key, approve_key}),
+            approval_note="seed: backfill term_days approval",
+            now=now,
+        )
+
+
 async def _seed_pricing_plans(
     use_cases: ConfigurationUseCases,
     repo: SqlalchemyConfigHeadRepository,
@@ -6952,7 +7022,17 @@ async def _seed_pricing_plans(
     hardcoded Python constants read anywhere else: a single-listing publish default (per-category
     override supported via `category_id`, none seeded yet) plus the three bulk credit-pack tiers.
     Mock/Payme/Click all read these through the same `ProductDefinitionReaderPort` -- no
-    provider-specific pricing exists."""
+    provider-specific pricing exists.
+
+    Every `term_days` here is a REAL requirement, not a stylistic choice: `EntitlementFactory.
+    activate_from_paid_order`'s `_compute_validity` raises `MissingTermError` for any product type
+    other than `BANNER_PLACEMENT` when `term_days is None` -- there is no "never expires" concept
+    at the entitlement level (caught live, first mock-pay attempt against `listing-credit-pack-
+    start` with `term_days=None` failed with exactly that error). `listing-publication-default`
+    gets a short 7-day window (its entitlement is consumed once, immediately, by the outbox
+    consumer that flips the paid listing live -- the window just needs to outlast that); the
+    credit packs get 365 days (a real "valid for a year" business assumption, not a functional
+    constraint); Unlim's 30 days is its actual subscription term."""
     await _seed_product_definition(
         use_cases,
         repo,
@@ -6961,7 +7041,7 @@ async def _seed_pricing_plans(
         description="E'lonni saytda ko'rsatish uchun bir martalik to'lov.",
         product_type="LISTING_PUBLICATION",
         price_amount="15000.00",
-        term_days=None,
+        term_days=7,
         quota_set=None,
         category_id=None,
         now=now,
@@ -6974,7 +7054,7 @@ async def _seed_pricing_plans(
         description="5 ta e'lon joylashtirish huquqi.",
         product_type="LISTING_CREDIT_PACK",
         price_amount="60000.00",
-        term_days=None,
+        term_days=365,
         quota_set={"listing_publish_credits": 5},
         category_id=None,
         now=now,
@@ -6987,7 +7067,7 @@ async def _seed_pricing_plans(
         description="15 ta e'lon joylashtirish huquqi + VIP belgi.",
         product_type="LISTING_CREDIT_PACK",
         price_amount="150000.00",
-        term_days=None,
+        term_days=365,
         quota_set={"listing_publish_credits": 15},
         category_id=None,
         now=now,
