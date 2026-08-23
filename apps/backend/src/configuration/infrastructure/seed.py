@@ -436,6 +436,12 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "consultation_measurement": "Konsultatsiya va O'lchov olish (Zamer)",
     "warranty_contract": "Kafolat va Shartnoma",
     "additional_services": "Qo'shimcha xizmatlar",
+    "offer_type": "E'lon turi",
+    "employment_type": "Bandlik turi",
+    "work_schedule": "Ish grafigi",
+    "salary_payment_type": "Maosh to'lanish shakli",
+    "education": "Ma'lumoti / Ta'lim",
+    "benefits": "Qulayliklar va Sharoitlar",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -2452,6 +2458,164 @@ def _landscape_fields() -> list[dict[str, object]]:
                 ),
                 ("material_delivery", "Materiallarni yetkazib berish (Dostavka)"),
                 ("auto_irrigation_service", "Avtopoliv servis xizmati"),
+            ],
+        ),
+        _field(
+            "experience_years",
+            "asosiy",
+            "Tajriba (yil)",
+            "number",
+            facet=True,
+            order=90,
+        ),
+        _field(
+            "specialization", "asosiy", "Mutaxassislik", "text", facet=True, order=91
+        ),
+        _field(
+            "service_regions",
+            "asosiy",
+            "Xizmat ko'rsatiladigan hududlar",
+            "text",
+            order=92,
+        ),
+        _field(
+            "rate_type",
+            "asosiy",
+            "Narx turi",
+            "select",
+            facet=True,
+            order=93,
+            options=[
+                ("hourly", "Soatlik"),
+                ("daily", "Kunlik"),
+                ("per_job", "Ish uchun"),
+            ],
+        ),
+        _field(
+            "available_now",
+            "asosiy",
+            "Hozir band emas",
+            "boolean",
+            facet=True,
+            order=94,
+            default=True,
+        ),
+    ]
+
+
+def _jobs_fields() -> list[dict[str, object]]:
+    """Ish o'rni -- 2026-08-23 rewrite, same reasoning as `_landscape_fields()` above: its own
+    dedicated "ish-orni-form" (never shared with other SERVICE categories) moves off the generic
+    `_service_cv_fields()` shape onto job/vacancy-specific fields. `offer_type` (vakansiya vs
+    rezyume) is the one genuinely new *kind* of distinction this category needs that no other CV-
+    shaped category has -- a single listing feed serving both employers and job-seekers."""
+    return [
+        _field(
+            "district",
+            "asosiy",
+            "Tuman",
+            "select",
+            facet=True,
+            order=1,
+            options=_TASHKENT_DISTRICTS + _TASHKENT_REGION_DISTRICTS,
+        ),
+        _field(
+            "offer_type",
+            "asosiy",
+            "E'lon turi",
+            "select",
+            required=True,
+            facet=True,
+            order=2,
+            options=[
+                ("vacancy", "Vakansiya (Ish taklif qilaman)"),
+                ("resume", "Rezyume (Ish qidiryapman)"),
+            ],
+        ),
+        _field(
+            "employment_type",
+            "asosiy",
+            "Bandlik turi",
+            "select",
+            facet=True,
+            order=3,
+            options=[
+                ("full_time", "To'liq bandlik (Full-time)"),
+                ("part_time", "Qisman bandlik (Part-time)"),
+                ("remote", "Masofaviy ish (Remote)"),
+                ("internship", "Amaliyot / Stajirovka"),
+            ],
+        ),
+        _field(
+            "work_schedule",
+            "asosiy",
+            "Ish grafigi",
+            "select",
+            facet=True,
+            order=4,
+            options=[
+                ("standard_5_2_6_1", "Kunda 8 soat (5/2 yoki 6/1)"),
+                ("shift_2_2_3_3", "Smena bo'yicha (2/2, 3/3)"),
+                ("flexible", "Erkin grafik (Flexible)"),
+                ("daily_shift_1_3_2_4", "Sutkalik (1/3, 2/4)"),
+            ],
+        ),
+        _field(
+            "experience_bucket",
+            "asosiy",
+            "Ish tajribasi",
+            "select",
+            facet=True,
+            order=5,
+            options=[
+                ("no_experience", "Tajribasiz (Talab etilmaydi)"),
+                ("1_3_years", "1 yildan 3 yilgacha"),
+                ("3_5_years", "3 yildan 5 yilgacha"),
+                ("5_plus_years", "5 yildan ortiq"),
+            ],
+        ),
+        _field(
+            "salary_payment_type",
+            "asosiy",
+            "Maosh to'lanish shakli",
+            "select",
+            facet=True,
+            order=6,
+            options=[
+                ("monthly_fixed", "Oylik (Fixed)"),
+                ("daily", "Kunbay / Kunlik"),
+                ("hourly", "Soatbay"),
+                ("piecework", "Sdelnaya (Bajarilgan ish hajmi bo'yicha)"),
+            ],
+        ),
+        _field(
+            "education",
+            "asosiy",
+            "Ma'lumoti / Ta'lim",
+            "select",
+            facet=True,
+            order=7,
+            options=[
+                ("higher", "Oliy ma'lumotli"),
+                ("secondary_special_college", "O'rta maxsus / Kollej"),
+                ("secondary_school", "O'rta ma'lumot (Maktab)"),
+                ("not_important", "Muhim emas"),
+            ],
+        ),
+        _field(
+            "benefits",
+            "asosiy",
+            "Qulayliklar va Sharoitlar",
+            "multiselect",
+            facet=True,
+            order=8,
+            options=[
+                ("free_meals", "Bepul tushlik / Ovqatlanish"),
+                ("transport", "Yo'l kira va transport"),
+                ("housing", "Turar joy beriladi (Jitlyo)"),
+                ("official_employment", "Rasmiy ishga joylashtirish (ТК bo'yicha)"),
+                ("bonuses_kpi", "Bonuslar va KPI pay"),
+                ("student_friendly", "Talabalarni qabul qilish"),
             ],
         ),
         _field(
@@ -5609,50 +5773,18 @@ def _landshaft_tree() -> list[Node]:
 
 
 def _ish_orni_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Qurilish ishlari/Usta xizmatlari/IT va texnologiyalar
+    branches) with 8 real ones covering how job listings are actually browsed."""
     return [
-        (
-            "Qurilish ishlari",
-            [
-                "Betonchi",
-                "G'isht teruvchi",
-                "Suvoqchi",
-                "Armaturachi",
-                "Payvandchi",
-                "Tom yopuvchi",
-            ],
-        ),
-        (
-            "Usta xizmatlari",
-            [
-                "Elektrchi",
-                "Santexnik",
-                "Konditsioner ustasi",
-                "Mebel ustasi",
-                "Bo'yoqchi",
-            ],
-        ),
-        "Muhandislik",
-        "Arxitektura va dizayn",
-        "Ko'chmas mulk agentlari",
-        "Sotuv va marketing",
-        "Ofis ishlari",
-        "Haydovchilar",
-        "Ombor va logistika",
-        "Xavfsizlik",
-        "Tozalash xizmatlari",
-        (
-            "IT va texnologiyalar",
-            [
-                "Frontend dasturchi",
-                "Backend dasturchi",
-                "Mobil dasturchi",
-                "UI/UX dizayner",
-                "System Administrator",
-            ],
-        ),
-        "Moliya va buxgalteriya",
-        "Menejment",
-        "Boshqa kasblar",
+        "Qurilish va ta'mir sohasi (Ustalar, Ishchilar)",
+        "Savdo va mijozlarga xizmat ko'rsatish (Sotuvchi, Kassa)",
+        "IT, Dizayn va Marketing",
+        "Transport, Logistika va Xaydovchilik",
+        "Umumiy ovqatlanish va Restoran (Oshpaz, Ofitsiant)",
+        "Ma'muriyat, Buxgalteriya va Moliya",
+        "Ishlab chiqarish va Omborxona xodimlari",
+        "Boshqa vakansiyalar va mutaxassisliklar",
     ]
 
 
@@ -6328,14 +6460,28 @@ async def _seed_catalog_taxonomy(
         listing_kind="SERVICE",
     )
 
-    # -- Ish o'rni (job postings) -- same CV shape; here `specialization`/`experience_years` read
-    # as the employer's requirement rather than the applicant's own.
+    # -- Ish o'rni (job postings) -- own field shape since 2026-08-23, see `_jobs_fields()`'s
+    # docstring for why.
     ish_orni_form_id = await _seed_form(
         use_cases,
         repo,
         code="ish-orni-form",
         name="Ish o'rni",
-        fields=_service_cv_fields(),
+        fields=_jobs_fields(),
+        now=now,
+    )
+    await _backfill_form_definition_fields(
+        use_cases,
+        repo,
+        code="ish-orni-form",
+        fields=_jobs_fields(),
+        force_order={
+            "experience_years": 90,
+            "specialization": 91,
+            "service_regions": 92,
+            "rate_type": 93,
+            "available_now": 94,
+        },
         now=now,
     )
     ish_orni_head_id = await _seed_category(
