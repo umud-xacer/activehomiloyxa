@@ -411,6 +411,9 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "warranty": "Kafolat (Garantiya)",
     "delivery_install": "Yetkazib berish va O'rnatish",
     "style": "Dizayn uslubi (Stil)",
+    "size": "O'lcham (Size)",
+    "season": "Mavsumiylik (Mavsum)",
+    "gender": "Jins (Kim uchun)",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -1689,6 +1692,96 @@ def _home_decor_fields() -> list[dict[str, object]]:
                 ("cash", "Naqd pul"),
                 ("bank_transfer", "Pul o'tkazish (Perechisleniye)"),
                 ("app_payment", "Ilova orqali (Click/Payme)"),
+            ],
+        ),
+    ]
+
+
+def _uniform_fields() -> list[dict[str, object]]:
+    """Uniforma va maxsus kiyimlar -- 2026-08-23 split off from `_goods_fields()` into its own
+    "uniform-form", same reason as `_building_materials_fields()`/`_home_appliances_fields()`
+    above."""
+    return [
+        _field(
+            "district",
+            "asosiy",
+            "Tuman",
+            "select",
+            facet=True,
+            order=1,
+            options=_TASHKENT_DISTRICTS + _TASHKENT_REGION_DISTRICTS,
+        ),
+        _field(
+            "condition",
+            "asosiy",
+            "Mahsulot holati",
+            "select",
+            required=True,
+            facet=True,
+            order=2,
+            options=[
+                ("new_packaged", "Yangi (Qadoqda)"),
+                ("new_tailored", "Yangi (Tiktirib beriladi)"),
+                ("lightly_used", "Kam ishlatilgan (B/U)"),
+            ],
+        ),
+        _field(
+            "size",
+            "asosiy",
+            "O'lcham (Size)",
+            "select",
+            required=True,
+            facet=True,
+            order=3,
+            options=[
+                ("s", "S"),
+                ("m", "M"),
+                ("l", "L"),
+                ("xl", "XL"),
+                ("2xl", "2XL"),
+                ("3xl", "3XL"),
+                ("4xl_plus", "4XL+"),
+                ("universal", "Standart (Univeral)"),
+            ],
+        ),
+        _field(
+            "season",
+            "asosiy",
+            "Mavsumiylik (Mavsum)",
+            "select",
+            facet=True,
+            order=4,
+            options=[
+                ("summer", "Yozgi"),
+                ("winter_insulated", "Qishki (Isitilgan/Uteplyonniy)"),
+                ("demi_season", "Demisezon (Bahor/Kuz)"),
+                ("all_season", "Barcha mavsumlar uchun"),
+            ],
+        ),
+        _field(
+            "gender",
+            "asosiy",
+            "Jins (Kim uchun)",
+            "select",
+            facet=True,
+            order=5,
+            options=[
+                ("men", "Erkaklar uchun"),
+                ("women", "Ayollar uchun"),
+                ("unisex", "Uniseks (Barchaga)"),
+            ],
+        ),
+        _field(
+            "seller_type",
+            "asosiy",
+            "Sotuvchi turi / Xizmat",
+            "select",
+            facet=True,
+            order=6,
+            options=[
+                ("ready_made_store", "Tayyor mahsulot (Do'kon)"),
+                ("custom_tailoring", "Buyurtmaga tikib berish (Atele/Fabrika)"),
+                ("individual", "Jismoniy shaxs"),
             ],
         ),
     ]
@@ -4871,52 +4964,17 @@ def _uy_bezaklari_tree() -> list[Node]:
 
 
 def _uniforma_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Qurilish kiyimlari/Ish poyabzallari/Himoya vositalari
+    branches) with 7 real ones grouped by profession/use case."""
     return [
-        (
-            "Qurilish kiyimlari",
-            [
-                "Kurtka",
-                "Shim",
-                "Kombinezon",
-                "Jilet",
-                "Yomg'ir kiyimi",
-                "Termo kiyimlar",
-            ],
-        ),
-        "Muhandis va texnik kiyimlari",
-        "Elektrchilar uchun kiyimlar",
-        "Payvandchilar uchun kiyimlar",
-        "Santexnik va usta kiyimlari",
-        "Xavfsizlik xodimlari formasi",
-        "Tibbiyot kiyimlari",
-        "Mehmonxona va servis formasi",
-        "Restoran va oshpaz formasi",
-        "Ofis formasi",
-        "Maxsus himoya kiyimlari",
-        (
-            "Ish poyabzallari",
-            [
-                "Etik",
-                "Botinka",
-                "Yozgi poyabzal",
-                "Qishki poyabzal",
-                "Suv o'tkazmaydigan poyabzal",
-                "Metall burunli poyabzal",
-            ],
-        ),
-        (
-            "Himoya vositalari",
-            [
-                "Kaska",
-                "Qo'lqop",
-                "Ko'zoynak",
-                "Respirator",
-                "Niqob",
-                "Quloqchin",
-                "Xavfsizlik kamarlari",
-            ],
-        ),
-        "Mavsumiy ish kiyimlari",
+        "Qurilish va sanoat ishchi kiyimlari (Spetsovka, Kombinezon)",
+        "Tibbiyot xodimlari kiyimlari (Xalat, Kostyum)",
+        "Oshpaz va xizmat ko'rsatish sohasi uniformasi (Povar, Ofitsiant)",
+        "Harbiylashtirilgan va qo'riqlash kiyimlari (Oxrana, Kamuflyaj)",
+        "Maktab va korporativ kiyimlar (Forma, Jilet, Galstuk)",
+        "Maxsus poyabzallar (Spetsobuv, Bersi, Rezinoviy botinki)",
+        "Boshqa maxsus kiyimlar va aksessuarlar",
     ]
 
 
@@ -5566,45 +5624,47 @@ async def _seed_catalog_taxonomy(
         listing_kind="GOODS",
     )
 
-    # -- Goods (physical-unit sales).
-    goods_form_id = await _seed_form(
+    # -- Uniforma va maxsus kiyimlar (own form, split off "mahsulot-form" 2026-08-23 -- see
+    # `_uniform_fields()`'s docstring for why). This was the last category still on the shared
+    # goods form -- `_goods_fields()`/"mahsulot-form" is no longer referenced by anything, kept
+    # only because it's already published (harmless orphan, per the additive-only convention).
+    uniform_form_id = await _seed_form(
         use_cases,
         repo,
-        code="mahsulot-form",
-        name="Mahsulot",
-        fields=_goods_fields(),
+        code="uniform-form",
+        name="Uniforma va maxsus kiyimlar",
+        fields=_uniform_fields(),
         now=now,
     )
-    for code, name, path, tree in [
-        (
-            "uniforma-va-maxsus-kiyimlar",
-            "Uniforma va maxsus kiyimlar",
-            "/uniforma-va-maxsus-kiyimlar",
-            _uniforma_tree(),
-        ),
-    ]:
-        head_id = await _seed_category(
-            use_cases,
-            repo,
-            code=code,
-            name=name,
-            path=path,
-            parent_category_id=None,
-            form_definition_id=goods_form_id,
-            now=now,
-            listing_kind="GOODS",
-            display_order=next(top_level_order),
-        )
-        await _seed_subtree(
-            use_cases,
-            repo,
-            tree,
-            parent_id=head_id,
-            parent_path=path,
-            form_definition_id=goods_form_id,
-            now=now,
-            listing_kind="GOODS",
-        )
+    await _backfill_category_form_definition(
+        use_cases,
+        repo,
+        code="uniforma-va-maxsus-kiyimlar",
+        form_definition_id=uniform_form_id,
+        now=now,
+    )
+    uniforma_head_id = await _seed_category(
+        use_cases,
+        repo,
+        code="uniforma-va-maxsus-kiyimlar",
+        name="Uniforma va maxsus kiyimlar",
+        path="/uniforma-va-maxsus-kiyimlar",
+        parent_category_id=None,
+        form_definition_id=uniform_form_id,
+        now=now,
+        listing_kind="GOODS",
+        display_order=next(top_level_order),
+    )
+    await _seed_subtree(
+        use_cases,
+        repo,
+        _uniforma_tree(),
+        parent_id=uniforma_head_id,
+        parent_path="/uniforma-va-maxsus-kiyimlar",
+        form_definition_id=uniform_form_id,
+        now=now,
+        listing_kind="GOODS",
+    )
 
     # -- Hospitality.
     hosp_form_id = await _seed_form(
