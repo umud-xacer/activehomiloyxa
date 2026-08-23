@@ -4797,34 +4797,17 @@ def _uniforma_tree() -> list[Node]:
 
 
 def _mebel_materiallari_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Yog'och materiallari/Mebel furnituralari/Mato va charm
+    qoplamalar branches) with 7 real ones grouped by material category."""
     return [
-        ("Yog'och materiallari", ["Eman", "Qarag'ay", "Yong'oq", "Buk", "MDF", "DSP"]),
-        "MDF va DSP plitalari",
-        "Fanera va laminatlar",
-        "Stoleshnitsalar",
-        (
-            "Mebel furnituralari",
-            [
-                "Ilgaklar",
-                "Menteshalar",
-                "Relslar",
-                "Lift tizimlari",
-                "Magnitlar",
-                "Qulflar",
-            ],
-        ),
-        "Tutqich va aksessuarlar",
-        "Sharnir va rels tizimlari",
-        "Mebel oyoqlari va tayanchlari",
-        "Shisha va oyna mahsulotlari",
-        "Yumshoq mebel materiallari",
-        (
-            "Mato va charm qoplamalar",
-            ["Velyur", "Eko charm", "Tabiiy charm", "Mikrofiber"],
-        ),
-        "Yelim va kimyoviy mahsulotlar",
-        "Bo'yoq va laklar",
-        "Mebel ishlab chiqarish asboblari",
+        "Yog'och va yog'och-plitka materiallari (Laminat, MDF, DVP, DSP, Fanera)",
+        "Mebel furnituralari va mexanizmlari (Petli, Napravlyayushchiye, Zamoklar)",
+        "Mebel fasadlari va profillari (Aluminiy, MDF fasadlar, Kromka)",
+        "Matalo va shpon mahsulotlari (Mebel matolari, Teri, Porolon)",
+        "Mebel aksessuarlari va ruchkalari",
+        "Mebel yelim va kimyoviy vositalari (Yelim, Lak, Kraska)",
+        "Boshqa mebel ehtiyot qismlari",
     ]
 
 
@@ -5851,6 +5834,100 @@ async def run_seed() -> None:
                     form_definition_id=furniture_form_id,
                     now=now,
                     listing_kind="GOODS",
+                )
+                # 2026-08-23 TZ: same field shape (district/condition/seller_type/sale_unit/
+                # delivery/payment_method) as `_building_materials_fields()`, applied here as a
+                # backfill rather than a rewrite of `_seed_furniture_form`'s own raw-dict
+                # definition above (already published; a rewrite there wouldn't reach production
+                # -- see `_backfill_form_definition_fields`'s own docstring).
+                await _backfill_form_definition_fields(
+                    use_cases,
+                    repo,
+                    code="mebel-materiallari-form",
+                    fields=[
+                        _field(
+                            "district",
+                            "asosiy",
+                            "Tuman",
+                            "select",
+                            facet=True,
+                            order=1,
+                            options=_TASHKENT_DISTRICTS + _TASHKENT_REGION_DISTRICTS,
+                        ),
+                        _field(
+                            "seller_type",
+                            "asosiy",
+                            "Sotuvchi turi",
+                            "select",
+                            facet=True,
+                            order=3,
+                            options=[
+                                ("dealer_store", "Rasmiy diler / Do'kon"),
+                                ("manufacturer", "Ishlab chiqaruvchi"),
+                                ("individual", "Jismoniy shaxs"),
+                            ],
+                        ),
+                        _field(
+                            "sale_unit",
+                            "asosiy",
+                            "O'lchov birligi / Sotish hajmi",
+                            "select",
+                            facet=True,
+                            order=4,
+                            options=[
+                                ("piece", "Dona"),
+                                ("sqm", "Kvadrat metr (m2)"),
+                                ("linear_m", "Pogonny metr (p/m)"),
+                                ("sheet_slab", "List / Plita"),
+                                ("sack_liter", "Qop / Litr"),
+                                ("wholesale", "Optom (Ulgurji)"),
+                            ],
+                        ),
+                        _field(
+                            "delivery",
+                            "asosiy",
+                            "Yetkazib berish (Dostavka)",
+                            "select",
+                            facet=True,
+                            order=5,
+                            options=[
+                                ("free", "Bor (Bepul)"),
+                                ("paid", "Bor (Alohida to'lovli)"),
+                                ("pickup", "Olib ketish (Samovivoz)"),
+                            ],
+                        ),
+                        _field(
+                            "payment_method",
+                            "asosiy",
+                            "To'lov shakli",
+                            "select",
+                            facet=True,
+                            order=6,
+                            options=[
+                                ("cash", "Naqd pul"),
+                                ("bank_transfer", "Pul o'tkazish (Perechisleniye/NDS)"),
+                                ("app_payment", "Ilova orqali (Click/Payme)"),
+                            ],
+                        ),
+                    ],
+                    force_order={
+                        "condition": 2,
+                        "brand": 90,
+                        "material": 91,
+                        "color": 92,
+                        "warranty_months": 93,
+                        "delivery_available": 94,
+                    },
+                    now=now,
+                )
+                await _backfill_form_definition_field_options(
+                    use_cases,
+                    repo,
+                    code="mebel-materiallari-form",
+                    field_options={
+                        "condition": [("leftover", "Qolgan/Ortiqcha material")],
+                    },
+                    now=now,
                 )
 
                 await _seed_catalog_taxonomy(use_cases, repo, now=now)
