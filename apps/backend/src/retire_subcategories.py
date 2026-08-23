@@ -15,12 +15,15 @@ Usage (same env-loading convention as `search_worker`/`bootstrap_admin`/`seed`):
     python -m retire_subcategories retire   # hide every subcategory from the live site
     python -m retire_subcategories restore  # undo -- bring them all back to ACTIVE
 
-Pass a third argument to scope either verb to one top-level category's descendants instead of
-every subcategory on the site (e.g. rewriting just "Kotejlar"'s tree, 2026-08-23):
+Pass a third argument to scope either verb to one or more top-level categories' descendants
+instead of every subcategory on the site (e.g. rewriting just "Kotejlar"'s tree, 2026-08-23).
+Comma-separate multiple prefixes to scope several categories in one run (2026-08-23, clearing 14
+categories' subtrees at once ahead of a category-by-category TZ rewrite):
     python -m retire_subcategories retire /kotejlar
+    python -m retire_subcategories retire /noturar-binolar,/dala-hovlilar,/bosh-yerlar
     python -m retire_subcategories restore /kotejlar
 
-The prefix matches a subcategory's real `path` (e.g. `/kotejlar/oilaviy-kotejlar` matches prefix
+Each prefix matches a subcategory's real `path` (e.g. `/kotejlar/oilaviy-kotejlar` matches prefix
 `/kotejlar`) -- never the top-level category itself (that guard applies regardless of scope).
 CAUTION (learned live, 2026-08-23): a prefix retire run AFTER a tree rewrite has already been
 deployed will retire the newly-seeded replacement subcategories too, since their `path` shares the
@@ -71,7 +74,7 @@ _registry = WhitelistRegistry()
 
 async def _set_all_subcategories(
     target_status: str,
-    path_prefix: str | None = None,
+    path_prefixes: frozenset[str] | None = None,
     exact_paths: frozenset[str] | None = None,
 ) -> None:
     if target_status not in ("ACTIVE", "RETIRED"):
@@ -123,10 +126,11 @@ async def _set_all_subcategories(
                         path = str(definition.get("path") or "")
                         if path not in exact_paths:
                             continue
-                    elif path_prefix is not None:
+                    elif path_prefixes is not None:
                         path = str(definition.get("path") or "")
-                        if not (
-                            path == path_prefix or path.startswith(path_prefix + "/")
+                        if not any(
+                            path == prefix or path.startswith(prefix + "/")
+                            for prefix in path_prefixes
                         ):
                             continue
 
@@ -189,8 +193,12 @@ def main() -> None:
         asyncio.run(
             _set_all_subcategories(target, exact_paths=frozenset(scope[1:].split(",")))
         )
+    elif scope is not None:
+        asyncio.run(
+            _set_all_subcategories(target, path_prefixes=frozenset(scope.split(",")))
+        )
     else:
-        asyncio.run(_set_all_subcategories(target, path_prefix=scope))
+        asyncio.run(_set_all_subcategories(target))
 
 
 if __name__ == "__main__":
