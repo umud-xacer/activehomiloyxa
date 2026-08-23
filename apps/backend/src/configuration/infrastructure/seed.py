@@ -403,6 +403,10 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "gas_supply": "Gaz ta'minoti",
     "electricity_supply": "Elektr energiyasi",
     "water_supply": "Suv ta'minoti",
+    "seller_type": "Sotuvchi turi",
+    "sale_unit": "Sotish hajmi / Birlik",
+    "delivery": "Yetkazib berish (Dostavka)",
+    "payment_method": "To'lov shakli",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -1395,8 +1399,10 @@ def _land_fields() -> list[dict[str, object]]:
 
 
 def _goods_fields() -> list[dict[str, object]]:
-    """Qurilish materiallari / maishiy texnikalar / uy bezaklari / uniforma -- anything sold as
-    a physical unit, same shape as the furniture ("Mebel materiallari") form seeded above."""
+    """Maishiy texnikalar / uy bezaklari / uniforma -- anything sold as a physical unit, same
+    shape as the furniture ("Mebel materiallari") form seeded above. Qurilish materiallari used to
+    share this too, but was split off (2026-08-23) into its own `_building_materials_fields()` --
+    see that function's docstring."""
     return [
         _field("brand", "asosiy", "Brend", "text", facet=True, order=1),
         _field(
@@ -1418,6 +1424,94 @@ def _goods_fields() -> list[dict[str, object]]:
             facet=True,
             order=4,
             default=False,
+        ),
+    ]
+
+
+def _building_materials_fields() -> list[dict[str, object]]:
+    """Qurilish materiallari -- 2026-08-23 split off from `_goods_fields()` into its own
+    "building-materials-form", same reason as `_commercial_fields()`/`_dacha_fields()` above: a
+    genuinely different, more detailed field set (seller type, sale unit, delivery, payment
+    method) and a different priority order for `district`/`condition` than what's shared elsewhere.
+    `district` reuses the same real Tashkent city+region option lists as the real-estate forms."""
+    return [
+        _field(
+            "district",
+            "asosiy",
+            "Tuman",
+            "select",
+            facet=True,
+            order=1,
+            options=_TASHKENT_DISTRICTS + _TASHKENT_REGION_DISTRICTS,
+        ),
+        _field(
+            "condition",
+            "asosiy",
+            "Mahsulot holati",
+            "select",
+            required=True,
+            facet=True,
+            order=2,
+            options=[
+                ("new_factory", "Yangi (Zavoddan)"),
+                ("new_warehouse", "Yangi (Ombordan)"),
+                ("leftover", "Qolgan/Ortgan materiallar"),
+                ("used", "Ishlatilgan (B/U)"),
+            ],
+        ),
+        _field(
+            "seller_type",
+            "asosiy",
+            "Sotuvchi turi",
+            "select",
+            facet=True,
+            order=3,
+            options=[
+                ("manufacturer", "Ishlab chiqaruvchi (Zavod)"),
+                ("dealer_store", "Rasmiy diler / Do'kon"),
+                ("individual", "Jismoniy shaxs (Shaxsiy)"),
+            ],
+        ),
+        _field(
+            "sale_unit",
+            "asosiy",
+            "Sotish hajmi / Birlik",
+            "select",
+            facet=True,
+            order=4,
+            options=[
+                ("wholesale", "Ulgurji (Optom)"),
+                ("retail", "Dona / Chakana (Roznitsa)"),
+                ("sqm", "Kvadrat metr (m2)"),
+                ("cbm", "Kub metr (m3)"),
+                ("ton_sack", "Tonna / Qop"),
+            ],
+        ),
+        _field(
+            "delivery",
+            "asosiy",
+            "Yetkazib berish (Dostavka)",
+            "select",
+            facet=True,
+            order=5,
+            options=[
+                ("free", "Bor (Bepul)"),
+                ("paid", "Bor (Alohida to'lovli)"),
+                ("pickup", "Olib ketish (Samovivoz)"),
+            ],
+        ),
+        _field(
+            "payment_method",
+            "asosiy",
+            "To'lov shakli",
+            "select",
+            facet=True,
+            order=6,
+            options=[
+                ("cash", "Naqd pul"),
+                ("bank_transfer", "Pul o'tkazish (Perechisleniye/NDS)"),
+                ("app_payment", "Ilova orqali (Click/Payme)"),
+            ],
         ),
     ]
 
@@ -4553,34 +4647,18 @@ def _bosh_yerlar_tree() -> list[Node]:
 
 
 def _qurilish_materiallari_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Elektr mahsulotlari/Bo'yoqlar/Mahkamlash mahsulotlari
+    branches) with 8 real ones grouped by material category rather than by product type."""
     return [
-        "Sement va quruq aralashmalar",
-        "G'isht va bloklar",
-        "Armatura va metall mahsulotlari",
-        "Yog'och mahsulotlari",
-        "Tom yopish materiallari",
-        "Issiqlik va gidroizolyatsiya",
-        ("Elektr mahsulotlari", ["Kabel", "Rozetka", "Avtomat", "Yoritish", "Sensor"]),
-        "Santexnika mahsulotlari",
-        (
-            "Bo'yoqlar va pardozlash materiallari",
-            [
-                "Ichki bo'yoq",
-                "Tashqi bo'yoq",
-                "Grunt",
-                "Lak",
-                "Emal",
-                "Dekorativ qoplamalar",
-            ],
-        ),
-        "Pol qoplamalari",
-        "Eshik va derazalar",
-        (
-            "Mahkamlash mahsulotlari",
-            ["Mix", "Vint", "Shurup", "Bolt", "Gayka", "Shayba", "Dyubel", "Anker"],
-        ),
-        "Qurilish asbob-uskunalari",
-        "Maxsus texnika va jihozlar",
+        "Poydevor va g'isht mahsulotlari (G'isht, Blok, Sement, Qum)",
+        "Tom va yopqich materiallari (Profnastil, Cherepitsa, Slate)",
+        "Pardozlash va ta'mir materiallari (Gipsokarton, Bo'yoq, Suvok, Plitka)",
+        "Yog'och va yog'och mahsulotlari (Balkalar, Doska, Fanera)",
+        "Santexnika, Quvurlar va Isitish tizimlari",
+        "Elektrik va yoritish mahsulotlari (Kabel, Avtomat, Rozetka)",
+        "Izolyatsiya va izolyatsiya materiallari (Penoplast, Minvata)",
+        "Boshqa qurilish mahsulotlari",
     ]
 
 
@@ -5261,6 +5339,46 @@ async def _seed_catalog_taxonomy(
         now=now,
     )
 
+    # -- Qurilish materiallari (own form, split off "mahsulot-form" 2026-08-23 -- see
+    # `_building_materials_fields()`'s docstring for why).
+    building_materials_form_id = await _seed_form(
+        use_cases,
+        repo,
+        code="building-materials-form",
+        name="Qurilish materiallari",
+        fields=_building_materials_fields(),
+        now=now,
+    )
+    await _backfill_category_form_definition(
+        use_cases,
+        repo,
+        code="qurilish-materiallari",
+        form_definition_id=building_materials_form_id,
+        now=now,
+    )
+    qurilish_materiallari_head_id = await _seed_category(
+        use_cases,
+        repo,
+        code="qurilish-materiallari",
+        name="Qurilish materiallari",
+        path="/qurilish-materiallari",
+        parent_category_id=None,
+        form_definition_id=building_materials_form_id,
+        now=now,
+        listing_kind="GOODS",
+        display_order=next(top_level_order),
+    )
+    await _seed_subtree(
+        use_cases,
+        repo,
+        _qurilish_materiallari_tree(),
+        parent_id=qurilish_materiallari_head_id,
+        parent_path="/qurilish-materiallari",
+        form_definition_id=building_materials_form_id,
+        now=now,
+        listing_kind="GOODS",
+    )
+
     # -- Goods (physical-unit sales).
     goods_form_id = await _seed_form(
         use_cases,
@@ -5271,12 +5389,6 @@ async def _seed_catalog_taxonomy(
         now=now,
     )
     for code, name, path, tree in [
-        (
-            "qurilish-materiallari",
-            "Qurilish materiallari",
-            "/qurilish-materiallari",
-            _qurilish_materiallari_tree(),
-        ),
         (
             "maishiy-texnikalar",
             "Maishiy texnikalar",
