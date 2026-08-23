@@ -407,6 +407,9 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "sale_unit": "Sotish hajmi / Birlik",
     "delivery": "Yetkazib berish (Dostavka)",
     "payment_method": "To'lov shakli",
+    "appliance_brand": "Brend / Markasi",
+    "warranty": "Kafolat (Garantiya)",
+    "delivery_install": "Yetkazib berish va O'rnatish",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -1511,6 +1514,95 @@ def _building_materials_fields() -> list[dict[str, object]]:
                 ("cash", "Naqd pul"),
                 ("bank_transfer", "Pul o'tkazish (Perechisleniye/NDS)"),
                 ("app_payment", "Ilova orqali (Click/Payme)"),
+            ],
+        ),
+    ]
+
+
+def _home_appliances_fields() -> list[dict[str, object]]:
+    """Maishiy texnikalar -- 2026-08-23 split off from `_goods_fields()` into its own
+    "home-appliances-form", same reason as `_building_materials_fields()` above. `brand` here is
+    a closed `select` (real brands sold in this market), not the generic goods form's free-text
+    `brand` field -- a genuinely different field, not a reuse."""
+    return [
+        _field(
+            "district",
+            "asosiy",
+            "Tuman",
+            "select",
+            facet=True,
+            order=1,
+            options=_TASHKENT_DISTRICTS + _TASHKENT_REGION_DISTRICTS,
+        ),
+        _field(
+            "condition",
+            "asosiy",
+            "Mahsulot holati",
+            "select",
+            required=True,
+            facet=True,
+            order=2,
+            options=[
+                ("new", "Yangi (Qadoqda/Yupka)"),
+                ("ideal", "Ideal (Kam ishlatilgan)"),
+                ("average", "O'rtacha (Ishlatilgan B/U)"),
+                ("for_parts", "Zapchastga / Ta'mirtalab"),
+            ],
+        ),
+        _field(
+            "appliance_brand",
+            "asosiy",
+            "Brend / Markasi",
+            "select",
+            facet=True,
+            order=3,
+            options=[
+                ("samsung", "Samsung"),
+                ("lg", "LG"),
+                ("artel", "Artel"),
+                ("bosch", "Bosch"),
+                ("whirlpool", "Whirlpool"),
+                ("midea", "Midea"),
+                ("hofmann", "Hofmann"),
+                ("other", "Boshqa brendlar"),
+            ],
+        ),
+        _field(
+            "warranty",
+            "asosiy",
+            "Kafolat (Garantiya)",
+            "select",
+            facet=True,
+            order=4,
+            options=[
+                ("official", "Rasmiy kafolat bor (Zavod/Do'kon)"),
+                ("seller_1_3_months", "Sotuvchidan kafolat (1-3 oy)"),
+                ("none_expired", "Kafolat muddati tugagan / Yo'q"),
+            ],
+        ),
+        _field(
+            "seller_type",
+            "asosiy",
+            "Sotuvchi turi",
+            "select",
+            facet=True,
+            order=5,
+            options=[
+                ("store_salon", "Do'kon / Maishiy texnika saloni"),
+                ("individual", "Jismoniy shaxs (Shaxsiy buyum)"),
+            ],
+        ),
+        _field(
+            "delivery_install",
+            "asosiy",
+            "Yetkazib berish va O'rnatish",
+            "select",
+            facet=True,
+            order=6,
+            options=[
+                ("free_delivery_install", "Yetkazib berish va o'rnatish bepul"),
+                ("delivery_only", "Faqat yetkazib berish bor"),
+                ("pickup", "Olib ketish (Samovivoz)"),
             ],
         ),
     ]
@@ -4663,46 +4755,17 @@ def _qurilish_materiallari_tree() -> list[Node]:
 
 
 def _maishiy_texnikalar_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Muzlatgichlar/Kir yuvish mashinalari/Oshxona texnikalari
+    branches) with 7 real ones grouped by appliance category."""
     return [
-        (
-            "Muzlatgichlar",
-            [
-                "Ikki eshikli",
-                "Side by Side",
-                "Mini muzlatgichlar",
-                "Smart muzlatgichlar",
-            ],
-        ),
-        (
-            "Kir yuvish mashinalari",
-            [
-                "Avtomatik",
-                "Yarim avtomatik",
-                "Quritish funksiyali",
-                "Sanoat kir yuvish mashinalari",
-            ],
-        ),
-        "Idish yuvish mashinalari",
-        "Gaz plitalari va pechlar",
-        "Mikroto'lqinli pechlar",
-        "Changyutgichlar",
-        "Konditsionerlar",
-        "Televizorlar",
-        "Suv isitkichlari",
-        (
-            "Oshxona texnikalari",
-            [
-                "Blenderlar",
-                "Mikserlar",
-                "Kofe mashinalari",
-                "Multivarkalar",
-                "Elektr choynaklar",
-            ],
-        ),
-        "Kichik maishiy texnikalar",
-        "Smart Home qurilmalari",
-        "Iqlim texnikalari",
-        "Premium texnikalar",
+        "Oshxona texnikalari (Muzlatgich, Plita, Mikrotolqinli pech, Idish yuvish mashinasi)",
+        "Kirim va yuvish texnikasi (Kir yuvish mashinasi, Dazmol, Quritgich)",
+        "Iqlim texnikasi (Konditsioner, Isitgich, Ventilyator, Suv isitgich/Kotel)",
+        "Uy tozalash texnikasi (Changyutgich, Paroochistitel)",
+        "Audio va Video texnika (Televizor, Akustika, Tyuner)",
+        "Kichik va shaxsiy parvarish texnikalari (Fen, Britva, Vesy)",
+        "Boshqa maishiy texnikalar",
     ]
 
 
@@ -5362,6 +5425,46 @@ async def _seed_catalog_taxonomy(
         listing_kind="GOODS",
     )
 
+    # -- Maishiy texnikalar (own form, split off "mahsulot-form" 2026-08-23 -- see
+    # `_home_appliances_fields()`'s docstring for why).
+    home_appliances_form_id = await _seed_form(
+        use_cases,
+        repo,
+        code="home-appliances-form",
+        name="Maishiy texnikalar",
+        fields=_home_appliances_fields(),
+        now=now,
+    )
+    await _backfill_category_form_definition(
+        use_cases,
+        repo,
+        code="maishiy-texnikalar",
+        form_definition_id=home_appliances_form_id,
+        now=now,
+    )
+    maishiy_texnikalar_head_id = await _seed_category(
+        use_cases,
+        repo,
+        code="maishiy-texnikalar",
+        name="Maishiy texnikalar",
+        path="/maishiy-texnikalar",
+        parent_category_id=None,
+        form_definition_id=home_appliances_form_id,
+        now=now,
+        listing_kind="GOODS",
+        display_order=next(top_level_order),
+    )
+    await _seed_subtree(
+        use_cases,
+        repo,
+        _maishiy_texnikalar_tree(),
+        parent_id=maishiy_texnikalar_head_id,
+        parent_path="/maishiy-texnikalar",
+        form_definition_id=home_appliances_form_id,
+        now=now,
+        listing_kind="GOODS",
+    )
+
     # -- Goods (physical-unit sales).
     goods_form_id = await _seed_form(
         use_cases,
@@ -5372,12 +5475,6 @@ async def _seed_catalog_taxonomy(
         now=now,
     )
     for code, name, path, tree in [
-        (
-            "maishiy-texnikalar",
-            "Maishiy texnikalar",
-            "/maishiy-texnikalar",
-            _maishiy_texnikalar_tree(),
-        ),
         ("uy-bezaklari", "Uy bezaklari", "/uy-bezaklari", _uy_bezaklari_tree()),
         (
             "uniforma-va-maxsus-kiyimlar",
