@@ -430,6 +430,12 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "treatment_medical": "Davolash va Med-xizmatlar",
     "accommodation_type": "Xona va Joylashuv turi",
     "seasonality": "Mavsumiylik",
+    "contractor_type": "Ijrochi turi",
+    "experience_bucket": "Ish tajribasi",
+    "pricing_unit": "To'lov va Hisob-kitob birligi",
+    "consultation_measurement": "Konsultatsiya va O'lchov olish (Zamer)",
+    "warranty_contract": "Kafolat va Shartnoma",
+    "additional_services": "Qo'shimcha xizmatlar",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -2343,6 +2349,152 @@ def _service_cv_fields(
     if extra:
         fields.extend(extra)
     return fields
+
+
+def _landscape_fields() -> list[dict[str, object]]:
+    """Landshaft dizayni -- 2026-08-23 rewrite: was on the generic `_service_cv_fields()` shape
+    (experience_years/specialization/service_regions/rate_type/available_now), replaced with
+    landshaft-specific fields per the TZ (contractor type, pricing unit, consultation/measurement,
+    warranty). Its own dedicated "landshaft-xizmati-form" was never shared with other SERVICE
+    categories (each of the 6 `_service_cv_fields()` callers already seeds an independent form),
+    so this rewrite is safe and self-contained -- doesn't touch `_service_cv_fields()` itself or
+    any other category's order."""
+    return [
+        _field(
+            "district",
+            "asosiy",
+            "Tuman",
+            "select",
+            facet=True,
+            order=1,
+            options=_TASHKENT_DISTRICTS + _TASHKENT_REGION_DISTRICTS,
+        ),
+        _field(
+            "contractor_type",
+            "asosiy",
+            "Ijrochi turi",
+            "select",
+            required=True,
+            facet=True,
+            order=2,
+            options=[
+                ("landscape_company_studio", "Landshaft kompaniyasi / Studiya"),
+                ("private_master_brigade", "Xususiy usta / Brigada"),
+                ("landscape_architect_freelancer", "Landshaft arxitektori (Frilanser)"),
+            ],
+        ),
+        _field(
+            "experience_bucket",
+            "asosiy",
+            "Ish tajribasi",
+            "select",
+            facet=True,
+            order=3,
+            options=[
+                ("up_to_1_year", "1 yilgacha"),
+                ("1_3_years", "1-3 yil"),
+                ("3_5_years", "3-5 yil"),
+                ("5_plus_years", "5 yildan ortiq"),
+            ],
+        ),
+        _field(
+            "pricing_unit",
+            "asosiy",
+            "To'lov va Hisob-kitob birligi",
+            "select",
+            facet=True,
+            order=4,
+            options=[
+                ("per_sqm", "Kvadrat metr (m2) uchun"),
+                ("per_sotix", "Sotix uchun"),
+                ("turnkey_project", "Tayyor loyiha (Klyuch) uchun"),
+                ("hourly_contract", "Soatbay / Shartnoma bo'yicha"),
+            ],
+        ),
+        _field(
+            "consultation_measurement",
+            "asosiy",
+            "Konsultatsiya va O'lchov olish (Zamer)",
+            "select",
+            facet=True,
+            order=5,
+            options=[
+                ("free_onsite", "Bepul (Joyiga borib)"),
+                ("paid_separate", "Alohida to'lovli"),
+                ("remote_online", "Masofaviy (Online)"),
+            ],
+        ),
+        _field(
+            "warranty_contract",
+            "asosiy",
+            "Kafolat va Shartnoma",
+            "select",
+            facet=True,
+            order=6,
+            options=[
+                ("official_contract_warranty", "Rasmiy shartnoma va kafolat bor"),
+                ("no_contract", "Shartnomasiz"),
+            ],
+        ),
+        _field(
+            "additional_services",
+            "asosiy",
+            "Qo'shimcha xizmatlar",
+            "multiselect",
+            facet=True,
+            order=7,
+            options=[
+                ("3d_visualization", "3D Vizualizatsiya / Chizma bor"),
+                ("portfolio", "Tayyor ob'ektlar portfeliosiga ega"),
+                (
+                    "plant_care_agronomist",
+                    "O'simliklarni parvarishlash (Agronom xizmati)",
+                ),
+                ("material_delivery", "Materiallarni yetkazib berish (Dostavka)"),
+                ("auto_irrigation_service", "Avtopoliv servis xizmati"),
+            ],
+        ),
+        _field(
+            "experience_years",
+            "asosiy",
+            "Tajriba (yil)",
+            "number",
+            facet=True,
+            order=90,
+        ),
+        _field(
+            "specialization", "asosiy", "Mutaxassislik", "text", facet=True, order=91
+        ),
+        _field(
+            "service_regions",
+            "asosiy",
+            "Xizmat ko'rsatiladigan hududlar",
+            "text",
+            order=92,
+        ),
+        _field(
+            "rate_type",
+            "asosiy",
+            "Narx turi",
+            "select",
+            facet=True,
+            order=93,
+            options=[
+                ("hourly", "Soatlik"),
+                ("daily", "Kunlik"),
+                ("per_job", "Ish uchun"),
+            ],
+        ),
+        _field(
+            "available_now",
+            "asosiy",
+            "Hozir band emas",
+            "boolean",
+            facet=True,
+            order=94,
+            default=True,
+        ),
+    ]
 
 
 async def _seed_form(
@@ -5442,49 +5594,17 @@ def _dam_olish_maskanlari_tree() -> list[Node]:
 
 
 def _landshaft_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Bog' loyihalash/Tashqi yoritish tizimlari/Tashqi dam olish
+    zonalari branches) with 7 real ones covering how landshaft services are actually offered."""
     return [
-        "Hovli dizayni",
-        (
-            "Bog' loyihalash",
-            [
-                "Zamonaviy bog'",
-                "Klassik bog'",
-                "Yapon bog'i",
-                "Minimalistik bog'",
-                "Mevali bog'",
-                "Dekorativ bog'",
-            ],
-        ),
-        "Park va yashil hududlar",
-        "Avtomatik sug'orish tizimlari",
-        "Gazon va maysa ishlari",
-        "Daraxt va gul ekish",
-        "Dekorativ tosh va yo'laklar",
-        "Favvora va sun'iy suv havzalari",
-        (
-            "Tashqi yoritish tizimlari",
-            [
-                "Quyosh energiyasida ishlovchi chiroqlar",
-                "LED yoritish",
-                "Dekorativ yoritish",
-                "Aqlli yoritish tizimlari",
-            ],
-        ),
-        "Pergola va ayvonlar",
-        (
-            "Tashqi dam olish zonalari",
-            [
-                "Yozgi oshxona",
-                "Barbekyu zonasi",
-                "Pergola",
-                "Gazebo",
-                "Ochiq terassa",
-                "Bolalar maydonchasi",
-            ],
-        ),
-        "Vertikal bog'lar",
-        "Tom bog'lari (Roof Garden)",
-        "Landshaft parvarishlash xizmatlari",
+        "Landshaft loyihalash va 3D Vizualizatsiya",
+        "Ko'kalamzorlashtirish va maysazor (Gazon) yotqizish",
+        "Avtomatik sug'orish tizimlarini o'rnatish (Avtopoliv)",
+        "Favvora, Basseyn va Sun'iy sharsharalar (Vodopad)",
+        "Manzarali daraxt va gullar ekish (Ozeleneniye)",
+        "Bog' va landshaft yoritish tizimlari (Podsvetka)",
+        "Boshqa landshaft xizmatlari",
     ]
 
 
@@ -6161,13 +6281,28 @@ async def _seed_catalog_taxonomy(
         listing_kind="VENUE",
     )
 
-    # -- Landshaft dizayni: a design SERVICE, not goods -- the base CV shape, no trade extras.
+    # -- Landshaft dizayni: a design SERVICE (own field shape since 2026-08-23 -- see
+    # `_landscape_fields()`'s docstring for why).
     landshaft_form_id = await _seed_form(
         use_cases,
         repo,
         code="landshaft-xizmati-form",
         name="Landshaft dizayni xizmati",
-        fields=_service_cv_fields(),
+        fields=_landscape_fields(),
+        now=now,
+    )
+    await _backfill_form_definition_fields(
+        use_cases,
+        repo,
+        code="landshaft-xizmati-form",
+        fields=_landscape_fields(),
+        force_order={
+            "experience_years": 90,
+            "specialization": 91,
+            "service_regions": 92,
+            "rate_type": 93,
+            "available_now": 94,
+        },
         now=now,
     )
     landshaft_head_id = await _seed_category(
