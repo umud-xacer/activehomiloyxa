@@ -5233,6 +5233,11 @@ async def _seed_catalog_taxonomy(
         repo,
         code="bosh-yer-form",
         fields=_land_fields(),
+        force_order={
+            "area_sotix": 3,
+            "land_purpose": 90,
+            "has_documents": 91,
+        },
         now=now,
     )
     bosh_yerlar_head_id = await _seed_category(
