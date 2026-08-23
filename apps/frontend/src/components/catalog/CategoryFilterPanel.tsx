@@ -30,6 +30,16 @@ import { emptyFilterState, type ListingFilterState, type SellerKind } from "./Ca
  * etc.) -- skipped rather than faked. */
 const SUPPORTED_FIELD_TYPES = new Set(["select", "multiselect", "boolean", "text", "number"]);
 
+/** Price isn't a `FormField` (it's a first-class listing attribute, not admin-configured per
+ * category -- see the module docstring), so it can't carry a real `order`. It used to render
+ * unconditionally right after the subcategory select, ahead of every field regardless of that
+ * field's own `order` -- confirmed wrong live (2026-08-23, Kotejlar UX ask): with `district` at
+ * `order: 1`, the requested grid was subcategory/district/price/rooms, not subcategory/price/
+ * district/rooms. Giving price a fixed virtual order and merging it into the same sort lets a
+ * category push exactly one field ahead of price (by giving that field `order: 1`, as the
+ * real-estate form's `district` now does) while every other field still falls in after it. */
+const PRICE_ORDER = 1.5;
+
 const SELLER_KIND_TABS: { value: SellerKind; label: string }[] = [
   { value: "all", label: "Hamma e'lonlar" },
   { value: "business", label: "Biznes" },
@@ -100,6 +110,73 @@ export function CategoryFilterPanel({
   const fieldInputClass =
     "mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30";
 
+  const renderField = (field: FormField) => {
+    const value = state.attrs[field.code]?.[0] ?? "";
+    const label = field.label.uz_latn ?? field.code;
+
+    if (field.fieldType === "text") {
+      return (
+        <div key={field.code}>
+          <label className="text-xs font-medium text-muted-foreground">{label}</label>
+          <input
+            value={value}
+            onChange={(e) => setAttr(field.code, e.target.value)}
+            className={fieldInputClass}
+          />
+        </div>
+      );
+    }
+
+    if (field.fieldType === "number") {
+      return (
+        <div key={field.code}>
+          <label className="text-xs font-medium text-muted-foreground">{label}</label>
+          <input
+            value={value}
+            onChange={(e) => setAttr(field.code, e.target.value)}
+            inputMode="numeric"
+            className={fieldInputClass}
+          />
+        </div>
+      );
+    }
+
+    // select / multiselect (real admin-defined options) / boolean (always exactly two states, so
+    // a fixed Ha/Yo'q pair is honest even though the field itself has no `options` list of its
+    // own).
+    const options =
+      field.fieldType === "boolean"
+        ? [
+            { value: "true", label: "Ha" },
+            { value: "false", label: "Yo'q" },
+          ]
+        : (field.options ?? []).map((opt) => ({
+            value: opt.value,
+            label: opt.label.uz_latn ?? opt.value,
+          }));
+
+    return (
+      <div key={field.code}>
+        <label className="text-xs font-medium text-muted-foreground">{label}</label>
+        <select
+          value={value}
+          onChange={(e) => setAttr(field.code, e.target.value)}
+          className={fieldInputClass}
+        >
+          <option value="">Hammasi</option>
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  };
+
+  const fieldsBeforePrice = filterableFields.filter((f) => (f.order ?? 0) < PRICE_ORDER);
+  const fieldsAfterPrice = filterableFields.filter((f) => (f.order ?? 0) >= PRICE_ORDER);
+
   return (
     <div className="rounded-3xl border border-border bg-card p-5 shadow-soft sm:p-6">
       <div className="flex items-center gap-2 text-base font-semibold text-foreground">
@@ -126,6 +203,8 @@ export function CategoryFilterPanel({
           </div>
         )}
 
+        {fieldsBeforePrice.map(renderField)}
+
         <div>
           <label className="text-xs font-medium text-muted-foreground">Narx (so'm)</label>
           <div className="mt-1.5 flex items-center gap-2">
@@ -147,69 +226,7 @@ export function CategoryFilterPanel({
           </div>
         </div>
 
-        {filterableFields.map((field) => {
-          const value = state.attrs[field.code]?.[0] ?? "";
-          const label = field.label.uz_latn ?? field.code;
-
-          if (field.fieldType === "text") {
-            return (
-              <div key={field.code}>
-                <label className="text-xs font-medium text-muted-foreground">{label}</label>
-                <input
-                  value={value}
-                  onChange={(e) => setAttr(field.code, e.target.value)}
-                  className={fieldInputClass}
-                />
-              </div>
-            );
-          }
-
-          if (field.fieldType === "number") {
-            return (
-              <div key={field.code}>
-                <label className="text-xs font-medium text-muted-foreground">{label}</label>
-                <input
-                  value={value}
-                  onChange={(e) => setAttr(field.code, e.target.value)}
-                  inputMode="numeric"
-                  className={fieldInputClass}
-                />
-              </div>
-            );
-          }
-
-          // select / multiselect (real admin-defined options) / boolean (always exactly two
-          // states, so a fixed Ha/Yo'q pair is honest even though the field itself has no
-          // `options` list of its own).
-          const options =
-            field.fieldType === "boolean"
-              ? [
-                  { value: "true", label: "Ha" },
-                  { value: "false", label: "Yo'q" },
-                ]
-              : (field.options ?? []).map((opt) => ({
-                  value: opt.value,
-                  label: opt.label.uz_latn ?? opt.value,
-                }));
-
-          return (
-            <div key={field.code}>
-              <label className="text-xs font-medium text-muted-foreground">{label}</label>
-              <select
-                value={value}
-                onChange={(e) => setAttr(field.code, e.target.value)}
-                className={fieldInputClass}
-              >
-                <option value="">Hammasi</option>
-                {options.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          );
-        })}
+        {fieldsAfterPrice.map(renderField)}
       </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
