@@ -78,13 +78,15 @@ export function CategoryFilterPanel({
   // facetEligible: false, "Hostel"'s price_unit was too).
   const filterableFields = useMemo(
     () =>
-      fields.filter((f) => {
-        if (!SUPPORTED_FIELD_TYPES.has(f.fieldType)) return false;
-        if ((f.fieldType === "select" || f.fieldType === "multiselect") && !f.options?.length) {
-          return false;
-        }
-        return true;
-      }),
+      fields
+        .filter((f) => {
+          if (!SUPPORTED_FIELD_TYPES.has(f.fieldType)) return false;
+          if ((f.fieldType === "select" || f.fieldType === "multiselect") && !f.options?.length) {
+            return false;
+          }
+          return true;
+        })
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
     [fields],
   );
 

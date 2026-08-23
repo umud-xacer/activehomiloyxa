@@ -786,18 +786,46 @@ guessing at administrative-division edge cases."""
 
 def _property_fields() -> list[dict[str, object]]:
     """Ko'p qavatli binolar / kotejlar / hovlilar / noturar binolar / dala hovlilar -- the
-    residential/commercial-building direction."""
+    residential/commercial-building direction.
+
+    `order` (2026-08-23 UX rewrite) follows a real ask: the filter grid must read row-by-row as
+    search intent actually narrows -- location/room-count first, then building/lot specs, then
+    amenities -- not whatever order fields happened to get added to this file in. Subcategory and
+    price aren't `_field()` entries at all (`CategoryFilterPanel` renders both ahead of `fields`
+    unconditionally -- see that component's own docstring), so `district`/`rooms` at order 1-2
+    land as the grid's 3rd/4th cell, completing row 1. `deal_type`/`floor`/`building_type`/
+    `has_basement` get pushed past the requested 12-field grid (order 90+) rather than removed --
+    Kotejlar's new subcategories now cover "sale vs rental" and `basement_type` supersedes
+    `has_basement`'s coarser yes/no, but `deal_type`/`has_basement` are still the ONLY signal the
+    other 4 categories sharing this form have for those facts, and `floor`/`building_type` are
+    still real, useful facets -- deliberately kept, just deprioritized rather than deleted."""
     return [
-        _field("rooms", "asosiy", "Xonalar soni", "number", facet=True, order=1),
-        _field("area_sqm", "asosiy", "Maydon (m2)", "number", facet=True, order=2),
-        _field("floor", "asosiy", "Qavat", "number", facet=True, order=3),
+        _field(
+            "district",
+            "asosiy",
+            "Tuman",
+            "select",
+            facet=True,
+            order=1,
+            options=_TASHKENT_DISTRICTS,
+        ),
+        _field("rooms", "asosiy", "Xonalar soni", "number", facet=True, order=2),
+        _field(
+            "lot_size_sotix",
+            "asosiy",
+            "Yer maydoni (sotix)",
+            "number",
+            facet=True,
+            order=3,
+        ),
+        _field("area_sqm", "asosiy", "Maydon (m2)", "number", facet=True, order=4),
         _field(
             "total_floors",
             "asosiy",
             "Binodagi qavatlar soni",
             "number",
             facet=True,
-            order=4,
+            order=5,
         ),
         _field(
             "condition",
@@ -805,7 +833,7 @@ def _property_fields() -> list[dict[str, object]]:
             "Holati",
             "select",
             facet=True,
-            order=5,
+            order=6,
             options=[
                 ("new", "Yangi ta'mirlangan"),
                 ("good", "O'rtacha holatda"),
@@ -813,31 +841,66 @@ def _property_fields() -> list[dict[str, object]]:
             ],
         ),
         _field(
-            "deal_type",
+            "basement_type",
             "asosiy",
-            "Bitim turi",
-            "select",
-            required=True,
-            facet=True,
-            order=6,
-            options=[("sale", "Sotish"), ("rent", "Ijaraga berish")],
-        ),
-        _field(
-            "district",
-            "asosiy",
-            "Tuman",
+            "Podval turi",
             "select",
             facet=True,
             order=7,
-            options=_TASHKENT_DISTRICTS,
+            options=[
+                ("none", "Yo'q"),
+                ("livable", "Bor (Turar joy qilingan)"),
+                ("storage", "Bor (Omborxona/Texnik)"),
+            ],
         ),
+        _field(
+            "has_attic",
+            "asosiy",
+            "Mansarda",
+            "boolean",
+            facet=True,
+            order=8,
+            default=False,
+        ),
+        _field(
+            "balcony",
+            "asosiy",
+            "Balkon",
+            "select",
+            facet=True,
+            order=9,
+            options=[
+                ("none", "Yo'q"),
+                ("one", "Bor"),
+                ("two_plus", "2 va undan ortiq"),
+            ],
+        ),
+        _field(
+            "amenities",
+            "asosiy",
+            "Qulayliklar",
+            "multiselect",
+            facet=True,
+            order=10,
+            options=[
+                ("pool_outdoor", "Basseyn (ochiq)"),
+                ("pool_indoor", "Basseyn (yopiq)"),
+                ("sauna", "Sauna / Hammom"),
+                ("garage", "Garaj / Avtoturargoh"),
+                ("summer_kitchen", "Yozgi oshxona"),
+                ("terrace", "Terrasa"),
+                ("utilities_uninterrupted", "Gaz, suv, elektr (uzliksiz)"),
+                ("sewage", "Kanalizatsiya tizimi"),
+            ],
+        ),
+        _field("floor", "asosiy", "Qavat", "number", facet=True, order=90),
         _field(
             "building_type",
             "asosiy",
             "Bino turi",
             "select",
             facet=True,
-            order=8,
+            order=91,
             options=[
                 ("brick", "G'ishtli"),
                 ("panel", "Panel"),
@@ -851,69 +914,18 @@ def _property_fields() -> list[dict[str, object]]:
             "Podval / Yerto'la",
             "boolean",
             facet=True,
-            order=9,
+            order=92,
             default=False,
         ),
         _field(
-            "balcony",
+            "deal_type",
             "asosiy",
-            "Balkon",
+            "Bitim turi",
             "select",
+            required=True,
             facet=True,
-            order=10,
-            options=[
-                ("none", "Yo'q"),
-                ("one", "Bor"),
-                ("two_plus", "2 va undan ortiq"),
-            ],
-        ),
-        _field(
-            "lot_size_sotix",
-            "asosiy",
-            "Yer maydoni (sotix)",
-            "number",
-            facet=True,
-            order=11,
-        ),
-        _field(
-            "has_attic",
-            "asosiy",
-            "Mansarda",
-            "boolean",
-            facet=True,
-            order=12,
-            default=False,
-        ),
-        _field(
-            "basement_type",
-            "asosiy",
-            "Podval turi",
-            "select",
-            facet=True,
-            order=13,
-            options=[
-                ("none", "Yo'q"),
-                ("livable", "Bor (Turar joy qilingan)"),
-                ("storage", "Bor (Omborxona/Texnik)"),
-            ],
-        ),
-        _field(
-            "amenities",
-            "asosiy",
-            "Qulayliklar",
-            "multiselect",
-            facet=True,
-            order=14,
-            options=[
-                ("pool_outdoor", "Basseyn (ochiq)"),
-                ("pool_indoor", "Basseyn (yopiq)"),
-                ("sauna", "Sauna / Hammom"),
-                ("garage", "Garaj / Avtoturargoh"),
-                ("summer_kitchen", "Yozgi oshxona"),
-                ("terrace", "Terrasa"),
-                ("utilities_uninterrupted", "Gaz, suv, elektr (uzliksiz)"),
-                ("sewage", "Kanalizatsiya tizimi"),
-            ],
+            order=93,
+            options=[("sale", "Sotish"), ("rent", "Ijaraga berish")],
         ),
     ]
 
@@ -1193,6 +1205,7 @@ async def _backfill_form_definition_fields(
     code: str,
     fields: list[dict[str, object]],
     force_facet_eligible: frozenset[str] = frozenset(),
+    force_order: dict[str, int] | None = None,
     now: datetime,
 ) -> None:
     """Adds any field from `fields` missing (by `code`) from the published `FormDefinition` head
@@ -1204,13 +1217,17 @@ async def _backfill_form_definition_fields(
     early-return means it never touches an already-existing head again -- this is the only thing
     that actually pushes new fields onto one that's already live in production.
 
-    `force_facet_eligible` is the one deliberate exception to "additive-only": a named, narrow set
-    of ALREADY-published field codes whose `facet_eligible` flag gets forced to `True` (one
-    direction only, never back to `False`) even though the field itself isn't new. Everything else
-    about that field (options, label, required-ness) stays exactly as published -- this exists
-    only because `_property_fields()`'s own `floor`/`total_floors` genuinely needed this real
-    correction (2026-08-22) and there was no other field of theirs to change, not because this is
-    meant as a general update mechanism."""
+    `force_facet_eligible` and `force_order` are the two deliberate exceptions to "additive-only":
+    named, narrow sets of ALREADY-published field codes whose `facet_eligible` flag (one direction
+    only, never back to `False`) or `order` value gets overridden even though the field itself
+    isn't new. Everything else about a forced field (options, label, required-ness) stays exactly
+    as published. `force_facet_eligible` exists because `_property_fields()`'s own `floor`/
+    `total_floors` genuinely needed that correction (2026-08-22); `force_order` because
+    `CategoryFilterPanel.tsx` never sorted `fields` by `order` (a real bug -- `DynamicCategoryForm.
+    tsx` did, which is why the listing-creation form was always right and only the filter grid
+    read "jumbled" -- fixed alongside this), so every already-published field on this form needed
+    its `order` reassigned to the row-by-row sequence a 2026-08-23 UX ask specified, not just the
+    newly-added ones. Neither is meant as a general update mechanism."""
     head = await repo.get_head_by_code(ConfigEntityType.FORM_DEFINITION, code)
     if head is None or head.current_version_id is None:
         return
@@ -1224,12 +1241,18 @@ async def _backfill_form_definition_fields(
     )
     existing_codes = {f.get("code") for f in current_fields}
     missing = [f for f in fields if f.get("code") not in existing_codes]
-    forced = [
-        {**f, "facet_eligible": True}
-        if f.get("code") in force_facet_eligible and f.get("facet_eligible") is not True
-        else f
-        for f in current_fields
-    ]
+    order_overrides = force_order or {}
+
+    def _apply_force(f: dict[str, object]) -> dict[str, object]:
+        code_ = f.get("code")
+        result = f
+        if code_ in force_facet_eligible and result.get("facet_eligible") is not True:
+            result = {**result, "facet_eligible": True}
+        if code_ in order_overrides and result.get("order") != order_overrides[code_]:
+            result = {**result, "order": order_overrides[code_]}
+        return result
+
+    forced = [_apply_force(f) for f in current_fields]
     if not missing and forced == current_fields:
         return
 
@@ -4676,6 +4699,22 @@ async def _seed_catalog_taxonomy(
         code="ko-chmas-mulk-form",
         fields=_property_fields(),
         force_facet_eligible=frozenset({"floor", "total_floors"}),
+        force_order={
+            "district": 1,
+            "rooms": 2,
+            "lot_size_sotix": 3,
+            "area_sqm": 4,
+            "total_floors": 5,
+            "condition": 6,
+            "basement_type": 7,
+            "has_attic": 8,
+            "balcony": 9,
+            "amenities": 10,
+            "floor": 90,
+            "building_type": 91,
+            "has_basement": 92,
+            "deal_type": 93,
+        },
         now=now,
     )
     await _backfill_form_definition_field_options(
