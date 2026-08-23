@@ -16,6 +16,7 @@ from sqlalchemy import (
     TIMESTAMP,
     CheckConstraint,
     ForeignKey,
+    Integer,
     Numeric,
     Text,
     UniqueConstraint,
@@ -136,6 +137,9 @@ class EntitlementRow(BillingBase, AggregateMixin):  # type: ignore[misc,valid-ty
     activation_state: Mapped[str] = mapped_column(
         Text, nullable=False, server_default="ACTIVE"
     )
+    remaining_credits: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    """Listing paywall Phase 4 (2026-08-23) -- see
+    `billing.domain.entitlement.Entitlement.remaining_credits`'s own docstring."""
 
     __table_args__ = (
         CheckConstraint(
@@ -156,6 +160,10 @@ class EntitlementRow(BillingBase, AggregateMixin):  # type: ignore[misc,valid-ty
         ),
         CheckConstraint(
             "valid_until > valid_from", name="ck_entitlement_validity_ordering"
+        ),
+        CheckConstraint(
+            "remaining_credits IS NULL OR remaining_credits >= 0",
+            name="ck_entitlement_remaining_credits_non_negative",
         ),
     )
 

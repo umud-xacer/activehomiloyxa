@@ -87,7 +87,9 @@ class IllegalEntitlementStateTransitionError(BillingDomainError):
     def __init__(self, transition: str, current: str) -> None:
         self.transition = transition
         self.current = current
-        super().__init__(f"cannot {transition} an entitlement in activation state {current}")
+        super().__init__(
+            f"cannot {transition} an entitlement in activation state {current}"
+        )
 
 
 class UnsupportedProductTypeError(BillingDomainError):
@@ -100,7 +102,9 @@ class UnsupportedProductTypeError(BillingDomainError):
 
     def __init__(self, product_type: str) -> None:
         self.product_type = product_type
-        super().__init__(f"no EntitlementType mapping is defined for product type {product_type!r}")
+        super().__init__(
+            f"no EntitlementType mapping is defined for product type {product_type!r}"
+        )
 
 
 class MissingTermError(BillingDomainError):
@@ -114,4 +118,19 @@ class MissingTermError(BillingDomainError):
         super().__init__(
             f"product type {product_type!r} has no term_days configured; cannot compute "
             "entitlement validity"
+        )
+
+
+class NoCreditsRemainingError(BillingDomainError):
+    """Listing paywall Phase 4 (2026-08-23): `Entitlement.consume_credit` on a
+    `LISTING_CREDIT_BALANCE` entitlement whose `remaining_credits` is already `0`. Callers
+    (`EntitlementUseCases.consume_listing_credit`) are expected to filter these out before
+    calling -- reaching this means a caller consumed the same entitlement twice without
+    re-reading it, a programming error, not a normal "no credits" business outcome (that case is
+    `consume_listing_credit` returning `None`, never this exception)."""
+
+    def __init__(self, entitlement_id: UUID) -> None:
+        self.entitlement_id = entitlement_id
+        super().__init__(
+            f"entitlement {entitlement_id} has no remaining_credits left to consume"
         )

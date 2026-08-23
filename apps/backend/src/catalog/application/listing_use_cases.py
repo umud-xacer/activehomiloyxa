@@ -26,6 +26,7 @@ from catalog.application.exceptions import (
 )
 from catalog.application.ports import (
     CategoryFormPort,
+    CreditBalancePort,
     ListingRepository,
     MediaAssetReaderPort,
     PlatformSettingsReaderPort,
@@ -87,6 +88,7 @@ class ListingUseCases:
         outbox: OutboxPort,
         quota: QuotaEnforcementService,
         duplicates: DuplicateDetectionService,
+        credit_balance: CreditBalancePort,
     ) -> None:
         self._listings = listings
         self._categories = categories
@@ -94,6 +96,7 @@ class ListingUseCases:
         self._media = media
         self._outbox = outbox
         self._quota = quota
+        self._credit_balance = credit_balance
         self._duplicates = duplicates
 
     # --- creation (FR-ADV-001/002/003, I-07/I-08) ----------------------------------------------
@@ -113,6 +116,7 @@ class ListingUseCases:
         image_media_asset_ids: list[UUID] | None,
         publish: bool,
         requires_payment: bool = False,
+        auto_compute_payment_requirement: bool = False,
         now: datetime,
     ) -> Listing:
         category = await self._categories.get_category(category_id)
@@ -129,6 +133,27 @@ class ListingUseCases:
             await self._quota.check_can_create(
                 owner_profile_id=owner_profile_id, active_listing_count=active_count
             )
+
+        # Listing paywall Phase 4 (2026-08-23): `auto_compute_payment_requirement` is the ONLY
+        # thing that ever turns this on -- omitted (default False), `requires_payment` behaves
+        # exactly as Phase 3 left it (an explicit caller-supplied override, default False), so the
+        # real public createListing router -- which does not pass this flag -- is completely
+        # unaffected by this block existing. Deliberately consumes the credit (a real billing-side
+        # write, committed independently via `CreditBalancePort`'s own bridge session) BEFORE this
+        # listing itself is created: a mid-failure after a successful consume loses a credit
+        # rather than granting a free unpaid listing (the reverse ordering could do that).
+        # Individual (non-business-profile) owners always fall through to `requires_payment=True`
+        # here -- there is no way for them to hold a `LISTING_CREDIT_BALANCE` today (`billing.
+        # Order.purchaser_profile_id` is a non-nullable `BusinessProfileId`, a separate deferred
+        # decision, not this phase's to resolve).
+        if auto_compute_payment_requirement:
+            if owner_profile_id is not None:
+                credit_consumed = await self._credit_balance.consume_one_listing_credit(
+                    owner_profile_id=owner_profile_id
+                )
+                requires_payment = not credit_consumed
+            else:
+                requires_payment = True
 
         image_ids = image_media_asset_ids or []
         validate_attribute_set(

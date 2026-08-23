@@ -46,9 +46,18 @@ class FakeListingRepository:
         return None
 
     async def list_by_owner(
-        self, owner_user_id: UserId, *, state: str | None, cursor: str | None, limit: int
+        self,
+        owner_user_id: UserId,
+        *,
+        state: str | None,
+        cursor: str | None,
+        limit: int,
     ) -> tuple[list[Listing], str | None]:
-        items = [item for item in self.listings.values() if item.owner_user_id == owner_user_id]
+        items = [
+            item
+            for item in self.listings.values()
+            if item.owner_user_id == owner_user_id
+        ]
         if state is not None:
             items = [item for item in items if item.lifecycle_state.value == state]
         items.sort(key=lambda item: item.created_at)
@@ -63,7 +72,9 @@ class FakeListingRepository:
         limit: int,
     ) -> tuple[list[Listing], str | None]:
         items = [
-            item for item in self.listings.values() if item.owner_profile_id == owner_profile_id
+            item
+            for item in self.listings.values()
+            if item.owner_profile_id == owner_profile_id
         ]
         if state is not None:
             items = [item for item in items if item.lifecycle_state.value == state]
@@ -79,7 +90,9 @@ class FakeListingRepository:
         limit: int,
         now: datetime,
     ) -> tuple[list[Listing], str | None]:
-        items = [item for item in self.listings.values() if item.is_publicly_visible(now=now)]
+        items = [
+            item for item in self.listings.values() if item.is_publicly_visible(now=now)
+        ]
         if category_id is not None:
             items = [item for item in items if item.category_id == category_id]
         if listing_type is not None:
@@ -97,11 +110,14 @@ class FakeListingRepository:
         ]
         return items[:limit]
 
-    async def count_active_by_owner_profile(self, owner_profile_id: BusinessProfileId) -> int:
+    async def count_active_by_owner_profile(
+        self, owner_profile_id: BusinessProfileId
+    ) -> int:
         return sum(
             1
             for item in self.listings.values()
-            if item.owner_profile_id == owner_profile_id and item.lifecycle_state.value != "DELETED"
+            if item.owner_profile_id == owner_profile_id
+            and item.lifecycle_state.value != "DELETED"
         )
 
     async def find_recent_by_owner_category(
@@ -176,7 +192,10 @@ class FakeCategoryFormPort:
     async def get_category(self, category_id: UUID) -> CategorySnapshot | None:
         status = self.category_status.get(category_id, "ACTIVE")
         return CategorySnapshot(
-            id=category_id, path=self.category_path, status=status, form_definition_head_id=None
+            id=category_id,
+            path=self.category_path,
+            status=status,
+            form_definition_head_id=None,
         )
 
     async def get_current_form_binding(self, category_id: UUID) -> FormBinding | None:
@@ -208,7 +227,9 @@ class FakeMediaAssetReaderPort:
         *,
         scan_status: Literal["PENDING", "CLEAN", "QUARANTINED"] = "PENDING",
     ) -> None:
-        self.assets[media_asset_id] = MediaAssetSnapshot(id=media_asset_id, scan_status=scan_status)
+        self.assets[media_asset_id] = MediaAssetSnapshot(
+            id=media_asset_id, scan_status=scan_status
+        )
 
     async def get_media_asset(self, media_asset_id: UUID) -> MediaAssetSnapshot | None:
         return self.assets.get(media_asset_id)
@@ -225,6 +246,26 @@ class FakeSubscriptionSnapshotRepository:
 
     async def upsert(self, snapshot: SubscriptionSnapshot) -> None:
         self.snapshots[snapshot.owner_profile_id.value] = snapshot
+
+
+@dataclass
+class FakeCreditBalancePort:
+    """Implements `catalog.application.ports.CreditBalancePort` (listing paywall Phase 4,
+    2026-08-23). `has_credit` is a simple test knob (real billing-side eligibility logic is
+    billing's own, exercised in `apps/backend/tests/billing/`) -- `consumed_for` records every
+    profile a credit was actually spent for, so a test can assert consumption happened exactly
+    once, not merely that a credit existed."""
+
+    has_credit: bool = False
+    consumed_for: list[UUID] = field(default_factory=list)
+
+    async def consume_one_listing_credit(
+        self, *, owner_profile_id: BusinessProfileId
+    ) -> bool:
+        if not self.has_credit:
+            return False
+        self.consumed_for.append(owner_profile_id.value)
+        return True
 
 
 class FakeOutbox:
@@ -263,6 +304,11 @@ def fake_media() -> FakeMediaAssetReaderPort:
 @pytest.fixture
 def fake_subscriptions() -> FakeSubscriptionSnapshotRepository:
     return FakeSubscriptionSnapshotRepository()
+
+
+@pytest.fixture
+def fake_credit_balance() -> FakeCreditBalancePort:
+    return FakeCreditBalancePort()
 
 
 @pytest.fixture

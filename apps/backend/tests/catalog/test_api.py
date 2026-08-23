@@ -30,6 +30,7 @@ from shared_kernel import UserId
 
 from .conftest import (
     FakeCategoryFormPort,
+    FakeCreditBalancePort,
     FakeFavoriteRepository,
     FakeListingRepository,
     FakeMediaAssetReaderPort,
@@ -62,6 +63,7 @@ def client(
             outbox=fake_outbox,
             quota=QuotaEnforcementService(subscriptions=fake_subscriptions),
             duplicates=DuplicateDetectionService(listings=fake_listings),
+            credit_balance=FakeCreditBalancePort(),
         )
 
     def _favorite_use_cases() -> FavoriteUseCases:
@@ -69,7 +71,9 @@ def client(
             favorites=fake_favorites, listings=fake_listings, outbox=fake_outbox
         )
 
-    async def acting_user_override(authorization: str | None = Header(default=None)) -> ActingUser:
+    async def acting_user_override(
+        authorization: str | None = Header(default=None),
+    ) -> ActingUser:
         token = None
         if authorization and authorization.lower().startswith("bearer "):
             token = authorization[len("bearer ") :].strip()
@@ -118,7 +122,9 @@ def _create_body(**overrides: object) -> dict[str, object]:
 
 
 def test_create_listing_returns_201(client: TestClient) -> None:
-    response = client.post("/api/v1/listings", headers=_auth_headers(), json=_create_body())
+    response = client.post(
+        "/api/v1/listings", headers=_auth_headers(), json=_create_body()
+    )
     assert response.status_code == 201
     body = response.json()
     assert body["lifecycleState"] == "DRAFT"
@@ -144,7 +150,9 @@ def test_create_listing_publish_true_is_immediately_visible(client: TestClient) 
 
 
 def test_get_listing_draft_is_hidden_from_anonymous_caller(client: TestClient) -> None:
-    created = client.post("/api/v1/listings", headers=_auth_headers(), json=_create_body())
+    created = client.post(
+        "/api/v1/listings", headers=_auth_headers(), json=_create_body()
+    )
     listing_id = created.json()["id"]
 
     response = client.get(f"/api/v1/listings/{listing_id}")
@@ -152,7 +160,9 @@ def test_get_listing_draft_is_hidden_from_anonymous_caller(client: TestClient) -
 
 
 def test_get_listing_draft_is_visible_to_its_owner(client: TestClient) -> None:
-    created = client.post("/api/v1/listings", headers=_auth_headers(), json=_create_body())
+    created = client.post(
+        "/api/v1/listings", headers=_auth_headers(), json=_create_body()
+    )
     listing_id = created.json()["id"]
 
     response = client.get(f"/api/v1/listings/{listing_id}", headers=_auth_headers())
@@ -160,7 +170,9 @@ def test_get_listing_draft_is_visible_to_its_owner(client: TestClient) -> None:
 
 
 def test_list_listings_only_returns_public_visible_listings(client: TestClient) -> None:
-    client.post("/api/v1/listings", headers=_auth_headers(), json=_create_body(publish=False))
+    client.post(
+        "/api/v1/listings", headers=_auth_headers(), json=_create_body(publish=False)
+    )
     client.post(
         "/api/v1/listings",
         headers=_auth_headers(),
@@ -175,7 +187,9 @@ def test_list_listings_only_returns_public_visible_listings(client: TestClient) 
 
 
 def test_update_listing_with_matching_lock_version_succeeds(client: TestClient) -> None:
-    created = client.post("/api/v1/listings", headers=_auth_headers(), json=_create_body())
+    created = client.post(
+        "/api/v1/listings", headers=_auth_headers(), json=_create_body()
+    )
     listing_id = created.json()["id"]
     lock_version = created.json()["lockVersion"]
 
@@ -190,7 +204,9 @@ def test_update_listing_with_matching_lock_version_succeeds(client: TestClient) 
 
 
 def test_update_listing_with_stale_lock_version_returns_409(client: TestClient) -> None:
-    created = client.post("/api/v1/listings", headers=_auth_headers(), json=_create_body())
+    created = client.post(
+        "/api/v1/listings", headers=_auth_headers(), json=_create_body()
+    )
     listing_id = created.json()["id"]
 
     response = client.put(
@@ -218,29 +234,41 @@ def test_update_listing_by_non_owner_returns_403(client: TestClient) -> None:
 
 
 def test_change_listing_status_publish(client: TestClient) -> None:
-    created = client.post("/api/v1/listings", headers=_auth_headers(), json=_create_body())
+    created = client.post(
+        "/api/v1/listings", headers=_auth_headers(), json=_create_body()
+    )
     listing_id = created.json()["id"]
 
     response = client.post(
-        f"/api/v1/listings/{listing_id}/status", headers=_auth_headers(), json={"action": "PUBLISH"}
+        f"/api/v1/listings/{listing_id}/status",
+        headers=_auth_headers(),
+        json={"action": "PUBLISH"},
     )
     assert response.status_code == 200
     assert response.json()["lifecycleState"] == "PUBLISHED"
 
 
-def test_change_listing_status_illegal_transition_returns_409(client: TestClient) -> None:
-    created = client.post("/api/v1/listings", headers=_auth_headers(), json=_create_body())
+def test_change_listing_status_illegal_transition_returns_409(
+    client: TestClient,
+) -> None:
+    created = client.post(
+        "/api/v1/listings", headers=_auth_headers(), json=_create_body()
+    )
     listing_id = created.json()["id"]
 
     response = client.post(
-        f"/api/v1/listings/{listing_id}/status", headers=_auth_headers(), json={"action": "SUSPEND"}
+        f"/api/v1/listings/{listing_id}/status",
+        headers=_auth_headers(),
+        json={"action": "SUSPEND"},
     )
     assert response.status_code == 409
     assert response.json()["code"] == "ILLEGAL_STATE_TRANSITION"
 
 
 def test_delete_listing_returns_204(client: TestClient) -> None:
-    created = client.post("/api/v1/listings", headers=_auth_headers(), json=_create_body())
+    created = client.post(
+        "/api/v1/listings", headers=_auth_headers(), json=_create_body()
+    )
     listing_id = created.json()["id"]
 
     response = client.delete(f"/api/v1/listings/{listing_id}", headers=_auth_headers())
@@ -250,7 +278,9 @@ def test_delete_listing_returns_204(client: TestClient) -> None:
 def test_attach_list_and_detach_listing_images(
     client: TestClient, fake_media: FakeMediaAssetReaderPort
 ) -> None:
-    created = client.post("/api/v1/listings", headers=_auth_headers(), json=_create_body())
+    created = client.post(
+        "/api/v1/listings", headers=_auth_headers(), json=_create_body()
+    )
     listing_id = created.json()["id"]
     media_asset_id = uuid4()
     fake_media.seed(media_asset_id)
@@ -280,13 +310,15 @@ def test_get_listing_statistics_owner_only(client: TestClient) -> None:
     listing_id = created.json()["id"]
 
     owner_response = client.get(
-        f"/api/v1/listings/{listing_id}/statistics", headers=_auth_headers("owner-token")
+        f"/api/v1/listings/{listing_id}/statistics",
+        headers=_auth_headers("owner-token"),
     )
     assert owner_response.status_code == 200
     assert owner_response.json()["favorites"] == 0
 
     other_response = client.get(
-        f"/api/v1/listings/{listing_id}/statistics", headers=_auth_headers("other-token")
+        f"/api/v1/listings/{listing_id}/statistics",
+        headers=_auth_headers("other-token"),
     )
     assert other_response.status_code == 403
 
@@ -313,7 +345,9 @@ def test_favorites_add_list_remove(client: TestClient) -> None:
     assert listed.status_code == 200
     assert len(listed.json()["items"]) == 1
 
-    removed = client.delete(f"/api/v1/me/favorites/{listing_id}", headers=_auth_headers())
+    removed = client.delete(
+        f"/api/v1/me/favorites/{listing_id}", headers=_auth_headers()
+    )
     assert removed.status_code == 204
 
     listed_after = client.get("/api/v1/me/favorites", headers=_auth_headers())

@@ -852,6 +852,36 @@ def _catalog_media_adapter() -> MediaAssetReaderAdapter:
     return MediaAssetReaderAdapter(_CatalogMediaReaderBridge())
 
 
+class _CreditBalanceBridge:
+    """Implements `catalog.application.ports.CreditBalancePort` directly (listing paywall Phase
+    4, 2026-08-23) -- mirrors `_ConfigurationPortBridge`'s own in-process cross-module bridge
+    shape (no separate narrow-Protocol-plus-adapter indirection needed here, unlike `media`'s own
+    `_CatalogMediaReaderBridge` + `MediaAssetReaderAdapter` pair: `CreditBalancePort`'s one method
+    already matches what this bridge needs to call). Opens its OWN billing session/transaction,
+    committed independently BEFORE catalog's own `create_listing` transaction -- see
+    `CreditBalancePort`'s own docstring for why that ordering matters."""
+
+    async def consume_one_listing_credit(
+        self, *, owner_profile_id: BusinessProfileId
+    ) -> bool:
+        async for session in _billing_session():
+            use_cases = EntitlementUseCases(
+                entitlements=SqlalchemyEntitlementRepository(session),
+                orders=SqlalchemyOrderRepository(session),
+                outbox=OutboxWriter(session, BillingOutboxEventRow),
+            )
+            entitlement = await use_cases.consume_listing_credit(
+                purchaser_profile_id=owner_profile_id, now=datetime.now(UTC)
+            )
+            return entitlement is not None
+        raise AssertionError("unreachable: _billing_session always yields exactly once")
+
+
+@lru_cache(maxsize=1)
+def _catalog_credit_balance_port() -> _CreditBalanceBridge:
+    return _CreditBalanceBridge()
+
+
 def _build_listing_use_cases(session: AsyncSession) -> ListingUseCases:
     """Factored out of `provide_listing_use_cases`'s own former inline body (Task P-07) so
     moderation's listing-command bridge and identity's account-suspension projection handler
@@ -868,6 +898,7 @@ def _build_listing_use_cases(session: AsyncSession) -> ListingUseCases:
             subscriptions=SqlalchemySubscriptionSnapshotRepository(session)
         ),
         duplicates=DuplicateDetectionService(listings=listings),
+        credit_balance=_catalog_credit_balance_port(),
     )
 
 

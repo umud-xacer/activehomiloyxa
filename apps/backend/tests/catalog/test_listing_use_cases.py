@@ -33,6 +33,7 @@ from shared_kernel import BusinessProfileId, ListingId, UserId
 
 from .conftest import (
     FakeCategoryFormPort,
+    FakeCreditBalancePort,
     FakeListingRepository,
     FakeMediaAssetReaderPort,
     FakeOutbox,
@@ -50,6 +51,7 @@ def _use_cases(
     fake_media: FakeMediaAssetReaderPort,
     fake_outbox: FakeOutbox,
     fake_subscriptions: FakeSubscriptionSnapshotRepository,
+    fake_credit_balance: FakeCreditBalancePort | None = None,
 ) -> ListingUseCases:
     return ListingUseCases(
         listings=fake_listings,
@@ -59,6 +61,7 @@ def _use_cases(
         outbox=fake_outbox,
         quota=QuotaEnforcementService(subscriptions=fake_subscriptions),
         duplicates=DuplicateDetectionService(listings=fake_listings),
+        credit_balance=fake_credit_balance or FakeCreditBalancePort(),
     )
 
 
@@ -70,9 +73,16 @@ def use_cases(
     fake_media: FakeMediaAssetReaderPort,
     fake_outbox: FakeOutbox,
     fake_subscriptions: FakeSubscriptionSnapshotRepository,
+    fake_credit_balance: FakeCreditBalancePort,
 ) -> ListingUseCases:
     return _use_cases(
-        fake_listings, fake_categories, fake_settings, fake_media, fake_outbox, fake_subscriptions
+        fake_listings,
+        fake_categories,
+        fake_settings,
+        fake_media,
+        fake_outbox,
+        fake_subscriptions,
+        fake_credit_balance,
     )
 
 
@@ -119,10 +129,15 @@ async def test_create_listing_with_publish_true_publishes_and_sets_expiry(
     )
     assert listing.lifecycle_state.value == "PUBLISHED"
     assert listing.expires_at == NOW + timedelta(days=30)
-    assert [e.event_type for e in fake_outbox.events] == ["ListingCreated", "ListingPublished"]
+    assert [e.event_type for e in fake_outbox.events] == [
+        "ListingCreated",
+        "ListingPublished",
+    ]
 
 
-async def test_create_listing_rejects_invalid_attributes(use_cases: ListingUseCases) -> None:
+async def test_create_listing_rejects_invalid_attributes(
+    use_cases: ListingUseCases,
+) -> None:
     with pytest.raises(AttributeValidationError):
         await use_cases.create_listing(
             owner_user_id=UserId(value=uuid4()),
@@ -206,7 +221,9 @@ async def test_create_listing_attaches_verified_images(
     assert listing.images[0].media_asset_id == media_asset_id
 
 
-async def test_create_listing_unknown_media_asset_raises(use_cases: ListingUseCases) -> None:
+async def test_create_listing_unknown_media_asset_raises(
+    use_cases: ListingUseCases,
+) -> None:
     with pytest.raises(ListingMediaAssetNotFoundError):
         await use_cases.create_listing(
             owner_user_id=UserId(value=uuid4()),
@@ -275,7 +292,9 @@ async def test_I08_quota_exceeded_blocks_creation(
         )
 
 
-async def test_I08_personal_owner_is_never_quota_checked(use_cases: ListingUseCases) -> None:
+async def test_I08_personal_owner_is_never_quota_checked(
+    use_cases: ListingUseCases,
+) -> None:
     """`owner_profile_id=None` (personal context) is unlimited in v1 -- see
     `QuotaEnforcementService.check_can_create`'s own docstring."""
     listing = await use_cases.create_listing(
@@ -382,7 +401,9 @@ async def test_edit_listing_rebinds_to_current_form_version(
     assert edited.form_definition_version_id != original_version_id
 
 
-async def test_edit_listing_stale_lock_version_raises(use_cases: ListingUseCases) -> None:
+async def test_edit_listing_stale_lock_version_raises(
+    use_cases: ListingUseCases,
+) -> None:
     owner = UserId(value=uuid4())
     listing = await use_cases.create_listing(
         owner_user_id=owner,
@@ -472,7 +493,9 @@ async def test_change_status_renew_extends_expiry(use_cases: ListingUseCases) ->
     assert renewed.expires_at == NOW + timedelta(days=30)
 
 
-async def test_change_status_delete_transitions_to_deleted(use_cases: ListingUseCases) -> None:
+async def test_change_status_delete_transitions_to_deleted(
+    use_cases: ListingUseCases,
+) -> None:
     owner = UserId(value=uuid4())
     listing = await use_cases.create_listing(
         owner_user_id=owner,
@@ -606,7 +629,9 @@ async def test_unflag_listing_clears_the_flag(use_cases: ListingUseCases) -> Non
         now=NOW,
     )
     assert dup.is_flagged is True
-    unflagged = await use_cases.unflag_listing(listing_id=dup.id, reason="reviewed", now=NOW)
+    unflagged = await use_cases.unflag_listing(
+        listing_id=dup.id, reason="reviewed", now=NOW
+    )
     assert unflagged.is_flagged is False
     assert first  # keep reference alive for readability
 
@@ -631,7 +656,9 @@ async def _create_draft(use_cases: ListingUseCases, *, owner: UserId) -> Listing
 async def test_publish_listing_standalone_method(use_cases: ListingUseCases) -> None:
     owner = UserId(value=uuid4())
     draft = await _create_draft(use_cases, owner=owner)
-    published = await use_cases.publish_listing(listing_id=draft.id, actor_user_id=owner, now=NOW)
+    published = await use_cases.publish_listing(
+        listing_id=draft.id, actor_user_id=owner, now=NOW
+    )
     assert published.lifecycle_state.value == "PUBLISHED"
 
 
@@ -695,20 +722,34 @@ async def test_change_status_suspend_archive_restore(
 ) -> None:
     owner = UserId(value=uuid4())
     draft = await _create_draft(use_cases, owner=owner)
-    published = await use_cases.publish_listing(listing_id=draft.id, actor_user_id=owner, now=NOW)
+    published = await use_cases.publish_listing(
+        listing_id=draft.id, actor_user_id=owner, now=NOW
+    )
 
     suspended = await use_cases.change_status(
-        listing_id=published.id, actor_user_id=owner, action="SUSPEND", reason="pause", now=NOW
+        listing_id=published.id,
+        actor_user_id=owner,
+        action="SUSPEND",
+        reason="pause",
+        now=NOW,
     )
     assert suspended.lifecycle_state.value == "SUSPENDED"
 
     archived = await use_cases.change_status(
-        listing_id=suspended.id, actor_user_id=owner, action="ARCHIVE", reason=None, now=NOW
+        listing_id=suspended.id,
+        actor_user_id=owner,
+        action="ARCHIVE",
+        reason=None,
+        now=NOW,
     )
     assert archived.lifecycle_state.value == "ARCHIVED"
 
     restored = await use_cases.change_status(
-        listing_id=archived.id, actor_user_id=owner, action="RESTORE", reason=None, now=NOW
+        listing_id=archived.id,
+        actor_user_id=owner,
+        action="RESTORE",
+        reason=None,
+        now=NOW,
     )
     assert restored.lifecycle_state.value == "PUBLISHED"
 
@@ -718,12 +759,18 @@ async def test_change_status_suspend_archive_restore(
     assert event_types.count("ListingPublished") == 2  # first publish + restore
 
 
-async def test_change_status_unsupported_action_raises(use_cases: ListingUseCases) -> None:
+async def test_change_status_unsupported_action_raises(
+    use_cases: ListingUseCases,
+) -> None:
     owner = UserId(value=uuid4())
     draft = await _create_draft(use_cases, owner=owner)
     with pytest.raises(ValueError, match="unsupported changeListingStatus action"):
         await use_cases.change_status(
-            listing_id=draft.id, actor_user_id=owner, action="BOGUS", reason=None, now=NOW
+            listing_id=draft.id,
+            actor_user_id=owner,
+            action="BOGUS",
+            reason=None,
+            now=NOW,
         )
 
 
