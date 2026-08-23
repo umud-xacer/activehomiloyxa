@@ -35,7 +35,12 @@ from catalog.domain.exceptions import NotListingOwnerError
 from catalog.domain.image_attachment import ImageAttachment
 from catalog.domain.listing import Listing
 from catalog.domain.policies import generate_slug, validate_attribute_set
-from catalog.domain.value_objects import ImageStatus, LifecycleState, ListingType, PromotionKind
+from catalog.domain.value_objects import (
+    ImageStatus,
+    LifecycleState,
+    ListingType,
+    PromotionKind,
+)
 from contracts.events.catalog import (
     ListingArchived,
     ListingCreated,
@@ -107,6 +112,7 @@ class ListingUseCases:
         location: GeoLocation | None,
         image_media_asset_ids: list[UUID] | None,
         publish: bool,
+        requires_payment: bool = False,
         now: datetime,
     ) -> Listing:
         category = await self._categories.get_category(category_id)
@@ -117,14 +123,19 @@ class ListingUseCases:
             raise CategoryFormUnavailableError(category_id)
 
         if owner_profile_id is not None:
-            active_count = await self._listings.count_active_by_owner_profile(owner_profile_id)
+            active_count = await self._listings.count_active_by_owner_profile(
+                owner_profile_id
+            )
             await self._quota.check_can_create(
                 owner_profile_id=owner_profile_id, active_listing_count=active_count
             )
 
         image_ids = image_media_asset_ids or []
         validate_attribute_set(
-            attributes, binding.specs, image_count=len(image_ids), field_codes=binding.field_codes
+            attributes,
+            binding.specs,
+            image_count=len(image_ids),
+            field_codes=binding.field_codes,
         )
 
         listing_id = ListingId(value=uuid4())
@@ -146,6 +157,8 @@ class ListingUseCases:
             slug=generate_slug(title, listing_id.value),
             now=now,
         )
+        if requires_payment:
+            listing = listing.mark_awaiting_payment(now=now)
 
         for media_asset_id in image_ids:
             listing = await self._attach_verified_image(
@@ -156,7 +169,9 @@ class ListingUseCases:
             owner_user_id=owner_user_id, category_id=category_id, title=title
         )
         if is_duplicate:
-            listing = listing.flag(record_id=uuid4(), reason="duplicate-detection", now=now)
+            listing = listing.flag(
+                record_id=uuid4(), reason="duplicate-detection", now=now
+            )
 
         await self._listings.add(listing)
         await self._publish(
@@ -177,12 +192,20 @@ class ListingUseCases:
                     actor=None,
                     aggregate_type="Listing",
                     aggregate_id=listing.id.value,
-                    payload=await self._listing_payload(listing, reason="duplicate-detection"),
+                    payload=await self._listing_payload(
+                        listing, reason="duplicate-detection"
+                    ),
                 )
             )
 
-        if publish:
-            listing = await self._do_publish(listing, actor_user_id=owner_user_id, now=now)
+        # Listing paywall (2026-08-23): `publish=True` under `requires_payment=True` defers the
+        # publish intent rather than dropping it -- `activate_after_payment` below is the only
+        # path that ever calls `_do_publish` on an `awaiting_payment` listing, once billing's
+        # `EntitlementActivated` (`entitlementType=LISTING_PUBLICATION`) confirms it was paid for.
+        if publish and not requires_payment:
+            listing = await self._do_publish(
+                listing, actor_user_id=owner_user_id, now=now
+            )
         else:
             await self._publish(
                 ListingDraftSaved(
@@ -226,7 +249,9 @@ class ListingUseCases:
         now: datetime,
     ) -> ImageAttachment:
         listing = await self._require_owned(listing_id, actor_user_id)
-        listing = await self._attach_verified_image(listing, media_asset_id=media_asset_id, now=now)
+        listing = await self._attach_verified_image(
+            listing, media_asset_id=media_asset_id, now=now
+        )
         listing = await self._listings.save(listing)
         return listing.images[-1]
 
@@ -507,10 +532,31 @@ class ListingUseCases:
         listing = await self._listings.get_by_image_media_asset_id(media_asset_id)
         if listing is None:
             return
-        updated = listing.update_image_status(media_asset_id=media_asset_id, status=status, now=now)
+        updated = listing.update_image_status(
+            media_asset_id=media_asset_id, status=status, now=now
+        )
         if updated is listing:
             return
         updated = await self._listings.save(updated)
+
+    # --- listing paywall (2026-08-23, billing entitlement events) ----------------------------------
+
+    async def activate_after_payment(
+        self, *, listing_id: ListingId, now: datetime
+    ) -> Listing:
+        """billing's `EntitlementActivated` (`entitlementType=LISTING_PUBLICATION`) reaches
+        catalog via `infrastructure.event_projection.handle_listing_publication_event` -- the ONLY
+        caller that ever publishes a listing being held `awaiting_payment` (mirrors
+        `apply_promotion_projection`'s own "billing event -> catalog projection" shape, X-03).
+        Routes through the same `_do_publish` every direct-publish path uses, so a paid listing
+        gets a real expiry term computed the same way (`Listing.publish` itself unconditionally
+        clears `awaiting_payment` -- see its own docstring) -- a paid listing is not a
+        second-class publish. Attributed to the listing's own owner: the payment was made on
+        their behalf, and there is no acting user in an outbox consumer's own request scope."""
+        listing = await self._require_listing(listing_id)
+        return await self._do_publish(
+            listing, actor_user_id=listing.owner_user_id, now=now
+        )
 
     # --- promotion projection (DDD Sec 5.3 PromotionMarker; X-03, billing entitlement events) ------
 
@@ -550,7 +596,9 @@ class ListingUseCases:
         )
         return listing
 
-    async def clear_promotion_projection(self, *, listing_id: ListingId, now: datetime) -> Listing:
+    async def clear_promotion_projection(
+        self, *, listing_id: ListingId, now: datetime
+    ) -> Listing:
         """`EntitlementExpired`/`EntitlementRevoked` (`entitlementType=LISTING_PROMOTION`) --
         withdraws the projection the same way `apply_promotion_projection` applies it."""
         listing = await self._require_listing(listing_id)
@@ -880,7 +928,9 @@ class ListingUseCases:
             raise ListingNotFoundError(listing_id)
         return listing
 
-    async def _require_owned(self, listing_id: ListingId, actor_user_id: UserId) -> Listing:
+    async def _require_owned(
+        self, listing_id: ListingId, actor_user_id: UserId
+    ) -> Listing:
         listing = await self._require_listing(listing_id)
         if listing.owner_user_id != actor_user_id:
             raise NotListingOwnerError(listing_id.value)
@@ -923,7 +973,9 @@ class ListingUseCases:
             "listingId": str(listing.id.value),
             "ownerUserId": str(listing.owner_user_id.value),
             "ownerProfileId": (
-                str(listing.owner_profile_id.value) if listing.owner_profile_id else None
+                str(listing.owner_profile_id.value)
+                if listing.owner_profile_id
+                else None
             ),
             "categoryId": str(listing.category_id),
             "categoryPath": listing.category_path,
@@ -932,17 +984,25 @@ class ListingUseCases:
             "description": listing.description,
             "attributes": listing.attributes,
             "price": (
-                {"amount": str(listing.price.amount), "currency": listing.price.currency}
+                {
+                    "amount": str(listing.price.amount),
+                    "currency": listing.price.currency,
+                }
                 if listing.price
                 else None
             ),
             "location": (
-                {"latitude": listing.location.latitude, "longitude": listing.location.longitude}
+                {
+                    "latitude": listing.location.latitude,
+                    "longitude": listing.location.longitude,
+                }
                 if listing.location
                 else None
             ),
             "slug": listing.slug,
-            "publishedAt": listing.published_at.isoformat() if listing.published_at else None,
+            "publishedAt": listing.published_at.isoformat()
+            if listing.published_at
+            else None,
             "lifecycleState": listing.lifecycle_state.value,
             "isFlagged": listing.is_flagged,
             "expiresAt": listing.expires_at.isoformat() if listing.expires_at else None,
@@ -963,7 +1023,9 @@ class ListingUseCases:
             # through its own configured media base (`search.interfaces.routers`).
             # QUARANTINED/PENDING are excluded here rather than downstream so an unscanned or
             # rejected asset can never reach a public result card (I-04).
-            "primaryImageThumbnailUrl": await self._primary_image_thumbnail_url(listing),
+            "primaryImageThumbnailUrl": await self._primary_image_thumbnail_url(
+                listing
+            ),
         }
         if reason is not None:
             payload["reason"] = reason

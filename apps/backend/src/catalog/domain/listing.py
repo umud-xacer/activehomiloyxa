@@ -86,6 +86,15 @@ class Listing:
     location: GeoLocation | None
     lifecycle_state: LifecycleState
     is_flagged: bool
+    awaiting_payment: bool
+    """Listing paywall (2026-08-23): `True` for a `DRAFT` listing whose publish is held pending
+    payment (`ListingUseCases.create_listing(..., requires_payment=True)`) -- an orthogonal
+    field, not a `LifecycleState` value (mirrors `is_flagged`'s own shape, not a new state: I-06's
+    visibility rule already excludes every `DRAFT`, paid or not, so this carries no visibility
+    logic of its own -- it exists purely so the owner/frontend can tell "an ordinary unfinished
+    draft" apart from "a finished draft sitting behind the paywall"). Cleared by `publish()`
+    unconditionally (the only method that ever moves a listing out of `DRAFT`), never set directly
+    by any other transition."""
     expires_at: datetime | None
     published_at: datetime | None
     promotion: PromotionMarker | None
@@ -154,6 +163,7 @@ class Listing:
             location=location,
             lifecycle_state=LifecycleState.DRAFT,
             is_flagged=False,
+            awaiting_payment=False,
             expires_at=None,
             published_at=None,
             promotion=None,
@@ -222,7 +232,9 @@ class Listing:
         (BRULE-17: a flagged listing is `PUBLISHED` but not *visible*, exactly the "withheld,
         held for moderation" behaviour, realised as one predicate rather than a queued sub-state)."""
         if self.lifecycle_state is not LifecycleState.DRAFT:
-            raise IllegalListingStateTransitionError("publish", self.lifecycle_state.value)
+            raise IllegalListingStateTransitionError(
+                "publish", self.lifecycle_state.value
+            )
         record = self._record(
             to_state=LifecycleState.PUBLISHED,
             kind=TransitionKind.PUBLISH,
@@ -234,6 +246,7 @@ class Listing:
         return replace(
             self,
             lifecycle_state=LifecycleState.PUBLISHED,
+            awaiting_payment=False,
             published_at=self.published_at or now,
             expires_at=self.expires_at or expires_at,
             transitions=(*self.transitions, record),
@@ -299,14 +312,21 @@ class Listing:
         )
 
     def suspend(
-        self, *, record_id: UUID, actor_user_id: UUID | None, reason: str | None, now: datetime
+        self,
+        *,
+        record_id: UUID,
+        actor_user_id: UUID | None,
+        reason: str | None,
+        now: datetime,
     ) -> Listing:
         """`actor_user_id` may be `None` for a system-driven suspension with no acting user in
         scope (e.g. a lapsed business-profile subscription, `ListingUseCases.
         suspend_all_by_owner_profile`) -- the same "system-driven, no actor" case `record_expiry`
         already establishes for `EXPIRE`, just reachable from a second transition kind."""
         if self.lifecycle_state not in _VISIBLE_STATES:
-            raise IllegalListingStateTransitionError("suspend", self.lifecycle_state.value)
+            raise IllegalListingStateTransitionError(
+                "suspend", self.lifecycle_state.value
+            )
         record = self._record(
             to_state=LifecycleState.SUSPENDED,
             kind=TransitionKind.SUSPEND,
@@ -326,7 +346,9 @@ class Listing:
         self, *, record_id: UUID, actor_user_id: UUID, reason: str | None, now: datetime
     ) -> Listing:
         if self.lifecycle_state not in (*_VISIBLE_STATES, LifecycleState.SUSPENDED):
-            raise IllegalListingStateTransitionError("archive", self.lifecycle_state.value)
+            raise IllegalListingStateTransitionError(
+                "archive", self.lifecycle_state.value
+            )
         record = self._record(
             to_state=LifecycleState.ARCHIVED,
             kind=TransitionKind.ARCHIVE,
@@ -343,7 +365,12 @@ class Listing:
         )
 
     def restore(
-        self, *, record_id: UUID, actor_user_id: UUID | None, reason: str | None, now: datetime
+        self,
+        *,
+        record_id: UUID,
+        actor_user_id: UUID | None,
+        reason: str | None,
+        now: datetime,
     ) -> Listing:
         """Brings a shelved listing (`SUSPENDED`/`ARCHIVED`) back to `PUBLISHED` -- the
         `ListingStatusChangeRequest.action="RESTORE"` verb. No dedicated `ListingRestored` event
@@ -357,7 +384,9 @@ class Listing:
             LifecycleState.SUSPENDED,
             LifecycleState.ARCHIVED,
         ):
-            raise IllegalListingStateTransitionError("restore", self.lifecycle_state.value)
+            raise IllegalListingStateTransitionError(
+                "restore", self.lifecycle_state.value
+            )
         record = self._record(
             to_state=LifecycleState.PUBLISHED,
             kind=TransitionKind.RESTORE,
@@ -386,7 +415,9 @@ class Listing:
         -- only the timestamp moves, recorded as a `RENEW` transition (`from_state == to_state`,
         matching "Renewed as a RECORDED transition", not a state)."""
         if self.lifecycle_state not in _VISIBLE_STATES:
-            raise IllegalListingStateTransitionError("renew", self.lifecycle_state.value)
+            raise IllegalListingStateTransitionError(
+                "renew", self.lifecycle_state.value
+            )
         record = self._record(
             to_state=self.lifecycle_state,
             kind=TransitionKind.RENEW,
@@ -414,7 +445,9 @@ class Listing:
         DELETE at the database level, same discipline `identity.domain.UserAccount.close` already
         uses for anonymise-not-erase)."""
         if self.lifecycle_state is LifecycleState.DELETED:
-            raise IllegalListingStateTransitionError("delete", self.lifecycle_state.value)
+            raise IllegalListingStateTransitionError(
+                "delete", self.lifecycle_state.value
+            )
         record = self._record(
             to_state=LifecycleState.DELETED,
             kind=TransitionKind.DELETE,
@@ -438,8 +471,13 @@ class Listing:
         query re-selecting the same still-expired-and-unrenewed listing on a later poll must not
         re-fire `ListingExpired` every cycle."""
         if self.lifecycle_state not in _VISIBLE_STATES:
-            raise IllegalListingStateTransitionError("expire", self.lifecycle_state.value)
-        if self.transitions and self.transitions[-1].transition_kind is TransitionKind.EXPIRE:
+            raise IllegalListingStateTransitionError(
+                "expire", self.lifecycle_state.value
+            )
+        if (
+            self.transitions
+            and self.transitions[-1].transition_kind is TransitionKind.EXPIRE
+        ):
             return self
         record = self._record(
             to_state=self.lifecycle_state,
@@ -544,11 +582,15 @@ class Listing:
         )
         return replace(self, images=renumbered, updated_at=now)
 
-    def reorder_images(self, ordered_image_ids: tuple[UUID, ...], *, now: datetime) -> Listing:
+    def reorder_images(
+        self, ordered_image_ids: tuple[UUID, ...], *, now: datetime
+    ) -> Listing:
         """`order` (OpenAPI `ImageReorderRequest`) names attachment ids, not media asset ids --
         "position derives from array index; index 0 = primary" (position 1 in storage terms)."""
         current_ids = {image.id for image in self.images}
-        if set(ordered_image_ids) != current_ids or len(ordered_image_ids) != len(self.images):
+        if set(ordered_image_ids) != current_ids or len(ordered_image_ids) != len(
+            self.images
+        ):
             raise DuplicateImagePositionError()
         by_id = {image.id: image for image in self.images}
         reordered = tuple(
@@ -574,14 +616,28 @@ class Listing:
                 image for image in self.images if image.media_asset_id != media_asset_id
             )
             renumbered = tuple(
-                replace(image, position=index + 1) for index, image in enumerate(remaining)
+                replace(image, position=index + 1)
+                for index, image in enumerate(remaining)
             )
             return replace(self, images=renumbered, updated_at=now)
         updated = tuple(
-            replace(image, status=status) if image.media_asset_id == media_asset_id else image
+            replace(image, status=status)
+            if image.media_asset_id == media_asset_id
+            else image
             for image in self.images
         )
         return replace(self, images=updated, updated_at=now)
+
+    # --- listing paywall (2026-08-23, orthogonal field, plain replace()) -------------------------
+
+    def mark_awaiting_payment(self, *, now: datetime) -> Listing:
+        """Same shape as `apply_promotion`/`clear_promotion` just below: a plain `replace()`, no
+        guard clause, no `TransitionKind`/transition record -- `awaiting_payment` is orthogonal to
+        `lifecycle_state`, not a transition of it. Called only by `ListingUseCases.create_listing`
+        when `requires_payment=True`, on a listing that is always freshly `DRAFT` (never on an
+        already-persisted one), so no state-guard is needed here the way `publish`/`suspend` need
+        one."""
+        return replace(self, awaiting_payment=True, updated_at=now)
 
     # --- promotion (DDD Sec 5.3 PromotionMarker; X-03, projected only) ---------------------------
 

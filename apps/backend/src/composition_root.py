@@ -129,6 +129,7 @@ from catalog.infrastructure.event_projection import (
     handle_entitlement_event,
     handle_identity_event,
     handle_listing_promotion_event,
+    handle_listing_publication_event,
     handle_subscription_visibility_event,
     handle_trial_subscription_event,
 )
@@ -1233,6 +1234,14 @@ expired/was revoked."""
 
 _CATALOG_PROMOTION_RELEVANT_ENTITLEMENT_TYPES = {"LISTING_PROMOTION"}
 
+_CATALOG_PUBLICATION_RELEVANT_ENTITLEMENT_EVENT_TYPES = {"EntitlementActivated"}
+"""Listing paywall Phase 3 (2026-08-23): unlike the promotion/subscription routes above,
+`handle_listing_publication_event` has no withdrawal path by design (its own docstring) --
+publishing a paid listing is permanent, not a lease that expires or gets revoked -- so only
+`EntitlementActivated` is routed."""
+
+_CATALOG_PUBLICATION_RELEVANT_ENTITLEMENT_TYPES = {"LISTING_PUBLICATION"}
+
 _CATALOG_SUBSCRIPTION_VISIBILITY_RELEVANT_ENTITLEMENT_EVENT_TYPES = {
     "EntitlementActivated",
     "EntitlementExpired",
@@ -1340,7 +1349,14 @@ def make_billing_entitlement_fanout_handler(
     promotion_event`, per the frozen event contract's own `EntitlementActivated` docstring
     ("Principal consumers: Catalog (promotion/quota)...") -- catalog republishes `ListingEdited`,
     which search's ALREADY-WIRED catalog-outbox consumer (`make_catalog_outbox_fanout_handler`)
-    already drains, closing the loop with no new dispatcher and no change to search's own code."""
+    already drains, closing the loop with no new dispatcher and no change to search's own code.
+
+    Listing paywall Phase 3 adds a SEVENTH route, same reason: `LISTING_PUBLICATION`
+    `EntitlementActivated` events route into catalog's new `handle_listing_publication_event`,
+    which flips a held `DRAFT`+`awaiting_payment` listing live (`ListingUseCases.
+    activate_after_payment`) -- unlike the promotion/subscription routes, only
+    `EntitlementActivated` is routed (see `_CATALOG_PUBLICATION_RELEVANT_ENTITLEMENT_EVENT_TYPES`'s
+    own docstring: this entitlement type has no withdrawal path)."""
 
     async def _handle(envelope: EventEnvelope) -> None:
         if envelope.event_type in _CATALOG_RELEVANT_ENTITLEMENT_EVENT_TYPES and (
@@ -1358,6 +1374,17 @@ def make_billing_entitlement_fanout_handler(
         ):
             async with billing_session_factory() as session, session.begin():
                 await handle_listing_promotion_event(
+                    session, envelope, _build_listing_use_cases(session)
+                )
+        if (
+            envelope.event_type in _CATALOG_PUBLICATION_RELEVANT_ENTITLEMENT_EVENT_TYPES
+            and (
+                envelope.payload.get("entitlementType")
+                in _CATALOG_PUBLICATION_RELEVANT_ENTITLEMENT_TYPES
+            )
+        ):
+            async with billing_session_factory() as session, session.begin():
+                await handle_listing_publication_event(
                     session, envelope, _build_listing_use_cases(session)
                 )
         if (

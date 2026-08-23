@@ -1,12 +1,15 @@
 """Idempotent projection handlers for the event streams catalog consumes but never imports the
 producer of (I-08/X-06): media's `MediaAssetReady`/`MediaAssetRejected` (image scan-status
 projection), billing's entitlement events -- `handle_entitlement_event` (subscription/quota
-projection, `ACTIVE_SUBSCRIPTION` only) and `handle_listing_promotion_event` (`LISTING_PROMOTION`
+projection, `ACTIVE_SUBSCRIPTION` only), `handle_listing_promotion_event` (`LISTING_PROMOTION`
 only, P-20 -- wired end to end via `composition_root.make_billing_entitlement_fanout_handler`,
 closing the "Catalog (promotion/quota)" consumer the frozen event contract's own
-`EntitlementActivated` docstring names) -- and (Task P-12) identity's `AccountSuspended` (DB
-Architecture Sec 14.4's own worked example: "account suspension -> listings hidden by catalog's
-own transition" -- a compensation, never a cascade written by moderation or identity).
+`EntitlementActivated` docstring names), and `handle_listing_publication_event`
+(`LISTING_PUBLICATION` only, listing paywall Phase 3, 2026-08-23 -- the auto-activation half of
+the listing paywall: flips a held-`DRAFT`+`awaiting_payment` listing live once its payment is
+confirmed) -- and (Task P-12) identity's `AccountSuspended` (DB Architecture Sec 14.4's own worked
+example: "account suspension -> listings hidden by catalog's own transition" -- a compensation,
+never a cascade written by moderation or identity).
 
 Each handler wraps `backbone.idempotency.consumer.idempotent_consume` against catalog's own
 `ProcessedEventRow` ledger, keyed on the *producing* event's own `event_id` -- redelivery of the
@@ -53,6 +56,7 @@ if TYPE_CHECKING:
 _MEDIA_STATUS_HANDLER = "catalog.media_asset_status_projection"
 _ENTITLEMENT_HANDLER = "catalog.entitlement_projection"
 _LISTING_PROMOTION_HANDLER = "catalog.listing_promotion_projection"
+_LISTING_PUBLICATION_HANDLER = "catalog.listing_publication_projection"
 _SUBSCRIPTION_VISIBILITY_HANDLER = "catalog.subscription_visibility_projection"
 _TRIAL_SUBSCRIPTION_HANDLER = "catalog.trial_subscription_visibility_projection"
 _IDENTITY_HANDLER = "catalog.identity_account_suspension_projection"
@@ -97,7 +101,9 @@ async def handle_media_event(session: AsyncSession, envelope: EventEnvelope) -> 
         await listings.save(updated)
 
 
-async def handle_entitlement_event(session: AsyncSession, envelope: EventEnvelope) -> None:
+async def handle_entitlement_event(
+    session: AsyncSession, envelope: EventEnvelope
+) -> None:
     """I-08: projects a billing entitlement event into `catalog.subscription_projection` --
     catalog never imports billing (AIR-10); this is the async, outbox-driven, one-way read side
     of that boundary. Not wired to a real producer as of this task (BC-08 does not exist);
@@ -122,10 +128,16 @@ async def handle_entitlement_event(session: AsyncSession, envelope: EventEnvelop
             owner_profile_id=BusinessProfileId(value=UUID(str(owner_profile_id))),
             entitlement_id=UUID(str(entitlement_id)),
             product_definition_id=(
-                UUID(str(product_definition_id_raw)) if product_definition_id_raw else None
+                UUID(str(product_definition_id_raw))
+                if product_definition_id_raw
+                else None
             ),
             quota_document=dict(payload.get("quota") or {}),
-            valid_until=(datetime.fromisoformat(str(valid_until_raw)) if valid_until_raw else None),
+            valid_until=(
+                datetime.fromisoformat(str(valid_until_raw))
+                if valid_until_raw
+                else None
+            ),
             source_event_id=envelope.event_id,
         )
         quota = QuotaEnforcementService(
@@ -162,7 +174,11 @@ async def handle_listing_promotion_event(
             kind_raw = payload.get("kind")
             valid_until_raw = payload.get("validUntil")
             entitlement_id_raw = payload.get("entitlementId")
-            if kind_raw is None or valid_until_raw is None or entitlement_id_raw is None:
+            if (
+                kind_raw is None
+                or valid_until_raw is None
+                or entitlement_id_raw is None
+            ):
                 return
             await use_cases.apply_promotion_projection(
                 listing_id=listing_id,
@@ -175,6 +191,35 @@ async def handle_listing_promotion_event(
             await use_cases.clear_promotion_projection(
                 listing_id=listing_id, now=envelope.occurred_at
             )
+
+
+async def handle_listing_publication_event(
+    session: AsyncSession, envelope: EventEnvelope, use_cases: ListingUseCases
+) -> None:
+    """Listing paywall Phase 3 (2026-08-23): the `LISTING_PUBLICATION` slice of billing's
+    `EntitlementActivated` -- distinct from `handle_listing_promotion_event` above (a different
+    `EntitlementType`, and this one has no withdrawal path: unlike a `LISTING_PROMOTION` boost or
+    an `ACTIVE_SUBSCRIPTION`, paying to publish a listing is not something that later "expires" or
+    gets "revoked" back into `awaiting_payment` -- once published via `ListingUseCases.
+    activate_after_payment`, it stays published exactly like any other publish). Only routed for
+    `EntitlementActivated` (see `composition_root.make_billing_entitlement_fanout_handler`'s own
+    routing table) -- `EntitlementExpired`/`EntitlementRevoked` for this entitlement type are
+    never produced as a functional consequence of this flow, so there is nothing to route here."""
+    async with idempotent_consume(
+        session,
+        ProcessedEventRow,
+        event_id=envelope.event_id,
+        handler=_LISTING_PUBLICATION_HANDLER,
+    ) as is_fresh:
+        if not is_fresh:
+            return
+        listing_id_raw = envelope.payload.get("listingId")
+        if listing_id_raw is None:
+            return
+        await use_cases.activate_after_payment(
+            listing_id=ListingId(value=UUID(str(listing_id_raw))),
+            now=envelope.occurred_at,
+        )
 
 
 async def handle_subscription_visibility_event(

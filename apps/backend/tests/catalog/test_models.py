@@ -46,6 +46,7 @@ EXPECTED_COLUMNS = {
         "location_long",
         "lifecycle_state",
         "is_flagged",
+        "awaiting_payment",
         "expires_at",
         "published_at",
         "promotion_kind",
