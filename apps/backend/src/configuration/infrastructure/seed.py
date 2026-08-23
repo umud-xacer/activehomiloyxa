@@ -3969,34 +3969,20 @@ def _kop_qavatli_binolar_tree() -> list[Node]:
 
 
 def _kotejlar_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite) -- replaces a deep, artificial
+    daraxt (Oilaviy/Premium/Tog' kotejlari branches with invented leaves like "Ekstremal turizm
+    uchun") that didn't map to how O'zbekiston cottage listings/OLX are actually browsed. Kept
+    flat (no grandchildren) on purpose: `CategoryPicker` (`routes/list/index.tsx`) and
+    `CategoryFilterPanel`'s `subcategory` select (both already fully generic over whatever the
+    category tree contains, zero frontend change needed) read best as one flat choice, not another
+    drill-down level."""
     return [
-        (
-            "Oilaviy kotejlar",
-            ["2 xonali", "3 xonali", "5+ xonali", "Bolalar maydonchali kotejlar"],
-        ),
-        (
-            "Premium kotejlar",
-            ["Basseynli", "Sauna va SPA'li", "Panoramali", "VIP xizmatli kotejlar"],
-        ),
-        "Luxury Villalar",
-        (
-            "Tog' kotejlari",
-            [
-                "Qishki dam olish uchun",
-                "Yozgi dam olish uchun",
-                "Ekstremal turizm uchun",
-            ],
-        ),
-        "Ko'l bo'yidagi kotejlar",
-        "O'rmon hududidagi kotejlar",
-        "Shahar tashqarisidagi kotejlar",
-        "Kunlik ijaraga beriladigan kotejlar",
-        "Uzoq muddatli ijaradagi kotejlar",
         "Sotuvdagi kotejlar",
-        "Smart kotejlar",
-        "Eco kotejlar",
-        "Resort villalar",
-        "Investitsion kotejlar",
+        "Sutkalik ijaraga beriladigan kotejlar",
+        "Uzoq muddatli ijaraga beriladigan kotejlar",
+        "Tog' va tabiat bag'ridagi kotejlar",
+        "Townhouse va Buxobloklar",
+        "Villalar va Luxe kotejlar",
     ]
 
 
