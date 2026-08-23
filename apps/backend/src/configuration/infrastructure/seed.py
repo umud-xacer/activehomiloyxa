@@ -419,6 +419,11 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "guest_category": "Kimlar uchun (Mijozlar toifasi)",
     "bathroom": "Yuvinish xonasi (Sanuzel)",
     "kitchen": "Oshxona",
+    "star_rating": "Mehmonxona darajasi (Yulduzlar soni)",
+    "room_category": "Xona toifasi (Nomer turi)",
+    "breakfast": "Nonushta (Breakfast)",
+    "booking_payment_terms": "To'lov va Band qilish shartlari",
+    "transfer_service": "Transfer xizmati",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -1890,6 +1895,108 @@ def _hostel_fields() -> list[dict[str, object]]:
                 ("access_24_7", "24/7 kirish-chiqish"),
                 ("coffee_tea_zone", "Qahva/Choy zona"),
                 ("parking", "Avtoturargoh"),
+            ],
+        ),
+    ]
+
+
+def _hotel_fields() -> list[dict[str, object]]:
+    """Mexmonxona -- 2026-08-23 split off from the shared `_hospitality_fields()`/"mehmonxona-
+    form" into its own "hotel-form", same reason as `_hostel_fields()` above -- this was the last
+    category left on the shared form, now an unreferenced (harmless) orphan."""
+    return [
+        _field(
+            "district",
+            "asosiy",
+            "Tuman",
+            "select",
+            facet=True,
+            order=1,
+            options=_TASHKENT_DISTRICTS + _TASHKENT_REGION_DISTRICTS,
+        ),
+        _field(
+            "star_rating",
+            "asosiy",
+            "Mehmonxona darajasi (Yulduzlar soni)",
+            "select",
+            facet=True,
+            order=2,
+            options=[
+                ("3_star", "3 Yulduzli"),
+                ("4_star", "4 Yulduzli"),
+                ("5_star", "5 Yulduzli"),
+                ("no_star_mini_hotel", "Yulduzsiz / Mini-otel"),
+            ],
+        ),
+        _field(
+            "room_category",
+            "asosiy",
+            "Xona toifasi (Nomer turi)",
+            "select",
+            facet=True,
+            order=3,
+            options=[
+                ("standard", "Standart (Single/Double)"),
+                ("comfort_superior", "Comfort / Superior"),
+                ("suite_lux_vip", "Lyuks (Suite / VIP)"),
+                ("family", "Family (Oilaviy xona)"),
+            ],
+        ),
+        _field(
+            "breakfast",
+            "asosiy",
+            "Nonushta (Breakfast)",
+            "select",
+            facet=True,
+            order=4,
+            options=[
+                ("included_buffet", "Narx ichida (Shved stoli)"),
+                ("extra_paid", "Qo'shimcha to'lovli"),
+                ("none", "Yo'q"),
+            ],
+        ),
+        _field(
+            "booking_payment_terms",
+            "asosiy",
+            "To'lov va Band qilish shartlari",
+            "select",
+            facet=True,
+            order=5,
+            options=[
+                ("prepayment", "Oldindan to'lov ko'rsatilgan"),
+                ("pay_on_arrival", "Joyida mehmonga kelganda to'lov"),
+                ("free_cancellation", "Bepul bekor qilish (Free cancellation)"),
+            ],
+        ),
+        _field(
+            "transfer_service",
+            "asosiy",
+            "Transfer xizmati",
+            "select",
+            facet=True,
+            order=6,
+            options=[
+                ("transfer_included", "Aeroport/Vokzal transferi bor"),
+                ("on_request", "So'rov bo'yicha"),
+                ("none", "Yo'q"),
+            ],
+        ),
+        _field(
+            "amenities",
+            "asosiy",
+            "Qulayliklar",
+            "multiselect",
+            facet=True,
+            order=7,
+            options=[
+                ("wifi", "Wi-Fi"),
+                ("pool", "Basseyn (Ochiq/Yopiq)"),
+                ("spa_sauna", "SPA va Sauna"),
+                ("restaurant_bar", "Restoran / Bar"),
+                ("fitness", "Fitnes zal"),
+                ("conference_hall", "Konferens zal"),
+                ("parking", "Avtoturargoh"),
+                ("reception_24_7", "24/7 Resepshn"),
             ],
         ),
     ]
@@ -5345,34 +5452,15 @@ def _hostel_tree() -> list[Node]:
 
 
 def _mexmonxona_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Business Hotel/Resort Hotel/Luxury Hotel branches, plus
+    leaves like "Eco Hotel" not really distinct browse categories) with 5 real ones."""
     return [
-        "3 yulduzli mehmonxonalar",
-        "4 yulduzli mehmonxonalar",
-        "5 yulduzli mehmonxonalar",
-        "Boutique Hotel",
-        (
-            "Business Hotel",
-            [
-                "Konferensiya zallari",
-                "Coworking zonalari",
-                "Biznes xizmatlariga ega mehmonxonalar",
-            ],
-        ),
-        (
-            "Resort Hotel",
-            ["Beach Resort", "Mountain Resort", "Wellness Resort", "Family Resort"],
-        ),
-        "Apart Hotel",
-        "Family Hotel",
-        "Spa Hotel",
-        "Airport Hotel",
-        "Mountain Hotel",
-        "City Hotel",
-        (
-            "Luxury Hotel",
-            ["Presidential Suite", "Royal Suite", "Deluxe Room", "Executive Room"],
-        ),
-        "Eco Hotel",
+        "Klassik Mehmonxonalar (Hotel / Otel)",
+        "Boutique va Dizaynerlik mehmonxonalari",
+        "Resort va Dam olish kompleks-mehmonxonalari",
+        "Biznes va Konferens mehmonxonalar",
+        "Guesthouse / Oilaviy mehmon uylari",
     ]
 
 
@@ -5801,40 +5889,46 @@ async def _seed_catalog_taxonomy(
         listing_kind="VENUE",
     )
 
-    # -- Hospitality (Mexmonxona -- still shared/untouched).
-    hosp_form_id = await _seed_form(
+    # -- Mexmonxona (own form, split off "mehmonxona-form" 2026-08-23 -- see `_hotel_fields()`'s
+    # docstring for why). This was the last category still on the shared hospitality form --
+    # `_hospitality_fields()`/"mehmonxona-form" is now an unreferenced (harmless) orphan.
+    hotel_form_id = await _seed_form(
         use_cases,
         repo,
-        code="mehmonxona-form",
-        name="Mehmonxona/Hostel",
-        fields=_hospitality_fields(),
+        code="hotel-form",
+        name="Mehmonxona",
+        fields=_hotel_fields(),
         now=now,
     )
-    for code, name, path, tree in [
-        ("mexmonxona", "Mexmonxona", "/mexmonxona", _mexmonxona_tree()),
-    ]:
-        head_id = await _seed_category(
-            use_cases,
-            repo,
-            code=code,
-            name=name,
-            path=path,
-            parent_category_id=None,
-            form_definition_id=hosp_form_id,
-            now=now,
-            listing_kind="VENUE",
-            display_order=next(top_level_order),
-        )
-        await _seed_subtree(
-            use_cases,
-            repo,
-            tree,
-            parent_id=head_id,
-            parent_path=path,
-            form_definition_id=hosp_form_id,
-            now=now,
-            listing_kind="VENUE",
-        )
+    await _backfill_category_form_definition(
+        use_cases,
+        repo,
+        code="mexmonxona",
+        form_definition_id=hotel_form_id,
+        now=now,
+    )
+    mexmonxona_head_id = await _seed_category(
+        use_cases,
+        repo,
+        code="mexmonxona",
+        name="Mexmonxona",
+        path="/mexmonxona",
+        parent_category_id=None,
+        form_definition_id=hotel_form_id,
+        now=now,
+        listing_kind="VENUE",
+        display_order=next(top_level_order),
+    )
+    await _seed_subtree(
+        use_cases,
+        repo,
+        _mexmonxona_tree(),
+        parent_id=mexmonxona_head_id,
+        parent_path="/mexmonxona",
+        form_definition_id=hotel_form_id,
+        now=now,
+        listing_kind="VENUE",
+    )
 
     # -- Business directory (showrooms, not units).
     business_form_id = await _seed_form(
