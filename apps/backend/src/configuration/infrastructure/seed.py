@@ -442,6 +442,9 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "salary_payment_type": "Maosh to'lanish shakli",
     "education": "Ma'lumoti / Ta'lim",
     "benefits": "Qulayliklar va Sharoitlar",
+    "service_location": "Xizmat ko'rsatish joyi",
+    "visit_consultation": "Tashrif / Konsultatsiya (Viyezd)",
+    "extra_amenities": "Qo'shimcha qulayliklar",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -2616,6 +2619,160 @@ def _jobs_fields() -> list[dict[str, object]]:
                 ("official_employment", "Rasmiy ishga joylashtirish (ТК bo'yicha)"),
                 ("bonuses_kpi", "Bonuslar va KPI pay"),
                 ("student_friendly", "Talabalarni qabul qilish"),
+            ],
+        ),
+        _field(
+            "experience_years",
+            "asosiy",
+            "Tajriba (yil)",
+            "number",
+            facet=True,
+            order=90,
+        ),
+        _field(
+            "specialization", "asosiy", "Mutaxassislik", "text", facet=True, order=91
+        ),
+        _field(
+            "service_regions",
+            "asosiy",
+            "Xizmat ko'rsatiladigan hududlar",
+            "text",
+            order=92,
+        ),
+        _field(
+            "rate_type",
+            "asosiy",
+            "Narx turi",
+            "select",
+            facet=True,
+            order=93,
+            options=[
+                ("hourly", "Soatlik"),
+                ("daily", "Kunlik"),
+                ("per_job", "Ish uchun"),
+            ],
+        ),
+        _field(
+            "available_now",
+            "asosiy",
+            "Hozir band emas",
+            "boolean",
+            facet=True,
+            order=94,
+            default=True,
+        ),
+    ]
+
+
+def _services_fields() -> list[dict[str, object]]:
+    """Xizmat ko'rsatish (the top-level services directory itself, not its tamirchi/haydovchi/
+    yuk-haydovchi CV-shaped children which keep their own separate forms unchanged) -- 2026-08-23
+    rewrite, same reasoning as `_landscape_fields()`/`_jobs_fields()` above: its own dedicated
+    "xizmat-korsatish-form" moves off the generic `_service_cv_fields()` shape onto
+    maishiy/professional-service-specific fields."""
+    return [
+        _field(
+            "district",
+            "asosiy",
+            "Tuman",
+            "select",
+            facet=True,
+            order=1,
+            options=_TASHKENT_DISTRICTS + _TASHKENT_REGION_DISTRICTS,
+        ),
+        _field(
+            "contractor_type",
+            "asosiy",
+            "Ijrochi turi",
+            "select",
+            required=True,
+            facet=True,
+            order=2,
+            options=[
+                ("private_freelancer", "Xususiy usta (Frilanser/Shaxsiy)"),
+                ("service_center_company", "Servis markazi / Kompaniya"),
+                ("brigade", "Brigada"),
+            ],
+        ),
+        _field(
+            "experience_bucket",
+            "asosiy",
+            "Ish tajribasi",
+            "select",
+            facet=True,
+            order=3,
+            options=[
+                ("up_to_1_year", "1 yilgacha"),
+                ("1_3_years", "1-3 yil"),
+                ("3_5_years", "3-5 yil"),
+                ("5_plus_years", "5 yildan ortiq"),
+            ],
+        ),
+        _field(
+            "service_location",
+            "asosiy",
+            "Xizmat ko'rsatish joyi",
+            "select",
+            facet=True,
+            order=4,
+            options=[
+                ("client_location_callout", "Mijoznikiga borib (Chaqiruv bo'yicha)"),
+                ("own_workshop_office", "O'z ustaxonasida / Ofisda"),
+                ("remote_online", "Masofaviy (Online)"),
+            ],
+        ),
+        _field(
+            "visit_consultation",
+            "asosiy",
+            "Tashrif / Konsultatsiya (Viyezd)",
+            "select",
+            facet=True,
+            order=5,
+            options=[
+                ("free_onsite_diagnosis", "Joyiga borish va diagnostika bepul"),
+                ("paid_separate", "Alohida to'lovli"),
+                ("remote", "Masofaviy"),
+            ],
+        ),
+        _field(
+            "warranty_contract",
+            "asosiy",
+            "Kafolat va Shartnoma",
+            "select",
+            facet=True,
+            order=6,
+            options=[
+                ("warranty_provided", "Ishga kafolat beriladi (Kafolat taloni/Chek)"),
+                ("contract_available", "Shartnoma mavjud"),
+                ("no_warranty", "Kafolatsiz"),
+            ],
+        ),
+        _field(
+            "payment_method",
+            "asosiy",
+            "To'lov shakli",
+            "select",
+            facet=True,
+            order=7,
+            options=[
+                ("cash", "Naqd pul"),
+                ("bank_transfer", "Pul o'tkazish (Perechisleniye/NDS)"),
+                ("app_payment", "Ilova orqali (Click/Payme)"),
+            ],
+        ),
+        _field(
+            "extra_amenities",
+            "asosiy",
+            "Qo'shimcha qulayliklar",
+            "multiselect",
+            facet=True,
+            order=8,
+            options=[
+                ("emergency_24_7", "24/7 Shoshilinch chaqiruv (Avariyniy)"),
+                ("own_tools", "Shaxsiy asbob-uskunalarga ega"),
+                ("material_delivery", "Zapchast va materiallarni yetkazib berish"),
+                ("receipt_provided", "Chek va kvitansiya beriladi"),
+                ("contract_based_work", "Shartnoma bo'yicha ishlash"),
             ],
         ),
         _field(
@@ -5789,50 +5946,23 @@ def _ish_orni_tree() -> list[Node]:
 
 
 def _xizmat_korsatish_tree() -> list[Node]:
-    """New service subcategories from TZ-04, seeded alongside the pre-existing tamirchi/
-    haydovchi/yuk-haydovchi CV-shaped children (seeded separately, unchanged)."""
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Ta'mirlash xizmatlari/Elektrik xizmatlari/Tozalash xizmatlari
+    branches) with 8 real ones. Also fully replaces the pre-existing tamirchi/haydovchi/yuk-
+    haydovchi CV-shaped children this function's own docstring used to describe as "seeded
+    separately, unchanged" -- those 3 have unusual short paths (`/tamirchi` not `/xizmat-
+    korsatish/tamirchi`), so the 2026-08-23 bulk subcategory retire (which matched by path
+    *prefix*) never caught them; they're retired explicitly alongside this rewrite instead (see
+    the exact-path retire command for this category)."""
     return [
-        (
-            "Ta'mirlash xizmatlari",
-            [
-                "Kosmetik ta'mirlash",
-                "Kapital ta'mirlash",
-                "Ofis ta'miri",
-                "Kvartira ta'miri",
-                "Fasad ishlari",
-            ],
-        ),
-        "Usta xizmatlari",
-        (
-            "Elektrik xizmatlari",
-            [
-                "Sim tortish",
-                "Elektr qalqonlarini o'rnatish",
-                "Yoritish tizimlari",
-                "Smart Home elektr tizimlari",
-                "Avariya xizmatlari",
-            ],
-        ),
-        "Santexnika xizmatlari",
-        "Konditsioner va ventilyatsiya",
-        (
-            "Tozalash xizmatlari",
-            [
-                "Kundalik tozalash",
-                "General tozalash",
-                "Ofis tozalash",
-                "Qurilishdan keyingi tozalash",
-                "Kimyoviy tozalash",
-            ],
-        ),
-        "Qurilish brigadalari",
-        "Mebel yig'ish va o'rnatish",
-        "Yuk tashish xizmatlari",
-        "Ko'chirish (Pereezd) xizmatlari",
-        "Xavfsizlik tizimlari",
-        "Video kuzatuv va Smart Home",
-        "Dizayn va loyiha xizmatlari",
-        "Uy boshqaruvi va texnik xizmat",
+        "Uy va bino ta'miri xizmatlari (Santehnik, Elektrik, Malyar)",
+        "Maishiy texnikalarni ta'mirlash va o'rnatish",
+        "Transport va Logistika xizmatlari (Gruzoperevozka, Evakuator)",
+        "Mebel yasash va qayta ta'mirlash (Restavratsiya)",
+        "Tozalash va klining xizmatlari (Klining, Ximchistka)",
+        "Go'zallik va Salomatlik xizmatlari (Sartosh, Vizajist, Massaj)",
+        "Buxgalteriya, Yuridik va Konsalting xizmatlari",
+        "Boshqa maishiy va professional xizmatlar",
     ]
 
 
@@ -6507,16 +6637,29 @@ async def _seed_catalog_taxonomy(
         listing_kind="SERVICE",
     )
 
-    # -- Xizmat ko'rsatish: the services directory. A CV-shaped child category per trade so
-    # someone hiring a repairman/driver/truck-driver browses candidates exactly like any other
-    # category's listings -- new listing = new "CV" entry, searchable by specialization/region/
-    # rate via the same `catalogClient.listingsByCategoryPath` every other category already uses.
+    # -- Xizmat ko'rsatish: the services directory (own field shape since 2026-08-23, see
+    # `_services_fields()`'s docstring for why). tamirchi/haydovchi/yuk-haydovchi below still get
+    # their own CV-shaped forms per trade, unchanged.
     services_form_id = await _seed_form(
         use_cases,
         repo,
         code="xizmat-korsatish-form",
         name="Xizmat ko'rsatish",
-        fields=_service_cv_fields(),
+        fields=_services_fields(),
+        now=now,
+    )
+    await _backfill_form_definition_fields(
+        use_cases,
+        repo,
+        code="xizmat-korsatish-form",
+        fields=_services_fields(),
+        force_order={
+            "experience_years": 90,
+            "specialization": 91,
+            "service_regions": 92,
+            "rate_type": 93,
+            "available_now": 94,
+        },
         now=now,
     )
     services_head_id = await _seed_category(
