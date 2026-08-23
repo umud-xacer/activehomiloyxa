@@ -397,6 +397,12 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "billiards_tennis_ps": "Bilyard / Tennis / PlayStation",
     "tapchan_summer_kitchen": "Tapchan va Yozgi oshxona",
     "playground": "Bolalar maydonchasi",
+    "ownership_type": "Mulkchilik / Hujjat turi",
+    "location_condition": "Yer joylashuvi / Sharoiti",
+    "terrain_shape": "Yer shakli / Relyefi",
+    "gas_supply": "Gaz ta'minoti",
+    "electricity_supply": "Elektr energiyasi",
+    "water_supply": "Suv ta'minoti",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -1228,15 +1234,140 @@ def _dacha_fields() -> list[dict[str, object]]:
 
 
 def _land_fields() -> list[dict[str, object]]:
+    """Bo'sh yerlar (yer uchastkalari) -- always its own `FormDefinition` ("bosh-yer-form"),
+    never shared with `_property_fields()`. `order` (2026-08-23 UX rewrite) follows the requested
+    row-by-row sequence: `district`/`deal_type` land right before/after the (virtual-order) price
+    control, matching the "Kichik kategoriya / Tuman / Narx / Bitim turi" row exactly. `land_
+    purpose` and `has_documents` are now superseded by the 5 new subcategories (Uy qurish/Tijorat/
+    Qishloq xo'jaligi/Sanoat/Dacha) and the richer `ownership_type` field respectively -- kept
+    (additive-only: never remove an already-published field) but deprioritized to the end rather
+    than deleted."""
     return [
+        _field(
+            "district",
+            "asosiy",
+            "Tuman",
+            "select",
+            facet=True,
+            order=1,
+            options=_TASHKENT_DISTRICTS + _TASHKENT_REGION_DISTRICTS,
+        ),
+        _field(
+            "deal_type",
+            "asosiy",
+            "Bitim turi",
+            "select",
+            required=True,
+            facet=True,
+            order=2,
+            options=[
+                ("sale", "Sotiladi"),
+                ("rent", "Uzoq muddatli ijaraga beriladi / Arenda"),
+            ],
+        ),
         _field(
             "area_sotix",
             "asosiy",
-            "Maydon (sotix)",
+            "Yer maydoni (sotix/gektar)",
             "number",
             required=True,
             facet=True,
-            order=1,
+            order=3,
+        ),
+        _field(
+            "ownership_type",
+            "asosiy",
+            "Mulkchilik / Hujjat turi",
+            "select",
+            facet=True,
+            order=4,
+            options=[
+                ("private_property", "Xususiylashtirilgan (Chastnaya sobstvennost)"),
+                ("cadastre", "Egalik huquqi (Kadastr)"),
+                ("lease_49y", "Ijara huquqi (49 yil)"),
+                ("farmer_land", "Dehqon xo'jaligi"),
+            ],
+        ),
+        _field(
+            "location_condition",
+            "asosiy",
+            "Yer joylashuvi / Sharoiti",
+            "select",
+            facet=True,
+            order=5,
+            options=[
+                ("roadside", "Yo'l bo'yida (1-liniya)"),
+                ("settlement", "Aholi yashash punktida"),
+                ("outskirts", "Shahar tashqarisida"),
+                ("industrial_zone", "Sanoat zonasida"),
+            ],
+        ),
+        _field(
+            "terrain_shape",
+            "asosiy",
+            "Yer shakli / Relyefi",
+            "select",
+            facet=True,
+            order=6,
+            options=[
+                ("flat", "Tekis yer"),
+                ("hilly", "Tepalik / Adir"),
+                ("corner_lot", "Chekka (Ugolovoy) uchastka"),
+            ],
+        ),
+        _field(
+            "gas_supply",
+            "asosiy",
+            "Gaz ta'minoti",
+            "select",
+            facet=True,
+            order=7,
+            options=[
+                ("connected", "Bor (Ulangan)"),
+                ("nearby", "Yonidan o'tgan"),
+                ("none", "Yo'q"),
+            ],
+        ),
+        _field(
+            "electricity_supply",
+            "asosiy",
+            "Elektr energiyasi",
+            "select",
+            facet=True,
+            order=8,
+            options=[
+                ("connected", "Bor (220V/380V)"),
+                ("nearby", "Yonida bor"),
+                ("none", "Yo'q"),
+            ],
+        ),
+        _field(
+            "water_supply",
+            "asosiy",
+            "Suv ta'minoti",
+            "select",
+            facet=True,
+            order=9,
+            options=[
+                ("drinking_network", "Ichimlik suvi (Ichki tarmoq)"),
+                ("irrigation", "Sug'orish suvi (Arik/Kanal)"),
+                ("artesian_well", "Artezian quduq"),
+                ("none", "Yo'q"),
+            ],
+        ),
+        _field(
+            "amenities",
+            "asosiy",
+            "Qulayliklar",
+            "multiselect",
+            facet=True,
+            order=10,
+            options=[
+                ("sewage", "Kanalizatsiya"),
+                ("asphalt_road", "Asfalt yo'l kirgan"),
+                ("fenced", "O'ralgan (Zabor/Devor bor)"),
+                ("foundation", "Poydevor (Fundament) quyilgan"),
+            ],
         ),
         _field(
             "land_purpose",
@@ -1244,7 +1375,7 @@ def _land_fields() -> list[dict[str, object]]:
             "Yer maqsadi",
             "select",
             facet=True,
-            order=2,
+            order=90,
             options=[
                 ("construction", "Qurilish uchun"),
                 ("agriculture", "Qishloq xo'jaligi"),
@@ -1257,7 +1388,7 @@ def _land_fields() -> list[dict[str, object]]:
             "Hujjatlari bor",
             "boolean",
             facet=True,
-            order=3,
+            order=91,
             default=False,
         ),
     ]
@@ -4408,42 +4539,16 @@ def _dala_hovlilar_tree() -> list[Node]:
 
 
 def _bosh_yerlar_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Turar joy/Tijorat/Qishloq xo'jaligi branches with invented
+    leaves like "Auksion orqali sotilayotgan yerlar") with 5 real ones matching what `land_
+    purpose` used to distinguish as a FIELD -- the subcategory now covers that distinction."""
     return [
-        (
-            "Turar joy qurish uchun yerlar",
-            [
-                "2 sotixgacha",
-                "2-4 sotix",
-                "4-6 sotix",
-                "6-10 sotix",
-                "10 sotixdan katta",
-            ],
-        ),
-        (
-            "Tijorat maqsadidagi yerlar",
-            [
-                "Savdo markazi uchun",
-                "Ofis binosi uchun",
-                "Omborxona uchun",
-                "Mehmonxona uchun",
-                "Restoran uchun",
-            ],
-        ),
-        "Sanoat hududlari",
-        (
-            "Qishloq xo'jaligi yerlari",
-            ["Bog'dorchilik", "Issiqxona", "Chorvachilik", "Dehqonchilik"],
-        ),
-        "Dala va bog' yerlari",
-        "Fermer xo'jaligi yerlari",
-        "Investitsiya uchun yerlar",
-        "Kottej shaharchalari uchun yerlar",
-        "Yangi massivlardagi yerlar",
-        "Shahar ichidagi yerlar",
-        "Shahar tashqarisidagi yerlar",
-        "Auksion orqali sotilayotgan yerlar",
-        "Yirik loyiha uchun yer maydonlari",
-        "Kommunikatsiyaga tayyor yerlar",
+        "Uy va hovli qurish uchun yerlar (IJB / ЖСЗ)",
+        "Tijorat va biznes uchun yerlar (Tadbirkorlik)",
+        "Qishloq xo'jaligi va dehqonchilik yerlari",
+        "Sanoat va omborxona qurish uchun yerlar",
+        "Dacha va dam olish zonasi uchun yerlar",
     ]
 
 
@@ -5120,6 +5225,13 @@ async def _seed_catalog_taxonomy(
         repo,
         code="bosh-yer-form",
         name="Bo'sh yer",
+        fields=_land_fields(),
+        now=now,
+    )
+    await _backfill_form_definition_fields(
+        use_cases,
+        repo,
+        code="bosh-yer-form",
         fields=_land_fields(),
         now=now,
     )
