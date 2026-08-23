@@ -390,6 +390,13 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "sewage_water": "Kanalizatsiya va Suv",
     "power_capacity": "Elektr quvvati",
     "parking": "Avtoturargoh",
+    "resort_area": "Hudud / Yo'nalish",
+    "guest_capacity": "Sig'im (Odam soni)",
+    "pool_type": "Basseyn turi",
+    "sauna_type": "Sauna / Hammom",
+    "billiards_tennis_ps": "Bilyard / Tennis / PlayStation",
+    "tapchan_summer_kitchen": "Tapchan va Yozgi oshxona",
+    "playground": "Bolalar maydonchasi",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -1079,6 +1086,142 @@ def _commercial_fields() -> list[dict[str, object]]:
                 ("fiber_internet", "Internet (Optika)"),
                 ("freight_elevator", "Yuk lifti"),
                 ("separate_entrance", "Alohida kirish joyi"),
+            ],
+        ),
+    ]
+
+
+def _dacha_fields() -> list[dict[str, object]]:
+    """Dala hovlilar (dacha / vacation-rental direction) -- 2026-08-23 split off from the shared
+    residential form for the same two reasons as `_commercial_fields()` above (see that function's
+    docstring): fields with no residential equivalent (guest capacity, pool/sauna type, tapchan,
+    playground), and a genuinely different priority order for `district`-like/`price`-adjacent
+    fields than Kotejlar/Hovlilar's already-confirmed one. `resort_area` is real Tashkent-region
+    dacha destinations (Bo'stonliq's Chorvoq/Chimyon/Burchmulla/Hojikent are real places within
+    it), not administrative tumanlar, so it doesn't reuse `_TASHKENT_REGION_DISTRICTS`."""
+    return [
+        _field(
+            "resort_area",
+            "asosiy",
+            "Hudud / Yo'nalish",
+            "select",
+            facet=True,
+            order=1,
+            options=[
+                ("bostonliq", "Bo'stonliq (Chorvoq/Chimyon/Burchmulla/Hojikent)"),
+                ("qibray", "Qibray"),
+                ("zangiota", "Zangiota"),
+                ("parkent", "Parkent"),
+                ("yangiobod", "Yangiobod"),
+                ("other", "Boshqa hududlar"),
+            ],
+        ),
+        _field(
+            "guest_capacity",
+            "asosiy",
+            "Sig'im (Odam soni)",
+            "select",
+            facet=True,
+            order=2,
+            options=[
+                ("up_to_4", "4 kishigacha"),
+                ("up_to_6", "6 kishigacha"),
+                ("up_to_10", "10 kishigacha"),
+                ("15_plus", "15+ kishi"),
+            ],
+        ),
+        _field(
+            "rooms",
+            "asosiy",
+            "Xonalar soni",
+            "select",
+            facet=True,
+            order=3,
+            options=[
+                ("1", "1 xonali"),
+                ("2", "2 xonali"),
+                ("3", "3 xonali"),
+                ("4", "4 xonali"),
+                ("5", "5 xonali"),
+                ("6_plus", "6+ xonali"),
+            ],
+        ),
+        _field(
+            "lot_size_sotix",
+            "asosiy",
+            "Yer maydoni (sotix)",
+            "number",
+            facet=True,
+            order=4,
+        ),
+        _field(
+            "pool_type",
+            "asosiy",
+            "Basseyn turi",
+            "select",
+            facet=True,
+            order=5,
+            options=[
+                ("outdoor", "Ochiq (Yozgi)"),
+                ("indoor_heated", "Yopiq (Isitiladigan/Zimniy)"),
+                ("both", "Ikkala tur ham bor"),
+                ("none", "Yo'q"),
+            ],
+        ),
+        _field(
+            "sauna_type",
+            "asosiy",
+            "Sauna / Hammom",
+            "select",
+            facet=True,
+            order=6,
+            options=[
+                ("finnish", "Fin saunasi"),
+                ("turkish", "Turk hammomi"),
+                ("steam", "Parovoy"),
+                ("none", "Yo'q"),
+            ],
+        ),
+        _field(
+            "billiards_tennis_ps",
+            "asosiy",
+            "Bilyard / Tennis / PlayStation",
+            "select",
+            facet=True,
+            order=7,
+            options=[("yes", "Bor"), ("no", "Yo'q")],
+        ),
+        _field(
+            "tapchan_summer_kitchen",
+            "asosiy",
+            "Tapchan va Yozgi oshxona",
+            "select",
+            facet=True,
+            order=8,
+            options=[("yes", "Bor (Ochoq/Mangal bilan)"), ("no", "Yo'q")],
+        ),
+        _field(
+            "playground",
+            "asosiy",
+            "Bolalar maydonchasi",
+            "select",
+            facet=True,
+            order=9,
+            options=[("yes", "Bor"), ("no", "Yo'q")],
+        ),
+        _field(
+            "amenities",
+            "asosiy",
+            "Qulayliklar",
+            "multiselect",
+            facet=True,
+            order=10,
+            options=[
+                ("air_conditioner", "Konditsioner"),
+                ("karaoke_sound_system", "Karaoke / Sanoat kalonkasi"),
+                ("wifi", "Wi-Fi / Internet"),
+                ("winter_heating", "Qishki isitish tizimi (Otopleniye)"),
+                ("parking", "Avtoturargoh"),
             ],
         ),
     ]
@@ -4252,45 +4395,15 @@ def _noturar_binolar_tree() -> list[Node]:
 
 
 def _dala_hovlilar_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Kunlik ijara/Premium villalar/Hovuzli dala hovlilar branches)
+    with 5 real ones covering how dacha listings are actually browsed."""
     return [
-        "Sotuvdagi dala hovlilar",
-        "Ijaraga beriladigan dala hovlilar",
-        (
-            "Kunlik ijara",
-            [
-                "2 kishilik",
-                "Oilaviy",
-                "Katta guruhlar uchun",
-                "Korporativ dam olish uchun",
-                "Bayram tadbirlari uchun",
-            ],
-        ),
-        "Haftalik va oylik ijara",
-        (
-            "Premium villalar",
-            [
-                "Smart Home",
-                "VIP villa",
-                "Panoramali villa",
-                "Zamonaviy dizayndagi villalar",
-            ],
-        ),
-        "Oilaviy dam olish hovlilari",
-        "Tog' hududidagi dala hovlilar",
-        "Ko'l yoki daryo bo'yidagi hovlilar",
-        (
-            "Hovuzli dala hovlilar",
-            [
-                "Ochiq hovuz",
-                "Yopiq hovuz",
-                "Isitiladigan hovuz",
-                "Bolalar hovuzi",
-                "Premium SPA zonali hovlilar",
-            ],
-        ),
-        "Barbekyu va yozgi oshxonali hovlilar",
-        "Investitsiya uchun dala hovlilar",
-        "Yangi qurilgan dala hovlilar",
+        "Sutkalik ijaraga beriladigan dachalar (Oila va Dam olish uchun)",
+        "Sutkalik ijaraga beriladigan dachalar (Ulfatlar / Tadbirlar uchun)",
+        "Sotuvdagi dacha va dala hovlilar",
+        "Uzoq muddatli (Mavsumiy) ijaraga beriladigan dachalar",
+        "Azo / Klub tipidagi dacha majmualari",
     ]
 
 
@@ -4963,9 +5076,23 @@ async def _seed_catalog_taxonomy(
         now=now,
     )
 
-    # -- Dala hovlilar (back on the shared residential form -- same direction as kotejlar/
-    # hovlilar, just not looped together with them since `noturar-binolar` now sits between them
-    # in `top_level_order`'s sequence).
+    # -- Dala hovlilar / dachas (own form, split off `re_form_id` 2026-08-23 -- see
+    # `_dacha_fields()`'s docstring for why).
+    dacha_form_id = await _seed_form(
+        use_cases,
+        repo,
+        code="dacha-form",
+        name="Dala hovlilar",
+        fields=_dacha_fields(),
+        now=now,
+    )
+    await _backfill_category_form_definition(
+        use_cases,
+        repo,
+        code="dala-hovlilar",
+        form_definition_id=dacha_form_id,
+        now=now,
+    )
     dala_hovlilar_head_id = await _seed_category(
         use_cases,
         repo,
@@ -4973,7 +5100,7 @@ async def _seed_catalog_taxonomy(
         name="Dala hovlilar",
         path="/dala-hovlilar",
         parent_category_id=None,
-        form_definition_id=re_form_id,
+        form_definition_id=dacha_form_id,
         now=now,
         display_order=next(top_level_order),
     )
@@ -4983,7 +5110,7 @@ async def _seed_catalog_taxonomy(
         _dala_hovlilar_tree(),
         parent_id=dala_hovlilar_head_id,
         parent_path="/dala-hovlilar",
-        form_definition_id=re_form_id,
+        form_definition_id=dacha_form_id,
         now=now,
     )
 
