@@ -424,6 +424,8 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "breakfast": "Nonushta (Breakfast)",
     "booking_payment_terms": "To'lov va Band qilish shartlari",
     "transfer_service": "Transfer xizmati",
+    "origin_country": "Ishlab chiqarilgan mamlakat / Ishlab chiqaruvchi",
+    "delivery_assembly": "Yetkazib berish va Yig'ib berish (Sborka)",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -2038,12 +2040,104 @@ def _hospitality_fields() -> list[dict[str, object]]:
 
 
 def _business_fields() -> list[dict[str, object]]:
-    """Mebel salonlari -- a business-directory listing (a showroom/company), not a single unit
-    for sale."""
+    """Was Mebel salonlari's form (business-directory shape: address/work_hours/brands) until
+    2026-08-23, when the TZ made clear each listing is really one furniture PRODUCT for sale
+    (price/condition/warranty/delivery), not a showroom directory entry -- see
+    `_furniture_salon_fields()` below, now used instead. Kept as dead code / unreferenced
+    (additive-only convention, same as `_goods_fields()`/`_hospitality_fields()` after their own
+    categories were all split off) rather than deleted, in case a real business-directory
+    category needs this shape again."""
     return [
         _field("address", "asosiy", "Manzil", "text", order=1),
         _field("work_hours", "asosiy", "Ish vaqti", "text", order=2),
         _field("brands", "asosiy", "Brendlar", "text", order=3),
+    ]
+
+
+def _furniture_salon_fields() -> list[dict[str, object]]:
+    """Mebel salonlari -- 2026-08-23 rewrite: each listing is one furniture product for sale
+    (price/condition/warranty/delivery), not a showroom directory entry (see `_business_fields()`
+    above, which this replaces). Own "furniture-salon-form", same split-off reasoning as every
+    other category above."""
+    return [
+        _field(
+            "district",
+            "asosiy",
+            "Tuman",
+            "select",
+            facet=True,
+            order=1,
+            options=_TASHKENT_DISTRICTS + _TASHKENT_REGION_DISTRICTS,
+        ),
+        _field(
+            "condition",
+            "asosiy",
+            "Mahsulot holati",
+            "select",
+            required=True,
+            facet=True,
+            order=2,
+            options=[
+                ("new_showroom", "Yangi (Salon / Ko'rgazma)"),
+                ("new_custom_made", "Yangi (Buyurtmaga tikiladi/yasaladi)"),
+                ("ideal_used", "Ideal (B/U)"),
+                ("average_used", "O'rtacha (B/U)"),
+            ],
+        ),
+        _field(
+            "origin_country",
+            "asosiy",
+            "Ishlab chiqarilgan mamlakat / Ishlab chiqaruvchi",
+            "select",
+            facet=True,
+            order=3,
+            options=[
+                ("uzbekistan", "O'zbekiston (Mahalliy)"),
+                ("turkey", "Turkiya"),
+                ("china", "Xitoy"),
+                ("europe_russia", "Yevropa / Rossiya"),
+                ("other", "Boshqa"),
+            ],
+        ),
+        _field(
+            "seller_type",
+            "asosiy",
+            "Sotuvchi turi",
+            "select",
+            facet=True,
+            order=4,
+            options=[
+                ("furniture_salon_store", "Mebel saloni / Do'kon"),
+                ("manufacturer_factory", "Ishlab chiqaruvchi (Tsex/Fabrika)"),
+                ("individual", "Jismoniy shaxs"),
+            ],
+        ),
+        _field(
+            "warranty",
+            "asosiy",
+            "Kafolat (Garantiya)",
+            "select",
+            facet=True,
+            order=5,
+            options=[
+                ("1_year_plus", "1 yil va undan ko'p"),
+                ("up_to_6_months", "6 oygacha"),
+                ("no_warranty", "Kafolatsiz"),
+            ],
+        ),
+        _field(
+            "delivery_assembly",
+            "asosiy",
+            "Yetkazib berish va Yig'ib berish (Sborka)",
+            "select",
+            facet=True,
+            order=6,
+            options=[
+                ("free_delivery_assembly", "Dostavka va sborka bepul"),
+                ("delivery_assembly_separate", "Dostavka bor (Sborka alohida)"),
+                ("pickup", "Olib ketish (Samovivoz)"),
+            ],
+        ),
     ]
 
 
@@ -5209,41 +5303,18 @@ def _mebel_materiallari_tree() -> list[Node]:
 
 
 def _mebel_salonlari_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Oshxona mebellari/Ofis mebellari/Yumshoq mebellar branches)
+    with 8 real ones grouped by furniture category."""
     return [
-        (
-            "Oshxona mebellari",
-            ["Zamonaviy", "Klassik", "Minimalistik", "Premium oshxona garniturlari"],
-        ),
-        "Yotoqxona mebellari",
-        "Mehmonxona mebellari",
-        "Bolalar xonasi mebellari",
-        (
-            "Ofis mebellari",
-            [
-                "Ish stollari",
-                "Ofis stullari",
-                "Konferensiya stollari",
-                "Shkaflar",
-                "Resepsion mebellari",
-            ],
-        ),
-        (
-            "Yumshoq mebellar",
-            [
-                "Divanlar",
-                "Burchak divanlar",
-                "Kreslolar",
-                "Puflar",
-                "Transformatsiyalanuvchi mebellar",
-            ],
-        ),
-        "Premium mebellar",
-        "Buyurtma asosida tayyorlanadigan mebellar",
-        "Bog' va tashqi mebellar",
-        "Restoran va kafe mebellari",
-        "Dekor va interyer aksessuarlari",
-        "Mebel aksessuarlari",
-        "Smart mebellar",
+        "Yumshoq mebellar (Divan, Kreslo, Puff, Ugolok)",
+        "Yotoqxona mebellari (Krovat, Matras, Shkaf, Tumba, Trumo)",
+        "Oshxona mebellari (Kuxonny garnitur, Stol va Stullar)",
+        "Mehmonxona mebellari (Stenka, Gorka, TV-tumba)",
+        "Ofis va Tijorat mebellari (Ofis stoli, Kreslo, Retseptsiya)",
+        "Bolalar xonasi mebellari (Bolalar krovati, Parta, Shkaf)",
+        "Dahliz va Garderob mebellari (Prixojiy, Garderob tizimlari)",
+        "Boshqa tayyor mebellar",
     ]
 
 
@@ -5930,13 +6001,21 @@ async def _seed_catalog_taxonomy(
         listing_kind="VENUE",
     )
 
-    # -- Business directory (showrooms, not units).
-    business_form_id = await _seed_form(
+    # -- Mebel salonlari (own form 2026-08-23 -- see `_furniture_salon_fields()`'s docstring for
+    # why; "biznes-korxona-form"/`_business_fields()` above is now an unreferenced orphan).
+    furniture_salon_form_id = await _seed_form(
         use_cases,
         repo,
-        code="biznes-korxona-form",
-        name="Biznes/korxona",
-        fields=_business_fields(),
+        code="furniture-salon-form",
+        name="Mebel saloni",
+        fields=_furniture_salon_fields(),
+        now=now,
+    )
+    await _backfill_category_form_definition(
+        use_cases,
+        repo,
+        code="mebel-salonlari",
+        form_definition_id=furniture_salon_form_id,
         now=now,
     )
     mebel_salonlari_head_id = await _seed_category(
@@ -5946,7 +6025,7 @@ async def _seed_catalog_taxonomy(
         name="Mebel salonlari",
         path="/mebel-salonlari",
         parent_category_id=None,
-        form_definition_id=business_form_id,
+        form_definition_id=furniture_salon_form_id,
         now=now,
         listing_kind="GOODS",
         display_order=next(top_level_order),
@@ -5957,7 +6036,7 @@ async def _seed_catalog_taxonomy(
         _mebel_salonlari_tree(),
         parent_id=mebel_salonlari_head_id,
         parent_path="/mebel-salonlari",
-        form_definition_id=business_form_id,
+        form_definition_id=furniture_salon_form_id,
         now=now,
         listing_kind="GOODS",
     )
