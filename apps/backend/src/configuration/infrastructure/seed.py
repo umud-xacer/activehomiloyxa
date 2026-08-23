@@ -384,6 +384,7 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "lot_size_sotix": "Yer maydoni (sotix)",
     "has_attic": "Mansarda",
     "basement_type": "Podval turi",
+    "utilities": "Kommunikatsiya",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -891,6 +892,21 @@ def _property_fields() -> list[dict[str, object]]:
                 ("terrace", "Terrasa"),
                 ("utilities_uninterrupted", "Gaz, suv, elektr (uzliksiz)"),
                 ("sewage", "Kanalizatsiya tizimi"),
+            ],
+        ),
+        _field(
+            "utilities",
+            "asosiy",
+            "Kommunikatsiya",
+            "multiselect",
+            facet=True,
+            order=11,
+            options=[
+                ("gas", "Gaz"),
+                ("water", "Suv"),
+                ("electricity", "Elektr"),
+                ("sewage_line", "Kanalizatsiya"),
+                ("internet", "Internet"),
             ],
         ),
         _field("floor", "asosiy", "Qavat", "number", facet=True, order=90),
@@ -4010,39 +4026,17 @@ def _kotejlar_tree() -> list[Node]:
 
 
 def _hovlilar_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Premium/Hovuzli/Smart Home hovlilar branches) that didn't map
+    to how hovli listings are actually browsed. List order IS the site's real `display_order`
+    (`_seed_subtree` numbers siblings by `enumerate`, not alphabetically), matching the exact
+    sequence asked for."""
     return [
-        ("Sotuvdagi hovlilar", ["2 xonali", "3 xonali", "4 xonali", "5+ xonali"]),
-        "Ijaraga beriladigan hovlilar",
-        "Yangi qurilgan hovlilar",
-        "Ikkilamchi bozordagi hovlilar",
-        (
-            "Premium hovlilar",
-            [
-                "Zamonaviy villa",
-                "Klassik villa",
-                "Panoramali hovli",
-                "Dizaynerlik interyeriga ega hovlilar",
-            ],
-        ),
-        "Kottejlar",
-        "Townhouse",
-        (
-            "Hovuzli hovlilar",
-            ["Ochiq hovuz", "Yopiq hovuz", "Isitiladigan hovuz", "SPA zonali hovlilar"],
-        ),
-        "Katta yer maydoniga ega hovlilar",
-        "Shahar ichidagi hovlilar",
-        "Shahar tashqarisidagi hovlilar",
-        "Investitsiya uchun hovlilar",
-        "Qurilishi tugallanmagan hovlilar",
-        (
-            "Smart Home hovlilar",
-            [
-                "Avtomatlashtirilgan xavfsizlik tizimi",
-                "Aqlli yoritish",
-                "Aqlli iqlim boshqaruvi",
-            ],
-        ),
+        "Sotuvdagi hovlilar / Uchastkalar",
+        "Uzoq muddatli ijaraga beriladigan hovlilar",
+        "Sutkalik ijaraga beriladigan hovlilar",
+        "Buzib tashlanadigan / Yer o'rnida sotiladigan hovlilar",
+        "Hovli qismi (Eski shahar / Obshiy dvor)",
     ]
 
 
@@ -4727,8 +4721,10 @@ async def _seed_catalog_taxonomy(
                 ("euro_renovation", "Evrota'mir"),
                 ("designer_project", "Mualliflik loyihasi"),
                 ("shell_no_renovation", "Ta'mirsiz (Korobka)"),
+                ("old_worn", "Eskirgan"),
             ],
             "district": _TASHKENT_REGION_DISTRICTS,
+            "amenities": [("furnished", "Mebelli")],
         },
         now=now,
     )

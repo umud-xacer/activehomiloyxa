@@ -22,6 +22,16 @@ every subcategory on the site (e.g. rewriting just "Kotejlar"'s tree, 2026-08-23
 
 The prefix matches a subcategory's real `path` (e.g. `/kotejlar/oilaviy-kotejlar` matches prefix
 `/kotejlar`) -- never the top-level category itself (that guard applies regardless of scope).
+CAUTION (learned live, 2026-08-23): a prefix retire run AFTER a tree rewrite has already been
+deployed will retire the newly-seeded replacement subcategories too, since their `path` shares the
+same prefix -- there is no way to tell "old" from "new" by path alone. Either retire the OLD tree
+BEFORE deploying its replacement (so the prefix only ever matches what's being removed), or use the
+`@path,path,...` exact-list form below to name only the paths that should actually change.
+
+Prefix `@path1,path2,...` (comma-separated, no spaces) retires/restores exactly those paths and
+nothing else -- no prefix matching, so it's safe to run even after a replacement subtree already
+shares the same parent prefix:
+    python -m retire_subcategories retire "@/hovlilar/kottejlar,/hovlilar/townhouse"
 
 Idempotent either way: a subcategory already in the target status is skipped.
 """
@@ -60,7 +70,9 @@ _registry = WhitelistRegistry()
 
 
 async def _set_all_subcategories(
-    target_status: str, path_prefix: str | None = None
+    target_status: str,
+    path_prefix: str | None = None,
+    exact_paths: frozenset[str] | None = None,
 ) -> None:
     if target_status not in ("ACTIVE", "RETIRED"):
         raise ValueError(
@@ -107,7 +119,11 @@ async def _set_all_subcategories(
                         skipped_top_level += 1
                         continue  # never touch the 18 top-level categories
 
-                    if path_prefix is not None:
+                    if exact_paths is not None:
+                        path = str(definition.get("path") or "")
+                        if path not in exact_paths:
+                            continue
+                    elif path_prefix is not None:
                         path = str(definition.get("path") or "")
                         if not (
                             path == path_prefix or path.startswith(path_prefix + "/")
@@ -162,11 +178,19 @@ async def _set_all_subcategories(
 
 def main() -> None:
     if len(sys.argv) not in (2, 3) or sys.argv[1] not in ("retire", "restore"):
-        print("Usage: python -m retire_subcategories [retire|restore] [/path-prefix]")
+        print(
+            "Usage: python -m retire_subcategories [retire|restore] "
+            "[/path-prefix | @path1,path2,...]"
+        )
         raise SystemExit(2)
     target = "RETIRED" if sys.argv[1] == "retire" else "ACTIVE"
-    path_prefix = sys.argv[2] if len(sys.argv) == 3 else None
-    asyncio.run(_set_all_subcategories(target, path_prefix))
+    scope = sys.argv[2] if len(sys.argv) == 3 else None
+    if scope is not None and scope.startswith("@"):
+        asyncio.run(
+            _set_all_subcategories(target, exact_paths=frozenset(scope[1:].split(",")))
+        )
+    else:
+        asyncio.run(_set_all_subcategories(target, path_prefix=scope))
 
 
 if __name__ == "__main__":
