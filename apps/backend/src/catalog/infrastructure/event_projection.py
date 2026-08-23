@@ -204,7 +204,14 @@ async def handle_listing_publication_event(
     activate_after_payment`, it stays published exactly like any other publish). Only routed for
     `EntitlementActivated` (see `composition_root.make_billing_entitlement_fanout_handler`'s own
     routing table) -- `EntitlementExpired`/`EntitlementRevoked` for this entitlement type are
-    never produced as a functional consequence of this flow, so there is nothing to route here."""
+    never produced as a functional consequence of this flow, so there is nothing to route here.
+
+    Reads `targetId`, NOT `listingId` (real bug, caught live 2026-08-23): `payment_use_cases.
+    _entitlement_activated_payload` only ever populates `listingId` `if is_promotion` (i.e.
+    `promotion_kind is not None`) -- true for `LISTING_PROMOTION` only. `targetId` is the one
+    field that payload always carries regardless of entitlement type, and is exactly
+    `entitlement.target_id`, which `Order.create`'s own `LISTING_PUBLICATION` ->
+    `TargetType.LISTING` requirement (`product_mapping.py`) guarantees is this listing's id."""
     async with idempotent_consume(
         session,
         ProcessedEventRow,
@@ -213,7 +220,7 @@ async def handle_listing_publication_event(
     ) as is_fresh:
         if not is_fresh:
             return
-        listing_id_raw = envelope.payload.get("listingId")
+        listing_id_raw = envelope.payload.get("targetId")
         if listing_id_raw is None:
             return
         await use_cases.activate_after_payment(

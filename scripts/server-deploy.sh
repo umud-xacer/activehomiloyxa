@@ -66,9 +66,10 @@ sudo systemctl restart activehome-search-worker
 sudo systemctl restart activehome-media-worker
 sudo systemctl restart activehome-notifications-worker
 sudo systemctl restart activehome-ads-worker
+sudo systemctl restart activehome-catalog-worker
 sudo systemctl restart activehome-web
 
 sleep 3
-sudo systemctl is-active activehome-api activehome-web activehome-search-worker activehome-media-worker activehome-notifications-worker activehome-ads-worker
+sudo systemctl is-active activehome-api activehome-web activehome-search-worker activehome-media-worker activehome-notifications-worker activehome-ads-worker activehome-catalog-worker
 curl -sf http://127.0.0.1/healthz && echo " -- healthz OK"
 echo "==> deploy complete: $(date -u +%FT%TZ) $(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
