@@ -12,7 +12,14 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID as PyUUID
 
-from sqlalchemy import TIMESTAMP, CheckConstraint, ForeignKey, Numeric, Text, UniqueConstraint
+from sqlalchemy import (
+    TIMESTAMP,
+    CheckConstraint,
+    ForeignKey,
+    Numeric,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB, TSTZRANGE
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -27,19 +34,23 @@ _ORDER_STATUSES = "('PENDING', 'INVOICED', 'PAID', 'FULFILLED', 'CANCELLED')"
 _INVOICE_STATUSES = "('ISSUED', 'PAID', 'VOID')"
 _ENTITLEMENT_TYPES = (
     "('ACTIVE_SUBSCRIPTION', 'LISTING_PROMOTION', 'VERIFICATION_ELIGIBILITY', "
-    "'BANNER_SLOT_BOOKING')"
+    "'BANNER_SLOT_BOOKING', 'LISTING_PUBLICATION', 'LISTING_CREDIT_BALANCE')"
 )
 _PROMOTION_KINDS = "('PREMIUM', 'FEATURED', 'TOP_PLACEMENT')"
 _ACTIVATION_STATES = "('ACTIVE', 'EXPIRED', 'REVOKED')"
-_PROVIDERS = "('PAYME', 'CLICK')"
+_PROVIDERS = "('PAYME', 'CLICK', 'MOCK')"
 _PROVIDER_TRANSACTION_STATES = "('CREATED', 'PERFORMED', 'CANCELLED')"
 
 
 class PurchaseOrderRow(BillingBase, AggregateMixin):  # type: ignore[misc,valid-type]
     __tablename__ = "purchase_order"
 
-    purchaser_profile_id: Mapped[PyUUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
-    product_definition_id: Mapped[PyUUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    purchaser_profile_id: Mapped[PyUUID] = mapped_column(
+        PGUUID(as_uuid=True), nullable=False
+    )
+    product_definition_id: Mapped[PyUUID] = mapped_column(
+        PGUUID(as_uuid=True), nullable=False
+    )
     product_definition_version_id: Mapped[PyUUID] = mapped_column(
         PGUUID(as_uuid=True), nullable=False
     )
@@ -47,15 +58,21 @@ class PurchaseOrderRow(BillingBase, AggregateMixin):  # type: ignore[misc,valid-
     """The frozen `ProductSnapshot` (I-07) -- `product_type`/`price`/`term_days`/`quota` as of
     order time, never re-read from `configuration`."""
     target_type: Mapped[str] = mapped_column(Text, nullable=False)
-    target_id: Mapped[PyUUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
+    target_id: Mapped[PyUUID | None] = mapped_column(
+        PGUUID(as_uuid=True), nullable=True
+    )
     booking_window: Mapped[Any | None] = mapped_column(TSTZRANGE, nullable=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     currency: Mapped[str] = mapped_column(Text, nullable=False, server_default="UZS")
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="PENDING")
 
     __table_args__ = (
-        CheckConstraint(f"target_type IN {_TARGET_TYPES}", name="ck_purchase_order_target_type"),
-        CheckConstraint(f"status IN {_ORDER_STATUSES}", name="ck_purchase_order_status"),
+        CheckConstraint(
+            f"target_type IN {_TARGET_TYPES}", name="ck_purchase_order_target_type"
+        ),
+        CheckConstraint(
+            f"status IN {_ORDER_STATUSES}", name="ck_purchase_order_status"
+        ),
         CheckConstraint(
             "(target_type = 'SLOT_BOOKING') = (booking_window IS NOT NULL)",
             name="ck_purchase_order_booking_shape",
@@ -76,12 +93,16 @@ class InvoiceRow(BillingBase, AggregateMixin):  # type: ignore[misc,valid-type]
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     currency: Mapped[str] = mapped_column(Text, nullable=False, server_default="UZS")
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="ISSUED")
-    payment_confirmed_by: Mapped[PyUUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
+    payment_confirmed_by: Mapped[PyUUID | None] = mapped_column(
+        PGUUID(as_uuid=True), nullable=True
+    )
     payment_confirmed_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True
     )
     payment_note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    issued_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    issued_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False
+    )
 
     __table_args__ = (
         UniqueConstraint("purchase_order_id", name="ux_invoice_purchase_order_id"),
@@ -106,13 +127,20 @@ class EntitlementRow(BillingBase, AggregateMixin):  # type: ignore[misc,valid-ty
     entitlement_type: Mapped[str] = mapped_column(Text, nullable=False)
     promotion_kind: Mapped[str | None] = mapped_column(Text, nullable=True)
     target_id: Mapped[PyUUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
-    valid_from: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
-    valid_until: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
-    activation_state: Mapped[str] = mapped_column(Text, nullable=False, server_default="ACTIVE")
+    valid_from: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False
+    )
+    valid_until: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False
+    )
+    activation_state: Mapped[str] = mapped_column(
+        Text, nullable=False, server_default="ACTIVE"
+    )
 
     __table_args__ = (
         CheckConstraint(
-            f"entitlement_type IN {_ENTITLEMENT_TYPES}", name="ck_entitlement_entitlement_type"
+            f"entitlement_type IN {_ENTITLEMENT_TYPES}",
+            name="ck_entitlement_entitlement_type",
         ),
         CheckConstraint(
             f"promotion_kind IS NULL OR promotion_kind IN {_PROMOTION_KINDS}",
@@ -123,9 +151,12 @@ class EntitlementRow(BillingBase, AggregateMixin):  # type: ignore[misc,valid-ty
             name="ck_entitlement_promo_shape",
         ),
         CheckConstraint(
-            f"activation_state IN {_ACTIVATION_STATES}", name="ck_entitlement_activation_state"
+            f"activation_state IN {_ACTIVATION_STATES}",
+            name="ck_entitlement_activation_state",
         ),
-        CheckConstraint("valid_until > valid_from", name="ck_entitlement_validity_ordering"),
+        CheckConstraint(
+            "valid_until > valid_from", name="ck_entitlement_validity_ordering"
+        ),
     )
 
 
@@ -143,7 +174,9 @@ class ProviderTransactionRow(BillingBase):  # type: ignore[misc,valid-type]
 
     id: Mapped[PyUUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
     invoice_id: Mapped[PyUUID] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("billing.invoice.id", ondelete="RESTRICT"), nullable=False
+        PGUUID(as_uuid=True),
+        ForeignKey("billing.invoice.id", ondelete="RESTRICT"),
+        nullable=False,
     )
     provider: Mapped[str] = mapped_column(Text, nullable=False)
     provider_transaction_id: Mapped[str] = mapped_column(Text, nullable=False)
@@ -152,20 +185,33 @@ class ProviderTransactionRow(BillingBase):  # type: ignore[misc,valid-type]
     `Prepare` time."""
     state: Mapped[str] = mapped_column(Text, nullable=False, server_default="CREATED")
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
-    performed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
-    cancelled_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False
+    )
+    performed_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
+    cancelled_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
     cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (
-        CheckConstraint(f"provider IN {_PROVIDERS}", name="ck_provider_transaction_provider"),
         CheckConstraint(
-            f"state IN {_PROVIDER_TRANSACTION_STATES}", name="ck_provider_transaction_state"
+            f"provider IN {_PROVIDERS}", name="ck_provider_transaction_provider"
+        ),
+        CheckConstraint(
+            f"state IN {_PROVIDER_TRANSACTION_STATES}",
+            name="ck_provider_transaction_state",
         ),
         UniqueConstraint(
-            "provider", "provider_transaction_id", name="ux_provider_transaction_external_id"
+            "provider",
+            "provider_transaction_id",
+            name="ux_provider_transaction_external_id",
         ),
-        UniqueConstraint("invoice_id", "provider", name="ux_provider_transaction_invoice_provider"),
+        UniqueConstraint(
+            "invoice_id", "provider", name="ux_provider_transaction_invoice_provider"
+        ),
     )
 
 

@@ -24,6 +24,7 @@ import base64
 import binascii
 from decimal import Decimal, InvalidOperation
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Request
 from fastapi.responses import JSONResponse
@@ -37,10 +38,16 @@ from billing.infrastructure.payment_gateway.click import (
     verify_complete_signature,
     verify_prepare_signature,
 )
+from billing.infrastructure.payment_gateway.mock import (
+    MockMerchantApi,
+    MockPaymentError,
+    MockPayRequest,
+)
 from billing.infrastructure.payment_gateway.payme import PaymeError, PaymeMerchantApi
 
 payme_webhook_router = APIRouter(tags=["Payments"])
 click_webhook_router = APIRouter(tags=["Payments"])
+mock_payment_router = APIRouter(tags=["Payments"])
 
 
 # == override points (composition-root wiring, mirrors billing.interfaces.di's own shape) =========
@@ -70,6 +77,13 @@ async def get_click_merchant_api() -> ClickMerchantApi:
 async def get_click_secret_key() -> str:
     raise NotImplementedError(
         "get_click_secret_key was not overridden by the composition root "
+        "(app.dependency_overrides) -- see apps/backend/src/composition_root.py"
+    )
+
+
+async def get_mock_merchant_api() -> MockMerchantApi:
+    raise NotImplementedError(
+        "get_mock_merchant_api was not overridden by the composition root "
         "(app.dependency_overrides) -- see apps/backend/src/composition_root.py"
     )
 
@@ -121,7 +135,9 @@ async def payme_webhook(
 
     request_id = body.get("id") if isinstance(body, dict) else None
     if not _verify_payme_auth(authorization, merchant_key):
-        return _payme_response(request_id, error=PaymeError(-32504, "Insufficient privilege"))
+        return _payme_response(
+            request_id, error=PaymeError(-32504, "Insufficient privilege")
+        )
 
     method = body.get("method") if isinstance(body, dict) else None
     params = body.get("params") if isinstance(body, dict) else None
@@ -274,3 +290,45 @@ async def click_complete(
         error_note="Success",
         **result,
     )
+
+
+# == Mock (listing paywall, 2026-08-23) =============================================================
+#
+# Not a real provider's own wire protocol like Payme/Click above -- this is OUR frontend calling
+# a "Demo To'lash" button, so the request/response shape is ours to choose too (plain JSON, unlike
+# Payme's JSON-RPC or Click's form-encoding). Only mounted in `main.py` when `PAYMENT_PROVIDER=mock`
+# (see `mock.py`'s own module docstring) -- `include_in_schema=False` here matches Payme/Click
+# (this is still not a `contracts/openapi.yaml` operation) even though, unlike them, it could in
+# principle be documented; keeping it undocumented avoids implying it is meant to stay reachable
+# in a real deployment.
+
+
+@mock_payment_router.post("/payments/mock/pay", include_in_schema=False)
+async def mock_pay(
+    request: Request,
+    api: MockMerchantApi = Depends(get_mock_merchant_api),
+) -> JSONResponse:
+    try:
+        body = await request.json()
+    except ValueError:
+        return JSONResponse({"error": "invalid JSON body"}, status_code=400)
+
+    invoice_id_raw = body.get("invoiceId") if isinstance(body, dict) else None
+    provider_label = (
+        body.get("providerLabel", "MOCK") if isinstance(body, dict) else "MOCK"
+    )
+    try:
+        invoice_id = UUID(str(invoice_id_raw))
+    except (ValueError, TypeError):
+        return JSONResponse(
+            {"error": "invoiceId is required and must be a UUID"}, status_code=422
+        )
+
+    try:
+        result = await api.pay(
+            MockPayRequest(invoice_id=invoice_id, provider_label=str(provider_label))
+        )
+    except MockPaymentError as exc:
+        status_code = 404 if exc.message == "Invoice not found" else 409
+        return JSONResponse({"error": exc.message}, status_code=status_code)
+    return JSONResponse(result)
