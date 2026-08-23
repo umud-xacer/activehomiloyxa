@@ -414,6 +414,11 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "size": "O'lcham (Size)",
     "season": "Mavsumiylik (Mavsum)",
     "gender": "Jins (Kim uchun)",
+    "rental_term": "Ijara muddat turi",
+    "room_occupancy": "Xonadagi o'rinlar soni (Kishi)",
+    "guest_category": "Kimlar uchun (Mijozlar toifasi)",
+    "bathroom": "Yuvinish xonasi (Sanuzel)",
+    "kitchen": "Oshxona",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -1782,6 +1787,109 @@ def _uniform_fields() -> list[dict[str, object]]:
                 ("ready_made_store", "Tayyor mahsulot (Do'kon)"),
                 ("custom_tailoring", "Buyurtmaga tikib berish (Atele/Fabrika)"),
                 ("individual", "Jismoniy shaxs"),
+            ],
+        ),
+    ]
+
+
+def _hostel_fields() -> list[dict[str, object]]:
+    """Hostel -- 2026-08-23 split off from the shared `_hospitality_fields()`/"mehmonxona-form"
+    into its own "hostel-form", same reason as every other split-off above: hostels need fields
+    (bed-space rental term, room occupancy, guest category, shared vs private bathroom/kitchen)
+    that don't apply to hotels, and a genuinely different priority order than whatever
+    "Mexmonxona" (still on the shared form, untouched so far) ends up needing."""
+    return [
+        _field(
+            "district",
+            "asosiy",
+            "Tuman",
+            "select",
+            facet=True,
+            order=1,
+            options=_TASHKENT_DISTRICTS + _TASHKENT_REGION_DISTRICTS,
+        ),
+        _field(
+            "rental_term",
+            "asosiy",
+            "Ijara muddat turi",
+            "select",
+            required=True,
+            facet=True,
+            order=2,
+            options=[
+                ("daily", "Sutkalik (Kunbay)"),
+                ("monthly", "Oylik ijara"),
+                ("long_term", "Uzoq muddatli"),
+            ],
+        ),
+        _field(
+            "room_occupancy",
+            "asosiy",
+            "Xonadagi o'rinlar soni (Kishi)",
+            "select",
+            facet=True,
+            order=3,
+            options=[
+                ("private_1", "Alohida (1 kishi)"),
+                ("2_person", "2 kishilik"),
+                ("4_person", "4 kishilik"),
+                ("6_person", "6 kishilik"),
+                ("8_plus", "8+ kishilik"),
+            ],
+        ),
+        _field(
+            "guest_category",
+            "asosiy",
+            "Kimlar uchun (Mijozlar toifasi)",
+            "select",
+            facet=True,
+            order=4,
+            options=[
+                ("men_only", "Faqat yigitlar uchun"),
+                ("women_only", "Faqat qizlar/ayollar uchun"),
+                ("mixed_family", "Aralash / Oila uchun"),
+            ],
+        ),
+        _field(
+            "bathroom",
+            "asosiy",
+            "Yuvinish xonasi (Sanuzel)",
+            "select",
+            facet=True,
+            order=5,
+            options=[
+                ("private_ensuite", "Xonaning ichida (Alohida)"),
+                ("shared_floor", "Qavatda umumiy (Obshiy)"),
+            ],
+        ),
+        _field(
+            "kitchen",
+            "asosiy",
+            "Oshxona",
+            "select",
+            facet=True,
+            order=6,
+            options=[
+                ("shared", "Umumiy foydalanish uchun"),
+                ("private_mini", "Xonaning ichida (Mini-kuxnya)"),
+                ("none", "Yo'q"),
+            ],
+        ),
+        _field(
+            "amenities",
+            "asosiy",
+            "Qulayliklar",
+            "multiselect",
+            facet=True,
+            order=7,
+            options=[
+                ("wifi", "Wi-Fi Internet"),
+                ("air_conditioner", "Konditsioner"),
+                ("washing_machine", "Kir yuvish mashinasi"),
+                ("locker", "Shaxsiy shkaf (Loker/Zamokli)"),
+                ("access_24_7", "24/7 kirish-chiqish"),
+                ("coffee_tea_zone", "Qahva/Choy zona"),
+                ("parking", "Avtoturargoh"),
             ],
         ),
     ]
@@ -5224,28 +5332,15 @@ def _xizmat_korsatish_tree() -> list[Node]:
 
 
 def _hostel_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Talabalar hosteli/Premium hostellar/Kapsula hostellar
+    branches) with 5 real ones covering how hostel listings are actually browsed."""
     return [
-        "Erkaklar hosteli",
-        "Ayollar hosteli",
-        "Oilaviy hostellar",
-        (
-            "Talabalar hosteli",
-            [
-                "Universitetlarga yaqin hostellar",
-                "Oylik ijarali hostellar",
-                "Umumiy yashash xonalari",
-            ],
-        ),
-        ("Premium hostellar", ["Private Room", "Deluxe Room", "Family Room", "Suite"]),
-        ("Kapsula hostellar", ["Standart kapsula", "Premium kapsula", "Smart Capsule"]),
-        "Guest House",
-        "Mini Hotel",
-        "Uzoq muddatli yashash hostellari",
-        "Kunlik hostellar",
-        "Business Hostel",
-        "Backpacker Hostel",
-        "Shahar markazidagi hostellar",
-        "Aeroportga yaqin hostellar",
+        "Hostelda Koyka-mesto (Krovat o'rni)",
+        "Alohida xona (Hostel / Mini-xostel)",
+        "Talabalar turar joyi / Yotoqxona (Obshejitiye)",
+        "Kapsula tiplidagi hostel",
+        "Aholisi kam bo'lgan oilaviy hostel",
     ]
 
 
@@ -5666,7 +5761,47 @@ async def _seed_catalog_taxonomy(
         listing_kind="GOODS",
     )
 
-    # -- Hospitality.
+    # -- Hostel (own form, split off "mehmonxona-form" 2026-08-23 -- see `_hostel_fields()`'s
+    # docstring for why).
+    hostel_form_id = await _seed_form(
+        use_cases,
+        repo,
+        code="hostel-form",
+        name="Hostel",
+        fields=_hostel_fields(),
+        now=now,
+    )
+    await _backfill_category_form_definition(
+        use_cases,
+        repo,
+        code="hostel",
+        form_definition_id=hostel_form_id,
+        now=now,
+    )
+    hostel_head_id = await _seed_category(
+        use_cases,
+        repo,
+        code="hostel",
+        name="Hostel",
+        path="/hostel",
+        parent_category_id=None,
+        form_definition_id=hostel_form_id,
+        now=now,
+        listing_kind="VENUE",
+        display_order=next(top_level_order),
+    )
+    await _seed_subtree(
+        use_cases,
+        repo,
+        _hostel_tree(),
+        parent_id=hostel_head_id,
+        parent_path="/hostel",
+        form_definition_id=hostel_form_id,
+        now=now,
+        listing_kind="VENUE",
+    )
+
+    # -- Hospitality (Mexmonxona -- still shared/untouched).
     hosp_form_id = await _seed_form(
         use_cases,
         repo,
@@ -5676,7 +5811,6 @@ async def _seed_catalog_taxonomy(
         now=now,
     )
     for code, name, path, tree in [
-        ("hostel", "Hostel", "/hostel", _hostel_tree()),
         ("mexmonxona", "Mexmonxona", "/mexmonxona", _mexmonxona_tree()),
     ]:
         head_id = await _seed_category(
