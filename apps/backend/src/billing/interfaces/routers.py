@@ -48,6 +48,7 @@ from billing.interfaces.dto import (
     OrderPage,
     PageInfo,
     PaymentConfirmationRequest,
+    PricingPlans,
     Product,
 )
 from billing.interfaces.dto import (
@@ -76,9 +77,12 @@ def _to_product_dto(product: ProductDefinitionSnapshot) -> Product:
         product_type=product.product_type.value,
         name=product.name,
         description=product.description,
-        price=Money(amount=Decimal(product.price_amount), currency=product.price_currency),
+        price=Money(
+            amount=Decimal(product.price_amount), currency=product.price_currency
+        ),
         term_days=product.term_days,
         quota=product.quota,
+        category_id=product.category_id,
     )
 
 
@@ -105,7 +109,9 @@ def _to_invoice_dto(invoice: Invoice) -> InvoiceDto:
         status=invoice.status.value,
         issued_at=invoice.issued_at,
         payment_confirmed_at=(
-            invoice.payment_confirmation.confirmed_at if invoice.payment_confirmation else None
+            invoice.payment_confirmation.confirmed_at
+            if invoice.payment_confirmation
+            else None
         ),
     )
 
@@ -115,7 +121,9 @@ def _to_entitlement_dto(entitlement: Entitlement) -> EntitlementDto:
         id=entitlement.id,
         order_id=entitlement.order_id,
         entitlement_type=entitlement.entitlement_type.value,
-        promotion_kind=entitlement.promotion_kind.value if entitlement.promotion_kind else None,
+        promotion_kind=entitlement.promotion_kind.value
+        if entitlement.promotion_kind
+        else None,
         target_id=entitlement.target_id,
         valid_from=entitlement.valid_from,
         valid_until=entitlement.valid_until,
@@ -126,7 +134,14 @@ def _to_entitlement_dto(entitlement: Entitlement) -> EntitlementDto:
 @billing_router.get("/products", operation_id="listProducts")
 async def list_products(
     productType: Literal[
-        "SUBSCRIPTION", "PREMIUM", "FEATURED", "TOP_PLACEMENT", "VERIFICATION", "BANNER_PLACEMENT"
+        "SUBSCRIPTION",
+        "PREMIUM",
+        "FEATURED",
+        "TOP_PLACEMENT",
+        "VERIFICATION",
+        "BANNER_PLACEMENT",
+        "LISTING_PUBLICATION",
+        "LISTING_CREDIT_PACK",
     ]
     | None = None,
     use_cases: OrderUseCases = Depends(get_order_use_cases),
@@ -135,6 +150,38 @@ async def list_products(
         product_type=ProductType(productType) if productType else None
     )
     return [_to_product_dto(product) for product in products]
+
+
+@billing_router.get("/pricing-plans", operation_id="getPricingPlans")
+async def get_pricing_plans(
+    categoryId: UUID | None = None,
+    use_cases: OrderUseCases = Depends(get_order_use_cases),
+) -> PricingPlans:
+    """Unauthenticated read of the listing-paywall price matrix (2026-08-23): the single-listing
+    publish price (`categoryId`-specific override if one is seeded, else the platform default)
+    plus every `LISTING_CREDIT_PACK` bulk tier. A thin reshape of `list_products` -- no new
+    persistence, same config-driven source `listProducts` already reads."""
+    publication_products = await use_cases.list_products(
+        product_type=ProductType.LISTING_PUBLICATION
+    )
+    single_listing = None
+    if categoryId is not None:
+        single_listing = next(
+            (p for p in publication_products if p.category_id == categoryId), None
+        )
+    if single_listing is None:
+        single_listing = next(
+            (p for p in publication_products if p.category_id is None), None
+        )
+
+    credit_packs = await use_cases.list_products(
+        product_type=ProductType.LISTING_CREDIT_PACK
+    )
+
+    return PricingPlans(
+        single_listing=_to_product_dto(single_listing) if single_listing else None,
+        credit_packs=[_to_product_dto(p) for p in credit_packs],
+    )
 
 
 @billing_router.get("/orders", operation_id="listMyOrders")
@@ -153,7 +200,9 @@ async def list_my_orders(
     for order in orders:
         invoice = await use_cases.get_order_invoice(order.id)
         items.append(_to_order_dto(order, invoice_id=invoice.id if invoice else None))
-    return OrderPage(items=items, page=PageInfo(limit=page_limit, next_cursor=next_cursor))
+    return OrderPage(
+        items=items, page=PageInfo(limit=page_limit, next_cursor=next_cursor)
+    )
 
 
 @billing_router.post("/orders", operation_id="createOrder", status_code=201)
@@ -233,7 +282,8 @@ async def admin_list_invoices(
 
 
 @admin_billing_router.post(
-    "/admin/billing/invoices/{invoiceId}/confirm-payment", operation_id="confirmInvoicePayment"
+    "/admin/billing/invoices/{invoiceId}/confirm-payment",
+    operation_id="confirmInvoicePayment",
 )
 async def confirm_invoice_payment(
     invoiceId: UUID,

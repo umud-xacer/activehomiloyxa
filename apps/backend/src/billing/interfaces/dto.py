@@ -84,6 +84,8 @@ class Entitlement(CamelModel):
         "LISTING_PROMOTION",
         "VERIFICATION_ELIGIBILITY",
         "BANNER_SLOT_BOOKING",
+        "LISTING_PUBLICATION",
+        "LISTING_CREDIT_BALANCE",
     ]
     promotion_kind: Literal["PREMIUM", "FEATURED", "TOP_PLACEMENT"] | None = None
     target_id: UUID | None = None
@@ -101,13 +103,20 @@ class OrderPage(CamelModel):
 
 
 class Product(CamelModel):
-    """A purchasable product/plan (six closed types). Read projection of the configured
+    """A purchasable product/plan (eight closed types). Read projection of the configured
     ProductDefinition."""
 
     id: UUID
     code: str
     product_type: Literal[
-        "SUBSCRIPTION", "PREMIUM", "FEATURED", "TOP_PLACEMENT", "VERIFICATION", "BANNER_PLACEMENT"
+        "SUBSCRIPTION",
+        "PREMIUM",
+        "FEATURED",
+        "TOP_PLACEMENT",
+        "VERIFICATION",
+        "BANNER_PLACEMENT",
+        "LISTING_PUBLICATION",
+        "LISTING_CREDIT_PACK",
     ]
     name: LocalizedText
     description: LocalizedText | None = None
@@ -115,3 +124,15 @@ class Product(CamelModel):
     term_days: int | None = None
     quota: dict[str, Any] | None = None
     """For SUBSCRIPTION — listing quotas/limits (BRULE-07)."""
+    category_id: UUID | None = None
+    """LISTING_PUBLICATION only — a category-specific price override; null is the
+    platform-default price (2026-08-23, listing paywall)."""
+
+
+class PricingPlans(CamelModel):
+    """`getPricingPlans` response (2026-08-23, listing paywall): the single-listing publish
+    price resolved for one category (or the platform default) plus every bulk credit-pack
+    tier -- the exact shape the frontend Paywall Modal's 3 purchase options need."""
+
+    single_listing: Product | None = None
+    credit_packs: list[Product]

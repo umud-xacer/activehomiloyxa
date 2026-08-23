@@ -80,6 +80,7 @@ def _to_snapshot(head: Any, version: Any) -> ProductDefinitionSnapshot:
     name_raw = descriptor.get("name") or {}
     description_raw = descriptor.get("description")
     quota_set = raw.get("quota_set")
+    category_id = raw.get("category_id")
     return ProductDefinitionSnapshot(
         id=head.id,
         version_id=version.id,
@@ -95,4 +96,5 @@ def _to_snapshot(head: Any, version: Any) -> ProductDefinitionSnapshot:
             if isinstance(quota_set, dict)
             else None
         ),
+        category_id=UUID(category_id) if category_id else None,
     )

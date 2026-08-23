@@ -60,7 +60,9 @@ class ConditionalVisibility(_ConfigContentModel):
     model_config = ConfigDict(extra="forbid")
 
     field_code: str
-    operator: Literal["EQUALS", "NOT_EQUALS", "IN", "NOT_IN", "GREATER_THAN", "LESS_THAN"]
+    operator: Literal[
+        "EQUALS", "NOT_EQUALS", "IN", "NOT_IN", "GREATER_THAN", "LESS_THAN"
+    ]
     value: Any = None
 
 
@@ -115,6 +117,11 @@ class QuotaSetContent(_ConfigContentModel):
 
     max_active_listings: int | None = None
     promotion_credits: int | None = None
+    listing_publish_credits: int | None = None
+    """`LISTING_CREDIT_PACK` products only (2026-08-23, listing paywall): how many future
+    listing publishes this pack grants. `unlimited_listing_publish=True` overrides this (the
+    Unlim/Premium tier)."""
+    unlimited_listing_publish: bool | None = None
 
 
 class ProductDefinitionContent(_ConfigContentModel):
@@ -127,6 +134,10 @@ class ProductDefinitionContent(_ConfigContentModel):
     term_days: int | None = None
     quota_set: QuotaSetContent | None = None
     benefit_descriptor: dict[str, Any] = Field(default_factory=dict)
+    category_id: UUID | None = None
+    """`LISTING_PUBLICATION` products only (2026-08-23, listing paywall): a category-specific
+    override price. `None` = the platform-default single-listing price (the row with no
+    `category_id` set for this product type)."""
 
 
 class PlacementSlotContent(_ConfigContentModel):

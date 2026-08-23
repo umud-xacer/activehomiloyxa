@@ -120,6 +120,9 @@ class ProductDefinitionSnapshot:
     price_currency: str
     term_days: int | None
     quota: dict[str, object] | None
+    category_id: UUID | None = None
+    """`LISTING_PUBLICATION` products only (2026-08-23, listing paywall): `None` is the
+    platform-default single-listing price; a specific category's override otherwise."""
 
 
 class ProductDefinitionReaderPort(Protocol):
@@ -128,7 +131,9 @@ class ProductDefinitionReaderPort(Protocol):
     ConfigurationPort.list_config_heads`/`get_config_version` only -- never `configuration.
     domain`/`application`/`infrastructure` (`cross-module-billing`)."""
 
-    async def get_product(self, product_id: UUID) -> ProductDefinitionSnapshot | None: ...
+    async def get_product(
+        self, product_id: UUID
+    ) -> ProductDefinitionSnapshot | None: ...
 
     async def list_products(
         self, *, product_type: ProductType | None
@@ -143,7 +148,12 @@ class PaymentProviderPort(Protocol):
     this Protocol only; it never knows which concrete adapter is registered."""
 
     async def confirm(
-        self, *, invoice_id: UUID, confirmed: bool, operator_account_id: UUID, note: str | None
+        self,
+        *,
+        invoice_id: UUID,
+        confirmed: bool,
+        operator_account_id: UUID,
+        note: str | None,
     ) -> bool:
         """Returns whether this attempt should transition the invoice to `PAID`. v1's
         `OfflineManualPaymentAdapter` returns `confirmed` verbatim: the operator's own HTTP-level

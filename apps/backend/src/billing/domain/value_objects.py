@@ -17,8 +17,11 @@ from shared_kernel import ListingId, Money
 
 
 class ProductType(StrEnum):
-    """Verbatim from `contracts/openapi.yaml` `Product.productType` (the six closed
-    monetisation-product types, BR-BILL-01)."""
+    """Verbatim from `contracts/openapi.yaml` `Product.productType` (BR-BILL-01, widened to eight
+    closed monetisation-product types 2026-08-23 for the listing paywall: `LISTING_PUBLICATION`
+    (pay once to publish a single held listing, target = the listing itself) and
+    `LISTING_CREDIT_PACK` (bulk Start/Biznes/Unlim listing-credit packages, target = the
+    purchaser) -- see `product_mapping.py`."""
 
     SUBSCRIPTION = "SUBSCRIPTION"
     PREMIUM = "PREMIUM"
@@ -26,6 +29,8 @@ class ProductType(StrEnum):
     TOP_PLACEMENT = "TOP_PLACEMENT"
     VERIFICATION = "VERIFICATION"
     BANNER_PLACEMENT = "BANNER_PLACEMENT"
+    LISTING_PUBLICATION = "LISTING_PUBLICATION"
+    LISTING_CREDIT_PACK = "LISTING_CREDIT_PACK"
 
 
 class TargetType(StrEnum):
@@ -58,13 +63,18 @@ class InvoiceStatus(StrEnum):
 
 
 class EntitlementType(StrEnum):
-    """Verbatim from `contracts/openapi.yaml` `Entitlement.entitlementType` (the four closed
-    entitlement types, Domain Model Sec 5.8)."""
+    """Verbatim from `contracts/openapi.yaml` `Entitlement.entitlementType` (Domain Model Sec 5.8,
+    widened to six closed entitlement types 2026-08-23 for the listing paywall:
+    `LISTING_PUBLICATION` (one-time grant that flips one specific held listing live) and
+    `LISTING_CREDIT_BALANCE` (a standing, decrementable balance of future publish credits) --
+    see `product_mapping.py`."""
 
     ACTIVE_SUBSCRIPTION = "ACTIVE_SUBSCRIPTION"
     LISTING_PROMOTION = "LISTING_PROMOTION"
     VERIFICATION_ELIGIBILITY = "VERIFICATION_ELIGIBILITY"
     BANNER_SLOT_BOOKING = "BANNER_SLOT_BOOKING"
+    LISTING_PUBLICATION = "LISTING_PUBLICATION"
+    LISTING_CREDIT_BALANCE = "LISTING_CREDIT_BALANCE"
 
 
 class PromotionKind(StrEnum):
@@ -128,16 +138,22 @@ class TargetRef:
             self.target_type in (TargetType.LISTING, TargetType.SLOT_BOOKING)
             and self.target_id is None
         ):
-            raise InvalidTargetRefError(f"{self.target_type.value} targets require a target_id")
+            raise InvalidTargetRefError(
+                f"{self.target_type.value} targets require a target_id"
+            )
         booking_window = self.booking_window
-        if (self.target_type is TargetType.SLOT_BOOKING) != (booking_window is not None):
+        if (self.target_type is TargetType.SLOT_BOOKING) != (
+            booking_window is not None
+        ):
             raise InvalidTargetRefError(
                 "booking_window is required for, and only for, SLOT_BOOKING targets"
             )
         if booking_window is not None:
             start, end = booking_window
             if end <= start:
-                raise InvalidTargetRefError("booking_window end must be strictly after start")
+                raise InvalidTargetRefError(
+                    "booking_window end must be strictly after start"
+                )
 
     @property
     def listing_id(self) -> ListingId | None:

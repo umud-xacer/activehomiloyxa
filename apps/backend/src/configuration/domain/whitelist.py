@@ -26,7 +26,17 @@ import re
 # Frozen at Task P-01 in `configuration/interfaces/dto.py` (`FormField.field_type` Literal),
 # itself derived from DDD Sec 5.4/8.2 and Config Framework Sec 5.1's repeated worked examples.
 FIELD_TYPES: frozenset[str] = frozenset(
-    {"text", "number", "select", "multiselect", "boolean", "date", "range", "location", "file"}
+    {
+        "text",
+        "number",
+        "select",
+        "multiselect",
+        "boolean",
+        "date",
+        "range",
+        "location",
+        "file",
+    }
 )
 
 # Frozen at Task P-01 in `configuration/interfaces/dto.py` (`ValidatorBinding.validator_type`
@@ -58,6 +68,8 @@ PRODUCT_TYPES: frozenset[str] = frozenset(
         "TOP_PLACEMENT",
         "VERIFICATION",
         "BANNER_PLACEMENT",
+        "LISTING_PUBLICATION",
+        "LISTING_CREDIT_PACK",
     }
 )
 
@@ -249,7 +261,9 @@ PERMISSION_KEYS: frozenset[str] = frozenset(
 # recognises the string). Renaming this constant is not a contract change -- it doesn't touch
 # the wire shape, only which string an admin authoring a SearchConfiguration is offered -- so it
 # needs no ADR, only agreement with what the contract already accepts.
-SORT_OPTIONS: frozenset[str] = frozenset({"RELEVANCE", "RECENCY", "PRICE_ASC", "PRICE_DESC"})
+SORT_OPTIONS: frozenset[str] = frozenset(
+    {"RELEVANCE", "RECENCY", "PRICE_ASC", "PRICE_DESC"}
+)
 
 # PLACEHOLDER -- Config Framework Sec 3.14 names four example homepage zones ("hero, featured
 # categories, promoted listings, banners"); Sec 3.2/8.1 names a "page/zone descriptor [P
@@ -402,7 +416,8 @@ def is_valid_owner_panel_slug(value: object) -> bool:
         return False
     slug = value.strip().lower()
     return (
-        bool(_OWNER_PANEL_SLUG_PATTERN.fullmatch(slug)) and slug not in RESERVED_OWNER_PANEL_SLUGS
+        bool(_OWNER_PANEL_SLUG_PATTERN.fullmatch(slug))
+        and slug not in RESERVED_OWNER_PANEL_SLUGS
     )
 
 

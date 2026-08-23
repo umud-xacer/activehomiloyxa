@@ -6863,6 +6863,150 @@ async def _seed_catalog_taxonomy(
         )
 
 
+async def _seed_product_definition(
+    use_cases: ConfigurationUseCases,
+    repo: SqlalchemyConfigHeadRepository,
+    *,
+    code: str,
+    name: str,
+    description: str | None,
+    product_type: str,
+    price_amount: str,
+    term_days: int | None,
+    quota_set: dict[str, object] | None,
+    category_id: UUID | None,
+    now: datetime,
+) -> UUID:
+    """Generic `ProductDefinition` seeder (listing paywall, 2026-08-23) -- mirrors `_seed_category`'s
+    own idempotent create-draft-then-publish pattern exactly, generalized for billing's product
+    catalog (empty before this task). Always returns the head id (creating it, or looking it up
+    by code if already seeded); never overwrites an already-seeded row's price on a re-run --
+    a price change is a deliberate admin-panel edit (same draft->publish flow), not something
+    re-running this script should silently do."""
+    descriptor: dict[str, object] = {"name": {"uz_latn": name}}
+    if description is not None:
+        descriptor["description"] = {"uz_latn": description}
+    definition: dict[str, object] = {
+        "descriptor": descriptor,
+        "product_type": product_type,
+        "price_amount": price_amount,
+        "price_currency": "UZS",
+        "term_days": term_days,
+        "quota_set": quota_set,
+        "category_id": str(category_id) if category_id else None,
+    }
+    try:
+        head, version = await use_cases.create_draft(
+            ConfigEntityType.PRODUCT_DEFINITION,
+            code=code,
+            business_owner="Billing Owner",
+            definition=definition,
+            actor_id=SEED_MAKER_ID,
+            now=now,
+        )
+    except DuplicateCodeError:
+        existing = await repo.get_head_by_code(
+            ConfigEntityType.PRODUCT_DEFINITION, code
+        )
+        if existing is None:
+            raise RuntimeError(
+                f"seed marker {code!r} vanished between check and lookup"
+            ) from None
+        return existing.id
+
+    manage_key = _registry.manage_permission_key(
+        ConfigEntityType.PRODUCT_DEFINITION.value
+    )
+    approve_key = _registry.approve_permission_key(
+        ConfigEntityType.PRODUCT_DEFINITION.value
+    )
+    step1 = await use_cases.publish(
+        ConfigEntityType.PRODUCT_DEFINITION,
+        head.id,
+        version.id,
+        actor_id=SEED_MAKER_ID,
+        actor_permission_keys=frozenset({manage_key}),
+        approval_note="seed: bootstrap product definition",
+        now=now,
+    )
+    if step1.status.value == "APPROVAL":
+        await use_cases.publish(
+            ConfigEntityType.PRODUCT_DEFINITION,
+            head.id,
+            step1.id,
+            actor_id=SEED_CHECKER_ID,
+            actor_permission_keys=frozenset({manage_key, approve_key}),
+            approval_note="seed: bootstrap product definition approval",
+            now=now,
+        )
+    return head.id
+
+
+async def _seed_pricing_plans(
+    use_cases: ConfigurationUseCases,
+    repo: SqlalchemyConfigHeadRepository,
+    *,
+    now: datetime,
+) -> None:
+    """Listing paywall demo price matrix (2026-08-23) -- real values the owner gave, never
+    hardcoded Python constants read anywhere else: a single-listing publish default (per-category
+    override supported via `category_id`, none seeded yet) plus the three bulk credit-pack tiers.
+    Mock/Payme/Click all read these through the same `ProductDefinitionReaderPort` -- no
+    provider-specific pricing exists."""
+    await _seed_product_definition(
+        use_cases,
+        repo,
+        code="listing-publication-default",
+        name="Bitta e'lonni joylashtirish",
+        description="E'lonni saytda ko'rsatish uchun bir martalik to'lov.",
+        product_type="LISTING_PUBLICATION",
+        price_amount="15000.00",
+        term_days=None,
+        quota_set=None,
+        category_id=None,
+        now=now,
+    )
+    await _seed_product_definition(
+        use_cases,
+        repo,
+        code="listing-credit-pack-start",
+        name="Start paket",
+        description="5 ta e'lon joylashtirish huquqi.",
+        product_type="LISTING_CREDIT_PACK",
+        price_amount="60000.00",
+        term_days=None,
+        quota_set={"listing_publish_credits": 5},
+        category_id=None,
+        now=now,
+    )
+    await _seed_product_definition(
+        use_cases,
+        repo,
+        code="listing-credit-pack-biznes",
+        name="Biznes paket",
+        description="15 ta e'lon joylashtirish huquqi + VIP belgi.",
+        product_type="LISTING_CREDIT_PACK",
+        price_amount="150000.00",
+        term_days=None,
+        quota_set={"listing_publish_credits": 15},
+        category_id=None,
+        now=now,
+    )
+    await _seed_product_definition(
+        use_cases,
+        repo,
+        code="listing-credit-pack-unlim",
+        name="Unlim paket",
+        description="30 kun davomida cheksiz e'lon joylashtirish.",
+        product_type="LISTING_CREDIT_PACK",
+        price_amount="300000.00",
+        term_days=30,
+        quota_set={"unlimited_listing_publish": True},
+        category_id=None,
+        now=now,
+    )
+
+
 async def run_seed() -> None:
     engine = make_engine()
     session_factory = make_session_factory(engine)
@@ -7007,6 +7151,7 @@ async def run_seed() -> None:
                 )
 
                 await _seed_catalog_taxonomy(use_cases, repo, now=now)
+                await _seed_pricing_plans(use_cases, repo, now=now)
             except GateFailedError as exc:
                 raise RuntimeError(
                     f"seed data failed the validation gate: {exc.result.errors}"

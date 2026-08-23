@@ -2149,10 +2149,10 @@ paths:
       - Billing
       operationId: listProducts
       summary: List products & subscription plans
-      description: 'Public catalogue of purchasable products (six types: SUBSCRIPTION, PREMIUM, FEATURED,
+      description: 'Public catalogue of purchasable products (eight types: SUBSCRIPTION, PREMIUM, FEATURED,
 
-        TOP_PLACEMENT, VERIFICATION, BANNER_PLACEMENT) with plan features and limits. Read projection
-        of
+        TOP_PLACEMENT, VERIFICATION, BANNER_PLACEMENT, LISTING_PUBLICATION, LISTING_CREDIT_PACK) with
+        plan features and limits. Read projection of
 
         the configured ProductDefinitions.
 
@@ -2170,6 +2170,8 @@ paths:
           - TOP_PLACEMENT
           - VERIFICATION
           - BANNER_PLACEMENT
+          - LISTING_PUBLICATION
+          - LISTING_CREDIT_PACK
       responses:
         '200':
           description: Products.
@@ -2179,6 +2181,37 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Product'
+  /pricing-plans:
+    get:
+      tags:
+      - Billing
+      operationId: getPricingPlans
+      summary: Listing paywall price matrix
+      description: 'Unauthenticated read of the listing-paywall price matrix (2026-08-23): the
+
+        single-listing publish price (categoryId-specific override if one is seeded, else the
+
+        platform default) plus every LISTING_CREDIT_PACK bulk tier. A thin reshape of
+
+        listProducts -- no new persistence.
+
+        '
+      security: []
+      parameters:
+      - name: categoryId
+        in: query
+        schema:
+          type:
+          - string
+          - 'null'
+          format: uuid
+      responses:
+        '200':
+          description: Pricing plans.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingPlans'
   /orders:
     get:
       tags:
@@ -6043,7 +6076,7 @@ components:
       additionalProperties: false
     Product:
       type: object
-      description: A purchasable product/plan (six closed types). Read projection of the configured ProductDefinition.
+      description: A purchasable product/plan (eight closed types). Read projection of the configured ProductDefinition.
       required:
       - id
       - code
@@ -6065,6 +6098,8 @@ components:
           - TOP_PLACEMENT
           - VERIFICATION
           - BANNER_PLACEMENT
+          - LISTING_PUBLICATION
+          - LISTING_CREDIT_PACK
         name:
           $ref: '#/components/schemas/LocalizedText'
         description:
@@ -6081,6 +6116,29 @@ components:
           - 'null'
           description: For SUBSCRIPTION — listing quotas/limits (BRULE-07).
           additionalProperties: true
+        categoryId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: LISTING_PUBLICATION only — a category-specific price override; null is the platform-default price.
+      additionalProperties: false
+    PricingPlans:
+      type: object
+      description: getPricingPlans response (2026-08-23, listing paywall) — the single-listing
+        publish price resolved for one category (or the platform default) plus every bulk
+        credit-pack tier.
+      required:
+      - creditPacks
+      properties:
+        singleListing:
+          oneOf:
+          - $ref: '#/components/schemas/Product'
+          - type: 'null'
+        creditPacks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
       additionalProperties: false
     Order:
       type: object
@@ -6234,6 +6292,8 @@ components:
           - LISTING_PROMOTION
           - VERIFICATION_ELIGIBILITY
           - BANNER_SLOT_BOOKING
+          - LISTING_PUBLICATION
+          - LISTING_CREDIT_BALANCE
         promotionKind:
           type:
           - string
