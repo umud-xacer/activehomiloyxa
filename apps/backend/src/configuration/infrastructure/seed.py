@@ -426,6 +426,10 @@ _SEARCH_CONFIGURATION_ADDITIVE_FACETS: dict[str, str] = {
     "transfer_service": "Transfer xizmati",
     "origin_country": "Ishlab chiqarilgan mamlakat / Ishlab chiqaruvchi",
     "delivery_assembly": "Yetkazib berish va Yig'ib berish (Sborka)",
+    "meal_plan": "Ovqatlanish tizimi (Ta'minot)",
+    "treatment_medical": "Davolash va Med-xizmatlar",
+    "accommodation_type": "Xona va Joylashuv turi",
+    "seasonality": "Mavsumiylik",
     "deal_type": "Bitim turi",
     "area_sotix": "Maydon (sotix)",
     "land_purpose": "Yer maqsadi",
@@ -2142,16 +2146,121 @@ def _furniture_salon_fields() -> list[dict[str, object]]:
 
 
 def _venue_fields() -> list[dict[str, object]]:
-    """Dam olish maskanlari -- restaurants/parks/sports venues/event halls."""
+    """Dam olish maskanlari -- 2026-08-23 rewrite: was a generic venue shape (restaurant/park/
+    sport/event-hall), replaced with resort/sanatoriy-specific fields per the TZ (treatment,
+    meal plan, accommodation type) -- old `venue_type`/`capacity`/`price_unit`/`open_hours` kept
+    (additive-only) but deprioritized (order 90+), same pattern as `_land_fields()`'s
+    `land_purpose`/`has_documents` after Bo'sh yerlar's rewrite. `resort_area` lists real named
+    destinations (Bo'stonliq's Chorvoq/Chimyon/Hojikent, Zomin, Chortoq, Shohimardon), same
+    convention as `_dacha_fields()`'s own `resort_area`."""
     return [
+        _field(
+            "resort_area",
+            "asosiy",
+            "Hudud / Yo'nalish",
+            "select",
+            facet=True,
+            order=1,
+            options=[
+                ("bostonliq", "Bo'stonliq (Chorvoq/Chimyon/Hojikent)"),
+                ("zomin", "Zomin"),
+                ("chortoq", "Chortoq"),
+                ("shohimardon", "Shohimardon"),
+                ("yangiobod", "Yangiobod"),
+                ("other", "Boshqa hududlar"),
+            ],
+        ),
+        _field(
+            "meal_plan",
+            "asosiy",
+            "Ovqatlanish tizimi (Ta'minot)",
+            "select",
+            facet=True,
+            order=2,
+            options=[
+                ("full_board", "3 mahal ovqat ichida (FB)"),
+                ("breakfast", "Nonushta ichida (BB)"),
+                ("no_meals", "Ovqatlanishsiz"),
+                ("a_la_carte", "Buyurtma bo'yicha (A la carte)"),
+            ],
+        ),
+        _field(
+            "treatment_medical",
+            "asosiy",
+            "Davolash va Med-xizmatlar",
+            "select",
+            facet=True,
+            order=3,
+            options=[
+                ("full_treatment", "To'liq profilaktik davolash bor"),
+                ("mineral_water_physio", "Mineral suvlar / Fizioterapiya"),
+                ("rest_only", "Faqat dam olish (Davolashsiz)"),
+            ],
+        ),
+        _field(
+            "accommodation_type",
+            "asosiy",
+            "Xona va Joylashuv turi",
+            "select",
+            facet=True,
+            order=4,
+            options=[
+                ("separate_cottage", "Alohida kottej / Dacha tipida"),
+                ("hotel_building_room", "Mehmonxona korpusi (Nomer)"),
+                ("tent_camping", "Yerto'la/Kamping tent"),
+            ],
+        ),
+        _field(
+            "room_capacity",
+            "asosiy",
+            "Xona sig'imi (Kishi)",
+            "select",
+            facet=True,
+            order=5,
+            options=[
+                ("1_person", "1 kishilik"),
+                ("2_person", "2 kishilik"),
+                ("3_4_person", "3-4 kishilik"),
+                ("family_5_plus", "Oilaviy (5+ kishi)"),
+            ],
+        ),
+        _field(
+            "seasonality",
+            "asosiy",
+            "Mavsumiylik",
+            "select",
+            facet=True,
+            order=6,
+            options=[
+                ("year_round_heated", "Yil davomida (Qishki isitish bor)"),
+                ("summer_only", "Faqat yozgi mavsumda"),
+            ],
+        ),
+        _field(
+            "amenities",
+            "asosiy",
+            "Qulayliklar",
+            "multiselect",
+            facet=True,
+            order=7,
+            options=[
+                ("pool_open_closed", "Ochiq / Yopiq basseyn"),
+                ("sauna_hammom", "Sauna / Hammom"),
+                ("playground", "Bolalar maydonchasi"),
+                ("physio_massage", "Fizioterapiya va Massaj"),
+                ("wifi", "Wi-Fi"),
+                ("tapchan_grill", "Tapchan va Mangal"),
+                ("salt_room", "Tuz xonasi"),
+                ("parking", "Avtoturargoh"),
+            ],
+        ),
         _field(
             "venue_type",
             "asosiy",
             "Maskan turi",
             "select",
-            required=True,
             facet=True,
-            order=1,
+            order=90,
             options=[
                 ("restaurant", "Restoran/kafe"),
                 ("park", "Bog'/tabiat"),
@@ -2161,13 +2270,13 @@ def _venue_fields() -> list[dict[str, object]]:
                 ("other", "Boshqa"),
             ],
         ),
-        _field("capacity", "asosiy", "Sig'imi (kishi)", "number", facet=True, order=2),
+        _field("capacity", "asosiy", "Sig'imi (kishi)", "number", facet=True, order=91),
         _field(
             "price_unit",
             "asosiy",
             "Narx birligi",
             "select",
-            order=3,
+            order=92,
             options=[
                 ("per_person", "Kishi boshiga"),
                 ("per_hour", "Soatiga"),
@@ -2175,7 +2284,7 @@ def _venue_fields() -> list[dict[str, object]]:
                 ("fixed", "Belgilangan"),
             ],
         ),
-        _field("open_hours", "asosiy", "Ish vaqti", "text", order=4),
+        _field("open_hours", "asosiy", "Ish vaqti", "text", order=93),
     ]
 
 
@@ -5319,50 +5428,16 @@ def _mebel_salonlari_tree() -> list[Node]:
 
 
 def _dam_olish_maskanlari_tree() -> list[Node]:
+    """Flat, real-market-aligned list (2026-08-23 rewrite, same rationale as `_kotejlar_tree()`
+    above) -- replaces a deep tree (Mehmonxonalar/Hovuz va akvaparklar/SPA va Wellness markazlari
+    branches -- much of it overlapping Kotejlar/Mexmonxona's own now-real categories) with 5 real
+    ones covering resorts/sanatoriums specifically, not general lodging."""
     return [
-        (
-            "Mehmonxonalar",
-            [
-                "3 yulduzli",
-                "4 yulduzli",
-                "5 yulduzli",
-                "Boutique Hotel",
-                "Business Hotel",
-                "Family Hotel",
-            ],
-        ),
-        "Dala hovlilar",
-        "Villalar",
-        "Kottejlar",
-        "Kurort va sanatoriyalar",
-        (
-            "Hovuz va akvaparklar",
-            [
-                "Ochiq hovuz",
-                "Yopiq hovuz",
-                "Bolalar akvaparki",
-                "VIP zonalar",
-                "Family zonalari",
-            ],
-        ),
-        (
-            "SPA va Wellness markazlari",
-            [
-                "Sauna",
-                "Hammom",
-                "Massaj",
-                "Fitnes",
-                "Termal hovuz",
-                "Sog'lomlashtirish xizmatlari",
-            ],
-        ),
-        "Tog' dam olish maskanlari",
-        "Ko'l va daryo bo'yidagi maskanlar",
-        "Oilaviy dam olish zonalari",
-        "Bolalar ko'ngilochar markazlari",
-        "Restoran va kafe zonalari",
-        "Piknik va Camping hududlari",
-        "Sarguzasht va ekstremal dam olish maskanlari",
+        "Sanatoriylar va Davolash maskanlari",
+        "Tog' va Tabiat qo'ynidagi dam olish maskanlari (Zona otdyxa)",
+        "Pansionat va Sanatoriy-kurortlar",
+        "Bolalar va oilaviy oromgohlar (Lager)",
+        "Eko-turizm va Kamping joylari",
     ]
 
 
@@ -6048,6 +6123,19 @@ async def _seed_catalog_taxonomy(
         code="dam-olish-maskani-form",
         name="Dam olish maskani",
         fields=_venue_fields(),
+        now=now,
+    )
+    await _backfill_form_definition_fields(
+        use_cases,
+        repo,
+        code="dam-olish-maskani-form",
+        fields=_venue_fields(),
+        force_order={
+            "venue_type": 90,
+            "capacity": 91,
+            "price_unit": 92,
+            "open_hours": 93,
+        },
         now=now,
     )
     dam_olish_head_id = await _seed_category(
