@@ -17,12 +17,19 @@ import type { Account } from "@/lib/auth-client";
 import { businessProfilesApi } from "@/lib/business-profiles-client";
 
 export function SubscriptionGate({ account, children }: { account: Account; children: ReactNode }) {
+  const isSuperAdmin = account.roles.includes("super-admin");
   const ownedProfileId = (account.ownedProfileIds ?? [])[0];
   const { data: profile, isLoading } = useQuery({
     queryKey: ["business-profiles", "mine", ownedProfileId],
     queryFn: () => businessProfilesApi.get(ownedProfileId as string),
-    enabled: account.accountKind === "LEGAL_ENTITY" && !!ownedProfileId,
+    enabled: !isSuperAdmin && account.accountKind === "LEGAL_ENTITY" && !!ownedProfileId,
   });
+
+  // Same reasoning as `ReviewGate.tsx`'s own `super-admin` bypass: ADR-0010's subscription
+  // requirement exists to gate a paying LEGAL_ENTITY tenant's dashboard, not the platform
+  // operator's own account -- bypass unconditionally, regardless of subscriptionStatus. Checked
+  // after the hook (Rules of Hooks: every hook must run on every render), not before.
+  if (isSuperAdmin) return <>{children}</>;
 
   if (account.accountKind !== "LEGAL_ENTITY") return <>{children}</>;
   if (!ownedProfileId || isLoading) {
