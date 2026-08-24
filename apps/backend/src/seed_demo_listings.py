@@ -93,7 +93,7 @@ from media.infrastructure.persistence.models import (
 )
 from media.infrastructure.persistence.repository import SqlalchemyMediaAssetRepository
 from media.interfaces.routers import _asset_to_dto
-from shared_kernel import GeoLocation, MediaAssetId, Money, UserId
+from shared_kernel import BusinessProfileId, GeoLocation, MediaAssetId, Money, UserId
 
 logger = logging.getLogger(__name__)
 
@@ -11626,6 +11626,17 @@ async def _ensure_demo_seller(
         return account.id.value
 
 
+class _UnusedCreditBalancePort:
+    """Listing paywall Phase 4 (2026-08-23): this script always calls `create_listing` with
+    `auto_compute_payment_requirement` left at its default `False` (demo data is seeded already
+    published, never through the paywall path), so `CreditBalancePort` is a required
+    `ListingUseCases` collaborator on paper only here -- same reasoning as `catalog.infrastructure.
+    worker._UnusedCreditBalance`."""
+
+    async def consume_one_listing_credit(self, *, owner_profile_id: BusinessProfileId) -> bool:
+        raise AssertionError("not exercised by demo seeding")
+
+
 def _build_listing_use_cases(
     session: AsyncSession,
     session_factory: async_sessionmaker[AsyncSession],
@@ -11647,6 +11658,7 @@ def _build_listing_use_cases(
             subscriptions=SqlalchemySubscriptionSnapshotRepository(session)
         ),
         duplicates=DuplicateDetectionService(listings=listings_repo),
+        credit_balance=_UnusedCreditBalancePort(),
     )
 
 

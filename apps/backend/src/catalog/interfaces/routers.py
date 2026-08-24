@@ -63,7 +63,9 @@ def _listing_to_dto(listing: DomainListing) -> Listing:
         id=listing.id.value,
         listing_type=listing.listing_type.value,
         owner_user_id=listing.owner_user_id.value,
-        owner_profile_id=listing.owner_profile_id.value if listing.owner_profile_id else None,
+        owner_profile_id=listing.owner_profile_id.value
+        if listing.owner_profile_id
+        else None,
         category_id=listing.category_id,
         category_path=listing.category_path,
         form_definition_version_id=listing.form_definition_version_id,
@@ -78,7 +80,8 @@ def _listing_to_dto(listing: DomainListing) -> Listing:
         published_at=listing.published_at,
         promotion=(
             ListingPromotion(
-                kind=listing.promotion.kind.value, valid_until=listing.promotion.valid_until
+                kind=listing.promotion.kind.value,
+                valid_until=listing.promotion.valid_until,
             )
             if listing.promotion
             else None
@@ -86,6 +89,7 @@ def _listing_to_dto(listing: DomainListing) -> Listing:
         images=[_image_to_dto(i) for i in listing.images],
         slug=listing.slug,
         lock_version=listing.lock_version,
+        awaiting_payment=listing.awaiting_payment,
         created_at=listing.created_at,
         updated_at=listing.updated_at,
     )
@@ -125,7 +129,9 @@ async def get_listing(
     use_cases: ListingUseCases = Depends(get_listing_use_cases),
 ) -> Listing:
     listing = await use_cases.get_listing(ListingId(value=listingId))
-    is_owner = acting_user is not None and acting_user.account_id == listing.owner_user_id
+    is_owner = (
+        acting_user is not None and acting_user.account_id == listing.owner_user_id
+    )
     if not is_owner and not listing.is_publicly_visible(now=datetime.now(UTC)):
         # Non-owners never learn a non-visible listing exists (I-06's own visibility rule).
         raise ListingNotFoundError(listing.id)
@@ -168,6 +174,7 @@ async def create_listing(
         location=body.location,
         image_media_asset_ids=body.image_media_asset_ids,
         publish=bool(body.publish),
+        auto_compute_payment_requirement=True,
         now=datetime.now(UTC),
     )
     return _listing_to_dto(listing)
@@ -194,7 +201,9 @@ async def update_listing(
     return _listing_to_dto(listing)
 
 
-@catalog_router.delete("/listings/{listingId}", operation_id="deleteListing", status_code=204)
+@catalog_router.delete(
+    "/listings/{listingId}", operation_id="deleteListing", status_code=204
+)
 async def delete_listing(
     listingId: UUID,
     acting_user: ActingUser = Depends(get_acting_user),
@@ -259,7 +268,9 @@ async def reorder_listing_images(
 
 
 @catalog_router.delete(
-    "/listings/{listingId}/images/{imageId}", operation_id="detachListingImage", status_code=204
+    "/listings/{listingId}/images/{imageId}",
+    operation_id="detachListingImage",
+    status_code=204,
 )
 async def detach_listing_image(
     listingId: UUID,
@@ -275,7 +286,9 @@ async def detach_listing_image(
     )
 
 
-@catalog_router.get("/listings/{listingId}/statistics", operation_id="getListingStatistics")
+@catalog_router.get(
+    "/listings/{listingId}/statistics", operation_id="getListingStatistics"
+)
 async def get_listing_statistics(
     listingId: UUID,
     acting_user: ActingUser = Depends(get_acting_user),
@@ -306,7 +319,10 @@ async def list_my_listings(
 ) -> ListingPage:
     page_limit = limit or 20
     listings, next_cursor = await use_cases.list_my_listings(
-        owner_user_id=acting_user.account_id, state=state, cursor=cursor, limit=page_limit
+        owner_user_id=acting_user.account_id,
+        state=state,
+        cursor=cursor,
+        limit=page_limit,
     )
     return ListingPage(
         items=[_listing_to_dto(item) for item in listings],
@@ -329,7 +345,10 @@ async def list_favorites(
         user_id=acting_user.account_id, cursor=cursor, limit=page_limit
     )
     return FavoritePage(
-        items=[Favorite(listing_id=f.listing_id.value, created_at=f.created_at) for f in favorites],
+        items=[
+            Favorite(listing_id=f.listing_id.value, created_at=f.created_at)
+            for f in favorites
+        ],
         page=PageInfo(limit=page_limit, next_cursor=next_cursor),
     )
 
@@ -345,7 +364,9 @@ async def add_favorite(
         listing_id=ListingId(value=body.listing_id),
         now=datetime.now(UTC),
     )
-    return Favorite(listing_id=favorite.listing_id.value, created_at=favorite.created_at)
+    return Favorite(
+        listing_id=favorite.listing_id.value, created_at=favorite.created_at
+    )
 
 
 @favorites_router.delete(
@@ -357,5 +378,7 @@ async def remove_favorite(
     use_cases: FavoriteUseCases = Depends(get_favorite_use_cases),
 ) -> None:
     await use_cases.remove_favorite(
-        user_id=acting_user.account_id, listing_id=ListingId(value=listingId), now=datetime.now(UTC)
+        user_id=acting_user.account_id,
+        listing_id=ListingId(value=listingId),
+        now=datetime.now(UTC),
     )

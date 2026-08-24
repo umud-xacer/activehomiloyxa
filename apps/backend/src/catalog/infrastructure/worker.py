@@ -66,6 +66,7 @@ class CatalogExpiryWorker:
                 outbox=OutboxWriter(session, self._outbox_model),
                 quota=QuotaEnforcementService(subscriptions=_UnusedSubscriptions()),
                 duplicates=DuplicateDetectionService(listings=listings),
+                credit_balance=_UnusedCreditBalance(),
             )
             return await use_cases.sweep_expired(now=now, batch_size=self._batch_size)
 
@@ -93,4 +94,13 @@ class _UnusedSubscriptions:
         raise AssertionError("not reachable from CatalogExpiryWorker.run_once")
 
     async def upsert(self, snapshot: object) -> None:
+        raise AssertionError("not reachable from CatalogExpiryWorker.run_once")
+
+
+class _UnusedCreditBalance:
+    """Listing paywall Phase 4 (2026-08-23): same reasoning as `_UnusedSubscriptions` above --
+    `sweep_expired` never calls `create_listing`, so `CreditBalancePort` is only a required
+    `ListingUseCases` collaborator on paper here."""
+
+    async def consume_one_listing_credit(self, *, owner_profile_id: object) -> bool:
         raise AssertionError("not reachable from CatalogExpiryWorker.run_once")

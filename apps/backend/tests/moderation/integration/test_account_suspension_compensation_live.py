@@ -55,7 +55,7 @@ from moderation.infrastructure.persistence.models import (
 from moderation.infrastructure.persistence.repository import (
     SqlalchemyModerationCaseRepository,
 )
-from shared_kernel import EventEnvelope, ListingId, UserId
+from shared_kernel import BusinessProfileId, EventEnvelope, ListingId, UserId
 
 NOW = datetime(2026, 7, 13, 12, 0, tzinfo=UTC)
 
@@ -279,6 +279,7 @@ async def test_suspend_account_verb_suspends_every_visible_listing_via_catalogs_
                     subscriptions=SqlalchemySubscriptionSnapshotRepository(catalog_session)
                 ),
                 duplicates=DuplicateDetectionService(listings=listings_repo),
+                credit_balance=_UnusedCreditBalancePort(),
             )
             await handle_identity_event(catalog_session, envelope, catalog_use_cases)
 
@@ -350,4 +351,9 @@ class _UnusedPlatformSettingsReaderPort:
 
 class _UnusedMediaAssetReaderPort:
     async def get_media_asset(self, media_asset_id: UUID) -> NoReturn:
+        raise AssertionError("not exercised by this test")
+
+
+class _UnusedCreditBalancePort:
+    async def consume_one_listing_credit(self, *, owner_profile_id: BusinessProfileId) -> NoReturn:
         raise AssertionError("not exercised by this test")

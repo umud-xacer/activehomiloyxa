@@ -21,7 +21,14 @@ export interface LocalizedText {
 }
 
 export type ProductType =
-  "SUBSCRIPTION" | "PREMIUM" | "FEATURED" | "TOP_PLACEMENT" | "VERIFICATION" | "BANNER_PLACEMENT";
+  | "SUBSCRIPTION"
+  | "PREMIUM"
+  | "FEATURED"
+  | "TOP_PLACEMENT"
+  | "VERIFICATION"
+  | "BANNER_PLACEMENT"
+  | "LISTING_PUBLICATION"
+  | "LISTING_CREDIT_PACK";
 
 export interface Product {
   id: string;
@@ -32,6 +39,17 @@ export interface Product {
   price: Money;
   termDays?: number | null;
   quota?: Record<string, unknown> | null;
+  /** LISTING_PUBLICATION only -- a category-specific price override; null is the platform
+   * default (listing paywall, 2026-08-23). */
+  categoryId?: string | null;
+}
+
+/** GET /pricing-plans response shape (listing paywall, 2026-08-23) -- the Paywall Modal's own
+ * 4 options come straight from this: `singleListing` for "Bir martalik joylash", each entry of
+ * `creditPacks` for Start/Biznes/Unlim (distinguished by `code`). */
+export interface PricingPlans {
+  singleListing: Product | null;
+  creditPacks: Product[];
 }
 
 export type OrderStatus = "PENDING" | "INVOICED" | "PAID" | "FULFILLED" | "CANCELLED";
@@ -61,7 +79,12 @@ export interface Invoice {
 }
 
 export type EntitlementType =
-  "ACTIVE_SUBSCRIPTION" | "LISTING_PROMOTION" | "VERIFICATION_ELIGIBILITY" | "BANNER_SLOT_BOOKING";
+  | "ACTIVE_SUBSCRIPTION"
+  | "LISTING_PROMOTION"
+  | "VERIFICATION_ELIGIBILITY"
+  | "BANNER_SLOT_BOOKING"
+  | "LISTING_PUBLICATION"
+  | "LISTING_CREDIT_BALANCE";
 
 export interface Entitlement {
   id: string;
@@ -83,6 +106,13 @@ export const billingApi = {
   /** GET /products — public, no auth required. */
   listProducts(productType?: ProductType): Promise<Product[]> {
     return http.get<Product[]>("/products", { params: { productType } });
+  },
+
+  /** GET /pricing-plans — public, no auth required (listing paywall, 2026-08-23). `categoryId`
+   * resolves a category-specific single-listing price override if one is seeded, else the
+   * platform default. */
+  getPricingPlans(categoryId?: string): Promise<PricingPlans> {
+    return http.get<PricingPlans>("/pricing-plans", { params: { categoryId } });
   },
 
   listMyOrders(): Promise<Order[]> {

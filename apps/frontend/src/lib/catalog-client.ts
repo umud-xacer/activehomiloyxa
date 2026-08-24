@@ -57,6 +57,10 @@ export interface CatalogListing {
     | "SUSPENDED"
     | "ARCHIVED"
     | "DELETED";
+  /** Listing paywall (2026-08-23): true for a DRAFT listing whose publish is held pending
+   * payment -- `createListing`'s response is the one place a caller learns this immediately
+   * (the Paywall Modal opens off this field, not off `lifecycleState` alone). */
+  awaitingPayment?: boolean;
 }
 
 export interface ListingsPage {

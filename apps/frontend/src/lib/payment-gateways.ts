@@ -16,6 +16,7 @@
  * `merchant_trans_id` convention exactly (`billing/infrastructure/payment_gateway/{payme,
  * click}.py`), so no extra Order lookup is needed on either side of the handshake.
  */
+import { http } from "./http";
 import type { Invoice } from "./billing-client";
 
 export function getPaymeMerchantId(): string | null {
@@ -70,4 +71,20 @@ export function buildClickCheckoutUrl(
     return_url: returnUrl(),
   });
   return `https://my.click.uz/services/pay?${params.toString()}`;
+}
+
+/** Mock provider (listing paywall, 2026-08-23): `POST /payments/mock/pay` -- the one demo-only
+ * endpoint that isn't a browser redirect like Payme/Click above, since there's no real gateway
+ * to hand off to. Only reachable at all when the backend has `PAYMENT_PROVIDER=mock` set
+ * (`composition_root.payment_provider_mode`'s own docstring) -- a 404 here means demo payments
+ * are turned off, not a bug in this call. `providerLabel` is display-only (e.g. "UZUM", "PAYME",
+ * "CLICK") -- which demo button the buyer clicked; it does not select a real provider. */
+export async function mockPay(
+  invoiceId: string,
+  providerLabel: string,
+): Promise<{ invoiceId: string; status: string }> {
+  return http.post<{ invoiceId: string; status: string }>("/payments/mock/pay", {
+    invoiceId,
+    providerLabel,
+  });
 }

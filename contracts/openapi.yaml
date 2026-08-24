@@ -5175,6 +5175,10 @@ components:
         lockVersion:
           type: integer
           description: Optimistic-lock token; echo it on update (If-Match style).
+        awaitingPayment:
+          type: boolean
+          description: Listing paywall -- true for a DRAFT listing whose publish is held pending
+            payment.
         createdAt:
           type: string
           format: date-time

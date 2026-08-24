@@ -1,7 +1,16 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, Archive, RotateCcw, Plus, Package, Loader2 } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  Archive,
+  RotateCcw,
+  Plus,
+  Package,
+  Loader2,
+  CreditCard,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -12,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { EmptyState } from "@/components/dashboard/EmptyState";
+import { PaywallModal } from "@/components/billing/PaywallModal";
 import { catalogClient, formatUzs, type CatalogListing } from "@/lib/catalog-client";
 import { ApiError } from "@/lib/http";
 
@@ -25,8 +35,19 @@ const LIFECYCLE_LABEL: Record<string, { label: string; tone: "success" | "muted"
   DELETED: { label: "O'chirilgan", tone: "muted" },
 };
 
-export function LifecycleBadge({ state }: { state?: string }) {
-  const info = (state && LIFECYCLE_LABEL[state]) || { label: state ?? "—", tone: "muted" as const };
+export function LifecycleBadge({
+  state,
+  awaitingPayment,
+}: {
+  state?: string;
+  /** Listing paywall (2026-08-23): a DRAFT listing held for payment reads as a distinct state
+   * from an ordinary unfinished draft -- same underlying `lifecycleState`, different reason. */
+  awaitingPayment?: boolean;
+}) {
+  const info =
+    state === "DRAFT" && awaitingPayment
+      ? { label: "To'lov kutilmoqda", tone: "warning" as const }
+      : (state && LIFECYCLE_LABEL[state]) || { label: state ?? "—", tone: "muted" as const };
   return (
     <Badge
       variant="secondary"
@@ -48,8 +69,10 @@ const RESTORABLE_STATES = new Set(["ARCHIVED", "SUSPENDED"]);
 
 function RowActions({ listing }: { listing: CatalogListing }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState<"archive" | "restore" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["catalog", "my-listings"] });
 
@@ -89,6 +112,32 @@ function RowActions({ listing }: { listing: CatalogListing }) {
   return (
     <div className="flex items-center justify-end gap-1">
       {error && <span className="mr-2 text-[11px] text-destructive">{error}</span>}
+      {listing.lifecycleState === "DRAFT" && listing.awaitingPayment && (
+        <>
+          <button
+            type="button"
+            onClick={() => setPaying(true)}
+            aria-label="To'lash"
+            title="To'lash"
+            className="flex size-8 items-center justify-center rounded-lg text-primary transition hover:bg-primary/10"
+          >
+            <CreditCard className="size-3.5" />
+          </button>
+          {paying && (
+            <PaywallModal
+              open
+              onOpenChange={(open) => !open && setPaying(false)}
+              listingId={listing.id}
+              categoryId={listing.categoryId}
+              onActivated={() => {
+                setPaying(false);
+                refresh();
+                navigate({ to: "/properties/$slug", params: { slug: listing.id } });
+              }}
+            />
+          )}
+        </>
+      )}
       <Link
         to="/list/$listingId"
         params={{ listingId: listing.id }}
@@ -173,7 +222,7 @@ export function ListingsTable({ listings }: { listings: CatalogListing[] }) {
             <TableCell className="font-medium text-foreground">{l.title}</TableCell>
             <TableCell>{formatUzs(l.price?.amount)}</TableCell>
             <TableCell>
-              <LifecycleBadge state={l.lifecycleState} />
+              <LifecycleBadge state={l.lifecycleState} awaitingPayment={l.awaitingPayment} />
             </TableCell>
             <TableCell className="text-xs text-muted-foreground">
               {new Date(l.createdAt).toLocaleDateString()}

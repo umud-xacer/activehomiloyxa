@@ -26,7 +26,7 @@ from catalog.interfaces.di import (
     get_optional_acting_user,
 )
 from main import create_app
-from shared_kernel import UserId
+from shared_kernel import BusinessProfileId, UserId
 
 from .conftest import (
     FakeCategoryFormPort,
@@ -41,7 +41,20 @@ from .conftest import (
 
 TEST_OWNER = UserId(value=uuid4())
 TEST_OTHER = UserId(value=uuid4())
-_TOKEN_TO_USER = {"owner-token": TEST_OWNER, "other-token": TEST_OTHER}
+TEST_OWNER_WITH_PROFILE = UserId(value=uuid4())
+TEST_OWNER_PROFILE_ID = BusinessProfileId(value=uuid4())
+"""Listing paywall (2026-08-23): a second acting user WITH a business profile, distinct from
+`TEST_OWNER` (profileless, matches every other pre-existing test's assumption) -- `create_listing`
+only ever consumes a credit for a profile-bearing owner (`ListingUseCases.create_listing`'s own
+`auto_compute_payment_requirement` docstring: an individual with no profile always falls through
+to `requires_payment=True`, there is no way for them to hold a `LISTING_CREDIT_BALANCE`). Used
+only by the two tests that need `publish=True` to actually publish immediately."""
+_TOKEN_TO_USER = {
+    "owner-token": TEST_OWNER,
+    "other-token": TEST_OTHER,
+    "owner-with-profile-token": TEST_OWNER_WITH_PROFILE,
+}
+_TOKEN_TO_PROFILE = {"owner-with-profile-token": TEST_OWNER_PROFILE_ID}
 
 
 @pytest.fixture
@@ -52,6 +65,7 @@ def client(
     fake_settings: FakePlatformSettingsReaderPort,
     fake_media: FakeMediaAssetReaderPort,
     fake_subscriptions: FakeSubscriptionSnapshotRepository,
+    fake_credit_balance: FakeCreditBalancePort,
     fake_outbox: FakeOutbox,
 ) -> Iterator[TestClient]:
     def _listing_use_cases() -> ListingUseCases:
@@ -63,7 +77,7 @@ def client(
             outbox=fake_outbox,
             quota=QuotaEnforcementService(subscriptions=fake_subscriptions),
             duplicates=DuplicateDetectionService(listings=fake_listings),
-            credit_balance=FakeCreditBalancePort(),
+            credit_balance=fake_credit_balance,
         )
 
     def _favorite_use_cases() -> FavoriteUseCases:
@@ -80,7 +94,9 @@ def client(
         account_id = _TOKEN_TO_USER.get(token or "")
         if account_id is None:
             raise HTTPException(status_code=401, detail="no valid session")
-        return ActingUser(account_id=account_id, acting_profile_id=None)
+        return ActingUser(
+            account_id=account_id, acting_profile_id=_TOKEN_TO_PROFILE.get(token or "")
+        )
 
     async def optional_acting_user_override(
         authorization: str | None = Header(default=None),
@@ -91,7 +107,9 @@ def client(
         account_id = _TOKEN_TO_USER.get(token or "")
         if account_id is None:
             return None
-        return ActingUser(account_id=account_id, acting_profile_id=None)
+        return ActingUser(
+            account_id=account_id, acting_profile_id=_TOKEN_TO_PROFILE.get(token or "")
+        )
 
     app = create_app()
     app.dependency_overrides[get_listing_use_cases] = _listing_use_cases
@@ -137,16 +155,42 @@ def test_create_listing_without_session_returns_401(client: TestClient) -> None:
     assert response.status_code == 401
 
 
-def test_create_listing_publish_true_is_immediately_visible(client: TestClient) -> None:
+def test_create_listing_publish_true_is_immediately_visible(
+    client: TestClient, fake_credit_balance: FakeCreditBalancePort
+) -> None:
+    """Listing paywall (2026-08-23): `publish=True` alone no longer guarantees immediate
+    visibility -- `createListing` now always computes `requires_payment` for real
+    (`auto_compute_payment_requirement=True`), so this exercises the "owner has an available
+    listing credit" path (`owner-with-profile-token` + `fake_credit_balance.has_credit = True`),
+    the one case where `publish=True` still results in an immediate `PUBLISHED`."""
+    fake_credit_balance.has_credit = True
     response = client.post(
-        "/api/v1/listings", headers=_auth_headers(), json=_create_body(publish=True)
+        "/api/v1/listings",
+        headers=_auth_headers("owner-with-profile-token"),
+        json=_create_body(publish=True),
     )
     assert response.status_code == 201
     listing_id = response.json()["id"]
+    assert fake_credit_balance.consumed_for == [TEST_OWNER_PROFILE_ID.value]
 
     listed = client.get(f"/api/v1/listings/{listing_id}")
     assert listed.status_code == 200
     assert listed.json()["lifecycleState"] == "PUBLISHED"
+
+
+def test_create_listing_publish_true_without_credit_awaits_payment(
+    client: TestClient,
+) -> None:
+    """Listing paywall (2026-08-23): the new default path -- no business profile, no credit --
+    `publish=True` is deferred, not honoured; the listing is created but held `DRAFT`+
+    `awaitingPayment` rather than immediately visible."""
+    response = client.post(
+        "/api/v1/listings", headers=_auth_headers(), json=_create_body(publish=True)
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["lifecycleState"] == "DRAFT"
+    assert body["awaitingPayment"] is True
 
 
 def test_get_listing_draft_is_hidden_from_anonymous_caller(client: TestClient) -> None:
@@ -169,13 +213,16 @@ def test_get_listing_draft_is_visible_to_its_owner(client: TestClient) -> None:
     assert response.status_code == 200
 
 
-def test_list_listings_only_returns_public_visible_listings(client: TestClient) -> None:
+def test_list_listings_only_returns_public_visible_listings(
+    client: TestClient, fake_credit_balance: FakeCreditBalancePort
+) -> None:
+    fake_credit_balance.has_credit = True
     client.post(
         "/api/v1/listings", headers=_auth_headers(), json=_create_body(publish=False)
     )
     client.post(
         "/api/v1/listings",
-        headers=_auth_headers(),
+        headers=_auth_headers("owner-with-profile-token"),
         json=_create_body(publish=True, title="Visible one"),
     )
 

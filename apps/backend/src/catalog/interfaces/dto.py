@@ -77,7 +77,13 @@ class Listing(CamelModel):
     price: Money | None = None
     location: GeoLocation | None = None
     lifecycle_state: Literal[
-        "DRAFT", "PENDING_VERIFICATION", "PUBLISHED", "EDITED", "SUSPENDED", "ARCHIVED", "DELETED"
+        "DRAFT",
+        "PENDING_VERIFICATION",
+        "PUBLISHED",
+        "EDITED",
+        "SUSPENDED",
+        "ARCHIVED",
+        "DELETED",
     ]
     is_flagged: bool | None = None
     expires_at: datetime | None = None
@@ -88,6 +94,9 @@ class Listing(CamelModel):
     slug: str
     lock_version: int | None = None
     """Optimistic-lock token; echo it on update (If-Match style)."""
+    awaiting_payment: bool | None = None
+    """Listing paywall (2026-08-23): `true` for a `DRAFT` listing whose publish is held pending
+    payment -- the frontend opens the Paywall Modal when `createListing` returns this `true`."""
     created_at: datetime
     updated_at: datetime | None = None
 

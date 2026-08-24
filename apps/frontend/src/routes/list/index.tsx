@@ -24,6 +24,7 @@ import { EmptyState } from "@/components/state/EmptyState";
 import { catalogClient, uploadMediaFile, type CategorySummary } from "@/lib/catalog-client";
 import { categoryLabel } from "@/components/site/CategoryCarousel";
 import { DynamicCategoryForm } from "@/features/listings/DynamicCategoryForm";
+import { PaywallModal } from "@/components/billing/PaywallModal";
 import { authApi } from "@/lib/auth-client";
 import {
   businessProfilesApi,
@@ -402,6 +403,10 @@ function Page() {
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingPayment, setPendingPayment] = useState<{
+    listingId: string;
+    categoryId: string;
+  } | null>(null);
 
   const isLegalEntity = account?.accountKind === "LEGAL_ENTITY";
   const ownedProfileIds = account?.ownedProfileIds ?? [];
@@ -445,6 +450,13 @@ function Page() {
       });
 
       await queryClient.invalidateQueries({ queryKey: ["catalog", "my-listings"] });
+
+      if (listing.awaitingPayment) {
+        setSubmitting(false);
+        setPendingPayment({ listingId: listing.id, categoryId: category.id });
+        return;
+      }
+
       navigate({ to: "/properties/$slug", params: { slug: listing.id } });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "E'lonni joylashda xatolik yuz berdi.");
@@ -480,7 +492,7 @@ function Page() {
         title={category ? categoryLabel(category.name, "uz") : "Kategoriyani tanlang"}
         description={
           category
-            ? "Quyidagi maydonlarni to'ldiring — e'loningiz darhol e'lon qilinadi."
+            ? "Quyidagi maydonlarni to'ldiring — kredit balansingiz bo'lsa e'loningiz darhol chop etiladi, aks holda to'lovni tanlaysiz."
             : "E'loningiz qaysi kategoriyaga tegishli ekanini tanlang."
         }
         crumbs={[{ label: "Bosh sahifa", to: "/" }, { label: "E'lon joylash" }]}
@@ -665,6 +677,27 @@ function Page() {
           </form>
         )}
       </div>
+
+      {pendingPayment && (
+        <PaywallModal
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              // Listing paywall (2026-08-23): the DRAFT+awaitingPayment listing already exists
+              // (`ListingUseCases.create_listing`'s own docstring), so closing without paying
+              // loses nothing -- send the buyer to their listings, where `ListingsTable` offers a
+              // "To'lash" action to resume this exact listing later.
+              setPendingPayment(null);
+              navigate({ to: "/dashboard" });
+            }
+          }}
+          listingId={pendingPayment.listingId}
+          categoryId={pendingPayment.categoryId}
+          onActivated={() =>
+            navigate({ to: "/properties/$slug", params: { slug: pendingPayment.listingId } })
+          }
+        />
+      )}
     </AppShell>
   );
 }
