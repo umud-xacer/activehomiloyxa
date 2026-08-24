@@ -96,6 +96,11 @@ class _UnusedMediaAssetReaderPort:
         raise AssertionError("not exercised by this test")
 
 
+class _UnusedCreditBalancePort:
+    async def consume_one_listing_credit(self, *, owner_profile_id: object) -> NoReturn:
+        raise AssertionError("not exercised by this test")
+
+
 async def test_a_real_listing_published_event_is_indexed_and_becomes_searchable(
     session_factory: async_sessionmaker[AsyncSession],
     opensearch_index: OpenSearchIndexAdapter,
@@ -144,6 +149,7 @@ async def test_a_real_listing_published_event_is_indexed_and_becomes_searchable(
                 subscriptions=SqlalchemySubscriptionSnapshotRepository(session)
             ),
             duplicates=DuplicateDetectionService(listings=listings_repo),
+            credit_balance=_UnusedCreditBalancePort(),
         )
         await outbox.append(
             ListingPublished(

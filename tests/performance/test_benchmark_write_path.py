@@ -42,6 +42,7 @@ from tests.performance.seed import (
     NOW,
     _CategoryReaderBridge,
     _ConfigurationBridge,
+    _NoCreditBalancePort,
     _NoMediaAssetReaderPort,
 )
 
@@ -96,6 +97,7 @@ async def test_write_path_benchmark(
                     subscriptions=SqlalchemySubscriptionSnapshotRepository(session)
                 ),
                 duplicates=DuplicateDetectionService(listings=listings_repo),
+                credit_balance=_NoCreditBalancePort(),
             )
             started = time.monotonic()
             await use_cases.create_listing(

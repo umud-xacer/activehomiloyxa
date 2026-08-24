@@ -71,7 +71,7 @@ from messaging.infrastructure.persistence.repository import (
 from messaging.infrastructure.realtime import RedisRealtimePublisherAdapter
 from search.infrastructure.event_projection import make_search_event_handler
 from search.infrastructure.opensearch_index import OpenSearchIndexAdapter
-from shared_kernel import EventEnvelope, GeoLocation, ListingId, Money, UserId
+from shared_kernel import BusinessProfileId, EventEnvelope, GeoLocation, ListingId, Money, UserId
 
 NOW = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
 MAKER = UUID("00000000-0000-0000-0000-0000000000a1")
@@ -397,6 +397,7 @@ async def seed_listings(
                 subscriptions=SqlalchemySubscriptionSnapshotRepository(session)
             ),
             duplicates=DuplicateDetectionService(listings=listings_repo),
+            credit_balance=_NoCreditBalancePort(),
         )
 
     async def _create_one(index: int) -> None:
@@ -558,6 +559,15 @@ async def seed_conversations(
 class _NoMediaAssetReaderPort:
     async def get_media_asset(self, media_asset_id: UUID) -> None:
         return None
+
+
+class _NoCreditBalancePort:
+    """Never actually called -- every `create_listing` call in this file leaves
+    `auto_compute_payment_requirement` at its default `False` -- but `ListingUseCases`'
+    constructor requires a `CreditBalancePort` regardless."""
+
+    async def consume_one_listing_credit(self, *, owner_profile_id: BusinessProfileId) -> bool:
+        return False
 
 
 class _ConfigurationBridge:

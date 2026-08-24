@@ -36,7 +36,7 @@ from catalog.infrastructure.persistence.repository import (
     SqlalchemyListingRepository,
     SqlalchemySubscriptionSnapshotRepository,
 )
-from shared_kernel import EventEnvelope, ListingId, UserId
+from shared_kernel import BusinessProfileId, EventEnvelope, ListingId, UserId
 from tests.integration.conftest import ensure_clean_schema
 
 NOW = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
@@ -65,6 +65,11 @@ class _UnusedMediaAssetReaderPort:
         raise AssertionError("not exercised by this test")
 
 
+class _UnusedCreditBalancePort:
+    async def consume_one_listing_credit(self, *, owner_profile_id: BusinessProfileId) -> NoReturn:
+        raise AssertionError("not exercised by this test")
+
+
 def _use_cases(session: AsyncSession, listings: SqlalchemyListingRepository) -> ListingUseCases:
     return ListingUseCases(
         listings=listings,
@@ -76,6 +81,7 @@ def _use_cases(session: AsyncSession, listings: SqlalchemyListingRepository) -> 
             subscriptions=SqlalchemySubscriptionSnapshotRepository(session)
         ),
         duplicates=DuplicateDetectionService(listings=listings),
+        credit_balance=_UnusedCreditBalancePort(),
     )
 
 

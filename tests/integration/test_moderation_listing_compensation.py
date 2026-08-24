@@ -45,7 +45,7 @@ from moderation.infrastructure.persistence.models import (
 from moderation.infrastructure.persistence.repository import (
     SqlalchemyModerationCaseRepository,
 )
-from shared_kernel import ListingId, UserId
+from shared_kernel import BusinessProfileId, ListingId, UserId
 from tests.integration.conftest import ensure_clean_schema
 
 NOW = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
@@ -88,6 +88,11 @@ class _UnusedMediaAssetReaderPort:
         raise AssertionError("not exercised by this test")
 
 
+class _UnusedCreditBalancePort:
+    async def consume_one_listing_credit(self, *, owner_profile_id: BusinessProfileId) -> NoReturn:
+        raise AssertionError("not exercised by this test")
+
+
 class _ListingCommandBridge:
     """Mirrors `composition_root._ModerationListingCommandBridge` exactly (a fresh, short-lived
     catalog session per call) -- defined locally since that class is private composition-root
@@ -109,6 +114,7 @@ class _ListingCommandBridge:
                 subscriptions=SqlalchemySubscriptionSnapshotRepository(session)
             ),
             duplicates=DuplicateDetectionService(listings=listings_repo),
+            credit_balance=_UnusedCreditBalancePort(),
         )
         return CatalogListingModerationAdapter(use_cases)
 

@@ -34,7 +34,7 @@ from catalog.infrastructure.persistence.repository import (
     SqlalchemyListingRepository,
     SqlalchemySubscriptionSnapshotRepository,
 )
-from shared_kernel import ListingId, UserId
+from shared_kernel import BusinessProfileId, ListingId, UserId
 from tests.integration.conftest import ensure_clean_schema
 
 NOW = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
@@ -71,6 +71,11 @@ class _StillScanningMediaAssetReaderPort:
         if media_asset_id != self._media_asset_id:
             return None
         return MediaAssetSnapshot(id=media_asset_id, scan_status="PENDING")
+
+
+class _UnusedCreditBalancePort:
+    async def consume_one_listing_credit(self, *, owner_profile_id: BusinessProfileId) -> NoReturn:
+        raise AssertionError("not exercised by this test")
 
 
 async def test_attaching_a_still_scanning_image_does_not_block_publish(
@@ -110,6 +115,7 @@ async def test_attaching_a_still_scanning_image_does_not_block_publish(
                 subscriptions=SqlalchemySubscriptionSnapshotRepository(session)
             ),
             duplicates=DuplicateDetectionService(listings=listings_repo),
+            credit_balance=_UnusedCreditBalancePort(),
         )
         attachment = await use_cases.attach_image(
             listing_id=listing.id,
