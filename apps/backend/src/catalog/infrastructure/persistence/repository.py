@@ -393,6 +393,30 @@ class SqlalchemyListingRepository:
             )
         return await self._execute_page(stmt, limit)
 
+    async def list_admin(
+        self,
+        *,
+        state: str | None,
+        category_id: UUID | None,
+        query: str | None,
+        cursor: str | None,
+        limit: int,
+    ) -> tuple[list[Listing], str | None]:
+        stmt = select(ListingRow).order_by(ListingRow.created_at, ListingRow.id).limit(limit + 1)
+        if state is not None:
+            stmt = stmt.where(ListingRow.lifecycle_state == state)
+        if category_id is not None:
+            stmt = stmt.where(ListingRow.category_id == category_id)
+        if query:
+            stmt = stmt.where(ListingRow.title.ilike(f"%{query}%"))
+        if cursor is not None:
+            created_at, row_id = _decode_cursor(cursor)
+            stmt = stmt.where(
+                (ListingRow.created_at > created_at)
+                | ((ListingRow.created_at == created_at) & (ListingRow.id > row_id))
+            )
+        return await self._execute_page(stmt, limit)
+
     async def list_expiring(self, *, now: datetime, limit: int) -> list[Listing]:
         stmt = (
             select(ListingRow)

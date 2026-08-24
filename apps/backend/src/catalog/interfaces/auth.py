@@ -20,3 +20,12 @@ from shared_kernel import BusinessProfileId, UserId
 class ActingUser:
     account_id: UserId
     acting_profile_id: BusinessProfileId | None
+
+
+@dataclass(frozen=True)
+class ActingOperator:
+    """The admin-facing acting identity (2026-08-24, `/admin/catalog/listings*`) -- mirrors
+    `billing.interfaces.auth.ActingOperator`/`ads.interfaces.auth.ActingOperator`'s own shape
+    exactly."""
+
+    account_id: UserId

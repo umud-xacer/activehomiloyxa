@@ -12,6 +12,8 @@ import {
   Shield,
   Trash2,
   X,
+  Coins,
+  Plus,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/require-auth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
@@ -20,6 +22,7 @@ import { EmptyState } from "@/components/dashboard/EmptyState";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { adminUsersApi, type UserAdminView } from "@/lib/admin-users-client";
 import { listActiveRoles } from "@/lib/owner-admin-client";
+import { billingApi, type Product } from "@/lib/billing-client";
 import { ApiError } from "@/lib/http";
 import { useMe } from "@/features/auth/useAuth";
 
@@ -118,6 +121,145 @@ function RoleAssignForm({ userId, onDone }: { userId: string; onDone: () => void
         Biriktirish
       </button>
       {error && <p className="w-full text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+function creditLabel(product: Product): string {
+  return product.name.uz_latn || product.name.ru || product.name.en || product.code;
+}
+
+/** `/admin/users`'s credit-balance panel (2026-08-24): shows the owned profile's current
+ * `LISTING_CREDIT_BALANCE`/`LISTING_PUBLICATION` entitlements and lets the admin grant any
+ * published `LISTING_CREDIT_PACK`/`LISTING_PUBLICATION` product for free (real `createOrder`+
+ * `confirmInvoicePayment` under the hood, see `adminGrantListingCredits`'s own docstring). Only
+ * rendered for a LEGAL_ENTITY account with at least one owned profile -- an INDIVIDUAL has no
+ * `BusinessProfileId` to hold a credit balance against at all (Phase 4's own design). */
+function CreditBalancePanel({ profileId }: { profileId: string }) {
+  const queryClient = useQueryClient();
+  const [granting, setGranting] = useState(false);
+  const [productId, setProductId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: entitlements, isLoading } = useQuery({
+    queryKey: ["admin", "profile-entitlements", profileId],
+    queryFn: () => billingApi.adminListProfileEntitlements(profileId),
+  });
+
+  const { data: products } = useQuery({
+    queryKey: ["admin", "grantable-products"],
+    queryFn: async () => {
+      const [packs, publications] = await Promise.all([
+        billingApi.listProducts("LISTING_CREDIT_PACK"),
+        billingApi.listProducts("LISTING_PUBLICATION"),
+      ]);
+      return [...packs, ...publications];
+    },
+    enabled: granting,
+  });
+
+  const creditEntitlements = (entitlements ?? []).filter(
+    (e) =>
+      (e.entitlementType === "LISTING_CREDIT_BALANCE" ||
+        e.entitlementType === "LISTING_PUBLICATION") &&
+      e.activationState === "ACTIVE",
+  );
+
+  const grant = async () => {
+    if (!productId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await billingApi.adminGrantCredits(profileId, { productId });
+      await queryClient.invalidateQueries({
+        queryKey: ["admin", "profile-entitlements", profileId],
+      });
+      setGranting(false);
+      setProductId("");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Kredit berib bo'lmadi.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 rounded-xl border border-border/60 bg-background/60 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+          <Coins className="size-3.5" /> E'lon joylash krediti
+        </p>
+        {!granting && (
+          <button
+            type="button"
+            onClick={() => setGranting(true)}
+            className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition hover:bg-primary/20"
+          >
+            <Plus className="size-3" /> Kredit qo'shish
+          </button>
+        )}
+      </div>
+
+      {isLoading ? (
+        <Loader2 className="mt-2 size-3.5 animate-spin text-muted-foreground" />
+      ) : creditEntitlements.length === 0 ? (
+        <p className="mt-1.5 text-xs text-muted-foreground">Faol kredit/e'lon huquqi yo'q.</p>
+      ) : (
+        <ul className="mt-1.5 space-y-1">
+          {creditEntitlements.map((e) => (
+            <li key={e.id} className="text-xs text-muted-foreground">
+              {e.entitlementType === "LISTING_CREDIT_BALANCE"
+                ? e.remainingCredits === null || e.remainingCredits === undefined
+                  ? "Cheksiz e'lon joylash"
+                  : `${e.remainingCredits} ta e'lon joylash krediti`
+                : "Bitta e'lon joylash huquqi"}
+              {" — "}
+              {new Date(e.validUntil).toLocaleDateString()} gacha
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {granting && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {!products ? (
+            <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+          ) : (
+            <select
+              value={productId}
+              onChange={(e) => setProductId(e.target.value)}
+              className="min-w-[200px] flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs outline-none focus:border-primary"
+            >
+              <option value="" disabled>
+                Mahsulotni tanlang
+              </option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {creditLabel(p)} — {Number(p.price.amount).toLocaleString("uz-UZ")} so'm
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            disabled={busy || !productId}
+            onClick={grant}
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+          >
+            {busy && <Loader2 className="size-3.5 animate-spin" />}
+            Bepul berish
+          </button>
+          <button
+            type="button"
+            onClick={() => setGranting(false)}
+            className="rounded-full bg-muted px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition hover:bg-muted/70"
+          >
+            Bekor qilish
+          </button>
+        </div>
+      )}
+      {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
     </div>
   );
 }
@@ -241,6 +383,9 @@ function UserRow({ user, index }: { user: UserAdminView; index: number }) {
             invalidate();
           }}
         />
+      )}
+      {user.ownedProfileIds && user.ownedProfileIds.length > 0 && (
+        <CreditBalancePanel profileId={user.ownedProfileIds[0]} />
       )}
     </motion.div>
   );

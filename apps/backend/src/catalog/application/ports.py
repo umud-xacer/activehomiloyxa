@@ -92,6 +92,24 @@ class ListingRepository(Protocol):
         here."""
         ...
 
+    async def list_admin(
+        self,
+        *,
+        state: str | None,
+        category_id: UUID | None,
+        query: str | None,
+        cursor: str | None,
+        limit: int,
+    ) -> tuple[list[Listing], str | None]:
+        """Backs `adminListListings` (2026-08-24, `/admin/listings`) -- the ONE finder here that
+        deliberately does NOT push `Listing.is_publicly_visible`/owner-scoping down to SQL: every
+        lifecycle state (including `DELETED`) and every owner is in scope, by design (an admin
+        moderating/managing the whole catalog, not a buyer or a listing's own owner). `query`
+        matches free text against `title` only (case-insensitive substring), same "just enough to
+        find the right row, not a search engine" scope `catalog`'s own README already documents
+        for `list_public`."""
+        ...
+
     async def list_expiring(self, *, now: datetime, limit: int) -> list[Listing]:
         """Backs the expiry sweep worker: `lifecycle_state IN (PUBLISHED, EDITED)`,
         `expires_at <= now`, and the most recent transition is not already `EXPIRE` (idempotency

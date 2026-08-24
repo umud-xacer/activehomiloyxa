@@ -34,22 +34,25 @@ from billing.interfaces.di import (
     get_acting_user,
     get_entitlement_use_cases,
     get_order_use_cases,
+    get_payment_provider_status,
     get_payment_use_cases,
 )
 from billing.interfaces.dto import (
     Entitlement as EntitlementDto,
 )
 from billing.interfaces.dto import (
-    Invoice as InvoiceDto,
-)
-from billing.interfaces.dto import (
+    GrantCreditsRequest,
     InvoicePage,
     OrderCreateRequest,
     OrderPage,
     PageInfo,
     PaymentConfirmationRequest,
+    PaymentProviderStatus,
     PricingPlans,
     Product,
+)
+from billing.interfaces.dto import (
+    Invoice as InvoiceDto,
 )
 from billing.interfaces.dto import (
     Order as OrderDto,
@@ -122,6 +125,7 @@ def _to_entitlement_dto(entitlement: Entitlement) -> EntitlementDto:
         valid_from=entitlement.valid_from,
         valid_until=entitlement.valid_until,
         activation_state=entitlement.activation_state.value,
+        remaining_credits=entitlement.remaining_credits,
     )
 
 
@@ -287,3 +291,80 @@ async def confirm_invoice_payment(
         now=datetime.now(UTC),
     )
     return _to_invoice_dto(invoice)
+
+
+@admin_billing_router.get(
+    "/admin/billing/profiles/{profileId}/entitlements",
+    operation_id="adminListProfileEntitlements",
+)
+async def admin_list_profile_entitlements(
+    profileId: UUID,
+    activeOnly: bool = True,
+    _operator: ActingOperator = Depends(get_acting_operator),
+    use_cases: EntitlementUseCases = Depends(get_entitlement_use_cases),
+) -> list[EntitlementDto]:
+    """`/admin/users`'s credit-balance panel (2026-08-24) -- `list_my_entitlements` was already
+    profile-scoped by parameter, not by the caller's own session; this is the same use case call
+    `listMyEntitlements` makes, just admin-gated and reading an ADMIN-CHOSEN profile id instead
+    of the caller's own acting profile."""
+    entitlements = await use_cases.list_my_entitlements(
+        purchaser_profile_id=BusinessProfileId(value=profileId), active_only=activeOnly
+    )
+    return [_to_entitlement_dto(e) for e in entitlements]
+
+
+@admin_billing_router.post(
+    "/admin/billing/profiles/{profileId}/grant-credits",
+    operation_id="adminGrantListingCredits",
+)
+async def admin_grant_listing_credits(
+    profileId: UUID,
+    body: GrantCreditsRequest,
+    operator: ActingOperator = Depends(get_acting_operator),
+    order_use_cases: OrderUseCases = Depends(get_order_use_cases),
+    payment_use_cases: PaymentUseCases = Depends(get_payment_use_cases),
+) -> InvoiceDto:
+    """Grants `body.productId`'s entitlement to `profileId` for free, admin-triggered (2026-08-24,
+    `/admin/users`'s "Kredit qo'shish" action) -- NOT a bypass of billing's own invariants: every
+    `Entitlement` still requires a real `order_id` (`Entitlement.order_id: UUID`, non-nullable),
+    so this composes the exact same two real use-case calls a real Payme/Click/mock payment
+    already makes (`OrderUseCases.create_order` then `PaymentUseCases.confirm_payment`), just
+    admin-triggered instead of buyer-triggered against a real, published product (typically a
+    zero-price "Admin sovg'a" product authored via the owner-admin pricing UI, but any published
+    product works -- e.g. comping a normally-paid pack). A real `Order`/`Invoice` audit trail is
+    the deliberate result, not an accident: `confirm_payment`'s own `note` records who granted it
+    and why."""
+    now = datetime.now(UTC)
+    order = await order_use_cases.create_order(
+        purchaser_profile_id=BusinessProfileId(value=profileId),
+        product_id=body.product_id,
+        target_type=TargetType(body.target_type),
+        target_id=body.target_id,
+        booking_window=None,
+        now=now,
+    )
+    invoice = await order_use_cases.get_order_invoice(order.id)
+    if invoice is None:
+        raise InvoiceNotFoundError(order_id=order.id)
+    confirmed = await payment_use_cases.confirm_payment(
+        invoice_id=invoice.id,
+        operator_account_id=operator.account_id.value,
+        confirmed=True,
+        note=body.note or "Admin panel orqali bepul berildi",
+        now=now,
+    )
+    return _to_invoice_dto(confirmed)
+
+
+@admin_billing_router.get(
+    "/admin/billing/payment-providers/status",
+    operation_id="adminGetPaymentProviderStatus",
+)
+async def admin_get_payment_provider_status(
+    _operator: ActingOperator = Depends(get_acting_operator),
+    status: PaymentProviderStatus = Depends(get_payment_provider_status),
+) -> PaymentProviderStatus:
+    """Read-only status light for `/admin/settings` (2026-08-24): whether Payme/Click's secrets
+    are present server-side, never the secrets themselves -- see `PaymentProviderStatus`'s own
+    docstring for why this stays read-only rather than becoming a credentials editor."""
+    return status

@@ -218,7 +218,14 @@ function buildCategoryTree(items: CategoryRow[]): CategoryTreeNode[] {
 }
 
 function emptyField(): DynamicFieldDraft {
-  return { code: "", label: { uz_latn: "" }, fieldType: "text", required: false, options: [] };
+  return {
+    code: "",
+    label: { uz_latn: "" },
+    fieldType: "text",
+    required: false,
+    options: [],
+    facetEligible: false,
+  };
 }
 
 /** Live preview of what `resolveCategoryIcon` will actually render for this draft -- an explicit
@@ -678,7 +685,7 @@ function CategoryFormPanel({ editing, parentOptions, onClose, onSaved }: FormPan
                 {fields.map((field, i) => (
                   <div
                     key={i}
-                    className="grid grid-cols-1 gap-2 rounded-xl border border-border/70 p-3 sm:grid-cols-[1fr_1fr_auto_auto_auto]"
+                    className="grid grid-cols-1 gap-2 rounded-xl border border-border/70 p-3 sm:grid-cols-[1fr_1fr_auto_auto_auto_auto]"
                   >
                     <input
                       value={field.code}
@@ -714,6 +721,14 @@ function CategoryFormPanel({ editing, parentOptions, onClose, onSaved }: FormPan
                         onChange={(e) => updateField(i, { required: e.target.checked })}
                       />
                       Majburiy
+                    </label>
+                    <label className="flex items-center gap-1.5 whitespace-nowrap px-1 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={field.facetEligible}
+                        onChange={(e) => updateField(i, { facetEligible: e.target.checked })}
+                      />
+                      Qidiruv filtri
                     </label>
                     <button
                       type="button"

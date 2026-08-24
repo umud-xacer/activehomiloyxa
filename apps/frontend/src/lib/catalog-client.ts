@@ -61,6 +61,9 @@ export interface CatalogListing {
    * payment -- `createListing`'s response is the one place a caller learns this immediately
    * (the Paywall Modal opens off this field, not off `lifecycleState` alone). */
   awaitingPayment?: boolean;
+  /** Set once a real LISTING_PROMOTION entitlement (paid or admin-granted) is active --
+   * `/admin/listings`'s own VIP/TOP badge reads this (2026-08-24). */
+  promotion?: { kind: "PREMIUM" | "FEATURED" | "TOP_PLACEMENT"; validUntil: string } | null;
 }
 
 export interface ListingsPage {
@@ -277,6 +280,32 @@ export const catalogClient = {
       contentType: file.type,
       sizeBytes: file.size,
       ownerContextType,
+    });
+  },
+};
+
+/** `/admin/listings` (2026-08-24): every lifecycle state, every owner, in scope -- unlike
+ * `catalogClient` above, which is always scoped to the caller's own listings or the public,
+ * visible-only feed. */
+export const adminCatalogApi = {
+  listListings(params?: {
+    state?: string;
+    categoryId?: string;
+    query?: string;
+    cursor?: string;
+    limit?: number;
+  }): Promise<ListingsPage> {
+    return http.get<ListingsPage>("/admin/catalog/listings", { params });
+  },
+
+  changeStatus(
+    listingId: string,
+    action: ListingStatusAction,
+    reason?: string,
+  ): Promise<CatalogListing> {
+    return http.post<CatalogListing>(`/admin/catalog/listings/${listingId}/status`, {
+      action,
+      reason,
     });
   },
 };

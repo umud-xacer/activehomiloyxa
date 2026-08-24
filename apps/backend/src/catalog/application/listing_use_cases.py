@@ -395,8 +395,20 @@ class ListingUseCases:
         action: _StatusAction,
         reason: str | None,
         now: datetime,
+        bypass_ownership: bool = False,
     ) -> Listing:
-        listing = await self._require_owned(listing_id, actor_user_id)
+        """`bypass_ownership` (2026-08-24, `/admin/listings`): the ONLY caller that ever passes
+        `True` is `admin_change_status` below (an operator-gated admin action on an arbitrary
+        listing, `AuthorizationService.authorize(..., "catalog:listing:moderate")` already run by
+        the time this executes) -- every real owner-facing call site (`changeListingStatus`'s own
+        router handler) leaves this at its default `False`, unchanged behavior. `actor_user_id`
+        is still recorded on the resulting `LifecycleTransitionRecord`/event either way, so an
+        admin-triggered transition's audit trail correctly shows the admin, not the owner, acted."""
+        listing = (
+            await self._require_listing(listing_id)
+            if bypass_ownership
+            else await self._require_owned(listing_id, actor_user_id)
+        )
         if action == "PUBLISH":
             return await self._do_publish(listing, actor_user_id=actor_user_id, now=now)
         if action == "SUSPEND":
@@ -497,6 +509,30 @@ class ListingUseCases:
             )
             return listing
         raise ValueError(f"unsupported changeListingStatus action: {action!r}")
+
+    async def admin_change_status(
+        self,
+        *,
+        listing_id: ListingId,
+        admin_account_id: UserId,
+        action: _StatusAction,
+        reason: str | None,
+        now: datetime,
+    ) -> Listing:
+        """`/admin/listings`'s state-change action (2026-08-24) -- the SAME real transitions
+        `changeListingStatus` already offers a listing's own owner (PUBLISH/SUSPEND/ARCHIVE/
+        RESTORE/RENEW/DELETE, DM-06 soft-delete included), just admin-triggered against ANY
+        listing regardless of ownership. Never a NEW, invented transition -- `Listing`'s own
+        state machine (`catalog/domain/listing.py`) is the single source of truth for which
+        transitions are legal from which state either way, unchanged by who triggers them."""
+        return await self.change_status(
+            listing_id=listing_id,
+            actor_user_id=admin_account_id,
+            action=action,
+            reason=reason,
+            now=now,
+            bypass_ownership=True,
+        )
 
     async def delete_listing(
         self, *, listing_id: ListingId, actor_user_id: UserId, now: datetime
@@ -908,6 +944,21 @@ class ListingUseCases:
     ) -> tuple[list[Listing], str | None]:
         return await self._listings.list_by_owner(
             owner_user_id, state=state, cursor=cursor, limit=limit
+        )
+
+    async def admin_list_listings(
+        self,
+        *,
+        state: str | None,
+        category_id: UUID | None,
+        query: str | None,
+        cursor: str | None,
+        limit: int,
+    ) -> tuple[list[Listing], str | None]:
+        """Backs `adminListListings` (2026-08-24, `/admin/listings`) -- every lifecycle state,
+        every owner, in scope (see `ListingRepository.list_admin`'s own docstring for why)."""
+        return await self._listings.list_admin(
+            state=state, category_id=category_id, query=query, cursor=cursor, limit=limit
         )
 
     async def list_public_listings(

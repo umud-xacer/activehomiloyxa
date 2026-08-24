@@ -13,6 +13,7 @@ export interface UserAdminView {
   email: string | null;
   status: "ACTIVE" | "SUSPENDED" | "CLOSED";
   createdAt: string | null;
+  ownedProfileIds: string[] | null;
 }
 
 export interface UserAdminViewPage {

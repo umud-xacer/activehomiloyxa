@@ -1236,6 +1236,36 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
+  /admin/catalog/listings/{listingId}/status:
+    post:
+      tags:
+      - Administration
+      operationId: adminChangeListingStatus
+      summary: Change any listing's lifecycle state (admin)
+      description: /admin/listings (2026-08-24) — the same real transitions changeListingStatus
+        offers a listing's own owner, admin-triggered against any listing regardless of
+        ownership.
+      parameters:
+      - $ref: '#/components/parameters/ListingIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListingStatusChangeRequest'
+      responses:
+        '200':
+          description: Updated listing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /listings/{listingId}/images:
     get:
       tags:
@@ -1388,6 +1418,56 @@ paths:
                         $ref: '#/components/schemas/Listing'
         '401':
           $ref: '#/components/responses/Unauthorized'
+  /admin/catalog/listings:
+    get:
+      tags:
+      - Administration
+      operationId: adminListListings
+      summary: List every listing, any state or owner (admin)
+      description: /admin/listings (2026-08-24) — every lifecycle state (including DELETED) and
+        every owner, unlike listListings/listMyListings which are both intentionally scoped
+        narrower.
+      parameters:
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      - name: state
+        in: query
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - PENDING_VERIFICATION
+          - PUBLISHED
+          - EDITED
+          - SUSPENDED
+          - ARCHIVED
+          - DELETED
+      - name: categoryId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: query
+        in: query
+        schema:
+          type: string
+        description: Free-text match against title only.
+      responses:
+        '200':
+          description: A page of listings.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/CursorPage'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Listing'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /me/favorites:
     get:
       tags:
@@ -3620,6 +3700,92 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           $ref: '#/components/responses/Conflict'
+  /admin/billing/profiles/{profileId}/entitlements:
+    get:
+      tags:
+      - Administration
+      operationId: adminListProfileEntitlements
+      summary: List a business profile's entitlements (admin)
+      description: The credit-balance panel on /admin/users — same list_my_entitlements use case,
+        admin-gated and reading an admin-chosen profile id.
+      parameters:
+      - name: profileId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: activeOnly
+        in: query
+        schema:
+          type: boolean
+          default: true
+      responses:
+        '200':
+          description: The profile's entitlements.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Entitlement'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/billing/profiles/{profileId}/grant-credits:
+    post:
+      tags:
+      - Administration
+      operationId: adminGrantListingCredits
+      summary: Grant a product's entitlement to a profile for free (admin)
+      description: Composes the real createOrder + confirmInvoicePayment path against a real,
+        published product (typically a zero-price "Admin sovg'a" product) — not a bypass of
+        billing's own invariants, a real Order/Invoice/Entitlement audit trail is the deliberate
+        result.
+      parameters:
+      - name: profileId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantCreditsRequest'
+      responses:
+        '200':
+          description: Payment confirmed; entitlement granted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /admin/billing/payment-providers/status:
+    get:
+      tags:
+      - Administration
+      operationId: adminGetPaymentProviderStatus
+      summary: Payment provider configuration status (admin, read-only)
+      description: Whether Payme/Click's secrets are present server-side — never the secrets
+        themselves. `/admin/settings`'s status panel; payment secrets live in `.env` only,
+        never web-editable.
+      responses:
+        '200':
+          description: Provider status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentProviderStatus'
+        '403':
+          $ref: '#/components/responses/Forbidden'
   /admin/audit-log:
     get:
       tags:
@@ -6144,6 +6310,28 @@ components:
           items:
             $ref: '#/components/schemas/Product'
       additionalProperties: false
+    PaymentProviderStatus:
+      type: object
+      description: adminGetPaymentProviderStatus response (2026-08-24) — whether each gateway's
+        secret is present server-side, never the secret's value.
+      required:
+      - paymeConfigured
+      - clickConfigured
+      - mockEnabled
+      properties:
+        paymeConfigured:
+          type: boolean
+        clickConfigured:
+          type: boolean
+        mockEnabled:
+          type: boolean
+          description: PAYMENT_PROVIDER=mock — the demo/Uzum-labeled instant-pay endpoint is
+            reachable.
+        uzumAvailable:
+          type: boolean
+          default: false
+          description: Always false in v1 — no real Uzum Pay adapter exists yet.
+      additionalProperties: false
     Order:
       type: object
       description: A purchase request; freezes a ProductSnapshot (BC-08).
@@ -6325,6 +6513,39 @@ components:
           - EXPIRED
           - REVOKED
           readOnly: true
+        remainingCredits:
+          type:
+          - integer
+          - 'null'
+          description: LISTING_CREDIT_BALANCE only — null means unlimited (the Unlim tier) for
+            that type, "not applicable" for every other type.
+      additionalProperties: false
+    GrantCreditsRequest:
+      type: object
+      description: adminGrantListingCredits request body — the admin picks which published
+        product to grant. No targetId grants the profile itself credits; targetType LISTING +
+        targetId grants that listing VIP/TOP promotion instead.
+      required:
+      - productId
+      properties:
+        productId:
+          type: string
+          format: uuid
+        targetType:
+          type: string
+          enum:
+          - PROFILE
+          - LISTING
+          default: PROFILE
+        targetId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        note:
+          type:
+          - string
+          - 'null'
       additionalProperties: false
     BannerCampaign:
       type: object
@@ -6908,6 +7129,14 @@ components:
         createdAt:
           type: string
           format: date-time
+        ownedProfileIds:
+          type:
+          - array
+          - 'null'
+          items:
+            type: string
+            format: uuid
+          description: Which business profile(s) this account owns, if any (2026-08-24).
       additionalProperties: false
     UserStatusChangeRequest:
       type: object

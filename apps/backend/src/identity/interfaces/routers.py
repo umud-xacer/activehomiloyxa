@@ -96,6 +96,7 @@ def _account_to_admin_view(account: UserAccount) -> UserAdminView:
         email=account.email.value if account.email else None,
         status=account.status.value,
         created_at=account.created_at,
+        owned_profile_ids=[p.value for p in account.owned_profile_ids] or None,
     )
 
 

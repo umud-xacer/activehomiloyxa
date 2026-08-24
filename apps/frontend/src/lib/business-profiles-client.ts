@@ -676,3 +676,30 @@ export const adminBusinessProfilesApi = {
     );
   },
 };
+
+export interface VerificationCasePage {
+  items: VerificationCase[];
+  page: { limit: number; nextCursor: string | null };
+}
+
+/** `/admin/organizations`'s reviewer queue (2026-08-24) -- both endpoints already existed on the
+ * backend (`profiles/interfaces/routers.py::list_verification_queue`/`decide_verification`,
+ * reviewer-gated) with no frontend consumer at all until now. */
+export const adminVerificationApi = {
+  listQueue(params?: {
+    status?: VerificationCase["status"];
+    cursor?: string;
+    limit?: number;
+  }): Promise<VerificationCasePage> {
+    return http.get<VerificationCasePage>("/admin/verification-queue", { params });
+  },
+
+  decide(
+    caseId: string,
+    input: { outcome: "APPROVED" | "REJECTED"; reason?: string },
+  ): Promise<VerificationCase> {
+    return http.post<VerificationCase>(`/admin/verification-queue/${caseId}/decision`, input, {
+      idempotent: true,
+    });
+  },
+};

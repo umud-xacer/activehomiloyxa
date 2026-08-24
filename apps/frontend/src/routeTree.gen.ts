@@ -59,9 +59,12 @@ import { Route as OwnerAdminSlugIndexRouteImport } from './routes/$ownerAdminSlu
 import { Route as OwnerAdminSlugBannersRouteImport } from './routes/$ownerAdminSlug/banners'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminCompaniesRouteImport } from './routes/admin/companies'
+import { Route as AdminListingsRouteImport } from './routes/admin/listings'
 import { Route as AdminModerationRouteImport } from './routes/admin/moderation'
+import { Route as AdminOrganizationsRouteImport } from './routes/admin/organizations'
 import { Route as AdminPaymentsRouteImport } from './routes/admin/payments'
 import { Route as AdminRegistrationsRouteImport } from './routes/admin/registrations'
+import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AgentsIndexRouteImport } from './routes/agents/index'
 import { Route as AgentsIdRouteImport } from './routes/agents/$id'
@@ -341,9 +344,19 @@ const AdminCompaniesRoute = AdminCompaniesRouteImport.update({
   path: '/admin/companies',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminListingsRoute = AdminListingsRouteImport.update({
+  id: '/admin/listings',
+  path: '/admin/listings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminModerationRoute = AdminModerationRouteImport.update({
   id: '/admin/moderation',
   path: '/admin/moderation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminOrganizationsRoute = AdminOrganizationsRouteImport.update({
+  id: '/admin/organizations',
+  path: '/admin/organizations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
@@ -354,6 +367,11 @@ const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
 const AdminRegistrationsRoute = AdminRegistrationsRouteImport.update({
   id: '/admin/registrations',
   path: '/admin/registrations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/admin/settings',
+  path: '/admin/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
@@ -549,9 +567,12 @@ export interface FileRoutesByFullPath {
   '/wallet': typeof WalletRoute
   '/$ownerAdminSlug/banners': typeof OwnerAdminSlugBannersRoute
   '/admin/companies': typeof AdminCompaniesRoute
+  '/admin/listings': typeof AdminListingsRoute
   '/admin/moderation': typeof AdminModerationRoute
+  '/admin/organizations': typeof AdminOrganizationsRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/registrations': typeof AdminRegistrationsRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/agents/$id': typeof AgentsIdRoute
   '/auth/reset': typeof AuthResetRoute
@@ -632,9 +653,12 @@ export interface FileRoutesByTo {
   '/wallet': typeof WalletRoute
   '/$ownerAdminSlug/banners': typeof OwnerAdminSlugBannersRoute
   '/admin/companies': typeof AdminCompaniesRoute
+  '/admin/listings': typeof AdminListingsRoute
   '/admin/moderation': typeof AdminModerationRoute
+  '/admin/organizations': typeof AdminOrganizationsRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/registrations': typeof AdminRegistrationsRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/agents/$id': typeof AgentsIdRoute
   '/auth/reset': typeof AuthResetRoute
@@ -716,9 +740,12 @@ export interface FileRoutesById {
   '/wallet': typeof WalletRoute
   '/$ownerAdminSlug/banners': typeof OwnerAdminSlugBannersRoute
   '/admin/companies': typeof AdminCompaniesRoute
+  '/admin/listings': typeof AdminListingsRoute
   '/admin/moderation': typeof AdminModerationRoute
+  '/admin/organizations': typeof AdminOrganizationsRoute
   '/admin/payments': typeof AdminPaymentsRoute
   '/admin/registrations': typeof AdminRegistrationsRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/agents/$id': typeof AgentsIdRoute
   '/auth/reset': typeof AuthResetRoute
@@ -801,9 +828,12 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/$ownerAdminSlug/banners'
     | '/admin/companies'
+    | '/admin/listings'
     | '/admin/moderation'
+    | '/admin/organizations'
     | '/admin/payments'
     | '/admin/registrations'
+    | '/admin/settings'
     | '/admin/users'
     | '/agents/$id'
     | '/auth/reset'
@@ -884,9 +914,12 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/$ownerAdminSlug/banners'
     | '/admin/companies'
+    | '/admin/listings'
     | '/admin/moderation'
+    | '/admin/organizations'
     | '/admin/payments'
     | '/admin/registrations'
+    | '/admin/settings'
     | '/admin/users'
     | '/agents/$id'
     | '/auth/reset'
@@ -967,9 +1000,12 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/$ownerAdminSlug/banners'
     | '/admin/companies'
+    | '/admin/listings'
     | '/admin/moderation'
+    | '/admin/organizations'
     | '/admin/payments'
     | '/admin/registrations'
+    | '/admin/settings'
     | '/admin/users'
     | '/agents/$id'
     | '/auth/reset'
@@ -1051,9 +1087,12 @@ export interface RootRouteChildren {
   WalletRoute: typeof WalletRoute
   OwnerAdminSlugBannersRoute: typeof OwnerAdminSlugBannersRoute
   AdminCompaniesRoute: typeof AdminCompaniesRoute
+  AdminListingsRoute: typeof AdminListingsRoute
   AdminModerationRoute: typeof AdminModerationRoute
+  AdminOrganizationsRoute: typeof AdminOrganizationsRoute
   AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminRegistrationsRoute: typeof AdminRegistrationsRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AgentsIdRoute: typeof AgentsIdRoute
   AuthResetRoute: typeof AuthResetRoute
@@ -1438,11 +1477,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCompaniesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/listings': {
+      id: '/admin/listings'
+      path: '/admin/listings'
+      fullPath: '/admin/listings'
+      preLoaderRoute: typeof AdminListingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/moderation': {
       id: '/admin/moderation'
       path: '/admin/moderation'
       fullPath: '/admin/moderation'
       preLoaderRoute: typeof AdminModerationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/organizations': {
+      id: '/admin/organizations'
+      path: '/admin/organizations'
+      fullPath: '/admin/organizations'
+      preLoaderRoute: typeof AdminOrganizationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/payments': {
@@ -1457,6 +1510,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/registrations'
       fullPath: '/admin/registrations'
       preLoaderRoute: typeof AdminRegistrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/admin/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/users': {
@@ -1707,9 +1767,12 @@ const rootRouteChildren: RootRouteChildren = {
   WalletRoute: WalletRoute,
   OwnerAdminSlugBannersRoute: OwnerAdminSlugBannersRoute,
   AdminCompaniesRoute: AdminCompaniesRoute,
+  AdminListingsRoute: AdminListingsRoute,
   AdminModerationRoute: AdminModerationRoute,
+  AdminOrganizationsRoute: AdminOrganizationsRoute,
   AdminPaymentsRoute: AdminPaymentsRoute,
   AdminRegistrationsRoute: AdminRegistrationsRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AgentsIdRoute: AgentsIdRoute,
   AuthResetRoute: AuthResetRoute,

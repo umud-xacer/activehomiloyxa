@@ -68,6 +68,7 @@ from billing.interfaces.di import (
     get_acting_operator,
     get_entitlement_use_cases,
     get_order_use_cases,
+    get_payment_provider_status,
     get_payment_use_cases,
 )
 from billing.interfaces.di import (
@@ -75,6 +76,9 @@ from billing.interfaces.di import (
 )
 from billing.interfaces.errors import register_billing_exception_mappings
 from billing.interfaces.routers import admin_billing_router, billing_router
+from catalog.interfaces.di import (
+    get_acting_operator as get_catalog_acting_operator,
+)
 from catalog.interfaces.di import (
     get_acting_user as get_catalog_acting_user,
 )
@@ -86,7 +90,7 @@ from catalog.interfaces.di import (
     get_optional_acting_user as get_catalog_optional_acting_user,
 )
 from catalog.interfaces.errors import register_catalog_exception_mappings
-from catalog.interfaces.routers import catalog_router, favorites_router
+from catalog.interfaces.routers import admin_catalog_router, catalog_router, favorites_router
 from configuration.interfaces.auth import get_acting_admin as get_config_acting_admin
 from configuration.interfaces.di import (
     get_category_read_use_cases,
@@ -258,6 +262,9 @@ def create_app() -> FastAPI:
     app.dependency_overrides[get_catalog_optional_acting_user] = (
         composition_root.provide_catalog_optional_acting_user
     )
+    app.dependency_overrides[get_catalog_acting_operator] = (
+        composition_root.provide_catalog_acting_operator
+    )
     app.dependency_overrides[get_order_use_cases] = composition_root.provide_order_use_cases
     app.dependency_overrides[get_payment_use_cases] = composition_root.provide_payment_use_cases
     app.dependency_overrides[get_entitlement_use_cases] = (
@@ -265,6 +272,9 @@ def create_app() -> FastAPI:
     )
     app.dependency_overrides[get_billing_acting_user] = composition_root.provide_billing_acting_user
     app.dependency_overrides[get_acting_operator] = composition_root.provide_billing_acting_operator
+    app.dependency_overrides[get_payment_provider_status] = (
+        composition_root.provide_payment_provider_status
+    )
     app.dependency_overrides[get_payme_merchant_api] = composition_root.provide_payme_merchant_api
     app.dependency_overrides[get_payme_merchant_key] = composition_root.provide_payme_merchant_key
     app.dependency_overrides[get_click_merchant_api] = composition_root.provide_click_merchant_api
@@ -332,6 +342,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_users_router, prefix="/api/v1")
     app.include_router(media_router, prefix="/api/v1")
     app.include_router(catalog_router, prefix="/api/v1")
+    app.include_router(admin_catalog_router, prefix="/api/v1")
     app.include_router(favorites_router, prefix="/api/v1")
     app.include_router(billing_router, prefix="/api/v1")
     app.include_router(admin_billing_router, prefix="/api/v1")

@@ -92,6 +92,11 @@ class Entitlement(CamelModel):
     valid_from: datetime
     valid_until: datetime
     activation_state: Literal["ACTIVE", "EXPIRED", "REVOKED"]
+    remaining_credits: int | None = None
+    """`LISTING_CREDIT_BALANCE` only -- `None` means unlimited (the Unlim tier) for that
+    entitlement type, but also just "not applicable" for every other type (2026-08-24, exposed
+    for the admin credit-balance panel -- was tracked on the domain aggregate since Phase 4 but
+    never surfaced over the wire until now)."""
 
 
 class OrderPage(CamelModel):
@@ -136,3 +141,42 @@ class PricingPlans(CamelModel):
 
     single_listing: Product | None = None
     credit_packs: list[Product]
+
+
+class GrantCreditsRequest(CamelModel):
+    """`adminGrantListingCredits` request body (2026-08-24): the admin picks WHICH published
+    product to grant (a real, priced product -- typically a zero-price "Admin sovg'a" one
+    authored via the owner-admin pricing UI, but any published product works, e.g. comping a real
+    paid pack). Deliberately reuses the real `createOrder`+`confirmInvoicePayment` path end to
+    end (not a bypass) -- see `admin_grant_listing_credits`'s own docstring. Serves two admin
+    actions with one endpoint: a `LISTING_CREDIT_PACK`/`LISTING_PUBLICATION` product with no
+    `targetId` grants the profile itself credits (`/admin/users`'s panel); a `PREMIUM`/
+    `FEATURED`/`TOP_PLACEMENT` product with `targetId` set to a real listing id grants that
+    listing VIP/TOP promotion (`/admin/listings`'s panel) -- `targetType` must match whichever
+    the chosen product actually is (`TargetRef`'s own domain invariant, re-checked by
+    `Order.create`, not merely declared here)."""
+
+    product_id: UUID
+    target_type: Literal["PROFILE", "LISTING"] = "PROFILE"
+    target_id: UUID | None = None
+    """Required (a real listing id) when `target_type` is `LISTING`; must stay `None` for
+    `PROFILE` (the profile granted is always `profileId` from the URL path)."""
+    note: str | None = None
+
+
+class PaymentProviderStatus(CamelModel):
+    """`adminGetPaymentProviderStatus` response (2026-08-24): whether each gateway's SECRET is
+    present server-side (`PAYME_SECRET_KEY`/`CLICK_SECRET_KEY`) -- never the secret's value
+    itself, this is a status light for `/admin/settings`, not a credentials editor (deliberate:
+    payment secrets live in `.env` only, never in the DB or a web-editable form -- see
+    `composition_root.provide_payment_provider_status`'s own docstring for why)."""
+
+    payme_configured: bool
+    click_configured: bool
+    mock_enabled: bool
+    """`PAYMENT_PROVIDER=mock` -- the demo/Uzum-labeled instant-pay endpoint is reachable."""
+    uzum_available: bool = False
+    """Always `False` in v1 -- no real Uzum Pay adapter exists yet (no merchant API
+    documentation was available to build one against). Kept as an explicit field (not just
+    omitted) so the admin UI always shows all three providers, one openly marked "not built"
+    rather than silently missing."""

@@ -21,8 +21,9 @@ from catalog.domain.exceptions import NotListingOwnerError
 from catalog.domain.image_attachment import ImageAttachment as DomainImageAttachment
 from catalog.domain.listing import Listing as DomainListing
 from catalog.domain.value_objects import ListingType
-from catalog.interfaces.auth import ActingUser
+from catalog.interfaces.auth import ActingOperator, ActingUser
 from catalog.interfaces.di import (
+    get_acting_operator,
     get_acting_user,
     get_favorite_use_cases,
     get_listing_use_cases,
@@ -47,6 +48,7 @@ from shared_kernel import ListingId
 
 catalog_router = APIRouter(tags=["Catalog"])
 favorites_router = APIRouter(tags=["Favorites"])
+admin_catalog_router = APIRouter(tags=["Administration"])
 
 
 def _image_to_dto(image: DomainImageAttachment) -> ListingImage:
@@ -313,6 +315,53 @@ async def list_my_listings(
     listings, next_cursor = await use_cases.list_my_listings(
         owner_user_id=acting_user.account_id,
         state=state,
+        cursor=cursor,
+        limit=page_limit,
+    )
+    return ListingPage(
+        items=[_listing_to_dto(item) for item in listings],
+        page=PageInfo(limit=page_limit, next_cursor=next_cursor),
+    )
+
+
+@admin_catalog_router.post(
+    "/admin/catalog/listings/{listingId}/status", operation_id="adminChangeListingStatus"
+)
+async def admin_change_listing_status(
+    listingId: UUID,
+    body: ListingStatusChangeRequest,
+    operator: ActingOperator = Depends(get_acting_operator),
+    use_cases: ListingUseCases = Depends(get_listing_use_cases),
+) -> Listing:
+    """`/admin/listings` (2026-08-24) -- the same real transitions `changeListingStatus` offers a
+    listing's own owner, admin-triggered against ANY listing regardless of ownership."""
+    listing = await use_cases.admin_change_status(
+        listing_id=ListingId(value=listingId),
+        admin_account_id=operator.account_id,
+        action=body.action,
+        reason=body.reason,
+        now=datetime.now(UTC),
+    )
+    return _listing_to_dto(listing)
+
+
+@admin_catalog_router.get("/admin/catalog/listings", operation_id="adminListListings")
+async def admin_list_listings(
+    cursor: str | None = None,
+    limit: int | None = 20,
+    state: str | None = None,
+    categoryId: UUID | None = None,
+    query: str | None = None,
+    _operator: ActingOperator = Depends(get_acting_operator),
+    use_cases: ListingUseCases = Depends(get_listing_use_cases),
+) -> ListingPage:
+    """`/admin/listings` (2026-08-24) -- every lifecycle state, every owner, in scope (unlike
+    `listListings`/`listMyListings`, both intentionally scoped narrower)."""
+    page_limit = limit or 20
+    listings, next_cursor = await use_cases.admin_list_listings(
+        state=state,
+        category_id=categoryId,
+        query=query,
         cursor=cursor,
         limit=page_limit,
     )

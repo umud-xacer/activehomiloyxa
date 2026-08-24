@@ -11,6 +11,8 @@ import {
   Users,
   Building2,
   Flag,
+  Settings as SettingsIcon,
+  Home,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/require-auth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
@@ -127,13 +129,34 @@ function Page() {
             description="Shikoyat qilingan e'lonlar, profillar va foydalanuvchilar bo'yicha qaror qabul qiling."
             index={4}
           />
+          <AdminLinkCard
+            to="/admin/listings"
+            icon={Home}
+            title="E'lonlar boshqaruvi"
+            description="Platformadagi barcha e'lonlarni ko'ring, holatini o'zgartiring, VIP/TOP maqomini bering."
+            index={5}
+          />
+          <AdminLinkCard
+            to="/admin/organizations"
+            icon={Building2}
+            title="Tashkilotlar (B2B)"
+            description="Kompaniyalarning ishonch nishoni (verifikatsiya) so'rovlarini ko'rib chiqing."
+            index={6}
+          />
+          <AdminLinkCard
+            to="/admin/settings"
+            icon={SettingsIcon}
+            title="Tizim sozlamalari"
+            description="To'lov provayderlari holati va bosh sahifa bannerlarini boshqarish."
+            index={7}
+          />
           {isSuperAdmin && (
             <AdminLinkCard
               to={`/${ownerPanelSlug}`}
               icon={Layers}
               title="Kategoriyalar va tariflar boshqaruvi"
               description="E'lon kategoriyalari, dinamik maydonlar va barcha tarif turlarini yarating, tahrirlang."
-              index={5}
+              index={8}
             />
           )}
           {isSuperAdmin && (
@@ -142,7 +165,7 @@ function Page() {
               icon={Megaphone}
               title="Bannerlar boshqaruvi"
               description="Banner joylarini belgilang, kampaniyalarni yarating va rejalashtiring."
-              index={6}
+              index={9}
             />
           )}
         </div>

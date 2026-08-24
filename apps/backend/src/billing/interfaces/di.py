@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from billing.application import EntitlementUseCases, OrderUseCases, PaymentUseCases
 from billing.interfaces.auth import ActingOperator, ActingUser
+from billing.interfaces.dto import PaymentProviderStatus
 
 
 async def get_order_use_cases() -> OrderUseCases:
@@ -42,5 +43,12 @@ async def get_acting_user() -> ActingUser:
 async def get_acting_operator() -> ActingOperator:
     raise NotImplementedError(
         "get_acting_operator was not overridden by the composition root "
+        "(app.dependency_overrides) -- see apps/backend/src/composition_root.py"
+    )
+
+
+def get_payment_provider_status() -> PaymentProviderStatus:
+    raise NotImplementedError(
+        "get_payment_provider_status was not overridden by the composition root "
         "(app.dependency_overrides) -- see apps/backend/src/composition_root.py"
     )

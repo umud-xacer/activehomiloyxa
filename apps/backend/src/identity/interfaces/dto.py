@@ -47,6 +47,10 @@ class UserAdminView(CamelModel):
     email: str | None = None
     status: Literal["ACTIVE", "SUSPENDED", "CLOSED"]
     created_at: datetime | None = None
+    owned_profile_ids: list[UUID] | None = None
+    """2026-08-24: which business profile(s) this account owns, if any -- lets `/admin/users`
+    link to the same profile's billing credit balance without a second lookup. `None`/empty for
+    an INDIVIDUAL account or a LEGAL_ENTITY that never completed onboarding."""
 
 
 class UserAdminViewPage(CamelModel):

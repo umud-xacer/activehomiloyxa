@@ -92,6 +92,25 @@ class FakeListingRepository:
         items.sort(key=lambda item: item.created_at)
         return items[:limit], None
 
+    async def list_admin(
+        self,
+        *,
+        state: str | None,
+        category_id: UUID | None,
+        query: str | None,
+        cursor: str | None,
+        limit: int,
+    ) -> tuple[list[Listing], str | None]:
+        items = list(self.listings.values())
+        if state is not None:
+            items = [item for item in items if item.lifecycle_state.value == state]
+        if category_id is not None:
+            items = [item for item in items if item.category_id == category_id]
+        if query:
+            items = [item for item in items if query.lower() in item.title.lower()]
+        items.sort(key=lambda item: item.created_at)
+        return items[:limit], None
+
     async def list_expiring(self, *, now: datetime, limit: int) -> list[Listing]:
         items = [
             item

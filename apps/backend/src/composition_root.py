@@ -111,6 +111,7 @@ from billing.infrastructure.persistence.models import (
 )
 from billing.interfaces.auth import ActingOperator
 from billing.interfaces.auth import ActingUser as BillingActingUser
+from billing.interfaces.dto import PaymentProviderStatus
 from catalog.application import FavoriteUseCases, ListingUseCases
 from catalog.application.duplicate_detection_service import DuplicateDetectionService
 from catalog.application.quota_service import QuotaEnforcementService
@@ -139,6 +140,7 @@ from catalog.infrastructure.event_projection import (
 from catalog.infrastructure.persistence.models import (
     OutboxEventRow as CatalogOutboxEventRow,
 )
+from catalog.interfaces.auth import ActingOperator as CatalogActingOperator
 from catalog.interfaces.auth import ActingUser as CatalogActingUser
 from catalog.interfaces.moderation_port import CatalogListingModerationAdapter
 from configuration.application import (
@@ -960,6 +962,38 @@ async def provide_catalog_optional_acting_user(
         return None
 
 
+async def provide_catalog_acting_operator(
+    ah_session: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
+    authorization: str | None = Header(default=None),
+) -> CatalogActingOperator:
+    """Overrides `catalog.interfaces.di.get_acting_operator` -- backs `adminListListings`
+    (2026-08-24, `/admin/listings`). Runs the REAL Security Sec 4.2 Gate-3 check
+    (`identity.domain.AuthorizationService.authorize`) against `catalog:listing:moderate`
+    (already whitelisted, previously only ever DOCUMENTED as this module's admin-surface gate,
+    never actually consulted by any real dependency until now -- catalog had no operator-gated
+    route at all before this one), the same pattern `provide_billing_acting_operator`/
+    `provide_ads_acting_operator` already establish."""
+    raw_token = _raw_session_token(ah_session, authorization)
+    if raw_token is None:
+        raise InvalidSessionTokenError()
+
+    async for session in _identity_session():
+        accounts = SqlalchemyUserAccountRepository(session)
+        sessions_repo = RedisSessionRepository(_identity_redis_client())
+        authz = ApplicationAuthorizationService(
+            session_repo=sessions_repo,
+            account_repo=accounts,
+            role_reader=_role_definition_reader(),
+        )
+        token_hash = _session_token_generator().hash_token(raw_token)
+        account, _session_obj, context = await authz.resolve_acting_context(
+            token_hash=token_hash, now=datetime.now(UTC)
+        )
+        AuthorizationService().authorize(context, "catalog:listing:moderate")
+        return CatalogActingOperator(account_id=account.id)
+    raise AssertionError("unreachable: _identity_session always yields exactly once")
+
+
 def provide_catalog_expiry_worker() -> CatalogExpiryWorker:
     """Not a FastAPI dependency override -- called directly by the worker process entrypoint
     (`apps/backend/src/catalog_worker.py`), same discipline as `provide_media_intake_worker`."""
@@ -1119,6 +1153,23 @@ def payment_provider_mode() -> str:
     instead of an env gate) -- this variable exists solely to keep the unauthenticated,
     unverified mock instant-pay endpoint out of the ASGI app unless explicitly turned on."""
     return os.environ.get("PAYMENT_PROVIDER", "offline")
+
+
+def provide_payment_provider_status() -> PaymentProviderStatus:
+    """Overrides `billing.interfaces.di.get_payment_provider_status` (2026-08-24, `/admin/
+    settings`'s read-only provider panel). Deliberately reports presence only (`bool`), never a
+    key's value -- the admin-panel request that first prompted this endpoint also asked for the
+    secrets themselves to be web-editable, which was turned down on a real security concern
+    (payment secrets in a DB/web-form widen the attack surface, and this server's own security
+    audit already flags fail2ban/UFW as not yet hardened) -- `.env` stays the only place a real
+    `PAYME_SECRET_KEY`/`CLICK_SECRET_KEY` is ever written or read, exactly like every other secret
+    this composition root reads via `os.environ` (mirrors `payment_provider_mode`'s own
+    precedent, immediately above)."""
+    return PaymentProviderStatus(
+        payme_configured=bool(os.environ.get("PAYME_SECRET_KEY")),
+        click_configured=bool(os.environ.get("CLICK_SECRET_KEY")),
+        mock_enabled=payment_provider_mode() == "mock",
+    )
 
 
 async def provide_mock_merchant_api() -> AsyncIterator[MockMerchantApi]:

@@ -95,6 +95,9 @@ export interface Entitlement {
   validFrom: string;
   validUntil: string;
   activationState: "ACTIVE" | "EXPIRED" | "REVOKED";
+  /** LISTING_CREDIT_BALANCE only — null means unlimited for that type, "not applicable" for
+   * every other type (2026-08-24). */
+  remainingCredits?: number | null;
 }
 
 interface Page<T> {
@@ -172,4 +175,34 @@ export const billingApi = {
   ): Promise<Invoice> {
     return http.post<Invoice>(`/admin/billing/invoices/${invoiceId}/confirm-payment`, input);
   },
+
+  /** GET /admin/billing/payment-providers/status (2026-08-24) — presence-only, never the
+   * secrets themselves; backs `/admin/settings`'s read-only provider panel. */
+  adminGetPaymentProviderStatus(): Promise<PaymentProviderStatus> {
+    return http.get<PaymentProviderStatus>("/admin/billing/payment-providers/status");
+  },
+
+  /** GET /admin/billing/profiles/{id}/entitlements (2026-08-24) — `/admin/users`'s credit-
+   * balance panel; an admin-chosen profile id, not the caller's own. */
+  adminListProfileEntitlements(profileId: string): Promise<Entitlement[]> {
+    return http.get<Entitlement[]>(`/admin/billing/profiles/${profileId}/entitlements`);
+  },
+
+  /** POST /admin/billing/profiles/{id}/grant-credits (2026-08-24) — grants `productId`'s
+   * entitlement for free, via the real createOrder+confirmPayment path. No `targetId` grants
+   * `profileId` itself credits (`/admin/users`); `targetType: "LISTING"` + `targetId` grants
+   * that listing VIP/TOP promotion instead (`/admin/listings`). */
+  adminGrantCredits(
+    profileId: string,
+    input: { productId: string; targetType?: "PROFILE" | "LISTING"; targetId?: string; note?: string },
+  ): Promise<Invoice> {
+    return http.post<Invoice>(`/admin/billing/profiles/${profileId}/grant-credits`, input);
+  },
 };
+
+export interface PaymentProviderStatus {
+  paymeConfigured: boolean;
+  clickConfigured: boolean;
+  mockEnabled: boolean;
+  uzumAvailable: boolean;
+}

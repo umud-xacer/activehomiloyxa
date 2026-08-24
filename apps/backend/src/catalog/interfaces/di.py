@@ -14,7 +14,7 @@ present, unlike `get_acting_user`."""
 from __future__ import annotations
 
 from catalog.application import FavoriteUseCases, ListingUseCases
-from catalog.interfaces.auth import ActingUser
+from catalog.interfaces.auth import ActingOperator, ActingUser
 
 
 async def get_listing_use_cases() -> ListingUseCases:
@@ -41,5 +41,12 @@ async def get_acting_user() -> ActingUser:
 async def get_optional_acting_user() -> ActingUser | None:
     raise NotImplementedError(
         "get_optional_acting_user was not overridden by the composition root "
+        "(app.dependency_overrides) -- see apps/backend/src/composition_root.py"
+    )
+
+
+async def get_acting_operator() -> ActingOperator:
+    raise NotImplementedError(
+        "get_acting_operator was not overridden by the composition root "
         "(app.dependency_overrides) -- see apps/backend/src/composition_root.py"
     )

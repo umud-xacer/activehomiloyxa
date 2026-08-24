@@ -42,7 +42,8 @@ type EntityType =
   | "product-definition"
   | "placement-slot"
   | "platform-settings"
-  | "role-definition";
+  | "role-definition"
+  | "search-configuration";
 
 const base = (entityType: EntityType) => `/admin/config/${entityType}`;
 
@@ -100,6 +101,12 @@ export interface DynamicFieldDraft {
   fieldType: FormField["fieldType"];
   required: boolean;
   options: FormFieldOption[];
+  /** Whether this field should also render as a real search filter (`CategoryFilterPanel.tsx`
+   * only shows fields where this is true, 2026-08-22). Previously hardcoded `false` here --
+   * setting it `true` alone is not enough for the field to actually appear as a facet on
+   * `/search`; the field code also needs registering on the global `SearchConfiguration`'s
+   * `facets` list, which `saveCategoryFields` below now does automatically. */
+  facetEligible: boolean;
 }
 
 function toFieldContent(field: DynamicFieldDraft, order: number) {
@@ -109,12 +116,64 @@ function toFieldContent(field: DynamicFieldDraft, order: number) {
     label: field.label,
     field_type: field.fieldType,
     required: field.required,
-    facet_eligible: false,
+    facet_eligible: field.facetEligible,
     order,
     default_value: null,
     options: field.options.map((o) => ({ value: o.value, label: o.label })),
     validators: field.required ? [{ validator_type: "required", params: {} }] : [],
   };
+}
+
+/** The one global (`scope_category_id: null`) `SearchConfiguration` head every published field's
+ * `facet_eligible: true` needs registered on to actually surface as a `/search` filter -- fixed
+ * code `"global-search"`, same one `configuration/infrastructure/seed.py::_backfill_search_
+ * configuration_facets` targets. `null` only if the head genuinely doesn't exist yet (never true
+ * in production -- seeded on every deploy -- but a real possibility on a from-scratch dev DB). */
+async function globalSearchConfigHead(): Promise<{
+  head: ConfigHeadDto;
+  version: ConfigVersionDto | null;
+} | null> {
+  const { items } = await listHeads("search-configuration");
+  const head = items.find((h) => h.code === "global-search");
+  if (!head) return null;
+  const version = head.currentVersionId
+    ? await getVersion("search-configuration", head.id, head.currentVersionId)
+    : null;
+  return { head, version };
+}
+
+/** Additive-only: appends any of `fields` marked `facetEligible` whose `code` isn't already on
+ * the global `SearchConfiguration`'s `facets` list, republishing one new version if anything was
+ * actually missing. Never removes a facet (a field flipped back to non-facet-eligible, or
+ * deleted, leaves its old facet entry in place -- same "additive, never destructive" convention
+ * `_backfill_search_configuration_facets` already established; a stale facet with no matching
+ * form field just never has anything to filter). Called after every category-field save
+ * (`saveCategoryFields` below) so a super-admin marking a field facet-eligible from the UI is the
+ * complete action -- no follow-up seed.py edit needed. */
+async function ensureFacetsRegistered(fields: DynamicFieldDraft[]): Promise<void> {
+  const toRegister = fields.filter((f) => f.facetEligible);
+  if (toRegister.length === 0) return;
+  const found = await globalSearchConfigHead();
+  if (!found || !found.version) return;
+  const snapshot = (found.version.snapshot ?? found.version.definition) as {
+    facets?: Array<{ field_code: string; label: LocalizedText; order: number }>;
+  };
+  const existingCodes = new Set((snapshot.facets ?? []).map((f) => f.field_code));
+  const missing = toRegister.filter((f) => !existingCodes.has(f.code));
+  if (missing.length === 0) return;
+  const nextFacets = [
+    ...(snapshot.facets ?? []),
+    ...missing.map((f, i) => ({
+      field_code: f.code,
+      label: f.label,
+      order: (snapshot.facets?.length ?? 0) + i,
+    })),
+  ];
+  const version = await createVersionDraft("search-configuration", found.head.id, {
+    ...snapshot,
+    facets: nextFacets,
+  });
+  await publishSolo("search-configuration", found.head.id, version.id);
 }
 
 /** Creates and solo-publishes a new form-definition head from a flat field list (all fields in
@@ -133,6 +192,7 @@ export async function publishNewFormDefinition(
   };
   const version = await createHead("form-definition", code, "Owner Admin", definition);
   const published = await publishSolo("form-definition", version.headId, version.id);
+  await ensureFacetsRegistered(fields);
   return published.headId;
 }
 
@@ -151,6 +211,7 @@ export async function updateFormDefinitionFields(
   };
   const version = await createVersionDraft("form-definition", headId, definition);
   await publishSolo("form-definition", headId, version.id);
+  await ensureFacetsRegistered(fields);
 }
 
 export type ListingKind = "PROPERTY" | "GOODS" | "SERVICE" | "VENUE";
@@ -277,6 +338,7 @@ export async function getFormDefinitionFields(
       field_type: DynamicFieldDraft["fieldType"];
       required: boolean;
       options: FormFieldOption[];
+      facet_eligible?: boolean;
     }>;
   };
   return {
@@ -287,6 +349,7 @@ export async function getFormDefinitionFields(
       fieldType: f.field_type,
       required: f.required,
       options: f.options ?? [],
+      facetEligible: f.facet_eligible ?? false,
     })),
   };
 }
