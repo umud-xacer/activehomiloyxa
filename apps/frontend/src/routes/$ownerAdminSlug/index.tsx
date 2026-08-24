@@ -795,9 +795,21 @@ const PRODUCT_TYPE_LABEL: Record<ProductDraftInput["productType"], string> = {
   TOP_PLACEMENT: "Yuqorida ko'rsatish",
   VERIFICATION: "Verifikatsiya",
   BANNER_PLACEMENT: "Banner joyi",
+  LISTING_PUBLICATION: "E'lon joylash narxi (paywall)",
+  LISTING_CREDIT_PACK: "Kredit paketi (paywall)",
 };
 
 const PRODUCT_TYPES = Object.keys(PRODUCT_TYPE_LABEL) as ProductDraftInput["productType"][];
+
+/** Matches the real values Phase 1 seeded (`configuration/infrastructure/seed.py::
+ * _seed_pricing_plans`) -- a single-listing publish is consumed once, immediately (short term),
+ * a credit pack's credits stay usable for a year. Editable per-row regardless -- these are just
+ * sane defaults for a brand-new draft. */
+function defaultTermDays(productType: ProductDraftInput["productType"]): number | null {
+  if (productType === "SUBSCRIPTION" || productType === "LISTING_PUBLICATION") return 7;
+  if (productType === "LISTING_CREDIT_PACK") return 365;
+  return null;
+}
 
 function emptyProductDraft(
   productType: ProductDraftInput["productType"] = "SUBSCRIPTION",
@@ -808,8 +820,11 @@ function emptyProductDraft(
     productType,
     priceAmount: "",
     priceCurrency: "UZS",
-    termDays: productType === "SUBSCRIPTION" ? 7 : null,
+    termDays: defaultTermDays(productType),
     maxActiveListings: null,
+    categoryId: null,
+    listingPublishCredits: null,
+    unlimitedListingPublish: false,
   };
 }
 
@@ -821,7 +836,12 @@ function draftFromRow(row: ProductRow): ProductDraftInput {
         price_amount?: string | number;
         price_currency?: string;
         term_days?: number | null;
-        quota_set?: { max_active_listings?: number | null } | null;
+        quota_set?: {
+          max_active_listings?: number | null;
+          listing_publish_credits?: number | null;
+          unlimited_listing_publish?: boolean | null;
+        } | null;
+        category_id?: string | null;
       }
     | undefined;
   return {
@@ -832,6 +852,9 @@ function draftFromRow(row: ProductRow): ProductDraftInput {
     priceCurrency: snapshot?.price_currency ?? "UZS",
     termDays: snapshot?.term_days ?? null,
     maxActiveListings: snapshot?.quota_set?.max_active_listings ?? null,
+    categoryId: snapshot?.category_id ?? null,
+    listingPublishCredits: snapshot?.quota_set?.listing_publish_credits ?? null,
+    unlimitedListingPublish: snapshot?.quota_set?.unlimited_listing_publish ?? false,
   };
 }
 
@@ -841,12 +864,14 @@ function TariffFormRow({
   onCancel,
   onSave,
   busy,
+  categories,
 }: {
   draft: ProductDraftInput;
   onChange: (next: ProductDraftInput) => void;
   onCancel: () => void;
   onSave: () => void;
   busy: boolean;
+  categories: CategoryRow[];
 }) {
   return (
     <div className="grid grid-cols-1 gap-3 rounded-xl border border-border/70 bg-muted/30 p-4 sm:grid-cols-6">
@@ -905,6 +930,61 @@ function TariffFormRow({
           className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs sm:col-span-2"
         />
       )}
+      {draft.productType === "LISTING_PUBLICATION" && (
+        <select
+          value={draft.categoryId ?? ""}
+          onChange={(e) => onChange({ ...draft, categoryId: e.target.value || null })}
+          className="rounded-lg border border-border bg-background px-2 py-1.5 text-xs sm:col-span-4"
+        >
+          <option value="">— Standart narx (barcha kategoriyalar) —</option>
+          {categories
+            .filter((c) => categoryTreeStatus(c) === "ACTIVE")
+            .map((c) => (
+              <option key={c.head.id} value={c.head.id}>
+                {"— ".repeat(categoryDepth(c, categories))}
+                {categoryName(c)}
+              </option>
+            ))}
+        </select>
+      )}
+      {draft.productType === "LISTING_PUBLICATION" && (
+        <p className="col-span-full text-[11px] text-muted-foreground">
+          Har bir kategoriya uchun bittadan narx bo'lishi kerak (+ bitta standart narx) — agar shu
+          kategoriya uchun narx allaqachon mavjud bo'lsa, yangisini yaratish o'rniga o'shani
+          "Tahrirlash" orqali o'zgartiring.
+        </p>
+      )}
+      {draft.productType === "LISTING_CREDIT_PACK" && (
+        <>
+          <input
+            value={draft.unlimitedListingPublish ? "" : (draft.listingPublishCredits ?? "")}
+            onChange={(e) =>
+              onChange({
+                ...draft,
+                listingPublishCredits: e.target.value ? Number(e.target.value) : null,
+              })
+            }
+            disabled={draft.unlimitedListingPublish}
+            placeholder="Nechta e'lon joylash krediti"
+            inputMode="numeric"
+            className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs sm:col-span-2 disabled:opacity-50"
+          />
+          <label className="flex items-center gap-1.5 whitespace-nowrap px-1 text-xs text-muted-foreground sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={draft.unlimitedListingPublish}
+              onChange={(e) =>
+                onChange({
+                  ...draft,
+                  unlimitedListingPublish: e.target.checked,
+                  listingPublishCredits: e.target.checked ? null : draft.listingPublishCredits,
+                })
+              }
+            />
+            Cheksiz (Unlim tarif)
+          </label>
+        </>
+      )}
       <div className="flex items-center gap-2 sm:col-span-6 sm:justify-end">
         <button
           type="button"
@@ -927,7 +1007,37 @@ function TariffFormRow({
   );
 }
 
-function TariffsSection() {
+/** Read-only summary of a row's price + (for the two paywall product types) its
+ * category-override/credit-quota detail, shown next to the type badge in the list. */
+function productExtraLabel(row: ProductRow, categories: CategoryRow[]): string {
+  const snapshot = productSnapshot(row) as
+    | {
+        product_type?: ProductDraftInput["productType"];
+        price_amount?: string | number;
+        price_currency?: string;
+        category_id?: string | null;
+        quota_set?: {
+          listing_publish_credits?: number | null;
+          unlimited_listing_publish?: boolean | null;
+        } | null;
+      }
+    | undefined;
+  const price = `${Number(snapshot?.price_amount ?? 0).toLocaleString("uz-UZ")} ${snapshot?.price_currency ?? "UZS"}`;
+  if (snapshot?.product_type === "LISTING_PUBLICATION") {
+    const category = categories.find((c) => c.head.id === snapshot.category_id);
+    return `${price} · ${category ? categoryName(category) : "standart (barcha kategoriyalar)"}`;
+  }
+  if (snapshot?.product_type === "LISTING_CREDIT_PACK") {
+    const quota = snapshot.quota_set;
+    const credits = quota?.unlimited_listing_publish
+      ? "Cheksiz"
+      : `${quota?.listing_publish_credits ?? "—"} ta kredit`;
+    return `${price} · ${credits}`;
+  }
+  return price;
+}
+
+function TariffsSection({ categories }: { categories: CategoryRow[] }) {
   const queryClient = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [editingHeadId, setEditingHeadId] = useState<string | null>(null);
@@ -974,7 +1084,7 @@ function TariffsSection() {
     <SectionCard
       title="Tariflar va monetizatsiya mahsulotlari"
       icon={CreditCard}
-      description="Obuna rejalari, premium/tavsiya etilgan joylashtirish, verifikatsiya va banner narxlari."
+      description="Obuna rejalari, premium/tavsiya etilgan joylashtirish, verifikatsiya, banner va e'lon-joylash (paywall) narxlari — o'zgarish darhol /pricing-plans'da aks etadi."
       index={1}
       action={
         !adding && (
@@ -1036,6 +1146,7 @@ function TariffsSection() {
             onCancel={() => setAdding(false)}
             onSave={save}
             busy={busy}
+            categories={categories}
           />
         )}
         {!isLoading && visibleRows.length === 0 && !adding && (
@@ -1054,6 +1165,7 @@ function TariffsSection() {
               onCancel={() => setEditingHeadId(null)}
               onSave={save}
               busy={busy}
+              categories={categories}
             />
           ) : (
             <div
@@ -1076,6 +1188,9 @@ function TariffsSection() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {row.head.code} · {row.version?.status ?? "—"}
+                </p>
+                <p className="mt-0.5 text-xs font-medium text-foreground">
+                  {productExtraLabel(row, categories)}
                 </p>
               </div>
               <button
@@ -1442,7 +1557,7 @@ function Page() {
           </div>
         </SectionCard>
 
-        <TariffsSection />
+        <TariffsSection categories={items} />
       </div>
 
       <AnimatePresence>

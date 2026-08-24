@@ -297,23 +297,52 @@ export interface ProductDraftInput {
   code: string;
   name: LocalizedText;
   productType:
-    "SUBSCRIPTION" | "PREMIUM" | "FEATURED" | "TOP_PLACEMENT" | "VERIFICATION" | "BANNER_PLACEMENT";
+    | "SUBSCRIPTION"
+    | "PREMIUM"
+    | "FEATURED"
+    | "TOP_PLACEMENT"
+    | "VERIFICATION"
+    | "BANNER_PLACEMENT"
+    | "LISTING_PUBLICATION"
+    | "LISTING_CREDIT_PACK";
   priceAmount: string;
   priceCurrency: string;
   termDays: number | null;
   maxActiveListings: number | null;
+  /** `LISTING_PUBLICATION` only (listing paywall, 2026-08-24): a category-specific price
+   * override. `null` publishes/updates the platform-default single-listing price instead (the
+   * one `LISTING_PUBLICATION` row with no `category_id`) -- `GET /pricing-plans`' own fallback
+   * logic (`billing/interfaces/routers.py::get_pricing_plans`) picks the category-matching row
+   * first, the null-category row otherwise, so at most one row per category (plus one default)
+   * should ever be published. */
+  categoryId: string | null;
+  /** `LISTING_CREDIT_PACK` only: how many future listing publishes this pack grants.
+   * Ignored (and cleared server-side to `null`) when `unlimitedListingPublish` is true. */
+  listingPublishCredits: number | null;
+  /** `LISTING_CREDIT_PACK` only: the Unlim tier -- overrides `listingPublishCredits`
+   * entirely (`ListingUseCases`' own credit-consumption never decrements an unlimited pack). */
+  unlimitedListingPublish: boolean;
 }
 
 function productDefinition(input: ProductDraftInput) {
+  const isCreditPack = input.productType === "LISTING_CREDIT_PACK";
+  const quotaSet =
+    input.maxActiveListings !== null || isCreditPack
+      ? {
+          max_active_listings: input.maxActiveListings,
+          listing_publish_credits: isCreditPack ? input.listingPublishCredits : null,
+          unlimited_listing_publish: isCreditPack ? input.unlimitedListingPublish : null,
+        }
+      : null;
   return {
     descriptor: { name: input.name, description: null, display_order: 0, metadata: {} },
     product_type: input.productType,
     price_amount: input.priceAmount,
     price_currency: input.priceCurrency,
     term_days: input.termDays,
-    quota_set:
-      input.maxActiveListings !== null ? { max_active_listings: input.maxActiveListings } : null,
+    quota_set: quotaSet,
     benefit_descriptor: {},
+    category_id: input.productType === "LISTING_PUBLICATION" ? input.categoryId : null,
   };
 }
 
