@@ -76,9 +76,7 @@ class Entitlement:
             return replace(self, updated_at=now)
         if self.remaining_credits <= 0:
             raise NoCreditsRemainingError(self.id)
-        return replace(
-            self, remaining_credits=self.remaining_credits - 1, updated_at=now
-        )
+        return replace(self, remaining_credits=self.remaining_credits - 1, updated_at=now)
 
     def expire(self, *, now: datetime) -> Entitlement:
         """FR-SUBS-004/I-15: "the system SHALL deactivate entitlements at end of term" -- "an
@@ -86,9 +84,7 @@ class Entitlement:
         EXPIRED` only; called by `infrastructure.worker.EntitlementExpiryWorker`'s sweep, never
         by a request-path use case."""
         if self.activation_state is not ActivationState.ACTIVE:
-            raise IllegalEntitlementStateTransitionError(
-                "expire", self.activation_state.value
-            )
+            raise IllegalEntitlementStateTransitionError("expire", self.activation_state.value)
         return replace(self, activation_state=ActivationState.EXPIRED, updated_at=now)
 
     def revoke(self, *, now: datetime) -> Entitlement:
@@ -98,9 +94,7 @@ class Entitlement:
         Revoked`), the same "capability exists, no caller wires it yet" note as `Order.fulfill`/
         `Invoice.void`."""
         if self.activation_state is not ActivationState.ACTIVE:
-            raise IllegalEntitlementStateTransitionError(
-                "revoke", self.activation_state.value
-            )
+            raise IllegalEntitlementStateTransitionError("revoke", self.activation_state.value)
         return replace(self, activation_state=ActivationState.REVOKED, updated_at=now)
 
 
@@ -131,9 +125,7 @@ class EntitlementFactory:
             else order.purchaser_profile_id.value
         )
 
-        valid_from, valid_until = _validity_window(
-            order=order, product_type=product_type, now=now
-        )
+        valid_from, valid_until = _validity_window(order=order, product_type=product_type, now=now)
 
         return Entitlement(
             id=entitlement_id,

@@ -99,9 +99,7 @@ class ListingRepository(Protocol):
         already-swept rows so a large backlog does not get re-fetched every poll)."""
         ...
 
-    async def count_active_by_owner_profile(
-        self, owner_profile_id: BusinessProfileId
-    ) -> int:
+    async def count_active_by_owner_profile(self, owner_profile_id: BusinessProfileId) -> int:
         """Backs `QuotaEnforcementService` (I-08): the count of this business profile's listings
         not in a terminal `DELETED` state -- the quota-relevant "active" count against
         `SubscriptionSnapshot.quota_document["max_active_listings"]`."""
@@ -125,9 +123,7 @@ class FavoriteRepository(Protocol):
     """A distinct repository for the distinct `Favorite` aggregate root (DDD Sec 5.3: "Separate
     from Listing so favoriting never contends with listing writes")."""
 
-    async def get(
-        self, *, user_id: UserId, listing_id: ListingId
-    ) -> Favorite | None: ...
+    async def get(self, *, user_id: UserId, listing_id: ListingId) -> Favorite | None: ...
 
     async def add(self, favorite: Favorite) -> None: ...
 
@@ -234,9 +230,7 @@ class MediaAssetReaderPort(Protocol):
     """The concrete adapter calls `media.interfaces.ports.MediaIntakePort.get_media` only
     (`cross-module-catalog`)."""
 
-    async def get_media_asset(
-        self, media_asset_id: UUID
-    ) -> MediaAssetSnapshot | None: ...
+    async def get_media_asset(self, media_asset_id: UUID) -> MediaAssetSnapshot | None: ...
 
 
 @dataclass(frozen=True)
@@ -279,9 +273,7 @@ class CreditBalancePort(Protocol):
     independent of and committed BEFORE `ListingUseCases.create_listing`'s own -- a mid-failure
     after a successful consume loses a credit rather than granting a free unpaid listing."""
 
-    async def consume_one_listing_credit(
-        self, *, owner_profile_id: BusinessProfileId
-    ) -> bool:
+    async def consume_one_listing_credit(self, *, owner_profile_id: BusinessProfileId) -> bool:
         """Attempts to spend one listing-publish credit from the profile's earliest-expiring
         active `LISTING_CREDIT_BALANCE` entitlement. Returns `True` if a credit was available and
         consumed (the caller should publish immediately, `requires_payment=False`), `False` if

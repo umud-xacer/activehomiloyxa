@@ -60,9 +60,7 @@ class ConditionalVisibility(_ConfigContentModel):
     model_config = ConfigDict(extra="forbid")
 
     field_code: str
-    operator: Literal[
-        "EQUALS", "NOT_EQUALS", "IN", "NOT_IN", "GREATER_THAN", "LESS_THAN"
-    ]
+    operator: Literal["EQUALS", "NOT_EQUALS", "IN", "NOT_IN", "GREATER_THAN", "LESS_THAN"]
     value: Any = None
 
 

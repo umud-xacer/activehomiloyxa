@@ -87,9 +87,7 @@ def _transition_to_domain(row: ListingTransitionRow) -> LifecycleTransitionRecor
     )
 
 
-def _transition_row(
-    listing_id: UUID, record: LifecycleTransitionRecord
-) -> ListingTransitionRow:
+def _transition_row(listing_id: UUID, record: LifecycleTransitionRecord) -> ListingTransitionRow:
     return ListingTransitionRow(
         id=record.id,
         listing_id=listing_id,
@@ -131,9 +129,7 @@ def _listing_to_domain(
         listing_type=ListingType(row.listing_type),
         owner_user_id=UserId(value=row.owner_user_id),
         owner_profile_id=(
-            BusinessProfileId(value=row.owner_profile_id)
-            if row.owner_profile_id
-            else None
+            BusinessProfileId(value=row.owner_profile_id) if row.owner_profile_id else None
         ),
         category_id=row.category_id,
         category_path=row.category_path,
@@ -151,12 +147,9 @@ def _listing_to_domain(
         published_at=row.published_at,
         promotion=promotion,
         slug=row.slug,
-        images=tuple(
-            _image_to_domain(i) for i in sorted(images, key=lambda i: i.position)
-        ),
+        images=tuple(_image_to_domain(i) for i in sorted(images, key=lambda i: i.position)),
         transitions=tuple(
-            _transition_to_domain(t)
-            for t in sorted(transitions, key=lambda t: t.occurred_at)
+            _transition_to_domain(t) for t in sorted(transitions, key=lambda t: t.occurred_at)
         ),
         created_at=row.created_at,
         updated_at=row.updated_at,
@@ -169,9 +162,7 @@ def _listing_row(listing: Listing) -> ListingRow:
         id=listing.id.value,
         listing_type=listing.listing_type.value,
         owner_user_id=listing.owner_user_id.value,
-        owner_profile_id=listing.owner_profile_id.value
-        if listing.owner_profile_id
-        else None,
+        owner_profile_id=listing.owner_profile_id.value if listing.owner_profile_id else None,
         category_id=listing.category_id,
         category_path=listing.category_path,
         form_definition_id=listing.form_definition_id,
@@ -189,12 +180,8 @@ def _listing_row(listing: Listing) -> ListingRow:
         expires_at=listing.expires_at,
         published_at=listing.published_at,
         promotion_kind=listing.promotion.kind.value if listing.promotion else None,
-        promotion_valid_until=listing.promotion.valid_until
-        if listing.promotion
-        else None,
-        promotion_entitlement_id=listing.promotion.entitlement_id
-        if listing.promotion
-        else None,
+        promotion_valid_until=listing.promotion.valid_until if listing.promotion else None,
+        promotion_entitlement_id=listing.promotion.entitlement_id if listing.promotion else None,
         slug=listing.slug,
         created_at=listing.created_at,
         updated_at=listing.updated_at,
@@ -259,9 +246,7 @@ class SqlalchemyListingRepository:
                 f"called with a snapshot at lock_version {listing.lock_version}"
             )
         row.listing_type = listing.listing_type.value
-        row.owner_profile_id = (
-            listing.owner_profile_id.value if listing.owner_profile_id else None
-        )
+        row.owner_profile_id = listing.owner_profile_id.value if listing.owner_profile_id else None
         row.category_id = listing.category_id
         row.category_path = listing.category_path
         row.form_definition_id = listing.form_definition_id
@@ -279,9 +264,7 @@ class SqlalchemyListingRepository:
         row.expires_at = listing.expires_at
         row.published_at = listing.published_at
         row.promotion_kind = listing.promotion.kind.value if listing.promotion else None
-        row.promotion_valid_until = (
-            listing.promotion.valid_until if listing.promotion else None
-        )
+        row.promotion_valid_until = listing.promotion.valid_until if listing.promotion else None
         row.promotion_entitlement_id = (
             listing.promotion.entitlement_id if listing.promotion else None
         )
@@ -296,14 +279,10 @@ class SqlalchemyListingRepository:
         flag_modified(row, "updated_at")
 
         await self._session.execute(
-            delete(ImageAttachmentRow).where(
-                ImageAttachmentRow.listing_id == listing.id.value
-            )
+            delete(ImageAttachmentRow).where(ImageAttachmentRow.listing_id == listing.id.value)
         )
         await self._session.execute(
-            delete(ListingTransitionRow).where(
-                ListingTransitionRow.listing_id == listing.id.value
-            )
+            delete(ListingTransitionRow).where(ListingTransitionRow.listing_id == listing.id.value)
         )
         await self._session.flush()
         for image in listing.images:
@@ -429,9 +408,7 @@ class SqlalchemyListingRepository:
         rows = list(result.scalars().all())
         return [await self._hydrate(row) for row in rows]
 
-    async def count_active_by_owner_profile(
-        self, owner_profile_id: BusinessProfileId
-    ) -> int:
+    async def count_active_by_owner_profile(self, owner_profile_id: BusinessProfileId) -> int:
         """P-21 fix: was `select(ListingRow.id).where(...)` then `len(result.scalars().all())` --
         pulled every matching row's id across the wire just to count them, instead of letting
         Postgres compute the count directly. Called on every listing-creation quota check
@@ -489,9 +466,7 @@ class SqlalchemyListingRepository:
             select(ImageAttachmentRow).where(ImageAttachmentRow.listing_id == row.id)
         )
         transitions_result = await self._session.execute(
-            select(ListingTransitionRow).where(
-                ListingTransitionRow.listing_id == row.id
-            )
+            select(ListingTransitionRow).where(ListingTransitionRow.listing_id == row.id)
         )
         return _listing_to_domain(
             row,
@@ -591,9 +566,7 @@ class SqlalchemySubscriptionSnapshotRepository:
         )
 
     async def upsert(self, snapshot: SubscriptionSnapshot) -> None:
-        row = await self._session.get(
-            SubscriptionProjectionRow, snapshot.owner_profile_id.value
-        )
+        row = await self._session.get(SubscriptionProjectionRow, snapshot.owner_profile_id.value)
         if row is None:
             self._session.add(
                 SubscriptionProjectionRow(

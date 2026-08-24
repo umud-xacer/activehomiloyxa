@@ -83,8 +83,7 @@ class ProviderTransactionRepository:
         result = await self._session.execute(
             select(ProviderTransactionRow).where(
                 ProviderTransactionRow.provider == provider,
-                ProviderTransactionRow.provider_transaction_id
-                == provider_transaction_id,
+                ProviderTransactionRow.provider_transaction_id == provider_transaction_id,
             )
         )
         row = result.scalars().first()
@@ -113,9 +112,7 @@ class ProviderTransactionRepository:
         await self._session.flush()
         return _to_domain(row)
 
-    async def mark_performed(
-        self, transaction_id: UUID, *, now: datetime
-    ) -> ProviderTransaction:
+    async def mark_performed(self, transaction_id: UUID, *, now: datetime) -> ProviderTransaction:
         row = await self._session.get(ProviderTransactionRow, transaction_id)
         if row is None:
             raise LookupError(f"ProviderTransactionRow {transaction_id} not found")

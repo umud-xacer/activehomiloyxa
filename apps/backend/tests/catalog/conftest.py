@@ -53,11 +53,7 @@ class FakeListingRepository:
         cursor: str | None,
         limit: int,
     ) -> tuple[list[Listing], str | None]:
-        items = [
-            item
-            for item in self.listings.values()
-            if item.owner_user_id == owner_user_id
-        ]
+        items = [item for item in self.listings.values() if item.owner_user_id == owner_user_id]
         if state is not None:
             items = [item for item in items if item.lifecycle_state.value == state]
         items.sort(key=lambda item: item.created_at)
@@ -72,9 +68,7 @@ class FakeListingRepository:
         limit: int,
     ) -> tuple[list[Listing], str | None]:
         items = [
-            item
-            for item in self.listings.values()
-            if item.owner_profile_id == owner_profile_id
+            item for item in self.listings.values() if item.owner_profile_id == owner_profile_id
         ]
         if state is not None:
             items = [item for item in items if item.lifecycle_state.value == state]
@@ -90,9 +84,7 @@ class FakeListingRepository:
         limit: int,
         now: datetime,
     ) -> tuple[list[Listing], str | None]:
-        items = [
-            item for item in self.listings.values() if item.is_publicly_visible(now=now)
-        ]
+        items = [item for item in self.listings.values() if item.is_publicly_visible(now=now)]
         if category_id is not None:
             items = [item for item in items if item.category_id == category_id]
         if listing_type is not None:
@@ -110,14 +102,11 @@ class FakeListingRepository:
         ]
         return items[:limit]
 
-    async def count_active_by_owner_profile(
-        self, owner_profile_id: BusinessProfileId
-    ) -> int:
+    async def count_active_by_owner_profile(self, owner_profile_id: BusinessProfileId) -> int:
         return sum(
             1
             for item in self.listings.values()
-            if item.owner_profile_id == owner_profile_id
-            and item.lifecycle_state.value != "DELETED"
+            if item.owner_profile_id == owner_profile_id and item.lifecycle_state.value != "DELETED"
         )
 
     async def find_recent_by_owner_category(
@@ -227,9 +216,7 @@ class FakeMediaAssetReaderPort:
         *,
         scan_status: Literal["PENDING", "CLEAN", "QUARANTINED"] = "PENDING",
     ) -> None:
-        self.assets[media_asset_id] = MediaAssetSnapshot(
-            id=media_asset_id, scan_status=scan_status
-        )
+        self.assets[media_asset_id] = MediaAssetSnapshot(id=media_asset_id, scan_status=scan_status)
 
     async def get_media_asset(self, media_asset_id: UUID) -> MediaAssetSnapshot | None:
         return self.assets.get(media_asset_id)
@@ -259,9 +246,7 @@ class FakeCreditBalancePort:
     has_credit: bool = False
     consumed_for: list[UUID] = field(default_factory=list)
 
-    async def consume_one_listing_credit(
-        self, *, owner_profile_id: BusinessProfileId
-    ) -> bool:
+    async def consume_one_listing_credit(self, *, owner_profile_id: BusinessProfileId) -> bool:
         if not self.has_credit:
             return False
         self.consumed_for.append(owner_profile_id.value)

@@ -87,9 +87,7 @@ class IllegalEntitlementStateTransitionError(BillingDomainError):
     def __init__(self, transition: str, current: str) -> None:
         self.transition = transition
         self.current = current
-        super().__init__(
-            f"cannot {transition} an entitlement in activation state {current}"
-        )
+        super().__init__(f"cannot {transition} an entitlement in activation state {current}")
 
 
 class UnsupportedProductTypeError(BillingDomainError):
@@ -102,9 +100,7 @@ class UnsupportedProductTypeError(BillingDomainError):
 
     def __init__(self, product_type: str) -> None:
         self.product_type = product_type
-        super().__init__(
-            f"no EntitlementType mapping is defined for product type {product_type!r}"
-        )
+        super().__init__(f"no EntitlementType mapping is defined for product type {product_type!r}")
 
 
 class MissingTermError(BillingDomainError):
@@ -131,6 +127,4 @@ class NoCreditsRemainingError(BillingDomainError):
 
     def __init__(self, entitlement_id: UUID) -> None:
         self.entitlement_id = entitlement_id
-        super().__init__(
-            f"entitlement {entitlement_id} has no remaining_credits left to consume"
-        )
+        super().__init__(f"entitlement {entitlement_id} has no remaining_credits left to consume")

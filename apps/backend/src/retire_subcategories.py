@@ -78,9 +78,7 @@ async def _set_all_subcategories(
     exact_paths: frozenset[str] | None = None,
 ) -> None:
     if target_status not in ("ACTIVE", "RETIRED"):
-        raise ValueError(
-            f"target_status must be ACTIVE or RETIRED, got {target_status!r}"
-        )
+        raise ValueError(f"target_status must be ACTIVE or RETIRED, got {target_status!r}")
 
     engine = make_engine()
     session_factory = make_session_factory(engine)
@@ -190,13 +188,9 @@ def main() -> None:
     target = "RETIRED" if sys.argv[1] == "retire" else "ACTIVE"
     scope = sys.argv[2] if len(sys.argv) == 3 else None
     if scope is not None and scope.startswith("@"):
-        asyncio.run(
-            _set_all_subcategories(target, exact_paths=frozenset(scope[1:].split(",")))
-        )
+        asyncio.run(_set_all_subcategories(target, exact_paths=frozenset(scope[1:].split(","))))
     elif scope is not None:
-        asyncio.run(
-            _set_all_subcategories(target, path_prefixes=frozenset(scope.split(",")))
-        )
+        asyncio.run(_set_all_subcategories(target, path_prefixes=frozenset(scope.split(","))))
     else:
         asyncio.run(_set_all_subcategories(target))
 

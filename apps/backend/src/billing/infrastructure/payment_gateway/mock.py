@@ -66,9 +66,7 @@ class MockAdapter:
     ) -> bool:
         if not confirmed:
             return False
-        transaction = await self._transactions.get_by_invoice(
-            invoice_id, provider="MOCK"
-        )
+        transaction = await self._transactions.get_by_invoice(invoice_id, provider="MOCK")
         return transaction is not None and transaction.state == "PERFORMED"
 
 

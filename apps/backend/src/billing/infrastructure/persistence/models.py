@@ -46,12 +46,8 @@ _PROVIDER_TRANSACTION_STATES = "('CREATED', 'PERFORMED', 'CANCELLED')"
 class PurchaseOrderRow(BillingBase, AggregateMixin):  # type: ignore[misc,valid-type]
     __tablename__ = "purchase_order"
 
-    purchaser_profile_id: Mapped[PyUUID] = mapped_column(
-        PGUUID(as_uuid=True), nullable=False
-    )
-    product_definition_id: Mapped[PyUUID] = mapped_column(
-        PGUUID(as_uuid=True), nullable=False
-    )
+    purchaser_profile_id: Mapped[PyUUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    product_definition_id: Mapped[PyUUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
     product_definition_version_id: Mapped[PyUUID] = mapped_column(
         PGUUID(as_uuid=True), nullable=False
     )
@@ -59,21 +55,15 @@ class PurchaseOrderRow(BillingBase, AggregateMixin):  # type: ignore[misc,valid-
     """The frozen `ProductSnapshot` (I-07) -- `product_type`/`price`/`term_days`/`quota` as of
     order time, never re-read from `configuration`."""
     target_type: Mapped[str] = mapped_column(Text, nullable=False)
-    target_id: Mapped[PyUUID | None] = mapped_column(
-        PGUUID(as_uuid=True), nullable=True
-    )
+    target_id: Mapped[PyUUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
     booking_window: Mapped[Any | None] = mapped_column(TSTZRANGE, nullable=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     currency: Mapped[str] = mapped_column(Text, nullable=False, server_default="UZS")
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="PENDING")
 
     __table_args__ = (
-        CheckConstraint(
-            f"target_type IN {_TARGET_TYPES}", name="ck_purchase_order_target_type"
-        ),
-        CheckConstraint(
-            f"status IN {_ORDER_STATUSES}", name="ck_purchase_order_status"
-        ),
+        CheckConstraint(f"target_type IN {_TARGET_TYPES}", name="ck_purchase_order_target_type"),
+        CheckConstraint(f"status IN {_ORDER_STATUSES}", name="ck_purchase_order_status"),
         CheckConstraint(
             "(target_type = 'SLOT_BOOKING') = (booking_window IS NOT NULL)",
             name="ck_purchase_order_booking_shape",
@@ -94,16 +84,12 @@ class InvoiceRow(BillingBase, AggregateMixin):  # type: ignore[misc,valid-type]
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     currency: Mapped[str] = mapped_column(Text, nullable=False, server_default="UZS")
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="ISSUED")
-    payment_confirmed_by: Mapped[PyUUID | None] = mapped_column(
-        PGUUID(as_uuid=True), nullable=True
-    )
+    payment_confirmed_by: Mapped[PyUUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
     payment_confirmed_at: Mapped[datetime | None] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True
     )
     payment_note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    issued_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False
-    )
+    issued_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
 
     __table_args__ = (
         UniqueConstraint("purchase_order_id", name="ux_invoice_purchase_order_id"),
@@ -128,15 +114,9 @@ class EntitlementRow(BillingBase, AggregateMixin):  # type: ignore[misc,valid-ty
     entitlement_type: Mapped[str] = mapped_column(Text, nullable=False)
     promotion_kind: Mapped[str | None] = mapped_column(Text, nullable=True)
     target_id: Mapped[PyUUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
-    valid_from: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False
-    )
-    valid_until: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False
-    )
-    activation_state: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default="ACTIVE"
-    )
+    valid_from: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    valid_until: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    activation_state: Mapped[str] = mapped_column(Text, nullable=False, server_default="ACTIVE")
     remaining_credits: Mapped[int | None] = mapped_column(Integer, nullable=True)
     """Listing paywall Phase 4 (2026-08-23) -- see
     `billing.domain.entitlement.Entitlement.remaining_credits`'s own docstring."""
@@ -158,9 +138,7 @@ class EntitlementRow(BillingBase, AggregateMixin):  # type: ignore[misc,valid-ty
             f"activation_state IN {_ACTIVATION_STATES}",
             name="ck_entitlement_activation_state",
         ),
-        CheckConstraint(
-            "valid_until > valid_from", name="ck_entitlement_validity_ordering"
-        ),
+        CheckConstraint("valid_until > valid_from", name="ck_entitlement_validity_ordering"),
         CheckConstraint(
             "remaining_credits IS NULL OR remaining_credits >= 0",
             name="ck_entitlement_remaining_credits_non_negative",
@@ -193,21 +171,13 @@ class ProviderTransactionRow(BillingBase):  # type: ignore[misc,valid-type]
     `Prepare` time."""
     state: Mapped[str] = mapped_column(Text, nullable=False, server_default="CREATED")
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False
-    )
-    performed_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=True
-    )
-    cancelled_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=True
-    )
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    performed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (
-        CheckConstraint(
-            f"provider IN {_PROVIDERS}", name="ck_provider_transaction_provider"
-        ),
+        CheckConstraint(f"provider IN {_PROVIDERS}", name="ck_provider_transaction_provider"),
         CheckConstraint(
             f"state IN {_PROVIDER_TRANSACTION_STATES}",
             name="ck_provider_transaction_state",
@@ -217,9 +187,7 @@ class ProviderTransactionRow(BillingBase):  # type: ignore[misc,valid-type]
             "provider_transaction_id",
             name="ux_provider_transaction_external_id",
         ),
-        UniqueConstraint(
-            "invoice_id", "provider", name="ux_provider_transaction_invoice_provider"
-        ),
+        UniqueConstraint("invoice_id", "provider", name="ux_provider_transaction_invoice_provider"),
     )
 
 

@@ -232,9 +232,7 @@ class Listing:
         (BRULE-17: a flagged listing is `PUBLISHED` but not *visible*, exactly the "withheld,
         held for moderation" behaviour, realised as one predicate rather than a queued sub-state)."""
         if self.lifecycle_state is not LifecycleState.DRAFT:
-            raise IllegalListingStateTransitionError(
-                "publish", self.lifecycle_state.value
-            )
+            raise IllegalListingStateTransitionError("publish", self.lifecycle_state.value)
         record = self._record(
             to_state=LifecycleState.PUBLISHED,
             kind=TransitionKind.PUBLISH,
@@ -324,9 +322,7 @@ class Listing:
         suspend_all_by_owner_profile`) -- the same "system-driven, no actor" case `record_expiry`
         already establishes for `EXPIRE`, just reachable from a second transition kind."""
         if self.lifecycle_state not in _VISIBLE_STATES:
-            raise IllegalListingStateTransitionError(
-                "suspend", self.lifecycle_state.value
-            )
+            raise IllegalListingStateTransitionError("suspend", self.lifecycle_state.value)
         record = self._record(
             to_state=LifecycleState.SUSPENDED,
             kind=TransitionKind.SUSPEND,
@@ -346,9 +342,7 @@ class Listing:
         self, *, record_id: UUID, actor_user_id: UUID, reason: str | None, now: datetime
     ) -> Listing:
         if self.lifecycle_state not in (*_VISIBLE_STATES, LifecycleState.SUSPENDED):
-            raise IllegalListingStateTransitionError(
-                "archive", self.lifecycle_state.value
-            )
+            raise IllegalListingStateTransitionError("archive", self.lifecycle_state.value)
         record = self._record(
             to_state=LifecycleState.ARCHIVED,
             kind=TransitionKind.ARCHIVE,
@@ -384,9 +378,7 @@ class Listing:
             LifecycleState.SUSPENDED,
             LifecycleState.ARCHIVED,
         ):
-            raise IllegalListingStateTransitionError(
-                "restore", self.lifecycle_state.value
-            )
+            raise IllegalListingStateTransitionError("restore", self.lifecycle_state.value)
         record = self._record(
             to_state=LifecycleState.PUBLISHED,
             kind=TransitionKind.RESTORE,
@@ -415,9 +407,7 @@ class Listing:
         -- only the timestamp moves, recorded as a `RENEW` transition (`from_state == to_state`,
         matching "Renewed as a RECORDED transition", not a state)."""
         if self.lifecycle_state not in _VISIBLE_STATES:
-            raise IllegalListingStateTransitionError(
-                "renew", self.lifecycle_state.value
-            )
+            raise IllegalListingStateTransitionError("renew", self.lifecycle_state.value)
         record = self._record(
             to_state=self.lifecycle_state,
             kind=TransitionKind.RENEW,
@@ -445,9 +435,7 @@ class Listing:
         DELETE at the database level, same discipline `identity.domain.UserAccount.close` already
         uses for anonymise-not-erase)."""
         if self.lifecycle_state is LifecycleState.DELETED:
-            raise IllegalListingStateTransitionError(
-                "delete", self.lifecycle_state.value
-            )
+            raise IllegalListingStateTransitionError("delete", self.lifecycle_state.value)
         record = self._record(
             to_state=LifecycleState.DELETED,
             kind=TransitionKind.DELETE,
@@ -471,13 +459,8 @@ class Listing:
         query re-selecting the same still-expired-and-unrenewed listing on a later poll must not
         re-fire `ListingExpired` every cycle."""
         if self.lifecycle_state not in _VISIBLE_STATES:
-            raise IllegalListingStateTransitionError(
-                "expire", self.lifecycle_state.value
-            )
-        if (
-            self.transitions
-            and self.transitions[-1].transition_kind is TransitionKind.EXPIRE
-        ):
+            raise IllegalListingStateTransitionError("expire", self.lifecycle_state.value)
+        if self.transitions and self.transitions[-1].transition_kind is TransitionKind.EXPIRE:
             return self
         record = self._record(
             to_state=self.lifecycle_state,
@@ -582,15 +565,11 @@ class Listing:
         )
         return replace(self, images=renumbered, updated_at=now)
 
-    def reorder_images(
-        self, ordered_image_ids: tuple[UUID, ...], *, now: datetime
-    ) -> Listing:
+    def reorder_images(self, ordered_image_ids: tuple[UUID, ...], *, now: datetime) -> Listing:
         """`order` (OpenAPI `ImageReorderRequest`) names attachment ids, not media asset ids --
         "position derives from array index; index 0 = primary" (position 1 in storage terms)."""
         current_ids = {image.id for image in self.images}
-        if set(ordered_image_ids) != current_ids or len(ordered_image_ids) != len(
-            self.images
-        ):
+        if set(ordered_image_ids) != current_ids or len(ordered_image_ids) != len(self.images):
             raise DuplicateImagePositionError()
         by_id = {image.id: image for image in self.images}
         reordered = tuple(
@@ -616,14 +595,11 @@ class Listing:
                 image for image in self.images if image.media_asset_id != media_asset_id
             )
             renumbered = tuple(
-                replace(image, position=index + 1)
-                for index, image in enumerate(remaining)
+                replace(image, position=index + 1) for index, image in enumerate(remaining)
             )
             return replace(self, images=renumbered, updated_at=now)
         updated = tuple(
-            replace(image, status=status)
-            if image.media_asset_id == media_asset_id
-            else image
+            replace(image, status=status) if image.media_asset_id == media_asset_id else image
             for image in self.images
         )
         return replace(self, images=updated, updated_at=now)

@@ -40,9 +40,7 @@ class EntitlementUseCases:
         Each entitlement's state change and its `EntitlementExpired` outbox row commit together
         (DEC-09) -- not the three-aggregate sanctioned exception (that is `confirm_payment`'s own,
         scoped there only): a sweep touches exactly one `Entitlement` per iteration."""
-        expiring = await self._entitlements.list_expiring_active(
-            now=now, batch_size=batch_size
-        )
+        expiring = await self._entitlements.list_expiring_active(now=now, batch_size=batch_size)
         for entitlement in expiring:
             order = await self._orders.get_by_id(entitlement.order_id)
             if order is None:
@@ -115,9 +113,7 @@ class EntitlementUseCases:
         return revoked
 
 
-def _entitlement_lifecycle_payload(
-    entitlement: Entitlement, order: Order
-) -> dict[str, object]:
+def _entitlement_lifecycle_payload(entitlement: Entitlement, order: Order) -> dict[str, object]:
     is_promotion = entitlement.promotion_kind is not None
     return {
         "entitlementId": str(entitlement.id),
@@ -126,7 +122,5 @@ def _entitlement_lifecycle_payload(
         "ownerProfileId": str(order.purchaser_profile_id.value),
         "targetId": str(entitlement.target_id),
         "listingId": str(entitlement.target_id) if is_promotion else None,
-        "kind": entitlement.promotion_kind.value
-        if entitlement.promotion_kind
-        else None,
+        "kind": entitlement.promotion_kind.value if entitlement.promotion_kind else None,
     }

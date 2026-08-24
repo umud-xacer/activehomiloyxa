@@ -629,9 +629,7 @@ async def test_unflag_listing_clears_the_flag(use_cases: ListingUseCases) -> Non
         now=NOW,
     )
     assert dup.is_flagged is True
-    unflagged = await use_cases.unflag_listing(
-        listing_id=dup.id, reason="reviewed", now=NOW
-    )
+    unflagged = await use_cases.unflag_listing(listing_id=dup.id, reason="reviewed", now=NOW)
     assert unflagged.is_flagged is False
     assert first  # keep reference alive for readability
 
@@ -656,9 +654,7 @@ async def _create_draft(use_cases: ListingUseCases, *, owner: UserId) -> Listing
 async def test_publish_listing_standalone_method(use_cases: ListingUseCases) -> None:
     owner = UserId(value=uuid4())
     draft = await _create_draft(use_cases, owner=owner)
-    published = await use_cases.publish_listing(
-        listing_id=draft.id, actor_user_id=owner, now=NOW
-    )
+    published = await use_cases.publish_listing(listing_id=draft.id, actor_user_id=owner, now=NOW)
     assert published.lifecycle_state.value == "PUBLISHED"
 
 
@@ -722,9 +718,7 @@ async def test_change_status_suspend_archive_restore(
 ) -> None:
     owner = UserId(value=uuid4())
     draft = await _create_draft(use_cases, owner=owner)
-    published = await use_cases.publish_listing(
-        listing_id=draft.id, actor_user_id=owner, now=NOW
-    )
+    published = await use_cases.publish_listing(listing_id=draft.id, actor_user_id=owner, now=NOW)
 
     suspended = await use_cases.change_status(
         listing_id=published.id,

@@ -135,9 +135,7 @@ async def payme_webhook(
 
     request_id = body.get("id") if isinstance(body, dict) else None
     if not _verify_payme_auth(authorization, merchant_key):
-        return _payme_response(
-            request_id, error=PaymeError(-32504, "Insufficient privilege")
-        )
+        return _payme_response(request_id, error=PaymeError(-32504, "Insufficient privilege"))
 
     method = body.get("method") if isinstance(body, dict) else None
     params = body.get("params") if isinstance(body, dict) else None
@@ -314,15 +312,11 @@ async def mock_pay(
         return JSONResponse({"error": "invalid JSON body"}, status_code=400)
 
     invoice_id_raw = body.get("invoiceId") if isinstance(body, dict) else None
-    provider_label = (
-        body.get("providerLabel", "MOCK") if isinstance(body, dict) else "MOCK"
-    )
+    provider_label = body.get("providerLabel", "MOCK") if isinstance(body, dict) else "MOCK"
     try:
         invoice_id = UUID(str(invoice_id_raw))
     except (ValueError, TypeError):
-        return JSONResponse(
-            {"error": "invoiceId is required and must be a UUID"}, status_code=422
-        )
+        return JSONResponse({"error": "invoiceId is required and must be a UUID"}, status_code=422)
 
     try:
         result = await api.pay(

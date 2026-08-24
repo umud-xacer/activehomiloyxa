@@ -158,10 +158,7 @@ class SqlalchemyOrderRepository:
             created_at, row_id = _decode_cursor(cursor)
             stmt = stmt.where(
                 (PurchaseOrderRow.created_at > created_at)
-                | (
-                    (PurchaseOrderRow.created_at == created_at)
-                    & (PurchaseOrderRow.id > row_id)
-                )
+                | ((PurchaseOrderRow.created_at == created_at) & (PurchaseOrderRow.id > row_id))
             )
         result = await self._session.execute(stmt)
         rows = list(result.scalars().all())
@@ -251,11 +248,7 @@ class SqlalchemyInvoiceRepository:
     async def list_all(
         self, *, status: str | None, cursor: str | None, limit: int
     ) -> tuple[list[Invoice], str | None]:
-        stmt = (
-            select(InvoiceRow)
-            .order_by(InvoiceRow.issued_at, InvoiceRow.id)
-            .limit(limit + 1)
-        )
+        stmt = select(InvoiceRow).order_by(InvoiceRow.issued_at, InvoiceRow.id).limit(limit + 1)
         if status is not None:
             stmt = stmt.where(InvoiceRow.status == status)
         if cursor is not None:
@@ -277,9 +270,7 @@ class SqlalchemyInvoiceRepository:
         documented anywhere in the approved documents -- `INV-<6-digit-zero-padded-sequence>` is
         a defensible, human-readable, collision-free choice (flagged in `billing/README.md`
         "Known gaps" as a judgment call, not a literal spec)."""
-        result = await self._session.execute(
-            text("SELECT nextval('billing.invoice_number_seq')")
-        )
+        result = await self._session.execute(text("SELECT nextval('billing.invoice_number_seq')"))
         seq_value = result.scalar_one()
         return f"INV-{seq_value:06d}"
 
@@ -292,9 +283,7 @@ def _entitlement_to_domain(row: EntitlementRow) -> Entitlement:
         id=row.id,
         order_id=row.purchase_order_id,
         entitlement_type=EntitlementType(row.entitlement_type),
-        promotion_kind=PromotionKind(row.promotion_kind)
-        if row.promotion_kind
-        else None,
+        promotion_kind=PromotionKind(row.promotion_kind) if row.promotion_kind else None,
         target_id=row.target_id,
         valid_from=row.valid_from,
         valid_until=row.valid_until,
@@ -310,9 +299,7 @@ def _entitlement_row_kwargs(entitlement: Entitlement) -> dict[str, object]:
     return {
         "purchase_order_id": entitlement.order_id,
         "entitlement_type": entitlement.entitlement_type.value,
-        "promotion_kind": entitlement.promotion_kind.value
-        if entitlement.promotion_kind
-        else None,
+        "promotion_kind": entitlement.promotion_kind.value if entitlement.promotion_kind else None,
         "target_id": entitlement.target_id,
         "valid_from": entitlement.valid_from,
         "valid_until": entitlement.valid_until,
@@ -369,9 +356,7 @@ class SqlalchemyEntitlementRepository:
             .order_by(EntitlementRow.created_at)
         )
         if active_only:
-            stmt = stmt.where(
-                EntitlementRow.activation_state == ActivationState.ACTIVE.value
-            )
+            stmt = stmt.where(EntitlementRow.activation_state == ActivationState.ACTIVE.value)
         result = await self._session.execute(stmt)
         return tuple(_entitlement_to_domain(row) for row in result.scalars().all())
 

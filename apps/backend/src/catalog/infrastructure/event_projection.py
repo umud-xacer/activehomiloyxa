@@ -101,9 +101,7 @@ async def handle_media_event(session: AsyncSession, envelope: EventEnvelope) -> 
         await listings.save(updated)
 
 
-async def handle_entitlement_event(
-    session: AsyncSession, envelope: EventEnvelope
-) -> None:
+async def handle_entitlement_event(session: AsyncSession, envelope: EventEnvelope) -> None:
     """I-08: projects a billing entitlement event into `catalog.subscription_projection` --
     catalog never imports billing (AIR-10); this is the async, outbox-driven, one-way read side
     of that boundary. Not wired to a real producer as of this task (BC-08 does not exist);
@@ -128,16 +126,10 @@ async def handle_entitlement_event(
             owner_profile_id=BusinessProfileId(value=UUID(str(owner_profile_id))),
             entitlement_id=UUID(str(entitlement_id)),
             product_definition_id=(
-                UUID(str(product_definition_id_raw))
-                if product_definition_id_raw
-                else None
+                UUID(str(product_definition_id_raw)) if product_definition_id_raw else None
             ),
             quota_document=dict(payload.get("quota") or {}),
-            valid_until=(
-                datetime.fromisoformat(str(valid_until_raw))
-                if valid_until_raw
-                else None
-            ),
+            valid_until=(datetime.fromisoformat(str(valid_until_raw)) if valid_until_raw else None),
             source_event_id=envelope.event_id,
         )
         quota = QuotaEnforcementService(
@@ -174,11 +166,7 @@ async def handle_listing_promotion_event(
             kind_raw = payload.get("kind")
             valid_until_raw = payload.get("validUntil")
             entitlement_id_raw = payload.get("entitlementId")
-            if (
-                kind_raw is None
-                or valid_until_raw is None
-                or entitlement_id_raw is None
-            ):
+            if kind_raw is None or valid_until_raw is None or entitlement_id_raw is None:
                 return
             await use_cases.apply_promotion_projection(
                 listing_id=listing_id,

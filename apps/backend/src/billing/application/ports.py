@@ -131,9 +131,7 @@ class ProductDefinitionReaderPort(Protocol):
     ConfigurationPort.list_config_heads`/`get_config_version` only -- never `configuration.
     domain`/`application`/`infrastructure` (`cross-module-billing`)."""
 
-    async def get_product(
-        self, product_id: UUID
-    ) -> ProductDefinitionSnapshot | None: ...
+    async def get_product(self, product_id: UUID) -> ProductDefinitionSnapshot | None: ...
 
     async def list_products(
         self, *, product_type: ProductType | None

@@ -63,9 +63,7 @@ def _listing_to_dto(listing: DomainListing) -> Listing:
         id=listing.id.value,
         listing_type=listing.listing_type.value,
         owner_user_id=listing.owner_user_id.value,
-        owner_profile_id=listing.owner_profile_id.value
-        if listing.owner_profile_id
-        else None,
+        owner_profile_id=listing.owner_profile_id.value if listing.owner_profile_id else None,
         category_id=listing.category_id,
         category_path=listing.category_path,
         form_definition_version_id=listing.form_definition_version_id,
@@ -129,9 +127,7 @@ async def get_listing(
     use_cases: ListingUseCases = Depends(get_listing_use_cases),
 ) -> Listing:
     listing = await use_cases.get_listing(ListingId(value=listingId))
-    is_owner = (
-        acting_user is not None and acting_user.account_id == listing.owner_user_id
-    )
+    is_owner = acting_user is not None and acting_user.account_id == listing.owner_user_id
     if not is_owner and not listing.is_publicly_visible(now=datetime.now(UTC)):
         # Non-owners never learn a non-visible listing exists (I-06's own visibility rule).
         raise ListingNotFoundError(listing.id)
@@ -201,9 +197,7 @@ async def update_listing(
     return _listing_to_dto(listing)
 
 
-@catalog_router.delete(
-    "/listings/{listingId}", operation_id="deleteListing", status_code=204
-)
+@catalog_router.delete("/listings/{listingId}", operation_id="deleteListing", status_code=204)
 async def delete_listing(
     listingId: UUID,
     acting_user: ActingUser = Depends(get_acting_user),
@@ -286,9 +280,7 @@ async def detach_listing_image(
     )
 
 
-@catalog_router.get(
-    "/listings/{listingId}/statistics", operation_id="getListingStatistics"
-)
+@catalog_router.get("/listings/{listingId}/statistics", operation_id="getListingStatistics")
 async def get_listing_statistics(
     listingId: UUID,
     acting_user: ActingUser = Depends(get_acting_user),
@@ -345,10 +337,7 @@ async def list_favorites(
         user_id=acting_user.account_id, cursor=cursor, limit=page_limit
     )
     return FavoritePage(
-        items=[
-            Favorite(listing_id=f.listing_id.value, created_at=f.created_at)
-            for f in favorites
-        ],
+        items=[Favorite(listing_id=f.listing_id.value, created_at=f.created_at) for f in favorites],
         page=PageInfo(limit=page_limit, next_cursor=next_cursor),
     )
 
@@ -364,9 +353,7 @@ async def add_favorite(
         listing_id=ListingId(value=body.listing_id),
         now=datetime.now(UTC),
     )
-    return Favorite(
-        listing_id=favorite.listing_id.value, created_at=favorite.created_at
-    )
+    return Favorite(listing_id=favorite.listing_id.value, created_at=favorite.created_at)
 
 
 @favorites_router.delete(

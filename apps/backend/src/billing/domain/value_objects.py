@@ -138,22 +138,16 @@ class TargetRef:
             self.target_type in (TargetType.LISTING, TargetType.SLOT_BOOKING)
             and self.target_id is None
         ):
-            raise InvalidTargetRefError(
-                f"{self.target_type.value} targets require a target_id"
-            )
+            raise InvalidTargetRefError(f"{self.target_type.value} targets require a target_id")
         booking_window = self.booking_window
-        if (self.target_type is TargetType.SLOT_BOOKING) != (
-            booking_window is not None
-        ):
+        if (self.target_type is TargetType.SLOT_BOOKING) != (booking_window is not None):
             raise InvalidTargetRefError(
                 "booking_window is required for, and only for, SLOT_BOOKING targets"
             )
         if booking_window is not None:
             start, end = booking_window
             if end <= start:
-                raise InvalidTargetRefError(
-                    "booking_window end must be strictly after start"
-                )
+                raise InvalidTargetRefError("booking_window end must be strictly after start")
 
     @property
     def listing_id(self) -> ListingId | None:

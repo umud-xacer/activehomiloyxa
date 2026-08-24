@@ -77,9 +77,7 @@ def _to_product_dto(product: ProductDefinitionSnapshot) -> Product:
         product_type=product.product_type.value,
         name=product.name,
         description=product.description,
-        price=Money(
-            amount=Decimal(product.price_amount), currency=product.price_currency
-        ),
+        price=Money(amount=Decimal(product.price_amount), currency=product.price_currency),
         term_days=product.term_days,
         quota=product.quota,
         category_id=product.category_id,
@@ -109,9 +107,7 @@ def _to_invoice_dto(invoice: Invoice) -> InvoiceDto:
         status=invoice.status.value,
         issued_at=invoice.issued_at,
         payment_confirmed_at=(
-            invoice.payment_confirmation.confirmed_at
-            if invoice.payment_confirmation
-            else None
+            invoice.payment_confirmation.confirmed_at if invoice.payment_confirmation else None
         ),
     )
 
@@ -121,9 +117,7 @@ def _to_entitlement_dto(entitlement: Entitlement) -> EntitlementDto:
         id=entitlement.id,
         order_id=entitlement.order_id,
         entitlement_type=entitlement.entitlement_type.value,
-        promotion_kind=entitlement.promotion_kind.value
-        if entitlement.promotion_kind
-        else None,
+        promotion_kind=entitlement.promotion_kind.value if entitlement.promotion_kind else None,
         target_id=entitlement.target_id,
         valid_from=entitlement.valid_from,
         valid_until=entitlement.valid_until,
@@ -170,13 +164,9 @@ async def get_pricing_plans(
             (p for p in publication_products if p.category_id == categoryId), None
         )
     if single_listing is None:
-        single_listing = next(
-            (p for p in publication_products if p.category_id is None), None
-        )
+        single_listing = next((p for p in publication_products if p.category_id is None), None)
 
-    credit_packs = await use_cases.list_products(
-        product_type=ProductType.LISTING_CREDIT_PACK
-    )
+    credit_packs = await use_cases.list_products(product_type=ProductType.LISTING_CREDIT_PACK)
 
     return PricingPlans(
         single_listing=_to_product_dto(single_listing) if single_listing else None,
@@ -200,9 +190,7 @@ async def list_my_orders(
     for order in orders:
         invoice = await use_cases.get_order_invoice(order.id)
         items.append(_to_order_dto(order, invoice_id=invoice.id if invoice else None))
-    return OrderPage(
-        items=items, page=PageInfo(limit=page_limit, next_cursor=next_cursor)
-    )
+    return OrderPage(items=items, page=PageInfo(limit=page_limit, next_cursor=next_cursor))
 
 
 @billing_router.post("/orders", operation_id="createOrder", status_code=201)
