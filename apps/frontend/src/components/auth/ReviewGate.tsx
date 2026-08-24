@@ -22,6 +22,16 @@ function GateShell({ children }: { children: ReactNode }) {
 }
 
 export function ReviewGate({ account, children }: { account: Account; children: ReactNode }) {
+  // `reviewStatus` (ADR-0007) exists to vet a LEGAL_ENTITY/INVESTOR signup for fraud before its
+  // workspace unlocks -- a `super-admin`-rolled account already holds the platform's highest
+  // trust level (RBAC, granted only via `bootstrap_admin.py`/`assignRole`'s own maker-checker
+  // gate), so re-vetting it here would be nonsensical, not protective. Bypass unconditionally,
+  // regardless of `accountKind`/`reviewStatus` -- a super-admin should never be blocked out of
+  // any dashboard.
+  if (account.roles.includes("super-admin")) {
+    return <>{children}</>;
+  }
+
   if (account.reviewStatus === "REJECTED") {
     return (
       <GateShell>
