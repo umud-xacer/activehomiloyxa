@@ -10,6 +10,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { useState } from "react";
 import { ChevronRight, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -60,6 +61,13 @@ function SubCategoryCard({
 }) {
   const Icon = SUB_CATEGORY_ICON[subCategory];
   const image = SUB_CATEGORY_IMAGE[subCategory];
+  // A `SUB_CATEGORY_IMAGE` entry is a real URL, but the keyless third-party photo source it
+  // points at (loremflickr, see that const's own docstring) can 500/404 at request time even
+  // when the URL itself is well-formed -- confirmed live for several sub-categories. Track load
+  // failure so the card falls back to the SAME accent-gradient+icon tile the "no photo yet"
+  // branch already uses, instead of silently rendering nothing but the dark overlay.
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImage = !!image && !imgFailed;
 
   return (
     <motion.div
@@ -73,11 +81,12 @@ function SubCategoryCard({
         params={{ categorySlug, subCategorySlug: SUB_CATEGORY_SLUG[subCategory] }}
         className="group relative flex h-40 flex-col justify-end overflow-hidden rounded-3xl border border-border shadow-soft transition-all duration-300 hover:-translate-y-1.5 hover:shadow-elevated"
       >
-        {image ? (
+        {showImage ? (
           <img
             src={image}
             alt=""
             loading="lazy"
+            onError={() => setImgFailed(true)}
             className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
@@ -86,8 +95,8 @@ function SubCategoryCard({
             style={{ background: `linear-gradient(135deg, ${accent}55 0%, ${accent}14 100%)` }}
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-        {!image && (
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+        {!showImage && (
           <Icon
             className="absolute right-4 top-4 size-9 text-white/25"
             strokeWidth={1.5}

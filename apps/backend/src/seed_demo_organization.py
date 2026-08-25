@@ -317,6 +317,20 @@ async def _seed_company(base_url: str, config: DemoCompanyConfig) -> None:
     )
     resp.raise_for_status()
 
+    print(
+        "8b) Approving the BUSINESS PROFILE's own registration (ADR-0012 -- distinct from the "
+        "identity account approval in step 9 below; a new profile now starts PENDING_REVIEW and "
+        "is invisible on the public directory/landing page until this decision is made) ..."
+    )
+    async for profile_use_cases in composition_root.provide_profile_use_cases():
+        await profile_use_cases.decide_registration(
+            BusinessProfileId(value=UUID(profile_id)),
+            reviewer_user_id=UUID(account_id),
+            outcome="APPROVED",
+            reason="Demo seed: auto-approved for verification walkthrough.",
+            now=datetime.now(UTC),
+        )
+
     print("9) Approving the account's registration (identity review queue) ...")
     found_account_id: list[UserId] = []
     async for id_session in composition_root._identity_session():

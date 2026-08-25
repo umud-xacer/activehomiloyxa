@@ -12,9 +12,11 @@
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import {
   MAIN_CATEGORIES,
+  MAIN_CATEGORY_ACCENT,
   MAIN_CATEGORY_LABEL,
   MAIN_CATEGORY_IMAGE,
   MAIN_CATEGORY_SLUG,
@@ -22,6 +24,11 @@ import {
 } from "@/lib/business-profiles-client";
 
 function CategoryChip({ category, index }: { category: MainCategory; index: number }) {
+  // The keyless third-party photo source `MAIN_CATEGORY_IMAGE` points at can fail at request
+  // time even for a well-formed URL -- falls back to a plain accent tint tile instead of a
+  // broken-image glyph inside the circle.
+  const [imgFailed, setImgFailed] = useState(false);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -35,12 +42,20 @@ function CategoryChip({ category, index }: { category: MainCategory; index: numb
         className="group flex w-24 shrink-0 flex-col items-center gap-2.5 rounded-2xl border border-transparent px-2 py-3 text-center transition-all hover:border-border hover:bg-card hover:shadow-soft sm:w-28"
       >
         <div className="relative flex size-16 items-center justify-center overflow-hidden rounded-2xl border border-border bg-white shadow-soft transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-glow sm:size-20">
-          <img
-            src={MAIN_CATEGORY_IMAGE[category]}
-            alt=""
-            className="size-full object-cover"
-            loading="lazy"
-          />
+          {imgFailed ? (
+            <div
+              className="size-full"
+              style={{ background: `${MAIN_CATEGORY_ACCENT[category]}22` }}
+            />
+          ) : (
+            <img
+              src={MAIN_CATEGORY_IMAGE[category]}
+              alt=""
+              className="size-full object-cover"
+              loading="lazy"
+              onError={() => setImgFailed(true)}
+            />
+          )}
         </div>
         <div className="font-display text-[12.5px] font-semibold leading-tight text-foreground/85 group-hover:text-foreground">
           {MAIN_CATEGORY_LABEL[category]}

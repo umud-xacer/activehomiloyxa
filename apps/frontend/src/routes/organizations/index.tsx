@@ -6,6 +6,7 @@
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -34,6 +35,11 @@ export const Route = createFileRoute("/organizations/")({
 });
 
 function CategoryCard({ category, index }: { category: MainCategory; index: number }) {
+  // Same "the URL is well-formed but the keyless third-party photo source can still fail at
+  // request time" defensive fallback `SubCategoryCard` (one level down) uses.
+  const [imgFailed, setImgFailed] = useState(false);
+  const accent = MAIN_CATEGORY_ACCENT[category];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 18 }}
@@ -47,12 +53,20 @@ function CategoryCard({ category, index }: { category: MainCategory; index: numb
         className="group flex h-full flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-elevated"
       >
         <div className="relative h-40 overflow-hidden sm:h-44">
-          <img
-            src={MAIN_CATEGORY_IMAGE[category]}
-            alt=""
-            loading="lazy"
-            className="size-full object-cover transition duration-500 group-hover:scale-105"
-          />
+          {imgFailed ? (
+            <div
+              className="size-full"
+              style={{ background: `linear-gradient(135deg, ${accent}55 0%, ${accent}14 100%)` }}
+            />
+          ) : (
+            <img
+              src={MAIN_CATEGORY_IMAGE[category]}
+              alt=""
+              loading="lazy"
+              onError={() => setImgFailed(true)}
+              className="size-full object-cover transition duration-500 group-hover:scale-105"
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-transparent" />
         </div>
         <div className="flex flex-1 flex-col gap-1.5 p-5">

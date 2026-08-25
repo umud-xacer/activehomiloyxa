@@ -60,6 +60,13 @@ _ACCENT_BY_MAIN_CATEGORY: dict[MainCategory, str] = {
     MainCategory.ARCHITECTURE_INTERIOR: "#7c3aed",
     MainCategory.REPAIR_SERVICES: "#0891b2",
     MainCategory.REAL_ESTATE_AGENCIES: "#db2777",
+    # ADR-0012's 4 new sectors -- same hex values as the frontend's own
+    # `MAIN_CATEGORY_ACCENT` (business-profiles-client.ts), kept in sync by hand like the rest
+    # of this file's own dicts.
+    MainCategory.TRANSPORT_LOGISTICS: "#f59e0b",
+    MainCategory.LEGAL_CONSULTING_ACCOUNTING: "#0d9488",
+    MainCategory.HOME_APPLIANCES_EQUIPMENT: "#dc2626",
+    MainCategory.HOSPITALITY_SERVICES: "#9333ea",
 }
 
 _SUB_CATEGORY_LABEL: dict[SubCategory, str] = {
@@ -90,6 +97,28 @@ _SUB_CATEGORY_LABEL: dict[SubCategory, str] = {
     SubCategory.COMMERCIAL_AGENCY: "Tijorat ko'chmas mulki agentligi",
     SubCategory.PROPERTY_MANAGEMENT: "Mulkni boshqarish",
     SubCategory.VALUATION_SERVICE: "Baholash xizmati",
+    # ADR-0012's 4 new sectors' sub-categories -- same labels as the frontend's own
+    # `SUB_CATEGORY_LABEL` (business-profiles-client.ts).
+    SubCategory.FREIGHT_TRANSPORT: "Yuk tashish",
+    SubCategory.COURIER_DELIVERY: "Kuryerlik xizmati",
+    SubCategory.CAR_RENTAL: "Avtomobil ijarasi",
+    SubCategory.LOGISTICS_WAREHOUSING: "Logistika va ombor xizmatlari",
+    SubCategory.MOVING_SERVICES: "Ko'chirish xizmatlari",
+    SubCategory.LAW_FIRM: "Yuridik firma",
+    SubCategory.ACCOUNTING_FIRM: "Buxgalteriya xizmati",
+    SubCategory.BUSINESS_CONSULTING: "Biznes konsalting",
+    SubCategory.TAX_ADVISORY: "Soliq maslahati",
+    SubCategory.NOTARY_SERVICES: "Notarial xizmatlar",
+    SubCategory.HOME_APPLIANCE_STORE: "Maishiy texnika do'koni",
+    SubCategory.ELECTRONICS_RETAILER: "Elektronika do'koni",
+    SubCategory.APPLIANCE_SERVICE_CENTER: "Texnika xizmat markazi",
+    SubCategory.EQUIPMENT_RENTAL: "Uskunalar ijarasi",
+    SubCategory.HVAC_EQUIPMENT_SUPPLIER: "Klimat texnikasi",
+    SubCategory.HOTEL_OPERATOR: "Mehmonxona operatori",
+    SubCategory.GUESTHOUSE_OPERATOR: "Gostevoy uy operatori",
+    SubCategory.EVENT_VENUE: "Tadbirlar maskani",
+    SubCategory.CATERING_SERVICE: "Ketering xizmati",
+    SubCategory.TRAVEL_AGENCY: "Sayohat agentligi",
 }
 
 _PROFILE_TYPE_BY_MAIN_CATEGORY: dict[MainCategory, str] = {
@@ -99,6 +128,14 @@ _PROFILE_TYPE_BY_MAIN_CATEGORY: dict[MainCategory, str] = {
     MainCategory.ARCHITECTURE_INTERIOR: "ARCHITECT",
     MainCategory.REPAIR_SERVICES: "SERVICE_PROVIDER",
     MainCategory.REAL_ESTATE_AGENCIES: "SERVICE_PROVIDER",
+    # ADR-0012's 4 new sectors -- `ProfileType` stays the frozen 8-value SRS vocabulary
+    # (see that enum's own docstring), so every sector maps to whichever existing value reads
+    # closest; none of these four have a dedicated type of their own, same situation
+    # FINANCE_MORTGAGE/REAL_ESTATE_AGENCIES were already in.
+    MainCategory.TRANSPORT_LOGISTICS: "SERVICE_PROVIDER",
+    MainCategory.LEGAL_CONSULTING_ACCOUNTING: "SERVICE_PROVIDER",
+    MainCategory.HOME_APPLIANCES_EQUIPMENT: "SUPPLIER",
+    MainCategory.HOSPITALITY_SERVICES: "SERVICE_PROVIDER",
 }
 
 _NAME_PREFIXES = [
@@ -324,6 +361,18 @@ async def _seed_company(base_url: str, config: BulkCompanyConfig, *, verify: boo
         f"{base_url}/business-profiles/{profile_id}/complete-onboarding", json={}, timeout=30
     )
     resp.raise_for_status()
+
+    # ADR-0012: a new business profile now starts PENDING_REVIEW (invisible on the public
+    # directory/landing page) until this decision is made -- distinct from the identity
+    # account-level approval below (ADR-0007, a different aggregate entirely).
+    async for profile_use_cases in composition_root.provide_profile_use_cases():
+        await profile_use_cases.decide_registration(
+            BusinessProfileId(value=UUID(profile_id)),
+            reviewer_user_id=UUID(account_id),
+            outcome="APPROVED",
+            reason="Bulk demo seed: auto-approved for sub-category directory QA.",
+            now=datetime.now(UTC),
+        )
 
     found_account_id: list[UserId] = []
     async for id_session in composition_root._identity_session():
