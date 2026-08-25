@@ -156,6 +156,21 @@ jobs:
       MINIO_ROOT_PASSWORD: active_home_ci_only
       MINIO_MEDIA_BUCKET: active-home-media
       MINIO_USE_TLS: "false"
+      # `backbone.rate_limit.middleware.GlobalRateLimitMiddleware`'s per-IP budget (default
+      # 300 req/60s) protects production against a real flood from one visitor -- but this job's
+      # own `tests/performance/test_benchmark_*.py` files deliberately drive hundreds of
+      # concurrent requests each, all as real loopback HTTP against a real `uvicorn` subprocess
+      # (`tests/performance/harness.py`'s `UvicornServer`), so every one of them is seen as the
+      # SAME visitor (127.0.0.1: no CF-Connecting-IP/X-Real-IP headers are sent, and
+      # `backbone.net.client_ip.resolve_client_ip` falls back to the raw TCP peer). Four benchmark
+      # files running in one pytest session -- each issuing 300-500+ requests on its own -- blow
+      # through the production ceiling well before the LAST file's first wave even starts, which
+      # is exactly what made `search_full_text` (test_benchmark_search.py, alphabetically after
+      # test_benchmark_interactive.py) 100% 429 in earlier CI runs: not a real search regression,
+      # a benchmark-vs-its-own-abuse-guard collision. `main.py` already reads this from the
+      # `RATE_LIMIT_MAX_REQUESTS` env var for exactly this kind of override -- raised here, for
+      # this CI job only, not in the middleware's own production default.
+      RATE_LIMIT_MAX_REQUESTS: "20000"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

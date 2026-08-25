@@ -275,7 +275,9 @@ class TestInitialRemainingCredits:
 class TestConsumeCredit:
     def _active_credit_pack(self, *, remaining_credits: int | None) -> Entitlement:
         order = _credit_pack_order(
-            quota=None if remaining_credits is None else {"listing_publish_credits": remaining_credits}
+            quota=None
+            if remaining_credits is None
+            else {"listing_publish_credits": remaining_credits}
         )
         return EntitlementFactory.activate_from_paid_order(
             entitlement_id=uuid4(), order=order, now=_NOW

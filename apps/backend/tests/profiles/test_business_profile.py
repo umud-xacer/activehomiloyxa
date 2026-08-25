@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
@@ -23,7 +24,16 @@ from profiles.domain import (
     ProfileType,
     VerificationCase,
 )
+from profiles.domain.business_profile import MAX_PROMO_VIDEOS
+from profiles.domain.exceptions import (
+    OnboardingAlreadyCompletedError,
+    OnboardingIncompleteError,
+    PromoVideoLimitExceededError,
+    PromoVideoNotFoundError,
+    SubCategoryNotInMainCategoryError,
+)
 from profiles.domain.submitted_document import SubmittedDocument
+from profiles.domain.value_objects import MainCategory, SubCategory
 from shared_kernel import BusinessProfileId, LocalizedText, UserId
 
 NOW = datetime(2026, 7, 13, 12, 0, tzinfo=UTC)
@@ -312,3 +322,161 @@ def test_remove_portfolio_item_for_media_asset_is_noop_if_absent() -> None:
     profile = _new_profile().activate(now=NOW)
     unchanged = profile.remove_portfolio_item_for_media_asset(uuid4(), now=NOW)
     assert unchanged is profile
+
+
+# --- sub_category validation (Organizations Sub-Category task) --------------------------------
+
+
+def test_create_with_valid_main_and_sub_category_succeeds() -> None:
+    profile = _new_profile(
+        main_category=MainCategory.FINANCE_MORTGAGE, sub_category=SubCategory.COMMERCIAL_BANK
+    )
+    assert profile.main_category is MainCategory.FINANCE_MORTGAGE
+    assert profile.sub_category is SubCategory.COMMERCIAL_BANK
+
+
+def test_create_with_sub_category_from_a_different_main_category_raises() -> None:
+    with pytest.raises(SubCategoryNotInMainCategoryError):
+        _new_profile(
+            main_category=MainCategory.FINANCE_MORTGAGE,
+            sub_category=SubCategory.GENERAL_CONTRACTOR,
+        )
+
+
+def test_create_with_sub_category_but_no_main_category_raises() -> None:
+    with pytest.raises(SubCategoryNotInMainCategoryError):
+        _new_profile(main_category=None, sub_category=SubCategory.COMMERCIAL_BANK)
+
+
+def test_update_details_validates_sub_category_against_the_effective_main_category() -> None:
+    profile = _new_profile(main_category=MainCategory.FINANCE_MORTGAGE).activate(now=NOW)
+    with pytest.raises(SubCategoryNotInMainCategoryError):
+        profile.update_details(sub_category=SubCategory.GENERAL_CONTRACTOR, now=NOW)
+
+    updated = profile.update_details(sub_category=SubCategory.MORTGAGE_CENTER, now=NOW)
+    assert updated.sub_category is SubCategory.MORTGAGE_CENTER
+
+
+# --- branding (logo/banner) --------------------------------------------------------------------
+
+
+def test_update_branding_sets_logo_and_banner() -> None:
+    profile = _new_profile().activate(now=NOW)
+    logo_id, banner_id = uuid4(), uuid4()
+    updated = profile.update_branding(
+        logo_media_asset_id=logo_id, banner_media_asset_id=banner_id, now=NOW
+    )
+    assert updated.logo_media_asset_id == logo_id
+    assert updated.banner_media_asset_id == banner_id
+
+
+def test_update_branding_refused_once_archived() -> None:
+    profile = _new_profile().activate(now=NOW).archive(now=NOW)
+    with pytest.raises(IllegalProfileStatusTransitionError):
+        profile.update_branding(logo_media_asset_id=uuid4(), banner_media_asset_id=None, now=NOW)
+
+
+# --- promo video (landing-page promo-video business rule) --------------------------------------
+
+
+def test_add_promo_video_appends() -> None:
+    profile = _new_profile().activate(now=NOW)
+    media_id = uuid4()
+    updated = profile.add_promo_video(media_asset_id=media_id, now=NOW)
+    assert updated.promo_video_media_asset_ids == (media_id,)
+
+
+def test_add_promo_video_is_noop_for_a_duplicate_id() -> None:
+    profile = _new_profile().activate(now=NOW)
+    media_id = uuid4()
+    once = profile.add_promo_video(media_asset_id=media_id, now=NOW)
+    twice = once.add_promo_video(media_asset_id=media_id, now=NOW)
+    assert twice is once
+
+
+def test_add_promo_video_limit_enforced() -> None:
+    profile = _new_profile().activate(now=NOW)
+    for _ in range(MAX_PROMO_VIDEOS):
+        profile = profile.add_promo_video(media_asset_id=uuid4(), now=NOW)
+    with pytest.raises(PromoVideoLimitExceededError):
+        profile.add_promo_video(media_asset_id=uuid4(), now=NOW)
+
+
+def test_remove_promo_video_removes_a_known_id() -> None:
+    profile = _new_profile().activate(now=NOW)
+    media_id = uuid4()
+    profile = profile.add_promo_video(media_asset_id=media_id, now=NOW)
+    updated = profile.remove_promo_video(media_id, now=NOW)
+    assert updated.promo_video_media_asset_ids == ()
+
+
+def test_remove_nonexistent_promo_video_raises() -> None:
+    profile = _new_profile().activate(now=NOW)
+    with pytest.raises(PromoVideoNotFoundError):
+        profile.remove_promo_video(uuid4(), now=NOW)
+
+
+# --- onboarding / trial (ADR-0010) --------------------------------------------------------------
+
+
+def _onboardable_profile() -> BusinessProfile:
+    profile = _new_profile(
+        description=LocalizedText(uz_latn="Biz haqimizda"),
+        contacts={"phones": ["+998901234567"]},
+        address="Tashkent",
+        main_category=MainCategory.FINANCE_MORTGAGE,
+    ).activate(now=NOW)
+    profile = profile.update_branding(
+        logo_media_asset_id=uuid4(), banner_media_asset_id=None, now=NOW
+    )
+    profile = profile.add_portfolio_item(
+        item_id=uuid4(), media_asset_id=uuid4(), caption=None, now=NOW
+    )
+    return profile
+
+
+def test_complete_onboarding_starts_the_trial_when_all_mandatory_fields_are_set() -> None:
+    profile = _onboardable_profile()
+    completed = profile.complete_onboarding(now=NOW, trial_days=5)
+    assert completed.onboarding_completed_at == NOW
+    assert completed.trial_starts_at == NOW
+    assert completed.trial_ends_at == NOW + timedelta(days=5)
+
+
+def test_complete_onboarding_twice_raises() -> None:
+    completed = _onboardable_profile().complete_onboarding(now=NOW)
+    with pytest.raises(OnboardingAlreadyCompletedError):
+        completed.complete_onboarding(now=NOW)
+
+
+@pytest.mark.parametrize(
+    "field_to_clear,expected_missing_field",
+    [
+        ("contacts", "contacts.phones"),
+        ("logo", "logoMediaAssetId"),
+        ("description", "description"),
+        ("address", "address"),
+        ("portfolio", "portfolio"),
+        ("main_category", "mainCategory"),
+    ],
+)
+def test_complete_onboarding_refuses_when_a_mandatory_field_is_missing(
+    field_to_clear: str, expected_missing_field: str
+) -> None:
+    profile = _onboardable_profile()
+    if field_to_clear == "contacts":
+        profile = replace(profile, contacts={})
+    elif field_to_clear == "logo":
+        profile = replace(profile, logo_media_asset_id=None)
+    elif field_to_clear == "description":
+        profile = replace(profile, description=None)
+    elif field_to_clear == "address":
+        profile = replace(profile, address=None)
+    elif field_to_clear == "portfolio":
+        profile = replace(profile, portfolio=())
+    elif field_to_clear == "main_category":
+        profile = replace(profile, main_category=None)
+
+    with pytest.raises(OnboardingIncompleteError) as exc_info:
+        profile.complete_onboarding(now=NOW)
+    assert exc_info.value.missing_field == expected_missing_field

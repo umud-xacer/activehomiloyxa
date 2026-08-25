@@ -251,9 +251,7 @@ class TestConsumeListingCredit:
         )
         await fake_entitlements.add(entitlement)
 
-        consumed = await use_cases.consume_listing_credit(
-            purchaser_profile_id=purchaser, now=_NOW
-        )
+        consumed = await use_cases.consume_listing_credit(purchaser_profile_id=purchaser, now=_NOW)
 
         assert consumed is not None
         assert consumed.remaining_credits == 2
@@ -281,9 +279,7 @@ class TestConsumeListingCredit:
         )
         await fake_entitlements.add(entitlement)
 
-        result = await use_cases.consume_listing_credit(
-            purchaser_profile_id=purchaser, now=_NOW
-        )
+        result = await use_cases.consume_listing_credit(purchaser_profile_id=purchaser, now=_NOW)
         assert result is None
 
     async def test_unlimited_pack_is_always_eligible_and_stays_unlimited(
@@ -302,9 +298,7 @@ class TestConsumeListingCredit:
         )
         await fake_entitlements.add(entitlement)
 
-        consumed = await use_cases.consume_listing_credit(
-            purchaser_profile_id=purchaser, now=_NOW
-        )
+        consumed = await use_cases.consume_listing_credit(purchaser_profile_id=purchaser, now=_NOW)
         assert consumed is not None
         assert consumed.remaining_credits is None
 
@@ -323,9 +317,7 @@ class TestConsumeListingCredit:
         assert entitlement.entitlement_type is not EntitlementType.LISTING_CREDIT_BALANCE
         await fake_entitlements.add(entitlement)
 
-        result = await use_cases.consume_listing_credit(
-            purchaser_profile_id=purchaser, now=_NOW
-        )
+        result = await use_cases.consume_listing_credit(purchaser_profile_id=purchaser, now=_NOW)
         assert result is None
 
     async def test_picks_the_earliest_expiring_pack_when_multiple_are_eligible(
@@ -354,9 +346,7 @@ class TestConsumeListingCredit:
         await fake_entitlements.add(later)
         assert sooner.valid_until < later.valid_until
 
-        consumed = await use_cases.consume_listing_credit(
-            purchaser_profile_id=purchaser, now=_NOW
-        )
+        consumed = await use_cases.consume_listing_credit(purchaser_profile_id=purchaser, now=_NOW)
 
         assert consumed is not None
         assert consumed.id == sooner.id

@@ -9,6 +9,7 @@ from uuid import uuid4
 import pytest
 
 from identity.domain import (
+    AccountKind,
     AccountNotActiveError,
     AccountStatus,
     AuthMethodType,
@@ -17,6 +18,8 @@ from identity.domain import (
     PhoneNumber,
     PhoneRevealMode,
     PrivacySettings,
+    RegistrationAlreadyDecidedError,
+    RegistrationReviewStatus,
     RoleNotAssignedError,
     UnknownAuthenticationMethodError,
     UserAccount,
@@ -332,3 +335,168 @@ def test_role_assignments_for_scope_includes_global_and_matching_profile_only() 
     for_personal = account.role_assignments_for_scope(None)
     codes_personal = {ra.role_code for ra in for_personal}
     assert codes_personal == {"global-role"}
+
+
+# --- ADR-0007 account_kind / registration review --------------------------------------------
+
+
+def test_register_via_phone_legal_entity_starts_pending_review() -> None:
+    """`_initial_review_status`: only INDIVIDUAL skips review -- LEGAL_ENTITY/INVESTOR need a
+    reviewer decision before their workspace unlocks."""
+    account = UserAccount.register_via_phone(
+        account_id=UserId(value=uuid4()),
+        phone=PhoneNumber("+998901234567"),
+        now=NOW,
+        account_kind=AccountKind.LEGAL_ENTITY,
+    )
+    assert account.review_status is RegistrationReviewStatus.PENDING
+
+
+def test_register_via_email_individual_starts_approved_review() -> None:
+    account = UserAccount.register_via_email(
+        account_id=UserId(value=uuid4()),
+        email=EmailAddress("individual@example.com"),
+        password_hash="hashed:secret",
+        display_name=None,
+        now=NOW,
+        account_kind=AccountKind.INDIVIDUAL,
+    )
+    assert account.review_status is RegistrationReviewStatus.APPROVED
+
+
+def test_decide_registration_approved_sets_status_and_decision() -> None:
+    account = UserAccount.register_via_phone(
+        account_id=UserId(value=uuid4()),
+        phone=PhoneNumber("+998901234567"),
+        now=NOW,
+        account_kind=AccountKind.LEGAL_ENTITY,
+    )
+    reviewer_id = uuid4()
+    decided = account.decide_registration(
+        outcome=RegistrationReviewStatus.APPROVED,
+        reason=None,
+        reviewer_user_id=reviewer_id,
+        now=NOW,
+    )
+    assert decided.review_status is RegistrationReviewStatus.APPROVED
+    assert decided.review_decision is not None
+    assert decided.review_decision.outcome is RegistrationReviewStatus.APPROVED
+    assert decided.review_decision.reviewer_user_id == reviewer_id
+
+
+def test_decide_registration_rejected_sets_status_and_reason() -> None:
+    account = UserAccount.register_via_phone(
+        account_id=UserId(value=uuid4()),
+        phone=PhoneNumber("+998901234567"),
+        now=NOW,
+        account_kind=AccountKind.INVESTOR,
+    )
+    decided = account.decide_registration(
+        outcome=RegistrationReviewStatus.REJECTED,
+        reason="incomplete anketa",
+        reviewer_user_id=uuid4(),
+        now=NOW,
+    )
+    assert decided.review_status is RegistrationReviewStatus.REJECTED
+    assert decided.review_decision is not None
+    assert decided.review_decision.reason == "incomplete anketa"
+
+
+def test_decide_registration_already_decided_raises() -> None:
+    account = UserAccount.register_via_phone(
+        account_id=UserId(value=uuid4()),
+        phone=PhoneNumber("+998901234567"),
+        now=NOW,
+        account_kind=AccountKind.LEGAL_ENTITY,
+    ).decide_registration(
+        outcome=RegistrationReviewStatus.APPROVED, reason=None, reviewer_user_id=uuid4(), now=NOW
+    )
+    with pytest.raises(RegistrationAlreadyDecidedError):
+        account.decide_registration(
+            outcome=RegistrationReviewStatus.REJECTED,
+            reason=None,
+            reviewer_user_id=uuid4(),
+            now=NOW,
+        )
+
+
+# --- federated identity (Apple) / phone linking ----------------------------------------------
+
+
+def test_register_via_apple_creates_active_account_with_verified_apple_method() -> None:
+    account = UserAccount.register_via_apple(
+        account_id=UserId(value=uuid4()),
+        email=EmailAddress("apple-user@example.com"),
+        apple_subject="apple-subject-1",
+        display_name="Apple User",
+        now=NOW,
+    )
+    assert account.status is AccountStatus.ACTIVE
+    method = account.authentication_method(AuthMethodType.APPLE)
+    assert method.verified_at == NOW
+    assert method.identifier == "apple-subject-1"
+
+
+def test_link_apple_identity_adds_method_to_existing_account_without_duplicating() -> None:
+    account = UserAccount.register_via_email(
+        account_id=UserId(value=uuid4()),
+        email=EmailAddress("apple-user@example.com"),
+        password_hash="hashed:secret",
+        display_name=None,
+        now=NOW,
+    )
+    linked = account.link_apple_identity(apple_subject="apple-subject-1", now=NOW)
+    assert linked.has_authentication_method(AuthMethodType.APPLE)
+    assert len(linked.authentication_methods) == 2
+
+    linked_again = linked.link_apple_identity(apple_subject="apple-subject-1", now=NOW)
+    assert len(linked_again.authentication_methods) == 2  # I-09: link, never duplicate
+
+
+def test_link_phone_attaches_verified_phone_to_account_without_one() -> None:
+    account = UserAccount.register_via_email(
+        account_id=UserId(value=uuid4()),
+        email=EmailAddress("no-phone@example.com"),
+        password_hash="hashed:secret",
+        display_name=None,
+        now=NOW,
+    )
+    linked = account.link_phone(phone=PhoneNumber("+998901234567"), now=NOW)
+    assert linked.phone == PhoneNumber("+998901234567")
+    assert linked.has_authentication_method(AuthMethodType.PHONE_OTP)
+
+
+def test_link_phone_replaces_prior_phone_method() -> None:
+    account = _new_account()  # already has +998901234567 via PHONE_OTP
+    relinked = account.link_phone(phone=PhoneNumber("+998907654321"), now=NOW)
+    assert relinked.phone == PhoneNumber("+998907654321")
+    phone_methods = [
+        m for m in relinked.authentication_methods if m.method_type is AuthMethodType.PHONE_OTP
+    ]
+    assert len(phone_methods) == 1
+    assert phone_methods[0].identifier == "+998907654321"
+
+
+def test_link_phone_same_number_already_linked_is_a_no_op() -> None:
+    account = _new_account()  # already linked to +998901234567
+    relinked = account.link_phone(phone=PhoneNumber("+998901234567"), now=NOW)
+    assert relinked == account
+
+
+# --- multi-profile acting-context (FR-USER-002) -----------------------------------------------
+
+
+def test_link_owned_profile_adds_profile_id() -> None:
+    account = _new_account()
+    profile_id = BusinessProfileId(value=uuid4())
+    linked = account.link_owned_profile(profile_id=profile_id, now=NOW)
+    assert linked.owns_profile(profile_id)
+
+
+def test_link_owned_profile_already_owned_is_idempotent() -> None:
+    account = _new_account()
+    profile_id = BusinessProfileId(value=uuid4())
+    linked = account.link_owned_profile(profile_id=profile_id, now=NOW)
+    linked_again = linked.link_owned_profile(profile_id=profile_id, now=NOW)
+    assert linked_again == linked
+    assert linked_again.owned_profile_ids.count(profile_id) == 1

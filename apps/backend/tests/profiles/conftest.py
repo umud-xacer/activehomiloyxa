@@ -15,6 +15,7 @@ import pytest
 
 from profiles.application.ports import (
     MediaAssetSnapshot,
+    SubscriptionEligibilitySnapshot,
     VerificationEligibilitySnapshot,
 )
 from profiles.domain import (
@@ -193,11 +194,33 @@ class FakeMediaAssetReaderPort:
         media_asset_id: UUID,
         *,
         scan_status: Literal["PENDING", "CLEAN", "QUARANTINED"] = "CLEAN",
+        content_type: str | None = None,
+        duration_seconds: float | None = None,
     ) -> None:
-        self.assets[media_asset_id] = MediaAssetSnapshot(id=media_asset_id, scan_status=scan_status)
+        self.assets[media_asset_id] = MediaAssetSnapshot(
+            id=media_asset_id,
+            scan_status=scan_status,
+            content_type=content_type,
+            duration_seconds=duration_seconds,
+        )
 
     async def get_media_asset(self, media_asset_id: UUID) -> MediaAssetSnapshot | None:
         return self.assets.get(media_asset_id)
+
+
+@dataclass
+class FakeSubscriptionEligibilityRepository:
+    snapshots: dict[UUID, SubscriptionEligibilitySnapshot] = field(default_factory=dict)
+    """Keyed by business_profile_id.value, mirroring the real projection table's own primary
+    key (unlike verification's own entitlement-keyed table)."""
+
+    async def get_for_profile(
+        self, profile_id: BusinessProfileId
+    ) -> SubscriptionEligibilitySnapshot | None:
+        return self.snapshots.get(profile_id.value)
+
+    async def upsert(self, snapshot: SubscriptionEligibilitySnapshot) -> None:
+        self.snapshots[snapshot.business_profile_id.value] = snapshot
 
 
 class FakeOutbox:
@@ -226,6 +249,11 @@ def fake_eligibility() -> FakeVerificationEligibilityRepository:
 @pytest.fixture
 def fake_media() -> FakeMediaAssetReaderPort:
     return FakeMediaAssetReaderPort()
+
+
+@pytest.fixture
+def fake_subscriptions() -> FakeSubscriptionEligibilityRepository:
+    return FakeSubscriptionEligibilityRepository()
 
 
 @pytest.fixture

@@ -4,13 +4,23 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from uuid import uuid4
 
 import pytest
 
-from identity.application import AuthenticationUseCases, InvalidGoogleCredentialError
-from identity.application.exceptions import OtpChallengeNotFoundError, RecoveryTargetRequiredError
-from identity.application.ports import GoogleIdentity
+from identity.application import (
+    AccountNotFoundError,
+    AuthenticationUseCases,
+    InvalidGoogleCredentialError,
+)
+from identity.application.exceptions import (
+    InvalidAppleCredentialError,
+    OtpChallengeNotFoundError,
+    RecoveryTargetRequiredError,
+)
+from identity.application.ports import AppleIdentity, GoogleIdentity
 from identity.domain import (
+    AuthMethodType,
     DuplicateContactError,
     EmailAddress,
     InvalidCredentialsError,
@@ -21,8 +31,10 @@ from identity.domain import (
     OtpThrottledError,
     PhoneNumber,
 )
+from shared_kernel import UserId
 
 from .conftest import (
+    FakeAppleOAuthProvider,
     FakeEmailProvider,
     FakeGoogleOAuthProvider,
     FakeLoginAttemptTracker,
@@ -231,6 +243,38 @@ async def test_verify_otp_no_active_challenge_raises_not_found(
         )
 
 
+async def test_verify_otp_without_ip_address_skips_ip_scoped_lockout(
+    auth_use_cases: AuthenticationUseCases, fake_otp_sms_provider: FakeOtpSmsProvider
+) -> None:
+    """`ip_address=None` (e.g. a trusted internal caller) skips the IP-scoped lockout check
+    entirely -- both the pre-check (169->174) and the post-mismatch/post-success bookkeeping
+    (182->188, 190->193) must tolerate no IP being available."""
+    await auth_use_cases.request_otp(
+        phone=PHONE, purpose=OtpPurpose.REGISTRATION, ip_address="1.2.3.4", now=NOW
+    )
+    with pytest.raises(OtpCodeMismatchError):
+        await auth_use_cases.verify_otp(
+            phone=PHONE,
+            code="000000",
+            purpose=OtpPurpose.REGISTRATION,
+            ip_address=None,
+            user_agent="pytest",
+            now=NOW,
+        )
+    code = fake_otp_sms_provider.sent[0][1]
+    account, session, raw_token = await auth_use_cases.verify_otp(
+        phone=PHONE,
+        code=code,
+        purpose=OtpPurpose.REGISTRATION,
+        ip_address=None,
+        user_agent="pytest",
+        now=NOW,
+    )
+    assert account.phone == PHONE
+    assert session.account_id == account.id
+    assert raw_token
+
+
 async def test_verify_otp_registration_existing_phone_authenticates_existing_account(
     auth_use_cases: AuthenticationUseCases, fake_otp_sms_provider: FakeOtpSmsProvider
 ) -> None:
@@ -302,6 +346,29 @@ async def test_register_email_duplicate_raises(auth_use_cases: AuthenticationUse
         await auth_use_cases.register_email(
             email=email, password="other-secret", display_name=None, now=NOW
         )
+
+
+async def test_register_email_survives_confirmation_email_provider_failure(
+    auth_use_cases: AuthenticationUseCases,
+    fake_accounts: FakeUserAccountRepository,
+    fake_email_provider: FakeEmailProvider,
+) -> None:
+    """The account is already ACTIVE by the time the confirmation email is sent -- a provider
+    outage is a courtesy-notification failure, not a registration failure, and must not raise."""
+
+    async def _raise_send_email_confirmation(*, email: EmailAddress, token: str) -> None:
+        raise RuntimeError("smtp unavailable")
+
+    fake_email_provider.send_email_confirmation = _raise_send_email_confirmation  # type: ignore[method-assign]
+
+    await auth_use_cases.register_email(
+        email=EmailAddress("test@example.com"),
+        password="s3cret123",
+        display_name=None,
+        now=NOW,
+    )  # does not raise
+    account = await fake_accounts.get_by_email(EmailAddress("test@example.com"))
+    assert account is not None
 
 
 async def test_login_email_success(auth_use_cases: AuthenticationUseCases) -> None:
@@ -453,6 +520,52 @@ async def test_login_email_ip_lockout_does_not_block_a_different_ip(
     assert raw_token
 
 
+async def test_login_email_without_ip_address_skips_ip_scoped_lockout(
+    auth_use_cases: AuthenticationUseCases,
+) -> None:
+    """`ip_address=None` must not blow up the enforce/record/reset lockout bookkeeping that
+    otherwise runs per-IP (286->288, 323->325)."""
+    email = EmailAddress("test@example.com")
+    await auth_use_cases.register_email(
+        email=email, password="s3cret123", display_name=None, now=NOW
+    )
+    with pytest.raises(InvalidCredentialsError):
+        await auth_use_cases.login_email(
+            email=email, password="wrong", ip_address=None, user_agent="pytest", now=NOW
+        )
+    account, _session, raw_token = await auth_use_cases.login_email(
+        email=email, password="s3cret123", ip_address=None, user_agent="pytest", now=NOW
+    )
+    assert account.email == email
+    assert raw_token
+
+
+async def test_login_email_account_with_unset_password_hash_raises_invalid_credentials(
+    auth_use_cases: AuthenticationUseCases, fake_accounts: FakeUserAccountRepository
+) -> None:
+    """A defensive edge case (not reachable through any real registration factory today, but not
+    excluded by the aggregate's own type either): an EMAIL authentication method whose
+    `password_hash` is `None` must be treated as "cannot match", not raise/crash (294->299)."""
+    from dataclasses import replace
+
+    email = EmailAddress("nopassword@example.com")
+    await auth_use_cases.register_email(
+        email=email, password="s3cret123", display_name=None, now=NOW
+    )
+    account = await fake_accounts.get_by_email(email)
+    assert account is not None
+    broken_methods = tuple(
+        replace(m, password_hash=None) if m.method_type is AuthMethodType.EMAIL else m
+        for m in account.authentication_methods
+    )
+    await fake_accounts.save(replace(account, authentication_methods=broken_methods))
+
+    with pytest.raises(InvalidCredentialsError):
+        await auth_use_cases.login_email(
+            email=email, password="s3cret123", ip_address="1.2.3.4", user_agent="pytest", now=NOW
+        )
+
+
 # --- FR-AUTH-003: Google federated -----------------------------------------------------------
 
 
@@ -510,6 +623,177 @@ async def test_login_google_unverified_email_raises(
             ip_address="1.2.3.4",
             user_agent="pytest",
             now=NOW,
+        )
+
+
+# --- Sign in with Apple (mirrors FR-AUTH-003's Google shape) ---------------------------------
+
+
+async def test_login_apple_creates_account_when_none_exists(
+    auth_use_cases: AuthenticationUseCases, fake_apple_provider: FakeAppleOAuthProvider
+) -> None:
+    fake_apple_provider.identity = AppleIdentity(
+        subject="apple-sub-1", email="new@example.com", email_verified=True, display_name="New"
+    )
+    account, _session, _raw_token = await auth_use_cases.login_apple(
+        authorization_code="code",
+        redirect_uri="https://app/callback",
+        ip_address="1.2.3.4",
+        user_agent="pytest",
+        now=NOW,
+    )
+    assert account.email == EmailAddress("new@example.com")
+
+
+async def test_login_apple_links_existing_account_by_verified_email(
+    auth_use_cases: AuthenticationUseCases,
+    fake_accounts: FakeUserAccountRepository,
+    fake_apple_provider: FakeAppleOAuthProvider,
+) -> None:
+    email = EmailAddress("test@example.com")
+    await auth_use_cases.register_email(
+        email=email, password="s3cret123", display_name=None, now=NOW
+    )
+    existing = await fake_accounts.get_by_email(email)
+    assert existing is not None
+
+    fake_apple_provider.identity = AppleIdentity(
+        subject="apple-sub-1", email="test@example.com", email_verified=True, display_name=None
+    )
+    account, _, _ = await auth_use_cases.login_apple(
+        authorization_code="code",
+        redirect_uri="https://app/callback",
+        ip_address="1.2.3.4",
+        user_agent="pytest",
+        now=NOW,
+    )
+    assert account.id == existing.id  # I-09: linked, not duplicated
+
+
+async def test_login_apple_unverified_email_raises(
+    auth_use_cases: AuthenticationUseCases, fake_apple_provider: FakeAppleOAuthProvider
+) -> None:
+    fake_apple_provider.identity = AppleIdentity(
+        subject="apple-sub-1", email="new@example.com", email_verified=False, display_name=None
+    )
+    with pytest.raises(InvalidAppleCredentialError):
+        await auth_use_cases.login_apple(
+            authorization_code="code",
+            redirect_uri="https://app/callback",
+            ip_address="1.2.3.4",
+            user_agent="pytest",
+            now=NOW,
+        )
+
+
+# --- authenticated phone linking (profile) ----------------------------------------------------
+
+
+async def test_confirm_phone_link_attaches_verified_phone(
+    auth_use_cases: AuthenticationUseCases,
+    fake_accounts: FakeUserAccountRepository,
+    fake_otp_sms_provider: FakeOtpSmsProvider,
+) -> None:
+    email = EmailAddress("test@example.com")
+    await auth_use_cases.register_email(
+        email=email, password="s3cret123", display_name=None, now=NOW
+    )
+    account = await fake_accounts.get_by_email(email)
+    assert account is not None
+
+    await auth_use_cases.request_otp(
+        phone=PHONE, purpose=OtpPurpose.LINK_PHONE, ip_address="1.2.3.4", now=NOW
+    )
+    code = fake_otp_sms_provider.sent[0][1]
+
+    linked = await auth_use_cases.confirm_phone_link(
+        account_id=account.id, phone=PHONE, code=code, now=NOW
+    )
+    assert linked.phone == PHONE
+
+
+async def test_confirm_phone_link_no_active_challenge_raises_not_found(
+    auth_use_cases: AuthenticationUseCases, fake_accounts: FakeUserAccountRepository
+) -> None:
+    email = EmailAddress("test@example.com")
+    await auth_use_cases.register_email(
+        email=email, password="s3cret123", display_name=None, now=NOW
+    )
+    account = await fake_accounts.get_by_email(email)
+    assert account is not None
+    with pytest.raises(OtpChallengeNotFoundError):
+        await auth_use_cases.confirm_phone_link(
+            account_id=account.id, phone=PHONE, code="123456", now=NOW
+        )
+
+
+async def test_confirm_phone_link_wrong_code_raises_mismatch(
+    auth_use_cases: AuthenticationUseCases,
+    fake_accounts: FakeUserAccountRepository,
+    fake_otp_sms_provider: FakeOtpSmsProvider,
+) -> None:
+    email = EmailAddress("test@example.com")
+    await auth_use_cases.register_email(
+        email=email, password="s3cret123", display_name=None, now=NOW
+    )
+    account = await fake_accounts.get_by_email(email)
+    assert account is not None
+    await auth_use_cases.request_otp(
+        phone=PHONE, purpose=OtpPurpose.LINK_PHONE, ip_address="1.2.3.4", now=NOW
+    )
+    with pytest.raises(OtpCodeMismatchError):
+        await auth_use_cases.confirm_phone_link(
+            account_id=account.id, phone=PHONE, code="000000", now=NOW
+        )
+
+
+async def test_confirm_phone_link_phone_owned_by_another_account_raises_duplicate(
+    auth_use_cases: AuthenticationUseCases,
+    fake_accounts: FakeUserAccountRepository,
+    fake_otp_sms_provider: FakeOtpSmsProvider,
+) -> None:
+    # An existing account already owns PHONE (via phone-OTP registration).
+    await auth_use_cases.request_otp(
+        phone=PHONE, purpose=OtpPurpose.REGISTRATION, ip_address="1.2.3.4", now=NOW
+    )
+    registration_code = fake_otp_sms_provider.sent[0][1]
+    await auth_use_cases.verify_otp(
+        phone=PHONE,
+        code=registration_code,
+        purpose=OtpPurpose.REGISTRATION,
+        ip_address="1.2.3.4",
+        user_agent="pytest",
+        now=NOW,
+    )
+
+    # A second, different account tries to link the same phone to itself.
+    email = EmailAddress("second@example.com")
+    await auth_use_cases.register_email(
+        email=email, password="s3cret123", display_name=None, now=NOW
+    )
+    second_account = await fake_accounts.get_by_email(email)
+    assert second_account is not None
+
+    await auth_use_cases.request_otp(
+        phone=PHONE, purpose=OtpPurpose.LINK_PHONE, ip_address="1.2.3.4", now=NOW
+    )
+    link_code = fake_otp_sms_provider.sent[-1][1]
+    with pytest.raises(DuplicateContactError):
+        await auth_use_cases.confirm_phone_link(
+            account_id=second_account.id, phone=PHONE, code=link_code, now=NOW
+        )
+
+
+async def test_confirm_phone_link_unknown_account_raises_not_found(
+    auth_use_cases: AuthenticationUseCases, fake_otp_sms_provider: FakeOtpSmsProvider
+) -> None:
+    await auth_use_cases.request_otp(
+        phone=PHONE, purpose=OtpPurpose.LINK_PHONE, ip_address="1.2.3.4", now=NOW
+    )
+    code = fake_otp_sms_provider.sent[0][1]
+    with pytest.raises(AccountNotFoundError):
+        await auth_use_cases.confirm_phone_link(
+            account_id=UserId(value=uuid4()), phone=PHONE, code=code, now=NOW
         )
 
 

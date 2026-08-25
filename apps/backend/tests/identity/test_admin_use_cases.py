@@ -14,10 +14,13 @@ from identity.application import (
     RoleDefinitionNotFoundError,
 )
 from identity.domain import (
+    AccountKind,
     AccountStatus,
     EmailAddress,
     IllegalAccountStateTransitionError,
     PhoneNumber,
+    RegistrationAlreadyDecidedError,
+    RegistrationReviewStatus,
     RoleNotAssignedError,
     Session,
     UserAccount,
@@ -248,5 +251,106 @@ async def test_revoke_role_not_assigned_raises(
             target_account_id=account.id,
             role_definition_head_id=uuid4(),
             acting_profile_id=None,
+            now=NOW,
+        )
+
+
+# --- registration review (ADR-0007) -----------------------------------------------------------
+
+
+def _pending_review_account() -> UserAccount:
+    return UserAccount.register_via_phone(
+        account_id=UserId(value=uuid4()),
+        phone=PhoneNumber("+998901234567"),
+        now=NOW,
+        account_kind=AccountKind.LEGAL_ENTITY,
+    )
+
+
+async def test_list_registration_queue_returns_only_pending_accounts(
+    admin_use_cases: AdminIdentityUseCases, fake_accounts: FakeUserAccountRepository
+) -> None:
+    pending = _pending_review_account()
+    await fake_accounts.add(pending)
+    await fake_accounts.add(_seeded_account())  # INDIVIDUAL, review_status APPROVED already
+
+    queue, cursor = await admin_use_cases.list_registration_queue(cursor=None, limit=20)
+    assert [a.id for a in queue] == [pending.id]
+    assert cursor is None
+
+
+async def test_decide_registration_approved_publishes_registration_approved_event(
+    admin_use_cases: AdminIdentityUseCases,
+    fake_accounts: FakeUserAccountRepository,
+    fake_outbox: FakeOutbox,
+) -> None:
+    account = _pending_review_account()
+    await fake_accounts.add(account)
+    reviewer_id = UserId(value=uuid4())
+
+    decided = await admin_use_cases.decide_registration(
+        target_account_id=account.id,
+        reviewer_user_id=reviewer_id,
+        outcome=RegistrationReviewStatus.APPROVED,
+        reason=None,
+        now=NOW,
+    )
+    assert decided.review_status is RegistrationReviewStatus.APPROVED
+    persisted = await fake_accounts.get_by_id(account.id)
+    assert persisted is not None
+    assert persisted.review_status is RegistrationReviewStatus.APPROVED
+    assert any(e.event_type == "RegistrationApproved" for e in fake_outbox.events)
+
+
+async def test_decide_registration_rejected_publishes_registration_rejected_event(
+    admin_use_cases: AdminIdentityUseCases,
+    fake_accounts: FakeUserAccountRepository,
+    fake_outbox: FakeOutbox,
+) -> None:
+    account = _pending_review_account()
+    await fake_accounts.add(account)
+
+    decided = await admin_use_cases.decide_registration(
+        target_account_id=account.id,
+        reviewer_user_id=UserId(value=uuid4()),
+        outcome=RegistrationReviewStatus.REJECTED,
+        reason="incomplete anketa",
+        now=NOW,
+    )
+    assert decided.review_status is RegistrationReviewStatus.REJECTED
+    assert any(e.event_type == "RegistrationRejected" for e in fake_outbox.events)
+
+
+async def test_decide_registration_unknown_account_raises(
+    admin_use_cases: AdminIdentityUseCases,
+) -> None:
+    with pytest.raises(AccountNotFoundError):
+        await admin_use_cases.decide_registration(
+            target_account_id=UserId(value=uuid4()),
+            reviewer_user_id=UserId(value=uuid4()),
+            outcome=RegistrationReviewStatus.APPROVED,
+            reason=None,
+            now=NOW,
+        )
+
+
+async def test_decide_registration_already_decided_raises(
+    admin_use_cases: AdminIdentityUseCases, fake_accounts: FakeUserAccountRepository
+) -> None:
+    account = _pending_review_account()
+    await fake_accounts.add(account)
+    await admin_use_cases.decide_registration(
+        target_account_id=account.id,
+        reviewer_user_id=UserId(value=uuid4()),
+        outcome=RegistrationReviewStatus.APPROVED,
+        reason=None,
+        now=NOW,
+    )
+    with pytest.raises(RegistrationAlreadyDecidedError):
+        await admin_use_cases.decide_registration(
+            target_account_id=account.id,
+            reviewer_user_id=UserId(value=uuid4()),
+            outcome=RegistrationReviewStatus.REJECTED,
+            reason=None,
             now=NOW,
         )

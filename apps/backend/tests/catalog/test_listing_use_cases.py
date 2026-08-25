@@ -20,15 +20,16 @@ from catalog.application.exceptions import (
     StaleListingVersionError,
 )
 from catalog.application.listing_use_cases import ListingUseCases
-from catalog.application.ports import SubscriptionSnapshot
+from catalog.application.ports import MediaAssetSnapshot, SubscriptionSnapshot
 from catalog.application.quota_service import QuotaEnforcementService
 from catalog.domain.exceptions import (
     AttributeValidationError,
+    IllegalListingStateTransitionError,
     NotListingOwnerError,
     QuotaExceededError,
 )
 from catalog.domain.listing import Listing
-from catalog.domain.value_objects import ImageStatus, ListingType
+from catalog.domain.value_objects import ImageStatus, ListingType, PromotionKind
 from shared_kernel import BusinessProfileId, ListingId, UserId
 
 from .conftest import (
@@ -805,3 +806,336 @@ async def test_UNF_015_record_view_allows_anonymous_viewer(
     assert len(view_events) == 1
     assert view_events[0].actor is None
     assert view_events[0].payload["viewerUserId"] is None
+
+
+# --- SOLD status transition + admin bypass ----------------------------------------------------
+
+
+async def test_change_status_sold_from_published(
+    use_cases: ListingUseCases, fake_outbox: FakeOutbox
+) -> None:
+    owner = UserId(value=uuid4())
+    draft = await _create_draft(use_cases, owner=owner)
+    published = await use_cases.publish_listing(listing_id=draft.id, actor_user_id=owner, now=NOW)
+
+    sold = await use_cases.change_status(
+        listing_id=published.id,
+        actor_user_id=owner,
+        action="SOLD",
+        reason="buyer found offline",
+        now=NOW,
+    )
+    assert sold.lifecycle_state.value == "SOLD"
+    sold_events = [e for e in fake_outbox.events if e.event_type == "ListingSold"]
+    assert len(sold_events) == 1
+    assert sold_events[0].payload["reason"] == "buyer found offline"
+
+
+async def test_change_status_sold_from_draft_raises(use_cases: ListingUseCases) -> None:
+    owner = UserId(value=uuid4())
+    draft = await _create_draft(use_cases, owner=owner)
+    with pytest.raises(IllegalListingStateTransitionError):
+        await use_cases.change_status(
+            listing_id=draft.id,
+            actor_user_id=owner,
+            action="SOLD",
+            reason=None,
+            now=NOW,
+        )
+
+
+async def test_admin_change_status_bypasses_ownership(use_cases: ListingUseCases) -> None:
+    """`bypass_ownership` (2026-08-24, `/admin/listings`) -- the admin account is never the
+    listing's owner, yet the transition still succeeds, and the resulting record attributes the
+    admin, not the owner."""
+    owner = UserId(value=uuid4())
+    admin = UserId(value=uuid4())
+    draft = await _create_draft(use_cases, owner=owner)
+    published = await use_cases.publish_listing(listing_id=draft.id, actor_user_id=owner, now=NOW)
+
+    suspended = await use_cases.admin_change_status(
+        listing_id=published.id,
+        admin_account_id=admin,
+        action="SUSPEND",
+        reason="policy",
+        now=NOW,
+    )
+    assert suspended.lifecycle_state.value == "SUSPENDED"
+    assert suspended.transitions[-1].actor_user_id == admin.value
+
+
+# --- listing paywall (activate_after_payment) -------------------------------------------------
+
+
+async def test_activate_after_payment_publishes_a_listing_held_awaiting_payment(
+    use_cases: ListingUseCases,
+    fake_credit_balance: FakeCreditBalancePort,
+    fake_outbox: FakeOutbox,
+) -> None:
+    owner = UserId(value=uuid4())
+    owner_profile_id = BusinessProfileId(value=uuid4())
+    fake_credit_balance.has_credit = False  # forces requires_payment=True below
+    listing = await use_cases.create_listing(
+        owner_user_id=owner,
+        owner_profile_id=owner_profile_id,
+        listing_type=ListingType.ADVERTISEMENT,
+        category_id=uuid4(),
+        title="x",
+        description=None,
+        attributes={"rooms": 2},
+        price=None,
+        location=None,
+        image_media_asset_ids=None,
+        publish=True,
+        auto_compute_payment_requirement=True,
+        now=NOW,
+    )
+    assert listing.lifecycle_state.value == "DRAFT"
+    assert listing.awaiting_payment is True
+
+    activated = await use_cases.activate_after_payment(listing_id=listing.id, now=NOW)
+    assert activated.lifecycle_state.value == "PUBLISHED"
+    assert activated.awaiting_payment is False
+    published_events = [e for e in fake_outbox.events if e.event_type == "ListingPublished"]
+    assert len(published_events) == 1
+
+
+# --- promotion projection (X-03) ----------------------------------------------------------------
+
+
+async def test_apply_and_clear_promotion_projection(
+    use_cases: ListingUseCases, fake_outbox: FakeOutbox
+) -> None:
+    owner = UserId(value=uuid4())
+    draft = await _create_draft(use_cases, owner=owner)
+    entitlement_id = uuid4()
+    valid_until = NOW + timedelta(days=7)
+
+    applied = await use_cases.apply_promotion_projection(
+        listing_id=draft.id,
+        kind=PromotionKind.PREMIUM,
+        valid_until=valid_until,
+        entitlement_id=entitlement_id,
+        now=NOW,
+    )
+    assert applied.promotion is not None
+    assert applied.promotion.kind is PromotionKind.PREMIUM
+    assert applied.promotion.entitlement_id == entitlement_id
+
+    cleared = await use_cases.clear_promotion_projection(listing_id=draft.id, now=NOW)
+    assert cleared.promotion is None
+
+    edited_events = [e for e in fake_outbox.events if e.event_type == "ListingEdited"]
+    assert len(edited_events) == 2  # one for apply, one for clear
+
+
+# --- moderation command surfaces (P-12) -----------------------------------------------------------
+
+
+async def test_moderator_suspend_listing_skips_ownership_check(
+    use_cases: ListingUseCases, fake_outbox: FakeOutbox
+) -> None:
+    owner = UserId(value=uuid4())
+    draft = await _create_draft(use_cases, owner=owner)
+    published = await use_cases.publish_listing(listing_id=draft.id, actor_user_id=owner, now=NOW)
+    moderator_id = uuid4()
+
+    suspended = await use_cases.moderator_suspend_listing(
+        listing_id=published.id, moderator_user_id=moderator_id, reason="flagged content", now=NOW
+    )
+    assert suspended.lifecycle_state.value == "SUSPENDED"
+    assert suspended.transitions[-1].actor_user_id == moderator_id
+    suspended_events = [e for e in fake_outbox.events if e.event_type == "ListingSuspended"]
+    assert suspended_events[-1].actor == moderator_id
+
+
+async def test_moderator_archive_listing_skips_ownership_check(
+    use_cases: ListingUseCases, fake_outbox: FakeOutbox
+) -> None:
+    owner = UserId(value=uuid4())
+    draft = await _create_draft(use_cases, owner=owner)
+    published = await use_cases.publish_listing(listing_id=draft.id, actor_user_id=owner, now=NOW)
+    moderator_id = uuid4()
+
+    archived = await use_cases.moderator_archive_listing(
+        listing_id=published.id, moderator_user_id=moderator_id, reason="policy violation", now=NOW
+    )
+    assert archived.lifecycle_state.value == "ARCHIVED"
+    assert archived.transitions[-1].actor_user_id == moderator_id
+    archived_events = [e for e in fake_outbox.events if e.event_type == "ListingArchived"]
+    assert archived_events[-1].actor == moderator_id
+
+
+async def test_moderator_delete_listing_skips_ownership_check(
+    use_cases: ListingUseCases, fake_outbox: FakeOutbox
+) -> None:
+    owner = UserId(value=uuid4())
+    draft = await _create_draft(use_cases, owner=owner)
+    moderator_id = uuid4()
+
+    deleted = await use_cases.moderator_delete_listing(
+        listing_id=draft.id, moderator_user_id=moderator_id, reason="counterfeit", now=NOW
+    )
+    assert deleted.lifecycle_state.value == "DELETED"
+    assert deleted.transitions[-1].actor_user_id == moderator_id
+    deleted_events = [e for e in fake_outbox.events if e.event_type == "ListingDeleted"]
+    assert deleted_events[-1].actor == moderator_id
+
+
+# --- account-suspension / subscription-lapse compensations (DB Architecture Sec 14.4) -----------
+
+
+async def test_suspend_all_by_owner_only_suspends_currently_visible_listings(
+    use_cases: ListingUseCases, fake_outbox: FakeOutbox
+) -> None:
+    owner = UserId(value=uuid4())
+    published = await use_cases.publish_listing(
+        listing_id=(await _create_draft(use_cases, owner=owner)).id,
+        actor_user_id=owner,
+        now=NOW,
+    )
+    draft_only = await _create_draft(use_cases, owner=owner)  # stays DRAFT -- not visible
+
+    count = await use_cases.suspend_all_by_owner(
+        owner_user_id=owner, reason="account suspended", now=NOW
+    )
+
+    assert count == 1
+    reloaded_published = await use_cases.get_listing(published.id)
+    reloaded_draft = await use_cases.get_listing(draft_only.id)
+    assert reloaded_published.lifecycle_state.value == "SUSPENDED"
+    assert reloaded_draft.lifecycle_state.value == "DRAFT"
+    suspended_events = [e for e in fake_outbox.events if e.event_type == "ListingSuspended"]
+    assert len(suspended_events) == 1
+    assert suspended_events[0].actor == owner.value
+
+
+async def test_suspend_all_by_owner_profile_only_suspends_currently_visible_listings(
+    use_cases: ListingUseCases, fake_outbox: FakeOutbox
+) -> None:
+    owner_profile_id = BusinessProfileId(value=uuid4())
+    owner_user_id = UserId(value=uuid4())
+    listing = await use_cases.create_listing(
+        owner_user_id=owner_user_id,
+        owner_profile_id=owner_profile_id,
+        listing_type=ListingType.ADVERTISEMENT,
+        category_id=uuid4(),
+        title="x",
+        description=None,
+        attributes={"rooms": 2},
+        price=None,
+        location=None,
+        image_media_asset_ids=None,
+        publish=True,
+        now=NOW,
+    )
+
+    count = await use_cases.suspend_all_by_owner_profile(
+        owner_profile_id=owner_profile_id, reason="subscription_lapsed", now=NOW
+    )
+
+    assert count == 1
+    reloaded = await use_cases.get_listing(listing.id)
+    assert reloaded.lifecycle_state.value == "SUSPENDED"
+    suspended_events = [e for e in fake_outbox.events if e.event_type == "ListingSuspended"]
+    assert suspended_events[-1].actor is None  # system-driven, no acting user
+
+
+async def test_reactivate_all_by_owner_profile_restores_only_subscription_lapses(
+    use_cases: ListingUseCases, fake_outbox: FakeOutbox
+) -> None:
+    """A listing suspended for the subscription-lapse reason is restored; a listing separately
+    suspended for moderation is left alone (`reactivate_all_by_owner_profile`'s own "never
+    override a moderation suspend" guard)."""
+    owner_profile_id = BusinessProfileId(value=uuid4())
+    owner_user_id = UserId(value=uuid4())
+    lapsed = await use_cases.create_listing(
+        owner_user_id=owner_user_id,
+        owner_profile_id=owner_profile_id,
+        listing_type=ListingType.ADVERTISEMENT,
+        category_id=uuid4(),
+        title="lapsed",
+        description=None,
+        attributes={"rooms": 2},
+        price=None,
+        location=None,
+        image_media_asset_ids=None,
+        publish=True,
+        now=NOW,
+    )
+    moderated = await use_cases.create_listing(
+        owner_user_id=owner_user_id,
+        owner_profile_id=owner_profile_id,
+        listing_type=ListingType.ADVERTISEMENT,
+        category_id=uuid4(),
+        title="moderated",
+        description=None,
+        attributes={"rooms": 2},
+        price=None,
+        location=None,
+        image_media_asset_ids=None,
+        publish=True,
+        now=NOW,
+    )
+    await use_cases.moderator_suspend_listing(
+        listing_id=moderated.id, moderator_user_id=uuid4(), reason="flagged", now=NOW
+    )
+    await use_cases.suspend_all_by_owner_profile(
+        owner_profile_id=owner_profile_id, reason="subscription_lapsed", now=NOW
+    )
+
+    reactivated_count = await use_cases.reactivate_all_by_owner_profile(
+        owner_profile_id=owner_profile_id, now=NOW
+    )
+
+    assert reactivated_count == 1
+    reloaded_lapsed = await use_cases.get_listing(lapsed.id)
+    reloaded_moderated = await use_cases.get_listing(moderated.id)
+    assert reloaded_lapsed.lifecycle_state.value == "PUBLISHED"
+    assert reloaded_moderated.lifecycle_state.value == "SUSPENDED"  # untouched
+
+
+# --- admin listing query --------------------------------------------------------------------------
+
+
+async def test_admin_list_listings_returns_every_state_and_owner(
+    use_cases: ListingUseCases,
+) -> None:
+    owner = UserId(value=uuid4())
+    await _create_draft(use_cases, owner=owner)
+    listings, cursor = await use_cases.admin_list_listings(
+        state=None, category_id=None, query=None, cursor=None, limit=10
+    )
+    assert len(listings) == 1
+    assert cursor is None
+
+
+# --- search payload: primary image thumbnail (X-06) -------------------------------------------
+
+
+async def test_listing_payload_carries_the_lowest_positioned_clean_images_thumbnail(
+    use_cases: ListingUseCases, fake_media: FakeMediaAssetReaderPort, fake_outbox: FakeOutbox
+) -> None:
+    owner = UserId(value=uuid4())
+    media_asset_id = uuid4()
+    fake_media.assets[media_asset_id] = MediaAssetSnapshot(
+        id=media_asset_id, scan_status="CLEAN", thumbnail_url="https://cdn.example/thumb.jpg"
+    )
+    await use_cases.create_listing(
+        owner_user_id=owner,
+        owner_profile_id=None,
+        listing_type=ListingType.ADVERTISEMENT,
+        category_id=uuid4(),
+        title="x",
+        description=None,
+        attributes={"rooms": 2},
+        price=None,
+        location=None,
+        image_media_asset_ids=[media_asset_id],
+        publish=True,
+        now=NOW,
+    )
+    published_events = [e for e in fake_outbox.events if e.event_type == "ListingPublished"]
+    assert (
+        published_events[0].payload["primaryImageThumbnailUrl"] == "https://cdn.example/thumb.jpg"
+    )
