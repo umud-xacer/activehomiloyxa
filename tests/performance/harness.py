@@ -30,6 +30,12 @@ class OperationResult:
     name: str
     latencies_ms: list[float] = field(default_factory=list)
     errors: int = 0
+    first_error: str | None = None
+    """The first error's own detail (status code + truncated response body, or the exception's
+    `repr()` for a connection-level failure) -- `run_operation_wave` used to just count errors,
+    which made "every request errored" undiagnosable from CI output alone (confirmed the hard
+    way: QG-03b was red for days with nothing but an error count to go on). Captured once, not
+    per-error, since a wave that fails 100/100 the same way only needs one example."""
 
     def percentile(self, p: float) -> float:
         if not self.latencies_ms:
@@ -38,11 +44,12 @@ class OperationResult:
         index = min(len(ordered) - 1, int(len(ordered) * p / 100))
         return ordered[index]
 
-    def to_dict(self) -> dict[str, float | int | str]:
+    def to_dict(self) -> dict[str, float | int | str | None]:
         return {
             "name": self.name,
             "count": len(self.latencies_ms),
             "errors": self.errors,
+            "first_error": self.first_error,
             "p50_ms": round(self.percentile(50), 2),
             "p95_ms": round(self.percentile(95), 2),
             "p99_ms": round(self.percentile(99), 2),
@@ -134,8 +141,15 @@ async def run_operation_wave(
         started = time.monotonic()
         try:
             await call(client)
-        except httpx.HTTPError:
+        except httpx.HTTPError as exc:
             result.errors += 1
+            if result.first_error is None:
+                if isinstance(exc, httpx.HTTPStatusError):
+                    result.first_error = (
+                        f"HTTP {exc.response.status_code}: {exc.response.text[:300]!r}"
+                    )
+                else:
+                    result.first_error = repr(exc)
             return
         result.latencies_ms.append((time.monotonic() - started) * 1000)
 
