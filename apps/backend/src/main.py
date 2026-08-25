@@ -66,6 +66,7 @@ from billing.infrastructure.payment_gateway.webhook_routers import (
 )
 from billing.interfaces.di import (
     get_acting_operator,
+    get_admin_grant_credits_use_cases,
     get_entitlement_use_cases,
     get_order_use_cases,
     get_payment_provider_status,
@@ -267,6 +268,9 @@ def create_app() -> FastAPI:
     )
     app.dependency_overrides[get_order_use_cases] = composition_root.provide_order_use_cases
     app.dependency_overrides[get_payment_use_cases] = composition_root.provide_payment_use_cases
+    app.dependency_overrides[get_admin_grant_credits_use_cases] = (
+        composition_root.provide_admin_grant_credits_use_cases
+    )
     app.dependency_overrides[get_entitlement_use_cases] = (
         composition_root.provide_entitlement_use_cases
     )

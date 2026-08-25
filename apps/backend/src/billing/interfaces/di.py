@@ -7,6 +7,8 @@ real implementation is registered by the app factory via `app.dependency_overrid
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from billing.application import EntitlementUseCases, OrderUseCases, PaymentUseCases
 from billing.interfaces.auth import ActingOperator, ActingUser
 from billing.interfaces.dto import PaymentProviderStatus
@@ -15,6 +17,27 @@ from billing.interfaces.dto import PaymentProviderStatus
 async def get_order_use_cases() -> OrderUseCases:
     raise NotImplementedError(
         "get_order_use_cases was not overridden by the composition root "
+        "(app.dependency_overrides) -- see apps/backend/src/composition_root.py"
+    )
+
+
+@dataclass(frozen=True)
+class AdminGrantCreditsUseCases:
+    """`orders`/`payments` MUST be built from the same DB session (unlike `get_order_use_cases`/
+    `get_payment_use_cases`, which are always used from two separate HTTP requests in every other
+    caller -- a buyer's `createOrder` commits, then a LATER `confirmInvoicePayment` request reads
+    the now-committed invoice). `admin_grant_listing_credits` composes `create_order` +
+    `confirm_payment` in ONE request, so a just-created, not-yet-committed invoice would be
+    invisible to a second, independently-transacted session (this is exactly the bug that produced
+    `InvoiceNotFoundError` before this dependency existed -- 2026-08-25)."""
+
+    orders: OrderUseCases
+    payments: PaymentUseCases
+
+
+async def get_admin_grant_credits_use_cases() -> AdminGrantCreditsUseCases:
+    raise NotImplementedError(
+        "get_admin_grant_credits_use_cases was not overridden by the composition root "
         "(app.dependency_overrides) -- see apps/backend/src/composition_root.py"
     )
 

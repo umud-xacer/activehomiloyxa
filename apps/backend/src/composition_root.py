@@ -111,6 +111,7 @@ from billing.infrastructure.persistence.models import (
 )
 from billing.interfaces.auth import ActingOperator
 from billing.interfaces.auth import ActingUser as BillingActingUser
+from billing.interfaces.di import AdminGrantCreditsUseCases
 from billing.interfaces.dto import PaymentProviderStatus
 from catalog.application import FavoriteUseCases, ListingUseCases
 from catalog.application.duplicate_detection_service import DuplicateDetectionService
@@ -1056,6 +1057,33 @@ async def provide_order_use_cases() -> AsyncIterator[OrderUseCases]:
             invoices=SqlalchemyInvoiceRepository(session),
             products=_billing_product_definition_adapter(),
             outbox=OutboxWriter(session, BillingOutboxEventRow),
+        )
+
+
+async def provide_admin_grant_credits_use_cases() -> AsyncIterator[AdminGrantCreditsUseCases]:
+    """Backs `admin_grant_listing_credits` (`POST /admin/billing/profiles/{id}/grant-credits`)
+    only -- unlike `provide_order_use_cases`/`provide_payment_use_cases` (each its own independent
+    `_billing_session()`, correct for every OTHER caller since a buyer's `createOrder` and a later
+    `confirmInvoicePayment` are always two separate HTTP requests), this endpoint calls
+    `create_order` then `confirm_payment` in the SAME request, so both use-case sets must share
+    ONE session/transaction or the invoice `create_order` just added is invisible to
+    `confirm_payment`'s own read (confirmed via a real 404 `InvoiceNotFoundError` in production
+    before this provider existed, 2026-08-25)."""
+    async for session in _billing_session():
+        yield AdminGrantCreditsUseCases(
+            orders=OrderUseCases(
+                orders=SqlalchemyOrderRepository(session),
+                invoices=SqlalchemyInvoiceRepository(session),
+                products=_billing_product_definition_adapter(),
+                outbox=OutboxWriter(session, BillingOutboxEventRow),
+            ),
+            payments=PaymentUseCases(
+                orders=SqlalchemyOrderRepository(session),
+                invoices=SqlalchemyInvoiceRepository(session),
+                entitlements=SqlalchemyEntitlementRepository(session),
+                payment_provider=_billing_payment_provider(),
+                outbox=OutboxWriter(session, BillingOutboxEventRow),
+            ),
         )
 
 

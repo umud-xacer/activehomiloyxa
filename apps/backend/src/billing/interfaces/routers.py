@@ -30,8 +30,10 @@ from billing.application.ports import ProductDefinitionSnapshot
 from billing.domain import Entitlement, Invoice, Order, ProductType, TargetType
 from billing.interfaces.auth import ActingOperator, ActingUser
 from billing.interfaces.di import (
+    AdminGrantCreditsUseCases,
     get_acting_operator,
     get_acting_user,
+    get_admin_grant_credits_use_cases,
     get_entitlement_use_cases,
     get_order_use_cases,
     get_payment_provider_status,
@@ -321,8 +323,7 @@ async def admin_grant_listing_credits(
     profileId: UUID,
     body: GrantCreditsRequest,
     operator: ActingOperator = Depends(get_acting_operator),
-    order_use_cases: OrderUseCases = Depends(get_order_use_cases),
-    payment_use_cases: PaymentUseCases = Depends(get_payment_use_cases),
+    use_cases: AdminGrantCreditsUseCases = Depends(get_admin_grant_credits_use_cases),
 ) -> InvoiceDto:
     """Grants `body.productId`'s entitlement to `profileId` for free, admin-triggered (2026-08-24,
     `/admin/users`'s "Kredit qo'shish" action) -- NOT a bypass of billing's own invariants: every
@@ -333,9 +334,17 @@ async def admin_grant_listing_credits(
     zero-price "Admin sovg'a" product authored via the owner-admin pricing UI, but any published
     product works -- e.g. comping a normally-paid pack). A real `Order`/`Invoice` audit trail is
     the deliberate result, not an accident: `confirm_payment`'s own `note` records who granted it
-    and why."""
+    and why.
+
+    `use_cases.orders`/`use_cases.payments` share ONE DB session (`AdminGrantCreditsUseCases`,
+    `billing/interfaces/di.py`) -- unlike every other `create_order`/`confirm_payment` pairing,
+    which always spans two separate HTTP requests (a buyer's `createOrder` commits before a LATER
+    `confirmInvoicePayment` request reads it), this endpoint calls both in the same request, so a
+    just-created, not-yet-committed invoice would be invisible to an independently-transacted
+    `confirm_payment` (this produced a real `InvoiceNotFoundError` 404 in production, 2026-08-25,
+    before `AdminGrantCreditsUseCases` existed -- do not revert to two separate `Depends(...)`)."""
     now = datetime.now(UTC)
-    order = await order_use_cases.create_order(
+    order = await use_cases.orders.create_order(
         purchaser_profile_id=BusinessProfileId(value=profileId),
         product_id=body.product_id,
         target_type=TargetType(body.target_type),
@@ -343,10 +352,10 @@ async def admin_grant_listing_credits(
         booking_window=None,
         now=now,
     )
-    invoice = await order_use_cases.get_order_invoice(order.id)
+    invoice = await use_cases.orders.get_order_invoice(order.id)
     if invoice is None:
         raise InvoiceNotFoundError(order_id=order.id)
-    confirmed = await payment_use_cases.confirm_payment(
+    confirmed = await use_cases.payments.confirm_payment(
         invoice_id=invoice.id,
         operator_account_id=operator.account_id.value,
         confirmed=True,

@@ -718,6 +718,14 @@ async def _seed_furniture_category(
             display_order=display_order,
             now=now,
         )
+        await _backfill_form_definition_id(
+            use_cases,
+            repo,
+            head_id=existing.id,
+            current_version_id=existing.current_version_id,
+            form_definition_id=form_definition_id,
+            now=now,
+        )
         return existing.id
 
     manage_key = _registry.manage_permission_key(ConfigEntityType.CATEGORY.value)
@@ -3131,6 +3139,14 @@ async def _seed_category(
             display_order=display_order,
             now=now,
         )
+        await _backfill_form_definition_id(
+            use_cases,
+            repo,
+            head_id=existing.id,
+            current_version_id=existing.current_version_id,
+            form_definition_id=form_definition_id,
+            now=now,
+        )
         return existing.id
 
     manage_key = _registry.manage_permission_key(ConfigEntityType.CATEGORY.value)
@@ -3266,6 +3282,68 @@ async def _backfill_display_order(
             actor_id=SEED_CHECKER_ID,
             actor_permission_keys=frozenset({manage_key, approve_key}),
             approval_note="seed: backfill display_order approval",
+            now=now,
+        )
+
+
+async def _backfill_form_definition_id(
+    use_cases: ConfigurationUseCases,
+    repo: SqlalchemyConfigHeadRepository,
+    *,
+    head_id: UUID,
+    current_version_id: UUID | None,
+    form_definition_id: UUID,
+    now: datetime,
+) -> None:
+    """Self-heal for a category that already existed under an OLDER `form_definition_id` and so
+    was skipped by `_seed_category`'s `DuplicateCodeError` branch without ever being repointed --
+    same pattern as `_backfill_listing_kind`/`_backfill_display_order` just above, but for the
+    field that actually drives which dynamic form `/list` renders. `_backfill_category_form_definition`
+    already covers this for a top-level head (called once, explicitly, by name) when a tree's form
+    code changes (2026-08-23, "Noturar binolar" splitting off `tijorat-mulk-form` etc.) -- but
+    `_seed_subtree` passes the SAME new `form_definition_id` down to `_seed_category` for every
+    leaf too, and until now nothing repointed a pre-existing LEAF that hit this duplicate branch,
+    leaving it stuck on its original (often now-orphaned) form. Confirmed root cause of "Boshqa uy
+    bezaklari" silently rendering zero dynamic fields: `uy-bezaklari`'s leaves were created before
+    the `home-decor-form` split and never got migrated off the old shared form. Idempotent: a
+    no-op once the category already points at the given form, so this settles out after one deploy
+    for every affected leaf across all 9 categories that have gone through a form-code split."""
+    if current_version_id is None:
+        return
+    current = await repo.get_version(ConfigEntityType.CATEGORY, head_id, current_version_id)
+    if current is None:
+        return
+    if current.definition_document.get("form_definition_id") == str(form_definition_id):
+        return
+
+    new_document = {**current.definition_document, "form_definition_id": str(form_definition_id)}
+
+    new_version = await use_cases.create_version_draft(
+        ConfigEntityType.CATEGORY,
+        head_id,
+        definition=new_document,
+        actor_id=SEED_MAKER_ID,
+        now=now,
+    )
+    manage_key = _registry.manage_permission_key(ConfigEntityType.CATEGORY.value)
+    approve_key = _registry.approve_permission_key(ConfigEntityType.CATEGORY.value)
+    step1 = await use_cases.publish(
+        ConfigEntityType.CATEGORY,
+        head_id,
+        new_version.id,
+        actor_id=SEED_MAKER_ID,
+        actor_permission_keys=frozenset({manage_key}),
+        approval_note="seed: backfill form_definition_id",
+        now=now,
+    )
+    if step1.status.value == "APPROVAL":
+        await use_cases.publish(
+            ConfigEntityType.CATEGORY,
+            head_id,
+            step1.id,
+            actor_id=SEED_CHECKER_ID,
+            actor_permission_keys=frozenset({manage_key, approve_key}),
+            approval_note="seed: backfill form_definition_id approval",
             now=now,
         )
 
@@ -7004,6 +7082,32 @@ async def _seed_pricing_plans(
         price_amount="300000.00",
         term_days=30,
         quota_set={"unlimited_listing_publish": True},
+        category_id=None,
+        now=now,
+    )
+    await _seed_product_definition(
+        use_cases,
+        repo,
+        code="listing-promotion-vip",
+        name="VIP e'lon",
+        description="E'loningizni 7 kun davomida VIP (Premium) belgisi bilan ajratib ko'rsatish.",
+        product_type="PREMIUM",
+        price_amount="25000.00",
+        term_days=7,
+        quota_set=None,
+        category_id=None,
+        now=now,
+    )
+    await _seed_product_definition(
+        use_cases,
+        repo,
+        code="listing-promotion-top",
+        name="TOP'da ko'rsatish",
+        description="E'loningizni 7 kun davomida qidiruv va kategoriya natijalarida yuqorida ko'rsatish.",
+        product_type="TOP_PLACEMENT",
+        price_amount="35000.00",
+        term_days=7,
+        quota_set=None,
         category_id=None,
         now=now,
     )
