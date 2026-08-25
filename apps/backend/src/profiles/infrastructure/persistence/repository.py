@@ -117,6 +117,8 @@ def _profile_to_domain(
         promo_video_media_asset_ids=tuple(UUID(v) for v in (row.promo_video_media_asset_ids or [])),
         main_category=MainCategory(row.main_category) if row.main_category else None,
         sub_category=SubCategory(row.sub_category) if row.sub_category else None,
+        finance_offer_details=_localized_text(row.finance_offer_details_localized),
+        promo_video_youtube_url=row.promo_video_youtube_url,
     )
 
 
@@ -142,6 +144,12 @@ def _apply_profile_fields(row: BusinessProfileRow, profile: BusinessProfile) -> 
     row.promo_video_media_asset_ids = [str(v) for v in profile.promo_video_media_asset_ids]
     row.main_category = profile.main_category.value if profile.main_category else None
     row.sub_category = profile.sub_category.value if profile.sub_category else None
+    row.finance_offer_details_localized = (
+        profile.finance_offer_details.model_dump(mode="json")
+        if profile.finance_offer_details
+        else None
+    )
+    row.promo_video_youtube_url = profile.promo_video_youtube_url
     row.updated_at = profile.updated_at
 
 
@@ -212,7 +220,13 @@ class SqlalchemyBusinessProfileRepository:
     ) -> tuple[list[BusinessProfile], str | None]:
         stmt = (
             select(BusinessProfileRow)
-            .where(BusinessProfileRow.status != ProfileStatus.ARCHIVED.value)
+            # ADR-0012: a profile is publicly listable only once approved (`ACTIVE`) -- widened
+            # from "anything not ARCHIVED" (which used to also include CREATED, before this task
+            # added the registration-approval gate; CREATED is momentary now, immediately
+            # followed by PENDING_REVIEW in the same request, per `BusinessProfile.create`'s own
+            # docstring, so this filter is a strict narrowing, not a behavior change for any
+            # profile that reaches this query today).
+            .where(BusinessProfileRow.status == ProfileStatus.ACTIVE.value)
             .order_by(BusinessProfileRow.created_at, BusinessProfileRow.id)
             .limit(limit + 1)
         )

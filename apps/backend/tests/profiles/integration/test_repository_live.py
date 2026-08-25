@@ -38,19 +38,23 @@ async def test_business_profile_round_trips_localized_text_and_portfolio(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     owner = UserId(value=uuid4())
-    profile = BusinessProfile.create(
-        profile_id=BusinessProfileId(value=uuid4()),
-        owner_user_id=owner,
-        profile_type=ProfileType.ARCHITECT,
-        name=LocalizedText(
-            uz_latn="Arxitektor", uz_cyrl="Архитектор", ru="Архитектор", en="Architect"
-        ),
-        description=LocalizedText(uz_latn="Tavsif"),
-        contacts={"phone": "+998901112233"},
-        address="Tashkent, Chilanzar",
-        slug="arxitektor-test",
-        now=NOW,
-    ).activate(now=NOW)
+    profile = (
+        BusinessProfile.create(
+            profile_id=BusinessProfileId(value=uuid4()),
+            owner_user_id=owner,
+            profile_type=ProfileType.ARCHITECT,
+            name=LocalizedText(
+                uz_latn="Arxitektor", uz_cyrl="Архитектор", ru="Архитектор", en="Architect"
+            ),
+            description=LocalizedText(uz_latn="Tavsif"),
+            contacts={"phone": "+998901112233"},
+            address="Tashkent, Chilanzar",
+            slug="arxitektor-test",
+            now=NOW,
+        )
+        .submit_for_review(now=NOW)
+        .approve(now=NOW)
+    )
     profile = profile.add_portfolio_item(
         item_id=uuid4(), media_asset_id=uuid4(), caption=None, now=NOW
     )
@@ -83,17 +87,21 @@ async def test_I13_full_request_approve_badge_flow_survives_real_commit(
         eligibility = SqlalchemyVerificationEligibilityRepository(session)
         cases = SqlalchemyVerificationCaseRepository(session)
 
-        profile = BusinessProfile.create(
-            profile_id=BusinessProfileId(value=uuid4()),
-            owner_user_id=owner,
-            profile_type=ProfileType.CONSTRUCTION_COMPANY,
-            name=LocalizedText(uz_latn="QC"),
-            description=None,
-            contacts=None,
-            address=None,
-            slug="qc-test",
-            now=NOW,
-        ).activate(now=NOW)
+        profile = (
+            BusinessProfile.create(
+                profile_id=BusinessProfileId(value=uuid4()),
+                owner_user_id=owner,
+                profile_type=ProfileType.CONSTRUCTION_COMPANY,
+                name=LocalizedText(uz_latn="QC"),
+                description=None,
+                contacts=None,
+                address=None,
+                slug="qc-test",
+                now=NOW,
+            )
+            .submit_for_review(now=NOW)
+            .approve(now=NOW)
+        )
         await profiles.add(profile)
 
         await eligibility.upsert(
@@ -170,17 +178,21 @@ async def test_I13_negative_direct_issue_badge_attempt_refused_after_reload(
         profiles = SqlalchemyBusinessProfileRepository(session)
         cases = SqlalchemyVerificationCaseRepository(session)
 
-        profile = BusinessProfile.create(
-            profile_id=BusinessProfileId(value=uuid4()),
-            owner_user_id=owner,
-            profile_type=ProfileType.BUILDER,
-            name=LocalizedText(uz_latn="B"),
-            description=None,
-            contacts=None,
-            address=None,
-            slug="b-test",
-            now=NOW,
-        ).activate(now=NOW)
+        profile = (
+            BusinessProfile.create(
+                profile_id=BusinessProfileId(value=uuid4()),
+                owner_user_id=owner,
+                profile_type=ProfileType.BUILDER,
+                name=LocalizedText(uz_latn="B"),
+                description=None,
+                contacts=None,
+                address=None,
+                slug="b-test",
+                now=NOW,
+            )
+            .submit_for_review(now=NOW)
+            .approve(now=NOW)
+        )
         await profiles.add(profile)
 
         case = VerificationCase.create(

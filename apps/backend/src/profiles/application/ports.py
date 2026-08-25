@@ -56,7 +56,8 @@ class BusinessProfileRepository(Protocol):
         cursor: str | None,
         limit: int,
     ) -> tuple[list[BusinessProfile], str | None]:
-        """Backs `listBusinessProfiles`. Every non-`ARCHIVED` profile is publicly listable;
+        """Backs `listBusinessProfiles`. Only `ACTIVE` profiles are publicly listable (ADR-0012:
+        `CREATED`/`PENDING_REVIEW`/`REJECTED` are all pre-approval, `ARCHIVED` is closed);
         `verified_only` filters to `badge.status == VALID`. `main_category` (additive,
         Organizations Main-Category task) filters to that sector tab -- a profile with `None`
         main_category never matches any non-null filter value, same as any other None-vs-value

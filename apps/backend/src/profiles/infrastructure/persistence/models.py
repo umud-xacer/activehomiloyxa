@@ -41,8 +41,12 @@ _PROFILE_TYPES = (
 )
 _MAIN_CATEGORIES = (
     "('FINANCE_MORTGAGE', 'CONSTRUCTION_CONTRACTORS', 'MANUFACTURERS_MATERIALS', "
-    "'ARCHITECTURE_INTERIOR', 'REPAIR_SERVICES', 'REAL_ESTATE_AGENCIES')"
+    "'ARCHITECTURE_INTERIOR', 'REPAIR_SERVICES', 'REAL_ESTATE_AGENCIES', "
+    "'TRANSPORT_LOGISTICS', 'LEGAL_CONSULTING_ACCOUNTING', 'HOME_APPLIANCES_EQUIPMENT', "
+    "'HOSPITALITY_SERVICES')"
 )
+"""Widened 6→10 by ADR-0012 (B2B Directory professional-upgrade task) -- the last four values are
+new."""
 _SUB_CATEGORIES = (
     "('COMMERCIAL_BANK', 'MORTGAGE_CENTER', 'MICROFINANCE', 'INSURANCE', 'LEASING', "
     "'GENERAL_CONTRACTOR', 'SUBCONTRACTOR', 'CIVIL_ENGINEERING', 'RENOVATION_CONTRACTOR', "
@@ -53,9 +57,18 @@ _SUB_CATEGORIES = (
     "'ENGINEERING_DESIGN_STUDIO', "
     "'HOME_REPAIR_SERVICE', 'PLUMBING_ELECTRICAL_SERVICE', 'CLEANING_SERVICE', "
     "'APPLIANCE_REPAIR_SERVICE', "
-    "'RESIDENTIAL_AGENCY', 'COMMERCIAL_AGENCY', 'PROPERTY_MANAGEMENT', 'VALUATION_SERVICE')"
+    "'RESIDENTIAL_AGENCY', 'COMMERCIAL_AGENCY', 'PROPERTY_MANAGEMENT', 'VALUATION_SERVICE', "
+    "'FREIGHT_TRANSPORT', 'COURIER_DELIVERY', 'CAR_RENTAL', 'LOGISTICS_WAREHOUSING', "
+    "'MOVING_SERVICES', "
+    "'LAW_FIRM', 'ACCOUNTING_FIRM', 'BUSINESS_CONSULTING', 'TAX_ADVISORY', 'NOTARY_SERVICES', "
+    "'HOME_APPLIANCE_STORE', 'ELECTRONICS_RETAILER', 'APPLIANCE_SERVICE_CENTER', "
+    "'EQUIPMENT_RENTAL', 'HVAC_EQUIPMENT_SUPPLIER', "
+    "'HOTEL_OPERATOR', 'GUESTHOUSE_OPERATOR', 'EVENT_VENUE', 'CATERING_SERVICE', "
+    "'TRAVEL_AGENCY')"
 )
-_PROFILE_STATUSES = "('CREATED', 'ACTIVE', 'ARCHIVED')"
+"""Widened by ADR-0012's four new sectors (20 new sub-categories)."""
+_PROFILE_STATUSES = "('CREATED', 'PENDING_REVIEW', 'ACTIVE', 'REJECTED', 'ARCHIVED')"
+"""Widened by ADR-0012 -- see `profiles.domain.value_objects.ProfileStatus`'s own docstring."""
 _BADGE_STATUSES = "('VALID', 'EXPIRED', 'REVOKED')"
 _CASE_STATUSES = "('REQUESTED', 'IN_REVIEW', 'APPROVED', 'REJECTED')"
 _DECISION_OUTCOMES = "('APPROVED', 'REJECTED')"
@@ -108,6 +121,16 @@ class BusinessProfileRow(ProfilesBase, AggregateMixin):  # type: ignore[misc,val
     `main_category`, never required by onboarding. The cross-field "this code belongs to that
     main_category" rule is a domain-layer invariant, not expressed by this column's own CHECK
     (a flat membership check only, mirroring `ck_business_profile_main_category`'s own shape)."""
+    finance_offer_details_localized: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True
+    )
+    """Additive (ADR-0012, "Bank/Finans bloki"): free-text ipoteka/kredit terms, only ever
+    rendered by the frontend when `main_category == 'FINANCE_MORTGAGE'` -- no CHECK enforces
+    that restriction at the DB level, same "domain/interfaces decide, column stays permissive"
+    split `main_category`'s own sibling fields already use."""
+    promo_video_youtube_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    """Additive (ADR-0012): host-validated (youtube.com/youtu.be) by the application layer, not
+    by a column CHECK -- mirrors this table's existing "validation lives one layer up" fields."""
 
     __table_args__ = (
         CheckConstraint(f"profile_type IN {_PROFILE_TYPES}", name="ck_business_profile_type"),

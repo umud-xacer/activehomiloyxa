@@ -59,6 +59,7 @@ _LISTING_PROMOTION_HANDLER = "catalog.listing_promotion_projection"
 _LISTING_PUBLICATION_HANDLER = "catalog.listing_publication_projection"
 _SUBSCRIPTION_VISIBILITY_HANDLER = "catalog.subscription_visibility_projection"
 _TRIAL_SUBSCRIPTION_HANDLER = "catalog.trial_subscription_visibility_projection"
+_REGISTRATION_APPROVAL_HANDLER = "catalog.registration_approval_visibility_projection"
 _IDENTITY_HANDLER = "catalog.identity_account_suspension_projection"
 
 _MEDIA_STATUS_BY_EVENT_TYPE = {
@@ -288,6 +289,50 @@ async def handle_trial_subscription_event(
             await use_cases.suspend_all_by_owner_profile(
                 owner_profile_id=owner_profile_id,
                 reason="subscription_lapsed",  # must match listing_use_cases._SUBSCRIPTION_LAPSE_REASON
+                now=envelope.occurred_at,
+            )
+
+
+async def handle_registration_approval_event(
+    session: AsyncSession, envelope: EventEnvelope, use_cases: ListingUseCases
+) -> None:
+    """ADR-0012. profiles' `BusinessProfileApproved`/`BusinessProfileRejected` -- structurally
+    identical to `handle_subscription_visibility_event`/`handle_trial_subscription_event` above
+    (same reactive suspend/reactivate shape), but scoped to its OWN reason string
+    (`_PENDING_REVIEW_REASON`/`_APPROVAL_REASON`, passed explicitly to
+    `reactivate_all_by_owner_profile`'s override parameters) rather than reusing the subscription
+    ones -- a company can be simultaneously unapproved AND subscription-lapsed, and each gate must
+    clear independently before its own suspensions lift (see `ListingUseCases.
+    reactivate_all_by_owner_profile`'s own docstring). Every new registration starts
+    `PENDING_REVIEW` (`ProfileUseCases.create_profile`), so `BusinessProfileRejected` is a
+    no-op suspend here in the common case (the profile's listings can't exist yet -- a
+    `LEGAL_ENTITY` account cannot create one before completing onboarding, ADR-0010); it still
+    matters for the edit-and-resubmit path, where listings may already exist from a prior
+    approval that a later moderation action then reverted to review."""
+    async with idempotent_consume(
+        session,
+        ProcessedEventRow,
+        event_id=envelope.event_id,
+        handler=_REGISTRATION_APPROVAL_HANDLER,
+    ) as is_fresh:
+        if not is_fresh:
+            return
+        profile_id_raw = envelope.payload.get("businessProfileId")
+        if profile_id_raw is None:
+            return
+        owner_profile_id = BusinessProfileId(value=UUID(str(profile_id_raw)))
+        if envelope.event_type == "BusinessProfileApproved":
+            await use_cases.reactivate_all_by_owner_profile(
+                owner_profile_id=owner_profile_id,
+                now=envelope.occurred_at,
+                # must match listing_use_cases._PENDING_REVIEW_REASON / _APPROVAL_REASON
+                suspend_reason="profile_pending_review",
+                restore_reason="profile_approved",
+            )
+        else:
+            await use_cases.suspend_all_by_owner_profile(
+                owner_profile_id=owner_profile_id,
+                reason="profile_pending_review",  # must match listing_use_cases._PENDING_REVIEW_REASON
                 now=envelope.occurred_at,
             )
 

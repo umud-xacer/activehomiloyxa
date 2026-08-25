@@ -132,6 +132,7 @@ from catalog.infrastructure.event_projection import (
     handle_identity_event,
     handle_listing_promotion_event,
     handle_listing_publication_event,
+    handle_registration_approval_event,
     handle_subscription_visibility_event,
     handle_trial_subscription_event,
 )
@@ -2580,7 +2581,14 @@ def make_profiles_notification_projection_handler() -> Callable[[EventEnvelope],
     `handle_subscription_visibility_event` is routed off of BILLING's own outbox above; this is
     the profiles-outbox sibling of that route), and catalog must never run its own competing
     dispatcher against profiles' `outbox_event` table (this module's own `OutboxDispatcher`
-    docstring: "only one dispatcher can safely claim a given row")."""
+    docstring: "only one dispatcher can safely claim a given row").
+
+    ADR-0012 adds a SIXTH route: catalog's own `handle_registration_approval_event`, reacting to
+    `BusinessProfileApproved`/`BusinessProfileRejected` -- the B2B Directory registration-approval
+    gate's own visibility mechanism, structurally identical to the trial/subscription routes
+    above but scoped to its own suspend/restore reason strings so the three gates never
+    cross-contaminate each other's suspensions (see `ListingUseCases.
+    reactivate_all_by_owner_profile`'s own docstring)."""
 
     search_handler = make_search_event_handler(
         session_factory=_search_session_factory(), index=_search_index_adapter()
@@ -2617,6 +2625,14 @@ def make_profiles_notification_projection_handler() -> Callable[[EventEnvelope],
         }:
             async with _catalog_session_factory()() as session, session.begin():
                 await handle_trial_subscription_event(
+                    session, envelope, _build_listing_use_cases(session)
+                )
+        if envelope.event_type in {
+            "BusinessProfileApproved",
+            "BusinessProfileRejected",
+        }:
+            async with _catalog_session_factory()() as session, session.begin():
+                await handle_registration_approval_event(
                     session, envelope, _build_listing_use_cases(session)
                 )
 

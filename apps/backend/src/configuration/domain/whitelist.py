@@ -78,8 +78,9 @@ NOTIFICATION_CHANNELS: frozenset[str] = frozenset({"EMAIL", "WEB_PUSH", "SMS"})
 
 # DDD Sec 8.1: "the EventKey vocabulary for notification templates is a subset of [the domain
 # event catalogue]" -- no narrower subset is enumerated anywhere, so the v1 whitelist is the
-# full frozen catalogue (`contracts/events/*.py` `event_type` Literals; 57 events as of ADR-0011,
-# docs/adr/0011-mark-as-sold-listing-lifecycle-state.md -- previously 56 as of ADR-0005,
+# full frozen catalogue (`contracts/events/*.py` `event_type` Literals; 61 events as of ADR-0012,
+# docs/adr/0012-b2b-directory-widening.md -- previously 57 as of ADR-0011,
+# docs/adr/0011-mark-as-sold-listing-lifecycle-state.md, 56 as of ADR-0005,
 # docs/adr/0005-analytics-missing-metric-events.md, and 53 as of ADR-0001,
 # docs/adr/0001-media-asset-status-events.md). `tests/configuration/test_whitelist.py` asserts
 # this set has zero drift against `contracts.events` by importing it at test scope.
@@ -93,7 +94,9 @@ EVENT_KEYS: frozenset[str] = frozenset(
         "BannerCampaignStarted",
         "BannerClickRecorded",
         "BannerImpressionRecorded",
+        "BusinessProfileApproved",
         "BusinessProfileCreated",
+        "BusinessProfileRejected",
         "BusinessVerified",
         "CategoryChanged",
         "CategoryCreated",
@@ -137,6 +140,8 @@ EVENT_KEYS: frozenset[str] = frozenset(
         "ProductDefinitionChanged",
         "RoleDefinitionChanged",
         "SearchConfigurationChanged",
+        "TrialSubscriptionEnded",
+        "TrialSubscriptionStarted",
         "UserBlocked",
         "UserRegistered",
         "VerificationRejected",
@@ -321,6 +326,17 @@ SETTINGS_SCHEMA: dict[str, type] = {
     # admin-edited, same rationale as `login_lockout.*` two lines up.
     "stats.cities": int,
     "stats.partners": int,
+    # B2B Directory sector icons (ADR-0012, site-owner spec): a small admin-editable overlay
+    # mapping each of `profiles.MainCategory`'s 10 sector codes to {iconUrl, accentColor} --
+    # `profiles.MainCategory` itself stays the frozen source of truth for which codes are legal
+    # (profiles cannot import configuration, SAD Sec 8.1, so this key is validated only as "a
+    # dict", never against that enum, mirroring how `admin.owner_panel_slug` et al. are each
+    # validated independently of whatever module actually consumes them). This is the schema's
+    # first dict-typed key -- every prior key here is a scalar (int/bool/str); adding a 9th
+    # `ConfigEntityType` for what is really one small key/value map was considered and rejected
+    # as disproportionate (see docs/adr/0012-b2b-directory-widening.md's own "Alternatives
+    # considered").
+    "b2b.sector_icons": dict,
     "stats.satisfaction_percent": int,
 }
 

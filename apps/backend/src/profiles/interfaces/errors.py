@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from backbone.errors import ExceptionMapper, simple_problem_builder
 from profiles.application.exceptions import (
+    InvalidPromoVideoUrlError,
     MediaAssetNotFoundError,
     NotProfileOwnerError,
     ProfileNotFoundError,
@@ -99,6 +100,14 @@ def register_profiles_exception_mappings(mapper: ExceptionMapper) -> None:
             status=422,
             code="VALIDATION_FAILED",
             title="Sub-category does not belong to the profile's main category",
+        ),
+    )
+    mapper.register(
+        InvalidPromoVideoUrlError,
+        simple_problem_builder(
+            status=422,
+            code="VALIDATION_FAILED",
+            title="Promo video URL must be a youtube.com/youtu.be link",
         ),
     )
 

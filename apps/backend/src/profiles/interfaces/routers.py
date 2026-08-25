@@ -41,8 +41,11 @@ from profiles.interfaces.dto import BusinessProfileBadge as BusinessProfileBadge
 from profiles.interfaces.dto import (
     BusinessProfileBrandingRequest,
     BusinessProfileCreateRequest,
+    BusinessProfileLandingExtrasRequest,
     BusinessProfilePage,
+    BusinessProfileRegistrationDecisionRequest,
     BusinessProfileUpdateRequest,
+    MainCategoryLiteral,
     PageInfo,
     PromoVideoAddRequest,
     SubCategoryLiteral,
@@ -106,6 +109,8 @@ async def _to_profile_dto(
         promo_video_media_asset_ids=list(profile.promo_video_media_asset_ids),
         main_category=profile.main_category.value if profile.main_category else None,
         sub_category=profile.sub_category.value if profile.sub_category else None,
+        finance_offer_details=profile.finance_offer_details,
+        promo_video_youtube_url=profile.promo_video_youtube_url,
         created_at=profile.created_at,
     )
 
@@ -160,15 +165,7 @@ async def list_business_profiles(
         "SERVICE_PROVIDER",
     ]
     | None = None,
-    mainCategory: Literal[
-        "FINANCE_MORTGAGE",
-        "CONSTRUCTION_CONTRACTORS",
-        "MANUFACTURERS_MATERIALS",
-        "ARCHITECTURE_INTERIOR",
-        "REPAIR_SERVICES",
-        "REAL_ESTATE_AGENCIES",
-    ]
-    | None = None,
+    mainCategory: MainCategoryLiteral | None = None,
     subCategory: SubCategoryLiteral | None = None,
     verifiedOnly: bool | None = None,
     cursor: str | None = None,
@@ -281,6 +278,29 @@ async def update_business_profile_branding(
         owner_user_id=user.account_id,
         logo_media_asset_id=body.logo_media_asset_id,
         banner_media_asset_id=body.banner_media_asset_id,
+        now=datetime.now(UTC),
+    )
+    return await _to_profile_dto(profile, use_cases=use_cases)
+
+
+@profiles_router.patch(
+    "/business-profiles/{profileId}/landing-extras",
+    operation_id="updateBusinessProfileLandingExtras",
+)
+async def update_business_profile_landing_extras(
+    profileId: UUID,
+    body: BusinessProfileLandingExtrasRequest,
+    user: ActingUser = Depends(get_acting_user),
+    use_cases: ProfileUseCases = Depends(get_profile_use_cases),
+) -> BusinessProfileDto:
+    """ADR-0012: the finance-terms block and YouTube promo link. Raises `422 VALIDATION_FAILED`
+    (`InvalidPromoVideoUrlError`) if `promoVideoYoutubeUrl` is set but not a recognized YouTube
+    URL."""
+    profile = await use_cases.update_landing_extras(
+        BusinessProfileId(value=profileId),
+        owner_user_id=user.account_id,
+        finance_offer_details=body.finance_offer_details,
+        promo_video_youtube_url=body.promo_video_youtube_url,
         now=datetime.now(UTC),
     )
     return await _to_profile_dto(profile, use_cases=use_cases)
@@ -477,7 +497,7 @@ async def decide_verification(
 
 @admin_profiles_router.get("/admin/business-profiles", operation_id="adminListBusinessProfiles")
 async def admin_list_business_profiles(
-    status: Literal["CREATED", "ACTIVE", "ARCHIVED"] | None = None,
+    status: Literal["CREATED", "PENDING_REVIEW", "ACTIVE", "REJECTED", "ARCHIVED"] | None = None,
     cursor: str | None = None,
     limit: int | None = Query(default=20),
     _manager: ActingProfileManager = Depends(get_acting_profile_manager),
@@ -510,5 +530,28 @@ async def admin_archive_business_profile(
     the profile disappears from every public listing immediately, its data/audit trail is kept."""
     profile = await use_cases.admin_archive_profile(
         BusinessProfileId(value=profileId), now=datetime.now(UTC)
+    )
+    return await _to_profile_dto(profile, use_cases=use_cases)
+
+
+@admin_profiles_router.post(
+    "/admin/business-profiles/{profileId}/decision",
+    operation_id="decideBusinessProfileRegistration",
+)
+async def decide_business_profile_registration(
+    profileId: UUID,
+    body: BusinessProfileRegistrationDecisionRequest,
+    manager: ActingProfileManager = Depends(get_acting_profile_manager),
+    use_cases: ProfileUseCases = Depends(get_profile_use_cases),
+) -> BusinessProfileDto:
+    """ADR-0012 (B2B Directory professional-upgrade task): the "Yangi arizalar" admin tab's
+    approve/reject action on a `PENDING_REVIEW` company. Same `profiles:profile:manage` gate as
+    `adminArchiveBusinessProfile` -- no new permission key needed."""
+    profile = await use_cases.decide_registration(
+        BusinessProfileId(value=profileId),
+        reviewer_user_id=manager.account_id.value,
+        outcome=body.outcome,
+        reason=body.reason,
+        now=datetime.now(UTC),
     )
     return await _to_profile_dto(profile, use_cases=use_cases)

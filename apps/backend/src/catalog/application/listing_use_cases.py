@@ -77,6 +77,15 @@ carries -- `reactivate_all_by_owner_profile`'s own marker to distinguish its sus
 any other (moderation, owner-initiated) so a renewal never restores the wrong ones."""
 _SUBSCRIPTION_RENEWAL_REASON = "subscription_renewed"
 
+_PENDING_REVIEW_REASON = "profile_pending_review"
+"""ADR-0012: the fixed `reason` a registration-pending-driven `suspend()` carries -- the
+`profiles.BusinessProfileRejected`/new-registration sibling of `_SUBSCRIPTION_LAPSE_REASON`,
+kept as its own distinct reason (not reused) so `reactivate_all_by_owner_profile`'s "only restore
+what THIS specific reason suspended" guard never conflates a pending-review suspension with a
+subscription-lapse one -- a company could in principle be simultaneously unapproved AND
+subscription-lapsed, and each gate must clear independently before its own suspensions lift."""
+_APPROVAL_REASON = "profile_approved"
+
 
 class ListingUseCases:
     def __init__(
@@ -880,13 +889,21 @@ class ListingUseCases:
         return suspended
 
     async def reactivate_all_by_owner_profile(
-        self, *, owner_profile_id: BusinessProfileId, now: datetime
+        self,
+        *,
+        owner_profile_id: BusinessProfileId,
+        now: datetime,
+        suspend_reason: str = _SUBSCRIPTION_LAPSE_REASON,
+        restore_reason: str = _SUBSCRIPTION_RENEWAL_REASON,
     ) -> int:
         """Reverses `suspend_all_by_owner_profile` once the profile's subscription is active
-        again (billing's `EntitlementActivated` for a renewal). Only restores listings whose most
-        recent transition is THIS mechanism's own suspend (`reason == _SUBSCRIPTION_LAPSE_REASON`)
-        -- a listing separately suspended for moderation stays suspended; this never overrides
-        that call, the same "compensation, never a cascade" discipline the whole module follows."""
+        again (billing's `EntitlementActivated` for a renewal) -- or, per ADR-0012's own
+        `suspend_reason`/`restore_reason` override, once its registration is approved. Only
+        restores listings whose most recent transition is THIS mechanism's own suspend
+        (`reason == suspend_reason`) -- a listing separately suspended for moderation, or for a
+        DIFFERENT one of this profile's own gates (e.g. still subscription-lapsed while its
+        registration just got approved), stays suspended; this never overrides that, the same
+        "compensation, never a cascade" discipline the whole module follows."""
         reactivated = 0
         cursor: str | None = None
         while True:
@@ -899,15 +916,12 @@ class ListingUseCases:
             if not listings:
                 break
             for listing in listings:
-                if (
-                    not listing.transitions
-                    or listing.transitions[-1].reason != _SUBSCRIPTION_LAPSE_REASON
-                ):
+                if not listing.transitions or listing.transitions[-1].reason != suspend_reason:
                     continue
                 updated = listing.restore(
                     record_id=uuid4(),
                     actor_user_id=None,
-                    reason=_SUBSCRIPTION_RENEWAL_REASON,
+                    reason=restore_reason,
                     now=now,
                 )
                 updated = await self._listings.save(updated)
@@ -918,9 +932,7 @@ class ListingUseCases:
                         actor=None,
                         aggregate_type="Listing",
                         aggregate_id=updated.id.value,
-                        payload=await self._listing_payload(
-                            updated, reason=_SUBSCRIPTION_RENEWAL_REASON
-                        ),
+                        payload=await self._listing_payload(updated, reason=restore_reason),
                     )
                 )
                 reactivated += 1

@@ -33,8 +33,14 @@ class MainCategory(StrEnum):
     grouping distinct from `ProfileType` — `ProfileType` stays the frozen SRS Sec 4 vocabulary
     (never touched here); this is a second, independent classification used only for the public
     `/companies` directory's category tabs and the mandatory onboarding-wizard selector. Two of
-    the six sectors (finance/mortgage, real-estate agencies) have no corresponding `ProfileType`
-    at all, which is why this could not simply be derived from that enum."""
+    the six original sectors (finance/mortgage, real-estate agencies) have no corresponding
+    `ProfileType` at all, which is why this could not simply be derived from that enum.
+
+    Widened 6→10 (ADR-0012, B2B Directory professional-upgrade task, site-owner spec): the last
+    four values below (`TRANSPORT_LOGISTICS`, `LEGAL_CONSULTING_ACCOUNTING`,
+    `HOME_APPLIANCES_EQUIPMENT`, `HOSPITALITY_SERVICES`) were added in the same widening as
+    `ProfileStatus`'s new `PENDING_REVIEW`/`REJECTED` values -- see that ADR for the full
+    rationale of extending this documented closed vocabulary."""
 
     FINANCE_MORTGAGE = "FINANCE_MORTGAGE"
     CONSTRUCTION_CONTRACTORS = "CONSTRUCTION_CONTRACTORS"
@@ -42,6 +48,10 @@ class MainCategory(StrEnum):
     ARCHITECTURE_INTERIOR = "ARCHITECTURE_INTERIOR"
     REPAIR_SERVICES = "REPAIR_SERVICES"
     REAL_ESTATE_AGENCIES = "REAL_ESTATE_AGENCIES"
+    TRANSPORT_LOGISTICS = "TRANSPORT_LOGISTICS"
+    LEGAL_CONSULTING_ACCOUNTING = "LEGAL_CONSULTING_ACCOUNTING"
+    HOME_APPLIANCES_EQUIPMENT = "HOME_APPLIANCES_EQUIPMENT"
+    HOSPITALITY_SERVICES = "HOSPITALITY_SERVICES"
 
 
 class SubCategory(StrEnum):
@@ -87,6 +97,30 @@ class SubCategory(StrEnum):
     COMMERCIAL_AGENCY = "COMMERCIAL_AGENCY"
     PROPERTY_MANAGEMENT = "PROPERTY_MANAGEMENT"
     VALUATION_SERVICE = "VALUATION_SERVICE"
+    # -- TRANSPORT_LOGISTICS (ADR-0012) ------------------------------------------------------------
+    FREIGHT_TRANSPORT = "FREIGHT_TRANSPORT"
+    COURIER_DELIVERY = "COURIER_DELIVERY"
+    CAR_RENTAL = "CAR_RENTAL"
+    LOGISTICS_WAREHOUSING = "LOGISTICS_WAREHOUSING"
+    MOVING_SERVICES = "MOVING_SERVICES"
+    # -- LEGAL_CONSULTING_ACCOUNTING (ADR-0012) ------------------------------------------------------
+    LAW_FIRM = "LAW_FIRM"
+    ACCOUNTING_FIRM = "ACCOUNTING_FIRM"
+    BUSINESS_CONSULTING = "BUSINESS_CONSULTING"
+    TAX_ADVISORY = "TAX_ADVISORY"
+    NOTARY_SERVICES = "NOTARY_SERVICES"
+    # -- HOME_APPLIANCES_EQUIPMENT (ADR-0012) --------------------------------------------------------
+    HOME_APPLIANCE_STORE = "HOME_APPLIANCE_STORE"
+    ELECTRONICS_RETAILER = "ELECTRONICS_RETAILER"
+    APPLIANCE_SERVICE_CENTER = "APPLIANCE_SERVICE_CENTER"
+    EQUIPMENT_RENTAL = "EQUIPMENT_RENTAL"
+    HVAC_EQUIPMENT_SUPPLIER = "HVAC_EQUIPMENT_SUPPLIER"
+    # -- HOSPITALITY_SERVICES (ADR-0012) -------------------------------------------------------------
+    HOTEL_OPERATOR = "HOTEL_OPERATOR"
+    GUESTHOUSE_OPERATOR = "GUESTHOUSE_OPERATOR"
+    EVENT_VENUE = "EVENT_VENUE"
+    CATERING_SERVICE = "CATERING_SERVICE"
+    TRAVEL_AGENCY = "TRAVEL_AGENCY"
 
 
 SUB_CATEGORIES_BY_MAIN_CATEGORY: dict[MainCategory, tuple[SubCategory, ...]] = {
@@ -129,20 +163,58 @@ SUB_CATEGORIES_BY_MAIN_CATEGORY: dict[MainCategory, tuple[SubCategory, ...]] = {
         SubCategory.PROPERTY_MANAGEMENT,
         SubCategory.VALUATION_SERVICE,
     ),
+    MainCategory.TRANSPORT_LOGISTICS: (
+        SubCategory.FREIGHT_TRANSPORT,
+        SubCategory.COURIER_DELIVERY,
+        SubCategory.CAR_RENTAL,
+        SubCategory.LOGISTICS_WAREHOUSING,
+        SubCategory.MOVING_SERVICES,
+    ),
+    MainCategory.LEGAL_CONSULTING_ACCOUNTING: (
+        SubCategory.LAW_FIRM,
+        SubCategory.ACCOUNTING_FIRM,
+        SubCategory.BUSINESS_CONSULTING,
+        SubCategory.TAX_ADVISORY,
+        SubCategory.NOTARY_SERVICES,
+    ),
+    MainCategory.HOME_APPLIANCES_EQUIPMENT: (
+        SubCategory.HOME_APPLIANCE_STORE,
+        SubCategory.ELECTRONICS_RETAILER,
+        SubCategory.APPLIANCE_SERVICE_CENTER,
+        SubCategory.EQUIPMENT_RENTAL,
+        SubCategory.HVAC_EQUIPMENT_SUPPLIER,
+    ),
+    MainCategory.HOSPITALITY_SERVICES: (
+        SubCategory.HOTEL_OPERATOR,
+        SubCategory.GUESTHOUSE_OPERATOR,
+        SubCategory.EVENT_VENUE,
+        SubCategory.CATERING_SERVICE,
+        SubCategory.TRAVEL_AGENCY,
+    ),
 }
 
 
 class ProfileStatus(StrEnum):
-    """Physical DB `profiles.business_profile.status` CHECK -- `Created -> Active -> Archived`
-    (Database Architecture Sec "profiles schema": "owner closure/suspension follow-through").
-    `CREATED` is a momentary, always-recorded first transition: `BusinessProfile.create()`
-    produces it, and `application.ProfileUseCases.create_profile` immediately composes
-    `.activate()` in the same request/transaction (no document describes a distinct manual
-    activation step) -- the same "two recorded transitions, one request" composition
-    `catalog.domain.listing.Listing.create`+`.publish()` uses for immediate publication."""
+    """Physical DB `profiles.business_profile.status` CHECK. Originally a momentary
+    `Created -> Active -> Archived` machine (Database Architecture Sec "profiles schema": "owner
+    closure/suspension follow-through") where `application.ProfileUseCases.create_profile`
+    immediately composed `.activate()` in the same request -- no admin sign-off existed at all.
+
+    Widened (ADR-0012, B2B Directory professional-upgrade task, site-owner spec: "yangi
+    tashkilotlar avtomatik PENDING_REVIEW statusini olsin"): `create_profile` now composes
+    `.submit_for_review()` instead of `.activate()`, so every new company starts `PENDING_REVIEW`
+    and stays invisible on the public directory/landing page (`ProfileUseCases.
+    get_public_profile_by_slug`/`list_public_profiles`) until a reviewer decides it via the new
+    `decide_registration` use case. `CREATED -> PENDING_REVIEW -> ACTIVE -> ARCHIVED` is the
+    approval path; `PENDING_REVIEW -> REJECTED` the rejection path. `REJECTED` is not terminal --
+    `BusinessProfile.update_details` on a `REJECTED` profile transitions it back to
+    `PENDING_REVIEW` automatically (edit-to-resubmit), so an owner never needs a second, dedicated
+    "resubmit" call."""
 
     CREATED = "CREATED"
+    PENDING_REVIEW = "PENDING_REVIEW"
     ACTIVE = "ACTIVE"
+    REJECTED = "REJECTED"
     ARCHIVED = "ARCHIVED"
 
 

@@ -114,6 +114,18 @@ def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _approve(client: TestClient, profile_id: str) -> None:
+    """ADR-0012: every new profile starts `PENDING_REVIEW` -- tests that need an `ACTIVE` one
+    (e.g. to then archive it, only legal from `ACTIVE`) approve it first via the admin
+    registration-decision endpoint."""
+    resp = client.post(
+        f"/api/v1/admin/business-profiles/{profile_id}/decision",
+        json={"outcome": "APPROVED"},
+        headers=_auth("profile-manager-token"),
+    )
+    assert resp.status_code == 200, resp.text
+
+
 # --- profile CRUD ---------------------------------------------------------------------------
 
 
@@ -126,7 +138,7 @@ def test_create_and_get_business_profile(client: TestClient) -> None:
     assert resp.status_code == 201, resp.text
     body = resp.json()
     assert body["profileType"] == "ARCHITECT"
-    assert body["status"] == "ACTIVE"
+    assert body["status"] == "PENDING_REVIEW"
 
     get_resp = client.get(f"/api/v1/business-profiles/{body['id']}")
     assert get_resp.status_code == 200
@@ -167,6 +179,7 @@ def test_archive_business_profile_by_owner_succeeds(client: TestClient) -> None:
         json={"profileType": "SUPPLIER", "name": {"uz_latn": "S"}},
         headers=_auth("owner-token"),
     ).json()
+    _approve(client, created["id"])
     resp = client.delete(f"/api/v1/business-profiles/{created['id']}", headers=_auth("owner-token"))
     assert resp.status_code == 204
 
@@ -196,6 +209,7 @@ def test_admin_list_business_profiles_reports_total_and_includes_archived(
         json={"profileType": "SUPPLIER", "name": {"uz_latn": "Admin-listed co"}},
         headers=_auth("owner-token"),
     ).json()
+    _approve(client, created["id"])
     client.delete(f"/api/v1/business-profiles/{created['id']}", headers=_auth("owner-token"))
 
     resp = client.get("/api/v1/admin/business-profiles", headers=_auth("profile-manager-token"))
@@ -213,6 +227,7 @@ def test_admin_archive_business_profile_bypasses_ownership(client: TestClient) -
         json={"profileType": "SUPPLIER", "name": {"uz_latn": "Force-archived co"}},
         headers=_auth("owner-token"),
     ).json()
+    _approve(client, created["id"])
 
     resp = client.post(
         f"/api/v1/admin/business-profiles/{created['id']}/archive",

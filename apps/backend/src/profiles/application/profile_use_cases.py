@@ -14,15 +14,19 @@ from __future__ import annotations
 import re
 from datetime import datetime
 from typing import Any, Literal
+from urllib.parse import urlsplit
 from uuid import UUID, uuid4
 
 from contracts.events.profiles import (
+    BusinessProfileApproved,
     BusinessProfileCreated,
+    BusinessProfileRejected,
     TrialSubscriptionEnded,
     TrialSubscriptionStarted,
     VerifiedBadgeExpired,
 )
 from profiles.application.exceptions import (
+    InvalidPromoVideoUrlError,
     MediaAssetNotFoundError,
     NotProfileOwnerError,
     ProfileNotFoundError,
@@ -37,8 +41,12 @@ from profiles.application.ports import (
     SubscriptionEligibilityRepository,
     SubscriptionEligibilitySnapshot,
 )
-from profiles.domain import BusinessProfile, MainCategory, ProfileType, SubCategory
+from profiles.domain import BusinessProfile, MainCategory, ProfileStatus, ProfileType, SubCategory
 from shared_kernel import BusinessProfileId, LocalizedText, OutboxPort, UserId
+
+RegistrationOutcome = Literal["APPROVED", "REJECTED"]
+
+_YOUTUBE_HOSTS = ("youtube.com", "www.youtube.com", "youtu.be", "m.youtube.com")
 
 SubscriptionStatus = Literal["ACTIVE", "EXPIRED", "NONE"]
 
@@ -98,7 +106,7 @@ class ProfileUseCases:
             main_category=main_category,
             sub_category=sub_category,
         )
-        profile = profile.activate(now=now)
+        profile = profile.submit_for_review(now=now)
         await self._profiles.add(profile)
         await self._outbox.append(
             BusinessProfileCreated(
@@ -149,13 +157,14 @@ class ProfileUseCases:
         )
 
     async def get_public_profile_by_slug(self, slug: str, *, now: datetime) -> BusinessProfile:
-        """ADR-0010. `getBusinessProfileBySlug` -- unlike `get_profile` (by-id, used by the
-        owner's own dashboard), this 404s (`ProfileNotPubliclyVisibleError`) whenever the
-        profile is not currently entitled (no trial, trial lapsed, subscription lapsed), so a
-        lapsed org's public landing page actually disappears from the site rather than staying
-        reachable by a stale/shared link."""
+        """ADR-0010 (subscription gate), widened by ADR-0012 (registration-approval gate).
+        `getBusinessProfileBySlug` -- unlike `get_profile` (by-id, used by the owner's own
+        dashboard), this 404s (`ProfileNotPubliclyVisibleError`) whenever the profile is not
+        `ACTIVE` (still pending review/rejected/archived) OR not currently entitled (no trial,
+        trial lapsed, subscription lapsed), so an unapproved or lapsed org's public landing page
+        actually disappears from the site rather than staying reachable by a stale/shared link."""
         profile = await self._profiles.get_by_slug(slug)
-        if profile is None:
+        if profile is None or profile.status is not ProfileStatus.ACTIVE:
             raise ProfileNotPubliclyVisibleError(slug)
         status, _ = await self.get_subscription_status(profile.id, now=now)
         if status != "ACTIVE":
@@ -212,6 +221,29 @@ class ProfileUseCases:
         updated = profile.update_branding(
             logo_media_asset_id=logo_media_asset_id,
             banner_media_asset_id=banner_media_asset_id,
+            now=now,
+        )
+        return await self._profiles.save(updated)
+
+    async def update_landing_extras(
+        self,
+        profile_id: BusinessProfileId,
+        *,
+        owner_user_id: UserId,
+        finance_offer_details: LocalizedText | None,
+        promo_video_youtube_url: str | None,
+        now: datetime,
+    ) -> BusinessProfile:
+        """ADR-0012: the finance-terms block and YouTube promo link. `promo_video_youtube_url`
+        host-validated here (a fact about the URL string, not the aggregate's job) -- `None`
+        skips validation (clearing the field)."""
+        profile = await self.get_profile(profile_id)
+        _check_owner(profile, owner_user_id)
+        if promo_video_youtube_url is not None and not _is_youtube_url(promo_video_youtube_url):
+            raise InvalidPromoVideoUrlError(promo_video_youtube_url)
+        updated = profile.update_landing_extras(
+            finance_offer_details=finance_offer_details,
+            promo_video_youtube_url=promo_video_youtube_url,
             now=now,
         )
         return await self._profiles.save(updated)
@@ -354,6 +386,50 @@ class ProfileUseCases:
         profile = await self.get_profile(profile_id)
         archived = profile.archive(now=now)
         return await self._profiles.save(archived)
+
+    async def decide_registration(
+        self,
+        profile_id: BusinessProfileId,
+        *,
+        reviewer_user_id: UUID,
+        outcome: RegistrationOutcome,
+        reason: str | None,
+        now: datetime,
+    ) -> BusinessProfile:
+        """ADR-0012 (B2B Directory professional-upgrade task): the reviewer's registration
+        decision, `profiles:profile:manage`-gated same as `admin_archive_profile` above --
+        mirrors `VerificationUseCases.decide_verification`'s shape (case-decision use case
+        publishing an outcome-specific event), but decides a `BusinessProfile`'s own status
+        directly rather than a separate case aggregate, since registration approval has no
+        document-submission workflow of its own to model."""
+        profile = await self.get_profile(profile_id)
+        if outcome == "APPROVED":
+            decided = profile.approve(now=now)
+            saved = await self._profiles.save(decided)
+            await self._outbox.append(
+                BusinessProfileApproved(
+                    event_id=uuid4(),
+                    occurred_at=now,
+                    actor=reviewer_user_id,
+                    aggregate_type="BusinessProfile",
+                    aggregate_id=saved.id.value,
+                    payload={"businessProfileId": str(saved.id.value)},
+                )
+            )
+            return saved
+        decided = profile.reject(now=now)
+        saved = await self._profiles.save(decided)
+        await self._outbox.append(
+            BusinessProfileRejected(
+                event_id=uuid4(),
+                occurred_at=now,
+                actor=reviewer_user_id,
+                aggregate_type="BusinessProfile",
+                aggregate_id=saved.id.value,
+                payload={"businessProfileId": str(saved.id.value), "reason": reason},
+            )
+        )
+        return saved
 
     # --- moderation-invoked commands (exposed via interfaces/moderation_port.py) -----------------
 
@@ -561,6 +637,17 @@ class ProfileUseCases:
 def _check_owner(profile: BusinessProfile, owner_user_id: UserId) -> None:
     if profile.owner_user_id != owner_user_id:
         raise NotProfileOwnerError(profile.id)
+
+
+def _is_youtube_url(url: str) -> bool:
+    """A deliberately simple host check (ADR-0012) -- `youtube.com`/`youtu.be` and their `www.`/
+    `m.` subdomains, over `https://` or `http://`, mirroring `_generate_slug`'s own "good enough
+    for what the frontend already sends, not a full RFC parser" pragmatism."""
+    try:
+        host = urlsplit(url).hostname
+    except ValueError:
+        return False
+    return host is not None and host.lower() in _YOUTUBE_HOSTS
 
 
 _SLUG_UNSAFE = re.compile(r"[^a-z0-9]+")

@@ -1095,6 +1095,58 @@ async def test_reactivate_all_by_owner_profile_restores_only_subscription_lapses
     assert reloaded_moderated.lifecycle_state.value == "SUSPENDED"  # untouched
 
 
+async def test_reactivate_all_by_owner_profile_with_a_custom_reason(
+    use_cases: ListingUseCases, fake_outbox: FakeOutbox
+) -> None:
+    """ADR-0012: `reactivate_all_by_owner_profile`'s `suspend_reason`/`restore_reason` override
+    (used by the new registration-approval gate) restores a listing suspended under that specific
+    reason and publishes the given `restore_reason` -- proving the parameter is real, not just a
+    default the existing subscription-gate call sites happen to rely on."""
+    owner_profile_id = BusinessProfileId(value=uuid4())
+    owner_user_id = UserId(value=uuid4())
+    pending_review = await use_cases.create_listing(
+        owner_user_id=owner_user_id,
+        owner_profile_id=owner_profile_id,
+        listing_type=ListingType.ADVERTISEMENT,
+        category_id=uuid4(),
+        title="pending-review",
+        description=None,
+        attributes={"rooms": 2},
+        price=None,
+        location=None,
+        image_media_asset_ids=None,
+        publish=True,
+        now=NOW,
+    )
+    await use_cases.suspend_all_by_owner_profile(
+        owner_profile_id=owner_profile_id, reason="profile_pending_review", now=NOW
+    )
+    # A reactivate call scoped to the (default) subscription-lapse reason must NOT restore a
+    # listing suspended for a different reason.
+    subscription_scoped_count = await use_cases.reactivate_all_by_owner_profile(
+        owner_profile_id=owner_profile_id, now=NOW
+    )
+    assert subscription_scoped_count == 0
+    assert (await use_cases.get_listing(pending_review.id)).lifecycle_state.value == "SUSPENDED"
+
+    reactivated_count = await use_cases.reactivate_all_by_owner_profile(
+        owner_profile_id=owner_profile_id,
+        now=NOW,
+        suspend_reason="profile_pending_review",
+        restore_reason="profile_approved",
+    )
+
+    assert reactivated_count == 1
+    reloaded = await use_cases.get_listing(pending_review.id)
+    assert reloaded.lifecycle_state.value == "PUBLISHED"
+    restored_events = [
+        e
+        for e in fake_outbox.events
+        if e.event_type == "ListingPublished" and e.aggregate_id == pending_review.id.value
+    ]
+    assert restored_events[-1].payload["reason"] == "profile_approved"
+
+
 # --- admin listing query --------------------------------------------------------------------------
 
 

@@ -101,14 +101,25 @@ class PromoVideoNotReadyError(ProfilesApplicationError):
 
 
 class ProfileNotPubliclyVisibleError(ProfilesApplicationError):
-    """ADR-0010: raised by `get_public_profile_by_slug` when the profile's
-    `subscription_status` is not `ACTIVE` (no trial, trial lapsed, subscription lapsed) --
-    `interfaces/errors.py` maps this to a 404, same as `ProfileNotFoundError`, deliberately: a
-    visitor should not be able to distinguish "never existed" from "exists but not currently
-    entitled to a public landing page" from the response alone. The owner's own dashboard reads
-    the by-id endpoint instead, which stays permissive (see `BusinessProfileRepository.
-    get_by_slug`'s own docstring)."""
+    """ADR-0010 (subscription gate), widened by ADR-0012 (registration-approval gate): raised by
+    `get_public_profile_by_slug` when the profile's `subscription_status` is not `ACTIVE` (no
+    trial, trial lapsed, subscription lapsed) OR its `ProfileStatus` is not `ACTIVE` (still
+    `CREATED`/`PENDING_REVIEW`/`REJECTED`, or `ARCHIVED`) -- `interfaces/errors.py` maps this to a
+    404, same as `ProfileNotFoundError`, deliberately: a visitor should not be able to distinguish
+    "never existed" from "exists but not currently entitled to a public landing page" from the
+    response alone. The owner's own dashboard reads the by-id endpoint instead, which stays
+    permissive (see `BusinessProfileRepository.get_by_slug`'s own docstring)."""
 
     def __init__(self, slug: str) -> None:
         self.slug = slug
         super().__init__(f"business profile {slug!r} is not currently publicly visible")
+
+
+class InvalidPromoVideoUrlError(ProfilesApplicationError):
+    """ADR-0012: `promo_video_youtube_url` must be a `youtube.com`/`youtu.be` URL -- a fact about
+    the URL string, checked here (not on the aggregate) mirroring `PromoVideoNotVideoError`'s own
+    "validation lives one layer up" placement."""
+
+    def __init__(self, url: str) -> None:
+        self.url = url
+        super().__init__(f"{url!r} is not a recognized YouTube URL")

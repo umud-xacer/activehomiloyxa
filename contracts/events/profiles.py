@@ -1,13 +1,14 @@
 """profiles (BC-02) domain events -- DDD Sec 6, the authoritative v1 event catalogue.
 
-STATUS: frozen (Task P-01), amended once by ADR-0010 (2026-08-14) to add
-`TrialSubscriptionStarted`/`TrialSubscriptionEnded` -- see that ADR for why these two rows exist
-outside the original DDD Sec 6 table and are not folded into billing's own
-`EntitlementActivated`/`EntitlementExpired` vocabulary. Schema only: each class is the shared
-envelope (`shared_kernel.EventEnvelope`) with `event_type` pinned to its own past-tense name. No
-publishing logic, no handlers -- that is outbox/adapter work for a later task. Do not add an
-event here that is not a row in DDD Sec 6 for this context (or covered by a merged ADR like
-ADR-0010); do not remove one either without an ADR (Playbook Sec 18) amending the Domain Model.
+STATUS: frozen (Task P-01), amended by ADR-0010 (2026-08-14, `TrialSubscriptionStarted`/
+`TrialSubscriptionEnded`) and ADR-0012 (2026-08-25, `BusinessProfileApproved`/
+`BusinessProfileRejected` -- the B2B Directory professional-upgrade task's registration-approval
+gate) -- see those ADRs for why these rows exist outside the original DDD Sec 6 table. Schema
+only: each class is the shared envelope (`shared_kernel.EventEnvelope`) with `event_type` pinned
+to its own past-tense name. No publishing logic, no handlers -- that is outbox/adapter work for a
+later task. Do not add an event here that is not a row in DDD Sec 6 for this context (or covered
+by a merged ADR like ADR-0010/ADR-0012); do not remove one either without an ADR (Playbook Sec 18)
+amending the Domain Model.
 """
 
 from __future__ import annotations
@@ -80,3 +81,26 @@ class TrialSubscriptionEnded(EventEnvelope):
     """
 
     event_type: Literal["TrialSubscriptionEnded"] = "TrialSubscriptionEnded"
+
+
+class BusinessProfileApproved(EventEnvelope):
+    """ADR-0012. Emitted when: a reviewer approves a `PENDING_REVIEW` business profile
+    (`ProfileUseCases.decide_registration`, outcome=APPROVED) -- the profile becomes `ACTIVE` and
+    its public landing page/directory listing become reachable.
+
+    Principal consumers: Catalog (reactivates the profile's own listings suspended for pending
+    review, mirroring `TrialSubscriptionStarted`'s own reason).
+    """
+
+    event_type: Literal["BusinessProfileApproved"] = "BusinessProfileApproved"
+
+
+class BusinessProfileRejected(EventEnvelope):
+    """ADR-0012. Emitted when: a reviewer rejects a `PENDING_REVIEW` business profile
+    (`ProfileUseCases.decide_registration`, outcome=REJECTED) -- the profile's public landing
+    page/directory listing stay unreachable until the owner edits and is re-reviewed.
+
+    Principal consumers: Catalog (keeps/suspends the profile's own listings), Notifications.
+    """
+
+    event_type: Literal["BusinessProfileRejected"] = "BusinessProfileRejected"

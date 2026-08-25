@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from profiles.application.exceptions import (
+    InvalidPromoVideoUrlError,
     MediaAssetNotFoundError,
     NotProfileOwnerError,
     ProfileNotFoundError,
@@ -27,7 +28,11 @@ from profiles.domain import (
     CaseStatus,
     ProfileType,
 )
-from profiles.domain.exceptions import IllegalBadgeTransitionError, PromoVideoNotFoundError
+from profiles.domain.exceptions import (
+    IllegalBadgeTransitionError,
+    IllegalProfileStatusTransitionError,
+    PromoVideoNotFoundError,
+)
 from profiles.domain.submitted_document import SubmittedDocument
 from profiles.domain.value_objects import MainCategory
 from profiles.domain.verification_case import VerificationCase
@@ -94,11 +99,13 @@ async def _onboardable_profile(
 
 
 @pytest.mark.asyncio
-async def test_create_profile_activates_immediately_and_publishes_event(
+async def test_create_profile_starts_pending_review_and_publishes_event(
     fake_profiles: FakeBusinessProfileRepository,
     fake_media: FakeMediaAssetReaderPort,
     fake_outbox: FakeOutbox,
 ) -> None:
+    """ADR-0012: `create_profile` no longer auto-activates -- every new company starts
+    `PENDING_REVIEW` until a reviewer decides it (`decide_registration`)."""
     use_cases = _use_cases(fake_profiles, fake_media, fake_outbox)
     owner = UserId(value=uuid4())
     profile = await use_cases.create_profile(
@@ -110,9 +117,85 @@ async def test_create_profile_activates_immediately_and_publishes_event(
         address=None,
         now=NOW,
     )
-    assert profile.status.value == "ACTIVE"
+    assert profile.status.value == "PENDING_REVIEW"
     assert len(fake_outbox.events) == 1
     assert fake_outbox.events[0].event_type == "BusinessProfileCreated"
+
+
+async def test_decide_registration_approved_activates_and_publishes_event(
+    fake_profiles: FakeBusinessProfileRepository,
+    fake_media: FakeMediaAssetReaderPort,
+    fake_outbox: FakeOutbox,
+) -> None:
+    use_cases = _use_cases(fake_profiles, fake_media, fake_outbox)
+    profile = await use_cases.create_profile(
+        owner_user_id=UserId(value=uuid4()),
+        profile_type=ProfileType.BUILDER,
+        name=LocalizedText(uz_latn="B"),
+        description=None,
+        contacts=None,
+        address=None,
+        now=NOW,
+    )
+    reviewer_id = uuid4()
+    decided = await use_cases.decide_registration(
+        profile.id, reviewer_user_id=reviewer_id, outcome="APPROVED", reason=None, now=NOW
+    )
+    assert decided.status.value == "ACTIVE"
+    assert fake_outbox.events[-1].event_type == "BusinessProfileApproved"
+    assert fake_outbox.events[-1].actor == reviewer_id
+
+
+async def test_decide_registration_rejected_publishes_event_with_reason(
+    fake_profiles: FakeBusinessProfileRepository,
+    fake_media: FakeMediaAssetReaderPort,
+    fake_outbox: FakeOutbox,
+) -> None:
+    use_cases = _use_cases(fake_profiles, fake_media, fake_outbox)
+    profile = await use_cases.create_profile(
+        owner_user_id=UserId(value=uuid4()),
+        profile_type=ProfileType.BUILDER,
+        name=LocalizedText(uz_latn="B"),
+        description=None,
+        contacts=None,
+        address=None,
+        now=NOW,
+    )
+    reviewer_id = uuid4()
+    decided = await use_cases.decide_registration(
+        profile.id,
+        reviewer_user_id=reviewer_id,
+        outcome="REJECTED",
+        reason="Kontaktlar noto'g'ri",
+        now=NOW,
+    )
+    assert decided.status.value == "REJECTED"
+    assert fake_outbox.events[-1].event_type == "BusinessProfileRejected"
+    assert fake_outbox.events[-1].payload["reason"] == "Kontaktlar noto'g'ri"
+
+
+async def test_decide_registration_twice_raises(
+    fake_profiles: FakeBusinessProfileRepository,
+    fake_media: FakeMediaAssetReaderPort,
+    fake_outbox: FakeOutbox,
+) -> None:
+    use_cases = _use_cases(fake_profiles, fake_media, fake_outbox)
+    profile = await use_cases.create_profile(
+        owner_user_id=UserId(value=uuid4()),
+        profile_type=ProfileType.BUILDER,
+        name=LocalizedText(uz_latn="B"),
+        description=None,
+        contacts=None,
+        address=None,
+        now=NOW,
+    )
+    await use_cases.decide_registration(
+        profile.id, reviewer_user_id=uuid4(), outcome="APPROVED", reason=None, now=NOW
+    )
+    with pytest.raises(IllegalProfileStatusTransitionError):
+        await use_cases.decide_registration(
+            profile.id, reviewer_user_id=uuid4(), outcome="APPROVED", reason=None, now=NOW
+        )
 
 
 @pytest.mark.asyncio
@@ -200,6 +283,9 @@ async def test_moderation_archive_profile_needs_no_ownership_check(
         contacts=None,
         address=None,
         now=NOW,
+    )
+    await use_cases.decide_registration(
+        profile.id, reviewer_user_id=uuid4(), outcome="APPROVED", reason=None, now=NOW
     )
     archived = await use_cases.moderation_archive_profile(profile.id, now=NOW)
     assert archived.status.value == "ARCHIVED"
@@ -353,7 +439,7 @@ async def test_list_public_profiles_filters_by_type_and_verified_only(
     fake_outbox: FakeOutbox,
 ) -> None:
     use_cases = _use_cases(fake_profiles, fake_media, fake_outbox)
-    await use_cases.create_profile(
+    architect = await use_cases.create_profile(
         owner_user_id=UserId(value=uuid4()),
         profile_type=ProfileType.ARCHITECT,
         name=LocalizedText(uz_latn="Arch"),
@@ -362,7 +448,7 @@ async def test_list_public_profiles_filters_by_type_and_verified_only(
         address=None,
         now=NOW,
     )
-    await use_cases.create_profile(
+    builder = await use_cases.create_profile(
         owner_user_id=UserId(value=uuid4()),
         profile_type=ProfileType.BUILDER,
         name=LocalizedText(uz_latn="Build"),
@@ -371,6 +457,10 @@ async def test_list_public_profiles_filters_by_type_and_verified_only(
         address=None,
         now=NOW,
     )
+    for profile in (architect, builder):
+        await use_cases.decide_registration(
+            profile.id, reviewer_user_id=uuid4(), outcome="APPROVED", reason=None, now=NOW
+        )
 
     architects, _ = await use_cases.list_public_profiles(
         profile_type=ProfileType.ARCHITECT, verified_only=False, cursor=None, limit=10
@@ -382,6 +472,43 @@ async def test_list_public_profiles_filters_by_type_and_verified_only(
         profile_type=None, verified_only=True, cursor=None, limit=10
     )
     assert verified_only == []
+
+
+async def test_list_public_profiles_excludes_pending_review_and_rejected(
+    fake_profiles: FakeBusinessProfileRepository,
+    fake_media: FakeMediaAssetReaderPort,
+    fake_outbox: FakeOutbox,
+) -> None:
+    """ADR-0012: `list_public_profiles`/`listBusinessProfiles` is the public directory -- a
+    company must be `ACTIVE` (approved) to appear."""
+    use_cases = _use_cases(fake_profiles, fake_media, fake_outbox)
+    pending = await use_cases.create_profile(
+        owner_user_id=UserId(value=uuid4()),
+        profile_type=ProfileType.ARCHITECT,
+        name=LocalizedText(uz_latn="Pending"),
+        description=None,
+        contacts=None,
+        address=None,
+        now=NOW,
+    )
+    rejected_source = await use_cases.create_profile(
+        owner_user_id=UserId(value=uuid4()),
+        profile_type=ProfileType.ARCHITECT,
+        name=LocalizedText(uz_latn="Rejected"),
+        description=None,
+        contacts=None,
+        address=None,
+        now=NOW,
+    )
+    await use_cases.decide_registration(
+        rejected_source.id, reviewer_user_id=uuid4(), outcome="REJECTED", reason=None, now=NOW
+    )
+
+    profiles, _ = await use_cases.list_public_profiles(
+        profile_type=None, verified_only=False, cursor=None, limit=10
+    )
+    assert profiles == []
+    assert pending.status.value == "PENDING_REVIEW"
 
 
 async def test_update_profile_persists_partial_changes(
@@ -546,6 +673,9 @@ async def test_get_public_profile_by_slug_succeeds_with_an_active_subscription(
         address=None,
         now=NOW,
     )
+    await use_cases.decide_registration(
+        profile.id, reviewer_user_id=uuid4(), outcome="APPROVED", reason=None, now=NOW
+    )
     await fake_subscriptions.upsert(
         SubscriptionEligibilitySnapshot(
             business_profile_id=profile.id,
@@ -642,6 +772,203 @@ async def test_update_branding_rejects_an_unknown_media_asset(
             banner_media_asset_id=None,
             now=NOW,
         )
+
+
+# --- update_landing_extras (ADR-0012) -------------------------------------------------------------
+
+
+async def test_update_landing_extras_sets_finance_details_and_youtube_url(
+    fake_profiles: FakeBusinessProfileRepository,
+    fake_media: FakeMediaAssetReaderPort,
+    fake_outbox: FakeOutbox,
+) -> None:
+    use_cases = _use_cases(fake_profiles, fake_media, fake_outbox)
+    owner = UserId(value=uuid4())
+    profile = await use_cases.create_profile(
+        owner_user_id=owner,
+        profile_type=ProfileType.BUILDER,
+        name=LocalizedText(uz_latn="B"),
+        description=None,
+        contacts=None,
+        address=None,
+        now=NOW,
+        main_category=MainCategory.FINANCE_MORTGAGE,
+    )
+    updated = await use_cases.update_landing_extras(
+        profile.id,
+        owner_user_id=owner,
+        finance_offer_details=LocalizedText(uz_latn="12% yillik stavka"),
+        promo_video_youtube_url="https://www.youtube.com/watch?v=abc123",
+        now=NOW,
+    )
+    assert updated.finance_offer_details is not None
+    assert updated.finance_offer_details.uz_latn == "12% yillik stavka"
+    assert updated.promo_video_youtube_url == "https://www.youtube.com/watch?v=abc123"
+
+
+async def test_update_landing_extras_accepts_a_youtu_be_short_url(
+    fake_profiles: FakeBusinessProfileRepository,
+    fake_media: FakeMediaAssetReaderPort,
+    fake_outbox: FakeOutbox,
+) -> None:
+    use_cases = _use_cases(fake_profiles, fake_media, fake_outbox)
+    owner = UserId(value=uuid4())
+    profile = await use_cases.create_profile(
+        owner_user_id=owner,
+        profile_type=ProfileType.BUILDER,
+        name=LocalizedText(uz_latn="B"),
+        description=None,
+        contacts=None,
+        address=None,
+        now=NOW,
+    )
+    updated = await use_cases.update_landing_extras(
+        profile.id,
+        owner_user_id=owner,
+        finance_offer_details=None,
+        promo_video_youtube_url="https://youtu.be/abc123",
+        now=NOW,
+    )
+    assert updated.promo_video_youtube_url == "https://youtu.be/abc123"
+
+
+async def test_update_landing_extras_rejects_a_non_youtube_url(
+    fake_profiles: FakeBusinessProfileRepository,
+    fake_media: FakeMediaAssetReaderPort,
+    fake_outbox: FakeOutbox,
+) -> None:
+    use_cases = _use_cases(fake_profiles, fake_media, fake_outbox)
+    owner = UserId(value=uuid4())
+    profile = await use_cases.create_profile(
+        owner_user_id=owner,
+        profile_type=ProfileType.BUILDER,
+        name=LocalizedText(uz_latn="B"),
+        description=None,
+        contacts=None,
+        address=None,
+        now=NOW,
+    )
+    with pytest.raises(InvalidPromoVideoUrlError):
+        await use_cases.update_landing_extras(
+            profile.id,
+            owner_user_id=owner,
+            finance_offer_details=None,
+            promo_video_youtube_url="https://vimeo.com/12345",
+            now=NOW,
+        )
+
+
+async def test_update_landing_extras_rejects_an_unparseable_url(
+    fake_profiles: FakeBusinessProfileRepository,
+    fake_media: FakeMediaAssetReaderPort,
+    fake_outbox: FakeOutbox,
+) -> None:
+    """`_is_youtube_url` fails closed (`ValueError` from `urlsplit`, e.g. an invalid port) rather
+    than letting the exception propagate uncaught."""
+    use_cases = _use_cases(fake_profiles, fake_media, fake_outbox)
+    owner = UserId(value=uuid4())
+    profile = await use_cases.create_profile(
+        owner_user_id=owner,
+        profile_type=ProfileType.BUILDER,
+        name=LocalizedText(uz_latn="B"),
+        description=None,
+        contacts=None,
+        address=None,
+        now=NOW,
+    )
+    with pytest.raises(InvalidPromoVideoUrlError):
+        await use_cases.update_landing_extras(
+            profile.id,
+            owner_user_id=owner,
+            finance_offer_details=None,
+            promo_video_youtube_url="http://[::1",
+            now=NOW,
+        )
+
+
+async def test_update_landing_extras_refuses_non_owner(
+    fake_profiles: FakeBusinessProfileRepository,
+    fake_media: FakeMediaAssetReaderPort,
+    fake_outbox: FakeOutbox,
+) -> None:
+    use_cases = _use_cases(fake_profiles, fake_media, fake_outbox)
+    profile = await use_cases.create_profile(
+        owner_user_id=UserId(value=uuid4()),
+        profile_type=ProfileType.BUILDER,
+        name=LocalizedText(uz_latn="B"),
+        description=None,
+        contacts=None,
+        address=None,
+        now=NOW,
+    )
+    with pytest.raises(NotProfileOwnerError):
+        await use_cases.update_landing_extras(
+            profile.id,
+            owner_user_id=UserId(value=uuid4()),
+            finance_offer_details=None,
+            promo_video_youtube_url=None,
+            now=NOW,
+        )
+
+
+async def test_update_landing_extras_clears_both_fields_on_none(
+    fake_profiles: FakeBusinessProfileRepository,
+    fake_media: FakeMediaAssetReaderPort,
+    fake_outbox: FakeOutbox,
+) -> None:
+    use_cases = _use_cases(fake_profiles, fake_media, fake_outbox)
+    owner = UserId(value=uuid4())
+    profile = await use_cases.create_profile(
+        owner_user_id=owner,
+        profile_type=ProfileType.BUILDER,
+        name=LocalizedText(uz_latn="B"),
+        description=None,
+        contacts=None,
+        address=None,
+        now=NOW,
+    )
+    await use_cases.update_landing_extras(
+        profile.id,
+        owner_user_id=owner,
+        finance_offer_details=LocalizedText(uz_latn="X"),
+        promo_video_youtube_url="https://youtu.be/abc123",
+        now=NOW,
+    )
+    cleared = await use_cases.update_landing_extras(
+        profile.id,
+        owner_user_id=owner,
+        finance_offer_details=None,
+        promo_video_youtube_url=None,
+        now=NOW,
+    )
+    assert cleared.finance_offer_details is None
+    assert cleared.promo_video_youtube_url is None
+
+
+async def test_get_public_profile_by_slug_raises_when_active_but_subscription_lapsed(
+    fake_profiles: FakeBusinessProfileRepository,
+    fake_media: FakeMediaAssetReaderPort,
+    fake_outbox: FakeOutbox,
+    fake_subscriptions: FakeSubscriptionEligibilityRepository,
+) -> None:
+    """Exercises `get_public_profile_by_slug`'s second gate (subscription) separately from its
+    first (`ProfileStatus.ACTIVE`) -- an approved profile with no/lapsed subscription is still
+    not publicly visible."""
+    use_cases = _use_cases(fake_profiles, fake_media, fake_outbox, fake_subscriptions)
+    profile = await use_cases.create_profile(
+        owner_user_id=UserId(value=uuid4()),
+        profile_type=ProfileType.BUILDER,
+        name=LocalizedText(uz_latn="B"),
+        description=None,
+        contacts=None,
+        address=None,
+        now=NOW,
+    )
+    await use_cases.decide_registration(
+        profile.id, reviewer_user_id=uuid4(), outcome="APPROVED", reason=None, now=NOW
+    )
+    with pytest.raises(ProfileNotPubliclyVisibleError):
+        await use_cases.get_public_profile_by_slug(profile.slug, now=NOW)
 
 
 # --- complete_onboarding / trial (ADR-0010) -------------------------------------------------------

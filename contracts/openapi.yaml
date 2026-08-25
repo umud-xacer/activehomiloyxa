@@ -587,6 +587,10 @@ paths:
           - ARCHITECTURE_INTERIOR
           - REPAIR_SERVICES
           - REAL_ESTATE_AGENCIES
+          - TRANSPORT_LOGISTICS
+          - LEGAL_CONSULTING_ACCOUNTING
+          - HOME_APPLIANCES_EQUIPMENT
+          - HOSPITALITY_SERVICES
       - name: subCategory
         in: query
         schema:
@@ -619,6 +623,26 @@ paths:
           - COMMERCIAL_AGENCY
           - PROPERTY_MANAGEMENT
           - VALUATION_SERVICE
+          - FREIGHT_TRANSPORT
+          - COURIER_DELIVERY
+          - CAR_RENTAL
+          - LOGISTICS_WAREHOUSING
+          - MOVING_SERVICES
+          - LAW_FIRM
+          - ACCOUNTING_FIRM
+          - BUSINESS_CONSULTING
+          - TAX_ADVISORY
+          - NOTARY_SERVICES
+          - HOME_APPLIANCE_STORE
+          - ELECTRONICS_RETAILER
+          - APPLIANCE_SERVICE_CENTER
+          - EQUIPMENT_RENTAL
+          - HVAC_EQUIPMENT_SUPPLIER
+          - HOTEL_OPERATOR
+          - GUESTHOUSE_OPERATOR
+          - EVENT_VENUE
+          - CATERING_SERVICE
+          - TRAVEL_AGENCY
       - name: verifiedOnly
         in: query
         schema:
@@ -754,14 +778,47 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /business-profiles/{profileId}/landing-extras:
+    patch:
+      tags:
+      - Business Profiles
+      operationId: updateBusinessProfileLandingExtras
+      summary: Set a business profile's finance-terms block and YouTube promo link
+      description: ADR-0012. Sets financeOfferDetails/promoVideoYoutubeUrl in one call, both applied
+        verbatim (a null value clears that one). Ownership is validated; promoVideoYoutubeUrl must be
+        a recognized youtube.com/youtu.be URL.
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessProfileLandingExtrasRequest'
+      responses:
+        '200':
+          description: Updated profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
   /business-profiles/slug/{slug}:
     get:
       tags:
       - Business Profiles
       operationId: getBusinessProfileBySlug
       summary: Get a business profile's public landing page by slug
-      description: ADR-0010. Unlike getBusinessProfile (by id), 404s once the profile is not currently
-        entitled (no active trial or paid subscription) — the public landing-page read.
+      description: ADR-0010, widened by ADR-0012. Unlike getBusinessProfile (by id), 404s once the
+        profile is not ACTIVE (registration approved) or not currently entitled (no active trial or
+        paid subscription) — the public landing-page read.
       security: []
       parameters:
       - name: slug
@@ -3518,7 +3575,9 @@ paths:
           type: string
           enum:
           - CREATED
+          - PENDING_REVIEW
           - ACTIVE
+          - REJECTED
           - ARCHIVED
       - $ref: '#/components/parameters/Cursor'
       - $ref: '#/components/parameters/Limit'
@@ -3559,6 +3618,36 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+  /admin/business-profiles/{profileId}/decision:
+    post:
+      tags:
+      - Administration
+      operationId: decideBusinessProfileRegistration
+      summary: Approve or reject a pending company registration (admin)
+      description: ADR-0012. The "Yangi arizalar" admin tab's approve/reject action on a
+        PENDING_REVIEW company -- same profiles:profile:manage gate as
+        adminArchiveBusinessProfile.
+      parameters:
+      - $ref: '#/components/parameters/ProfileIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessProfileRegistrationDecisionRequest'
+      responses:
+        '200':
+          description: Decided profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessProfile'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
   /admin/registration-queue:
     get:
       tags:
@@ -4798,9 +4887,14 @@ components:
           type: string
           enum:
           - CREATED
+          - PENDING_REVIEW
           - ACTIVE
+          - REJECTED
           - ARCHIVED
           readOnly: true
+          description: ADR-0012. PENDING_REVIEW is the default for a new profile, awaiting a
+            reviewer decision; REJECTED is not terminal — editing the profile resubmits it to
+            PENDING_REVIEW.
         badge:
           type:
           - object
@@ -4891,6 +4985,10 @@ components:
           - ARCHITECTURE_INTERIOR
           - REPAIR_SERVICES
           - REAL_ESTATE_AGENCIES
+          - TRANSPORT_LOGISTICS
+          - LEGAL_CONSULTING_ACCOUNTING
+          - HOME_APPLIANCES_EQUIPMENT
+          - HOSPITALITY_SERVICES
         subCategory:
           type:
           - string
@@ -4925,6 +5023,37 @@ components:
           - COMMERCIAL_AGENCY
           - PROPERTY_MANAGEMENT
           - VALUATION_SERVICE
+          - FREIGHT_TRANSPORT
+          - COURIER_DELIVERY
+          - CAR_RENTAL
+          - LOGISTICS_WAREHOUSING
+          - MOVING_SERVICES
+          - LAW_FIRM
+          - ACCOUNTING_FIRM
+          - BUSINESS_CONSULTING
+          - TAX_ADVISORY
+          - NOTARY_SERVICES
+          - HOME_APPLIANCE_STORE
+          - ELECTRONICS_RETAILER
+          - APPLIANCE_SERVICE_CENTER
+          - EQUIPMENT_RENTAL
+          - HVAC_EQUIPMENT_SUPPLIER
+          - HOTEL_OPERATOR
+          - GUESTHOUSE_OPERATOR
+          - EVENT_VENUE
+          - CATERING_SERVICE
+          - TRAVEL_AGENCY
+        financeOfferDetails:
+          allOf:
+          - $ref: '#/components/schemas/LocalizedText'
+          description: ADR-0012. Free-text ipoteka/kredit terms ("Bank/Finans bloki") -- only
+            meaningful (and only rendered by the frontend) when mainCategory is FINANCE_MORTGAGE.
+        promoVideoYoutubeUrl:
+          type:
+          - string
+          - 'null'
+          description: ADR-0012. An external YouTube link, alongside the existing uploaded
+            promoVideoMediaAssetIds -- host-validated server-side (youtube.com/youtu.be only).
         createdAt:
           type: string
           format: date-time
@@ -4977,6 +5106,10 @@ components:
           - ARCHITECTURE_INTERIOR
           - REPAIR_SERVICES
           - REAL_ESTATE_AGENCIES
+          - TRANSPORT_LOGISTICS
+          - LEGAL_CONSULTING_ACCOUNTING
+          - HOME_APPLIANCES_EQUIPMENT
+          - HOSPITALITY_SERVICES
         subCategory:
           type:
           - string
@@ -5009,6 +5142,26 @@ components:
           - COMMERCIAL_AGENCY
           - PROPERTY_MANAGEMENT
           - VALUATION_SERVICE
+          - FREIGHT_TRANSPORT
+          - COURIER_DELIVERY
+          - CAR_RENTAL
+          - LOGISTICS_WAREHOUSING
+          - MOVING_SERVICES
+          - LAW_FIRM
+          - ACCOUNTING_FIRM
+          - BUSINESS_CONSULTING
+          - TAX_ADVISORY
+          - NOTARY_SERVICES
+          - HOME_APPLIANCE_STORE
+          - ELECTRONICS_RETAILER
+          - APPLIANCE_SERVICE_CENTER
+          - EQUIPMENT_RENTAL
+          - HVAC_EQUIPMENT_SUPPLIER
+          - HOTEL_OPERATOR
+          - GUESTHOUSE_OPERATOR
+          - EVENT_VENUE
+          - CATERING_SERVICE
+          - TRAVEL_AGENCY
       additionalProperties: false
     BusinessProfileUpdateRequest:
       type: object
@@ -5034,6 +5187,10 @@ components:
           - ARCHITECTURE_INTERIOR
           - REPAIR_SERVICES
           - REAL_ESTATE_AGENCIES
+          - TRANSPORT_LOGISTICS
+          - LEGAL_CONSULTING_ACCOUNTING
+          - HOME_APPLIANCES_EQUIPMENT
+          - HOSPITALITY_SERVICES
         subCategory:
           type:
           - string
@@ -5066,6 +5223,26 @@ components:
           - COMMERCIAL_AGENCY
           - PROPERTY_MANAGEMENT
           - VALUATION_SERVICE
+          - FREIGHT_TRANSPORT
+          - COURIER_DELIVERY
+          - CAR_RENTAL
+          - LOGISTICS_WAREHOUSING
+          - MOVING_SERVICES
+          - LAW_FIRM
+          - ACCOUNTING_FIRM
+          - BUSINESS_CONSULTING
+          - TAX_ADVISORY
+          - NOTARY_SERVICES
+          - HOME_APPLIANCE_STORE
+          - ELECTRONICS_RETAILER
+          - APPLIANCE_SERVICE_CENTER
+          - EQUIPMENT_RENTAL
+          - HVAC_EQUIPMENT_SUPPLIER
+          - HOTEL_OPERATOR
+          - GUESTHOUSE_OPERATOR
+          - EVENT_VENUE
+          - CATERING_SERVICE
+          - TRAVEL_AGENCY
       additionalProperties: false
     BusinessProfileBrandingRequest:
       type: object
@@ -5082,6 +5259,37 @@ components:
           - string
           - 'null'
           format: uuid
+      additionalProperties: false
+    BusinessProfileLandingExtrasRequest:
+      type: object
+      description: ADR-0012. Sets financeOfferDetails/promoVideoYoutubeUrl in one call, both
+        applied verbatim (a null value clears that one).
+      properties:
+        financeOfferDetails:
+          $ref: '#/components/schemas/LocalizedText'
+        promoVideoYoutubeUrl:
+          type:
+          - string
+          - 'null'
+      additionalProperties: false
+    BusinessProfileRegistrationDecisionRequest:
+      type: object
+      description: ADR-0012. Mirrors VerificationDecisionRequest -- named distinctly from
+        identity's own RegistrationDecisionRequest (ADR-0007, account registration review), an
+        unrelated feature that happens to share this shape.
+      required:
+      - outcome
+      properties:
+        outcome:
+          type: string
+          enum:
+          - APPROVED
+          - REJECTED
+        reason:
+          type:
+          - string
+          - 'null'
+          maxLength: 1000
       additionalProperties: false
     PortfolioItem:
       type: object

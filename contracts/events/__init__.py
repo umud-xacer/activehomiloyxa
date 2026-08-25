@@ -60,8 +60,12 @@ from contracts.events.messaging import (
 )
 from contracts.events.moderation import ModerationActionTaken
 from contracts.events.profiles import (
+    BusinessProfileApproved,
     BusinessProfileCreated,
+    BusinessProfileRejected,
     BusinessVerified,
+    TrialSubscriptionEnded,
+    TrialSubscriptionStarted,
     VerificationRejected,
     VerificationRequested,
     VerifiedBadgeExpired,
@@ -77,6 +81,10 @@ EVENT_CATALOGUE: dict[str, type[EventEnvelope]] = {
     "BusinessVerified": BusinessVerified,
     "VerificationRejected": VerificationRejected,
     "VerifiedBadgeExpired": VerifiedBadgeExpired,
+    "TrialSubscriptionStarted": TrialSubscriptionStarted,
+    "TrialSubscriptionEnded": TrialSubscriptionEnded,
+    "BusinessProfileApproved": BusinessProfileApproved,
+    "BusinessProfileRejected": BusinessProfileRejected,
     "ListingCreated": ListingCreated,
     "ListingDraftSaved": ListingDraftSaved,
     "ListingPublished": ListingPublished,
@@ -131,10 +139,14 @@ EVENT_CATALOGUE: dict[str, type[EventEnvelope]] = {
 Covers exactly DDD Sec 6's table, as amended by ADR-0001 (docs/adr/0001-media-asset-status-events.md,
 adding the three BC-06 events DDD Sec 6's published table omitted), ADR-0005
 (docs/adr/0005-analytics-missing-metric-events.md, adding the three BC-03 metric events DDD Sec
-6's published table also omitted despite Sec 5.13's own 8-key closed vocabulary naming them), and
-ADR-0011 (docs/adr/0011-mark-as-sold-listing-lifecycle-state.md, adding the "Mark as Sold" feature's
-own new BC-03 event, ListingSold, which has no DDD Sec 6 precedent at all) --
-see contracts/tests/test_event_catalogue.py."""
+6's published table also omitted despite Sec 5.13's own 8-key closed vocabulary naming them),
+ADR-0010 (docs/adr/0010-legal-entity-onboarding-trial-subscription.md, adding
+TrialSubscriptionStarted/TrialSubscriptionEnded -- present in contracts/events/profiles.py since
+that ADR but never actually registered here until ADR-0012's own cleanup found the same gap
+class twice in one project), ADR-0011 (docs/adr/0011-mark-as-sold-listing-lifecycle-state.md,
+adding the "Mark as Sold" feature's own new BC-03 event, ListingSold), and ADR-0012
+(docs/adr/0012-b2b-directory-widening.md, adding the B2B Directory registration-approval gate's
+BusinessProfileApproved/BusinessProfileRejected) -- see contracts/tests/test_event_catalogue.py."""
 
 __all__ = [
     "EVENT_CATALOGUE",
@@ -146,7 +158,9 @@ __all__ = [
     "BannerCampaignStarted",
     "BannerClickRecorded",
     "BannerImpressionRecorded",
+    "BusinessProfileApproved",
     "BusinessProfileCreated",
+    "BusinessProfileRejected",
     "BusinessVerified",
     "CategoryChanged",
     "CategoryCreated",
@@ -190,6 +204,8 @@ __all__ = [
     "ProductDefinitionChanged",
     "RoleDefinitionChanged",
     "SearchConfigurationChanged",
+    "TrialSubscriptionEnded",
+    "TrialSubscriptionStarted",
     "UserBlocked",
     "UserRegistered",
     "VerificationRejected",

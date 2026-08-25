@@ -53,10 +53,14 @@ MainCategoryLiteral = Literal[
     "ARCHITECTURE_INTERIOR",
     "REPAIR_SERVICES",
     "REAL_ESTATE_AGENCIES",
+    "TRANSPORT_LOGISTICS",
+    "LEGAL_CONSULTING_ACCOUNTING",
+    "HOME_APPLIANCES_EQUIPMENT",
+    "HOSPITALITY_SERVICES",
 ]
-"""Additive (Organizations Main-Category task) -- a second, independent sector classification
-alongside the frozen `profileType` vocabulary (see `profiles.domain.MainCategory`'s own
-docstring for why it could not simply be derived from that enum)."""
+"""Additive (Organizations Main-Category task, widened 6→10 by ADR-0012) -- a second, independent
+sector classification alongside the frozen `profileType` vocabulary (see `profiles.domain.
+MainCategory`'s own docstring for why it could not simply be derived from that enum)."""
 
 SubCategoryLiteral = Literal[
     "COMMERCIAL_BANK",
@@ -86,10 +90,31 @@ SubCategoryLiteral = Literal[
     "COMMERCIAL_AGENCY",
     "PROPERTY_MANAGEMENT",
     "VALUATION_SERVICE",
+    "FREIGHT_TRANSPORT",
+    "COURIER_DELIVERY",
+    "CAR_RENTAL",
+    "LOGISTICS_WAREHOUSING",
+    "MOVING_SERVICES",
+    "LAW_FIRM",
+    "ACCOUNTING_FIRM",
+    "BUSINESS_CONSULTING",
+    "TAX_ADVISORY",
+    "NOTARY_SERVICES",
+    "HOME_APPLIANCE_STORE",
+    "ELECTRONICS_RETAILER",
+    "APPLIANCE_SERVICE_CENTER",
+    "EQUIPMENT_RENTAL",
+    "HVAC_EQUIPMENT_SUPPLIER",
+    "HOTEL_OPERATOR",
+    "GUESTHOUSE_OPERATOR",
+    "EVENT_VENUE",
+    "CATERING_SERVICE",
+    "TRAVEL_AGENCY",
 ]
-"""Additive (Organizations Sub-Category task) -- a finer classification within one
-`MainCategoryLiteral` value; see `profiles.domain.SUB_CATEGORIES_BY_MAIN_CATEGORY` for which
-codes are legal under which main category (enforced at the domain layer, not by this Literal)."""
+"""Additive (Organizations Sub-Category task, widened by ADR-0012's four new sectors) -- a finer
+classification within one `MainCategoryLiteral` value; see `profiles.domain.
+SUB_CATEGORIES_BY_MAIN_CATEGORY` for which codes are legal under which main category (enforced at
+the domain layer, not by this Literal)."""
 
 
 class BusinessProfileCreateRequest(CamelModel):
@@ -136,7 +161,10 @@ class BusinessProfile(CamelModel):
     address: str | None = None
     slug: str
     """Display-only routing; not an identity."""
-    status: Literal["CREATED", "ACTIVE", "ARCHIVED"]
+    status: Literal["CREATED", "PENDING_REVIEW", "ACTIVE", "REJECTED", "ARCHIVED"]
+    """ADR-0012: `PENDING_REVIEW` (default for a new profile, awaiting reviewer decision) and
+    `REJECTED` (editing the profile resubmits it to `PENDING_REVIEW`) widen the original
+    `CREATED`/`ACTIVE`/`ARCHIVED` set."""
     badge: BusinessProfileBadge | None = None
     """Trust badge sub-state (null = never verified)."""
     logo_media_asset_id: UUID | None = None
@@ -167,6 +195,12 @@ class BusinessProfile(CamelModel):
     sub_category: SubCategoryLiteral | None = None
     """Additive (Organizations Sub-Category task): a finer classification within `main_category`.
     Null on profiles that have not set one -- always optional, unlike `main_category`."""
+    finance_offer_details: LocalizedText | None = None
+    """Additive (ADR-0012, "Bank/Finans bloki"): free-text ipoteka/kredit terms, only meaningful
+    (and only rendered by the frontend) when `main_category == "FINANCE_MORTGAGE"`."""
+    promo_video_youtube_url: str | None = None
+    """Additive (ADR-0012): an external YouTube link, alongside the existing uploaded
+    `promo_video_media_asset_ids` -- host-validated server-side (youtube.com/youtu.be only)."""
     created_at: datetime
 
 
@@ -265,3 +299,23 @@ class BusinessProfileBrandingRequest(CamelModel):
 
     logo_media_asset_id: UUID | None = None
     banner_media_asset_id: UUID | None = None
+
+
+class BusinessProfileLandingExtrasRequest(CamelModel):
+    """ADR-0012: the finance-terms block and YouTube promo link, applied verbatim (`null` clears
+    that one) -- mirrors `BusinessProfileBrandingRequest`'s own shape."""
+
+    finance_offer_details: LocalizedText | None = None
+    promo_video_youtube_url: str | None = None
+
+
+class BusinessProfileRegistrationDecisionRequest(CamelModel):
+    """ADR-0012: `POST /admin/business-profiles/{profileId}/decision` body -- same shape as
+    `VerificationDecisionRequest`, kept as a distinct class since the two decide unrelated
+    aggregates (a `BusinessProfile`'s own registration status vs. a separate `VerificationCase`).
+    Named distinctly from identity's own `RegistrationDecisionRequest` (ADR-0007, account
+    registration review) -- unrelated feature, same shape, different aggregate; a shared OpenAPI
+    schema name would collide."""
+
+    outcome: Literal["APPROVED", "REJECTED"]
+    reason: str | None = None

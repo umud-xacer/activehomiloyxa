@@ -55,6 +55,15 @@ def test_I16_settings_key_enforces_declared_type(registry: WhitelistRegistry) ->
         registry.check_settings_key("not.a.real.key", 5)  # unknown key
 
 
+def test_I16_settings_key_b2b_sector_icons_accepts_a_dict(registry: WhitelistRegistry) -> None:
+    """ADR-0012: `b2b.sector_icons` is the schema's first dict-typed key."""
+    registry.check_settings_key(
+        "b2b.sector_icons", {"FINANCE_MORTGAGE": {"iconUrl": "https://x/icon.png"}}
+    )
+    with pytest.raises(WhitelistViolationError):
+        registry.check_settings_key("b2b.sector_icons", "not-a-dict")
+
+
 @pytest.mark.parametrize(
     "value,expected",
     [
@@ -87,7 +96,7 @@ def test_manage_and_approve_permission_key_format(registry: WhitelistRegistry) -
 
 def test_I16_event_key_whitelist_has_zero_drift_from_frozen_event_catalogue() -> None:
     """`domain/whitelist.py`'s own docstring commits to this check: EVENT_KEYS is "a literal,
-    hand-kept copy" of `contracts/events/*.py`'s 57-event catalogue (Task P-01, as of ADR-0011),
+    hand-kept copy" of `contracts/events/*.py`'s 61-event catalogue (Task P-01, as of ADR-0012),
     and any drift between the two must be caught here, at test scope -- `domain/` itself may not
     import `contracts` (Clean Architecture rule 1)."""
     from configuration.domain.whitelist import EVENT_KEYS

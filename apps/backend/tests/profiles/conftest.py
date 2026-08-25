@@ -60,7 +60,9 @@ class FakeBusinessProfileRepository:
         cursor: str | None,
         limit: int,
     ) -> tuple[list[BusinessProfile], str | None]:
-        items = [p for p in self.profiles.values() if p.status.value != "ARCHIVED"]
+        # ADR-0012: mirrors the real repository's `list_public` -- only ACTIVE (approved)
+        # profiles are publicly listable.
+        items = [p for p in self.profiles.values() if p.status.value == "ACTIVE"]
         if profile_type is not None:
             items = [p for p in items if p.profile_type == profile_type]
         if main_category is not None:

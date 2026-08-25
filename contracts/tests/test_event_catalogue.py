@@ -1,6 +1,6 @@
 """Proves contracts/events/ covers exactly the Domain Model Sec 6 event catalogue, as amended by
-ADR-0001, ADR-0005, and ADR-0011 -- no event missing, no event invented (P-01 validation
-checklist).
+ADR-0001, ADR-0005, ADR-0010, ADR-0011, and ADR-0012 -- no event missing, no event invented (P-01
+validation checklist).
 """
 
 from __future__ import annotations
@@ -29,6 +29,14 @@ DDD_SEC_6_EVENT_NAMES = {
     "BusinessVerified",
     "VerificationRejected",
     "VerifiedBadgeExpired",
+    # BC-02 (ADR-0010 -- legal-entity onboarding trial subscription, no DDD Sec 6 precedent;
+    # present in contracts/events/profiles.py since ADR-0010 but never actually registered in
+    # EVENT_CATALOGUE/this oracle until ADR-0012's own cleanup found the same gap class twice)
+    "TrialSubscriptionStarted",
+    "TrialSubscriptionEnded",
+    # BC-02 (ADR-0012 -- B2B Directory registration-approval gate, no DDD Sec 6 precedent at all)
+    "BusinessProfileApproved",
+    "BusinessProfileRejected",
     # BC-03
     "ListingCreated",
     "ListingDraftSaved",
@@ -97,9 +105,9 @@ DDD_SEC_6_EVENT_NAMES = {
 
 def test_I01_event_catalogue_matches_ddd_sec_6_exactly() -> None:
     """# enforces DDD Sec 6 "the authoritative v1 event catalogue", as amended by ADR-0001,
-    ADR-0005, and ADR-0011."""
+    ADR-0005, ADR-0010, ADR-0011, and ADR-0012."""
     assert set(EVENT_CATALOGUE.keys()) == DDD_SEC_6_EVENT_NAMES
-    assert len(DDD_SEC_6_EVENT_NAMES) == 57
+    assert len(DDD_SEC_6_EVENT_NAMES) == 61
 
 
 def test_I02_every_event_class_pins_its_own_event_type() -> None:

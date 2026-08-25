@@ -216,6 +216,7 @@ async def _seed_platform_settings(use_cases: ConfigurationUseCases, *, now: date
             "stats.cities": 380,
             "stats.partners": 12500,
             "stats.satisfaction_percent": 98,
+            "b2b.sector_icons": {},
         },
         "homepage_zones": [],
         "navigation_items": [],
@@ -263,6 +264,7 @@ _PLATFORM_SETTINGS_ADDITIVE_DEFAULTS: dict[str, object] = {
     "stats.cities": 380,
     "stats.partners": 12500,
     "stats.satisfaction_percent": 98,
+    "b2b.sector_icons": {},
 }
 """Settings keys introduced by a task after `_seed_platform_settings` last ran against a given
 database. That function's own `DuplicateCodeError` early-return means it never touches an

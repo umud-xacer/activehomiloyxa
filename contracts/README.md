@@ -97,6 +97,17 @@ are.
   `docs/adr/0011-mark-as-sold-listing-lifecycle-state.md` (Proposed -- drafted by an agent, pending
   human architect ratification per Playbook Sec 18) resolves this by registering `ListingSold` in
   all three places (`EVENT_CATALOGUE`/oracle set 56 -> 57 entries) in the same change.
+- **`profiles.MainCategory`/`SubCategory` were a fixed 6/27-value taxonomy with no icon field,
+  and `ProfileStatus` had no registration-approval gate at all -- resolved by ADR-0012.** The
+  B2B Directory professional-upgrade task (site-owner spec) needed 10 sectors (not 6) and a real
+  `PENDING_REVIEW`/`REJECTED` admin-approval step before a new company goes public.
+  `docs/adr/0012-b2b-directory-widening.md` (Proposed -- drafted by an agent, pending human
+  architect ratification per Playbook Sec 18) resolves this by widening both closed vocabularies
+  plus adding `BusinessProfileApproved`/`BusinessProfileRejected` to the event catalogue -- and,
+  while registering those two, also found and fixed a second pre-existing gap: ADR-0010's own
+  `TrialSubscriptionStarted`/`TrialSubscriptionEnded` had never been registered in
+  `EVENT_CATALOGUE`/`EVENT_KEYS`/the oracle set either (`EVENT_CATALOGUE`/oracle set 57 -> 61
+  entries in this one change).
 - **`ads` had zero v1 REST endpoints -- resolved by ADR-0004.** Under Task P-01, `docs/Active-
   Home-OpenAPI-3.1-Specification-v1.0.yaml` had no banner/campaign path at all; ads' only v1
   traces were a Billing `Product` type (`BANNER_PLACEMENT`/`TOP_PLACEMENT`), a Billing

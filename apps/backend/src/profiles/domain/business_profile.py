@@ -124,6 +124,17 @@ class BusinessProfile:
     and card chip. Unlike `main_category`, always optional -- never required by onboarding, and
     `update_details` validates it against whatever `main_category` the profile has (current or
     newly-set in the same call), not the other way around."""
+    finance_offer_details: LocalizedText | None = None
+    """Additive (ADR-0012, B2B Directory professional-upgrade task, site-owner spec: "Bank/Finans
+    bloki"): free-text ipoteka/kredit terms shown on the landing page, only ever rendered by
+    `interfaces/` when `main_category is MainCategory.FINANCE_MORTGAGE` -- the domain layer does
+    not itself enforce that restriction (a profile that later changes sector keeps whatever text
+    it had, simply unrendered), matching `description`'s own "no cross-field validation" shape."""
+    promo_video_youtube_url: str | None = None
+    """Additive (ADR-0012): an external YouTube URL, alongside (not replacing) the existing
+    uploaded `promo_video_media_asset_ids` -- host-validated by `application.ProfileUseCases.
+    update_landing_extras` (a fact about the URL string, not something this aggregate re-checks),
+    mirroring `add_promo_video`'s own "validation lives one layer up" split."""
 
     # --- factory (FR-PROF-001) ------------------------------------------------------------------
 
@@ -142,8 +153,9 @@ class BusinessProfile:
         main_category: MainCategory | None = None,
         sub_category: SubCategory | None = None,
     ) -> BusinessProfile:
-        """Always produces `CREATED` (see `value_objects.ProfileStatus`'s own docstring for why
-        `application.ProfileUseCases.create_profile` immediately composes `.activate()`)."""
+        """Always produces `CREATED` (see `value_objects.ProfileStatus`'s own docstring --
+        `application.ProfileUseCases.create_profile` immediately composes `.submit_for_review()`,
+        ADR-0012)."""
         _require_valid_sub_category(main_category, sub_category)
         return BusinessProfile(
             id=profile_id,
@@ -168,18 +180,41 @@ class BusinessProfile:
             sub_category=sub_category,
         )
 
-    # --- lifecycle (Created -> Active -> Archived) ------------------------------------------------
+    # --- lifecycle (Created -> PendingReview -> Active -> Archived; PendingReview <-> Rejected) ---
 
-    def activate(self, *, now: datetime) -> BusinessProfile:
+    def submit_for_review(self, *, now: datetime) -> BusinessProfile:
+        """ADR-0012: `application.ProfileUseCases.create_profile` composes this immediately after
+        `create()`, same "two recorded transitions, one request" shape the old `activate()` call
+        used, but landing on `PENDING_REVIEW` instead of `ACTIVE` -- a new company is invisible on
+        the public directory/landing page (see `ProfileUseCases.get_public_profile_by_slug`/
+        `list_public_profiles`) until a reviewer decides it via `decide_registration`."""
         if self.status is not ProfileStatus.CREATED:
-            raise IllegalProfileStatusTransitionError("activate", self.status.value)
+            raise IllegalProfileStatusTransitionError("submit_for_review", self.status.value)
+        return replace(self, status=ProfileStatus.PENDING_REVIEW, updated_at=now)
+
+    def approve(self, *, now: datetime) -> BusinessProfile:
+        """ADR-0012: the reviewer's approval decision (`decide_registration`, outcome=APPROVED).
+        Legal only from `PENDING_REVIEW` -- an already-`ACTIVE` profile, or one that was never
+        submitted, cannot be approved again."""
+        if self.status is not ProfileStatus.PENDING_REVIEW:
+            raise IllegalProfileStatusTransitionError("approve", self.status.value)
         return replace(self, status=ProfileStatus.ACTIVE, updated_at=now)
+
+    def reject(self, *, now: datetime) -> BusinessProfile:
+        """ADR-0012: the reviewer's rejection decision (`decide_registration`, outcome=REJECTED).
+        The rejection `reason` itself is not stored on the aggregate (mirrors
+        `VerificationCase.decide`'s own `Decision` VO living on the *case*, not the profile) --
+        it travels only in the `BusinessProfileRejected` event payload. Not terminal: editing a
+        `REJECTED` profile (`update_details`) automatically resubmits it (`PENDING_REVIEW`)."""
+        if self.status is not ProfileStatus.PENDING_REVIEW:
+            raise IllegalProfileStatusTransitionError("reject", self.status.value)
+        return replace(self, status=ProfileStatus.REJECTED, updated_at=now)
 
     def archive(self, *, now: datetime) -> BusinessProfile:
         """FR-PROF (moderation-invoked or owner-invoked archival). Legal from `ACTIVE` only --
         `ARCHIVED` is terminal (Database Architecture: "owner closure/suspension follow-through");
-        an already-`ARCHIVED` profile archiving again, or archiving a still-`CREATED` one (should
-        never happen given `create`+`activate` are always composed together), both raise."""
+        an already-`ARCHIVED` profile archiving again, or archiving a still-`CREATED`/
+        `PENDING_REVIEW`/`REJECTED` one, all raise."""
         if self.status is not ProfileStatus.ACTIVE:
             raise IllegalProfileStatusTransitionError("archive", self.status.value)
         return replace(self, status=ProfileStatus.ARCHIVED, updated_at=now)
@@ -197,11 +232,15 @@ class BusinessProfile:
     ) -> BusinessProfile:
         """`updateBusinessProfile`: "profileType is immutable" (OpenAPI's own docstring) -- no
         parameter here can touch it. Refused once `ARCHIVED` (nothing to maintain on a closed
-        profile); legal in `CREATED` or `ACTIVE`. `main_category`, like the others, is
-        "unchanged if omitted" -- there is no way to clear it back to `None` once set, matching
-        that it is a one-way mandatory-onboarding field, not a nullable preference.
-        `sub_category` is validated against whichever `main_category` this call ends up with
-        (the newly-passed one if given, else the profile's existing one)."""
+        profile); legal in `CREATED`, `PENDING_REVIEW`, `ACTIVE`, or `REJECTED`. `main_category`,
+        like the others, is "unchanged if omitted" -- there is no way to clear it back to `None`
+        once set, matching that it is a one-way mandatory-onboarding field, not a nullable
+        preference. `sub_category` is validated against whichever `main_category` this call ends
+        up with (the newly-passed one if given, else the profile's existing one).
+
+        ADR-0012: editing a `REJECTED` profile automatically resubmits it (`PENDING_REVIEW`) --
+        the owner's normal "fix what the reviewer flagged" edit is itself the resubmit action, no
+        separate endpoint needed. Every other status is unaffected by this call."""
         if self.status is ProfileStatus.ARCHIVED:
             raise IllegalProfileStatusTransitionError("update_details", self.status.value)
         effective_main_category = main_category if main_category is not None else self.main_category
@@ -215,6 +254,9 @@ class BusinessProfile:
             address=address if address is not None else self.address,
             main_category=effective_main_category,
             sub_category=effective_sub_category,
+            status=ProfileStatus.PENDING_REVIEW
+            if self.status is ProfileStatus.REJECTED
+            else self.status,
             updated_at=now,
         )
 
@@ -236,6 +278,26 @@ class BusinessProfile:
             self,
             logo_media_asset_id=logo_media_asset_id,
             banner_media_asset_id=banner_media_asset_id,
+            updated_at=now,
+        )
+
+    def update_landing_extras(
+        self,
+        *,
+        finance_offer_details: LocalizedText | None,
+        promo_video_youtube_url: str | None,
+        now: datetime,
+    ) -> BusinessProfile:
+        """ADR-0012: the finance/mortgage-terms block and the YouTube promo-video link -- verbatim
+        apply (clears on `None`), mirroring `update_branding`'s shape exactly rather than
+        `update_details`'s partial-patch one, for the same reason: one field each, no list to
+        add/remove from."""
+        if self.status is ProfileStatus.ARCHIVED:
+            raise IllegalProfileStatusTransitionError("update_landing_extras", self.status.value)
+        return replace(
+            self,
+            finance_offer_details=finance_offer_details,
+            promo_video_youtube_url=promo_video_youtube_url,
             updated_at=now,
         )
 
