@@ -25,13 +25,17 @@ export const Route = createFileRoute("/admin/companies")({
 
 const STATUS_LABEL: Record<BusinessProfile["status"], string> = {
   CREATED: "Yaratilgan",
+  PENDING_REVIEW: "Ko'rib chiqilmoqda",
   ACTIVE: "Faol",
+  REJECTED: "Rad etilgan",
   ARCHIVED: "O'chirilgan",
 };
 
 const STATUS_CLASS: Record<BusinessProfile["status"], string> = {
   CREATED: "bg-muted text-muted-foreground",
+  PENDING_REVIEW: "bg-warning/10 text-warning",
   ACTIVE: "bg-success/10 text-success",
+  REJECTED: "bg-destructive/10 text-destructive",
   ARCHIVED: "bg-destructive/10 text-destructive",
 };
 
@@ -183,7 +187,7 @@ function Page() {
           index={0}
           action={
             <div className="flex flex-wrap items-center gap-2">
-              {(["", "ACTIVE", "ARCHIVED"] as const).map((s) => (
+              {(["", "PENDING_REVIEW", "ACTIVE", "REJECTED", "ARCHIVED"] as const).map((s) => (
                 <button
                   key={s || "all"}
                   type="button"

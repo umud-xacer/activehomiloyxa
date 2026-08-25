@@ -8,12 +8,15 @@ import {
   Armchair,
   Blocks,
   Boxes,
+  Briefcase,
   Building,
   Building2,
   Calculator,
+  Car,
   Coins,
   Compass,
   Factory,
+  FileText,
   Hammer,
   HardHat,
   Home,
@@ -21,16 +24,24 @@ import {
   KeySquare,
   Landmark,
   Layers,
+  PackageOpen,
   PaintRoller,
   PenTool,
   Ruler,
+  Scale,
   Settings2,
   ShieldCheck,
   Shield,
+  Smartphone,
   Sofa,
   Sparkles,
+  Stamp,
   TrafficCone,
   Trees,
+  Truck,
+  UtensilsCrossed,
+  Warehouse,
+  Wind,
   Wrench,
   Zap,
   type LucideIcon,
@@ -57,7 +68,11 @@ export type MainCategory =
   | "MANUFACTURERS_MATERIALS"
   | "ARCHITECTURE_INTERIOR"
   | "REPAIR_SERVICES"
-  | "REAL_ESTATE_AGENCIES";
+  | "REAL_ESTATE_AGENCIES"
+  | "TRANSPORT_LOGISTICS"
+  | "LEGAL_CONSULTING_ACCOUNTING"
+  | "HOME_APPLIANCES_EQUIPMENT"
+  | "HOSPITALITY_SERVICES";
 
 export const MAIN_CATEGORY_LABEL: Record<MainCategory, string> = {
   FINANCE_MORTGAGE: "Finans va Ipoteka",
@@ -66,6 +81,10 @@ export const MAIN_CATEGORY_LABEL: Record<MainCategory, string> = {
   ARCHITECTURE_INTERIOR: "Arxitektura va Interyer dizayn",
   REPAIR_SERVICES: "Ta'mirlash va Xizmat ko'rsatuvchilar",
   REAL_ESTATE_AGENCIES: "Ko'chmas mulk agentliklari",
+  TRANSPORT_LOGISTICS: "Transport va Logistika",
+  LEGAL_CONSULTING_ACCOUNTING: "Yuridik, Konsalting va Buxgalteriya",
+  HOME_APPLIANCES_EQUIPMENT: "Maishiy texnika va Uskunalar",
+  HOSPITALITY_SERVICES: "Mehmonxona va Mehmondo'stlik xizmatlari",
 };
 
 export const MAIN_CATEGORIES: MainCategory[] = [
@@ -75,6 +94,10 @@ export const MAIN_CATEGORIES: MainCategory[] = [
   "ARCHITECTURE_INTERIOR",
   "REPAIR_SERVICES",
   "REAL_ESTATE_AGENCIES",
+  "TRANSPORT_LOGISTICS",
+  "LEGAL_CONSULTING_ACCOUNTING",
+  "HOME_APPLIANCES_EQUIPMENT",
+  "HOSPITALITY_SERVICES",
 ];
 
 /** URL slug for each `MainCategory` -- backs `/organizations/$categorySlug` (the dedicated
@@ -88,6 +111,10 @@ export const MAIN_CATEGORY_SLUG: Record<MainCategory, string> = {
   ARCHITECTURE_INTERIOR: "arxitektura-dizayn",
   REPAIR_SERVICES: "tamirlash-xizmatlari",
   REAL_ESTATE_AGENCIES: "kochmas-mulk",
+  TRANSPORT_LOGISTICS: "transport-logistika",
+  LEGAL_CONSULTING_ACCOUNTING: "yuridik-konsalting",
+  HOME_APPLIANCES_EQUIPMENT: "maishiy-texnika",
+  HOSPITALITY_SERVICES: "mehmonxona-xizmatlari",
 };
 
 const SLUG_TO_MAIN_CATEGORY: Record<string, MainCategory> = Object.fromEntries(
@@ -115,6 +142,13 @@ export const MAIN_CATEGORY_IMAGE: Record<MainCategory, string> = {
     "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Kitchen_Renovation_Marlton_New_Jersey.jpg/500px-Kitchen_Renovation_Marlton_New_Jersey.jpg",
   REAL_ESTATE_AGENCIES:
     "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Douglas_Elliman_CA_HQ.jpg/500px-Douglas_Elliman_CA_HQ.jpg",
+  // ADR-0012's 4 new sectors: loremflickr (keyless, tag-based) rather than a hand-picked
+  // Wikimedia file -- a real swap point for later curation, same "randomness accepted for now"
+  // tradeoff `category_hero_image_fix_wip`'s own precedent already made for catalog categories.
+  TRANSPORT_LOGISTICS: "https://loremflickr.com/500/333/logistics,truck",
+  LEGAL_CONSULTING_ACCOUNTING: "https://loremflickr.com/500/333/lawoffice,office",
+  HOME_APPLIANCES_EQUIPMENT: "https://loremflickr.com/500/333/appliances,electronics",
+  HOSPITALITY_SERVICES: "https://loremflickr.com/500/333/hotel,hospitality",
 };
 
 /** One-line description per sector -- the hub grid card's subtitle and the detail page's own
@@ -126,6 +160,10 @@ export const MAIN_CATEGORY_DESCRIPTION: Record<MainCategory, string> = {
   ARCHITECTURE_INTERIOR: "Arxitektura, interyer va landshaft dizayn studiyalari",
   REPAIR_SERVICES: "Uy ta'mirlash, santexnika va boshqa xizmat ko'rsatuvchilar",
   REAL_ESTATE_AGENCIES: "Turar-joy va tijorat ko'chmas mulk agentliklari",
+  TRANSPORT_LOGISTICS: "Yuk tashish, kuryerlik va logistika xizmatlari",
+  LEGAL_CONSULTING_ACCOUNTING: "Yuridik firmalar, buxgalteriya va biznes konsalting xizmatlari",
+  HOME_APPLIANCES_EQUIPMENT: "Maishiy texnika do'konlari, elektronika va uskunalar ijarasi",
+  HOSPITALITY_SERVICES: "Mehmonxonalar, tadbirlar maskani va sayohat agentliklari",
 };
 
 /** One accent color per sector -- 6-digit hex (not oklch/named) because `PageHeader` and the hub
@@ -139,6 +177,10 @@ export const MAIN_CATEGORY_ACCENT: Record<MainCategory, string> = {
   ARCHITECTURE_INTERIOR: "#7c3aed",
   REPAIR_SERVICES: "#0891b2",
   REAL_ESTATE_AGENCIES: "#db2777",
+  TRANSPORT_LOGISTICS: "#f59e0b",
+  LEGAL_CONSULTING_ACCOUNTING: "#0d9488",
+  HOME_APPLIANCES_EQUIPMENT: "#dc2626",
+  HOSPITALITY_SERVICES: "#9333ea",
 };
 
 /** Additive (Organizations Sub-Category task) -- a finer classification *within* one
@@ -173,7 +215,27 @@ export type SubCategory =
   | "RESIDENTIAL_AGENCY"
   | "COMMERCIAL_AGENCY"
   | "PROPERTY_MANAGEMENT"
-  | "VALUATION_SERVICE";
+  | "VALUATION_SERVICE"
+  | "FREIGHT_TRANSPORT"
+  | "COURIER_DELIVERY"
+  | "CAR_RENTAL"
+  | "LOGISTICS_WAREHOUSING"
+  | "MOVING_SERVICES"
+  | "LAW_FIRM"
+  | "ACCOUNTING_FIRM"
+  | "BUSINESS_CONSULTING"
+  | "TAX_ADVISORY"
+  | "NOTARY_SERVICES"
+  | "HOME_APPLIANCE_STORE"
+  | "ELECTRONICS_RETAILER"
+  | "APPLIANCE_SERVICE_CENTER"
+  | "EQUIPMENT_RENTAL"
+  | "HVAC_EQUIPMENT_SUPPLIER"
+  | "HOTEL_OPERATOR"
+  | "GUESTHOUSE_OPERATOR"
+  | "EVENT_VENUE"
+  | "CATERING_SERVICE"
+  | "TRAVEL_AGENCY";
 
 export const SUB_CATEGORY_LABEL: Record<SubCategory, string> = {
   COMMERCIAL_BANK: "Tijorat banki",
@@ -203,6 +265,26 @@ export const SUB_CATEGORY_LABEL: Record<SubCategory, string> = {
   COMMERCIAL_AGENCY: "Tijorat ko'chmas mulki agentligi",
   PROPERTY_MANAGEMENT: "Mulkni boshqarish",
   VALUATION_SERVICE: "Baholash xizmati",
+  FREIGHT_TRANSPORT: "Yuk tashish",
+  COURIER_DELIVERY: "Kuryerlik xizmati",
+  CAR_RENTAL: "Avtomobil ijarasi",
+  LOGISTICS_WAREHOUSING: "Logistika va ombor xizmatlari",
+  MOVING_SERVICES: "Ko'chirish xizmatlari",
+  LAW_FIRM: "Yuridik firma",
+  ACCOUNTING_FIRM: "Buxgalteriya xizmati",
+  BUSINESS_CONSULTING: "Biznes konsalting",
+  TAX_ADVISORY: "Soliq maslahati",
+  NOTARY_SERVICES: "Notarial xizmatlar",
+  HOME_APPLIANCE_STORE: "Maishiy texnika do'koni",
+  ELECTRONICS_RETAILER: "Elektronika do'koni",
+  APPLIANCE_SERVICE_CENTER: "Texnika xizmat markazi",
+  EQUIPMENT_RENTAL: "Uskunalar ijarasi",
+  HVAC_EQUIPMENT_SUPPLIER: "Klimat texnikasi",
+  HOTEL_OPERATOR: "Mehmonxona operatori",
+  GUESTHOUSE_OPERATOR: "Gostevoy uy operatori",
+  EVENT_VENUE: "Tadbirlar maskani",
+  CATERING_SERVICE: "Ketering xizmati",
+  TRAVEL_AGENCY: "Sayohat agentligi",
 };
 
 /** One representative photo per sub-category, hand-verified (downloaded and visually checked, not
@@ -267,6 +349,28 @@ export const SUB_CATEGORY_IMAGE: Partial<Record<SubCategory, string>> = {
     "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/2016-_The_Victoria_Towers%28%E6%B8%AF%E6%99%AF%E5%B3%B0%29%2C_Tsim_Sha_Tsui%2C_Hong_Kong_%28_Ank_Kumar_%29_01.jpg/500px-2016-_The_Victoria_Towers%28%E6%B8%AF%E6%99%AF%E5%B3%B0%29%2C_Tsim_Sha_Tsui%2C_Hong_Kong_%28_Ank_Kumar_%29_01.jpg",
   VALUATION_SERVICE:
     "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Couples_in_Real_Estate_Agent%27s_Office.jpg/500px-Couples_in_Real_Estate_Agent%27s_Office.jpg",
+  // ADR-0012's 20 new sub-categories: loremflickr, same swap-point convention as
+  // `MAIN_CATEGORY_IMAGE`'s own 4 new entries above.
+  FREIGHT_TRANSPORT: "https://loremflickr.com/500/375/freight,truck",
+  COURIER_DELIVERY: "https://loremflickr.com/500/375/courier,delivery",
+  CAR_RENTAL: "https://loremflickr.com/500/375/carrental,cars",
+  LOGISTICS_WAREHOUSING: "https://loremflickr.com/500/375/warehouse,logistics",
+  MOVING_SERVICES: "https://loremflickr.com/500/375/moving,movers",
+  LAW_FIRM: "https://loremflickr.com/500/375/lawfirm,office",
+  ACCOUNTING_FIRM: "https://loremflickr.com/500/375/accounting,office",
+  BUSINESS_CONSULTING: "https://loremflickr.com/500/375/consulting,meeting",
+  TAX_ADVISORY: "https://loremflickr.com/500/375/tax,finance",
+  NOTARY_SERVICES: "https://loremflickr.com/500/375/notary,document",
+  HOME_APPLIANCE_STORE: "https://loremflickr.com/500/375/appliancestore,electronics",
+  ELECTRONICS_RETAILER: "https://loremflickr.com/500/375/electronics,store",
+  APPLIANCE_SERVICE_CENTER: "https://loremflickr.com/500/375/repair,technician",
+  EQUIPMENT_RENTAL: "https://loremflickr.com/500/375/equipment,rental",
+  HVAC_EQUIPMENT_SUPPLIER: "https://loremflickr.com/500/375/hvac,airconditioner",
+  HOTEL_OPERATOR: "https://loremflickr.com/500/375/hotel,lobby",
+  GUESTHOUSE_OPERATOR: "https://loremflickr.com/500/375/guesthouse,bnb",
+  EVENT_VENUE: "https://loremflickr.com/500/375/eventvenue,banquet",
+  CATERING_SERVICE: "https://loremflickr.com/500/375/catering,food",
+  TRAVEL_AGENCY: "https://loremflickr.com/500/375/travel,agency",
 };
 
 export const SUB_CATEGORIES_BY_MAIN_CATEGORY: Record<MainCategory, SubCategory[]> = {
@@ -303,6 +407,34 @@ export const SUB_CATEGORIES_BY_MAIN_CATEGORY: Record<MainCategory, SubCategory[]
     "PROPERTY_MANAGEMENT",
     "VALUATION_SERVICE",
   ],
+  TRANSPORT_LOGISTICS: [
+    "FREIGHT_TRANSPORT",
+    "COURIER_DELIVERY",
+    "CAR_RENTAL",
+    "LOGISTICS_WAREHOUSING",
+    "MOVING_SERVICES",
+  ],
+  LEGAL_CONSULTING_ACCOUNTING: [
+    "LAW_FIRM",
+    "ACCOUNTING_FIRM",
+    "BUSINESS_CONSULTING",
+    "TAX_ADVISORY",
+    "NOTARY_SERVICES",
+  ],
+  HOME_APPLIANCES_EQUIPMENT: [
+    "HOME_APPLIANCE_STORE",
+    "ELECTRONICS_RETAILER",
+    "APPLIANCE_SERVICE_CENTER",
+    "EQUIPMENT_RENTAL",
+    "HVAC_EQUIPMENT_SUPPLIER",
+  ],
+  HOSPITALITY_SERVICES: [
+    "HOTEL_OPERATOR",
+    "GUESTHOUSE_OPERATOR",
+    "EVENT_VENUE",
+    "CATERING_SERVICE",
+    "TRAVEL_AGENCY",
+  ],
 };
 
 /** Watermark/fallback-tile icon per sub-category -- shared by the `$categorySlug` grid's card
@@ -335,6 +467,26 @@ export const SUB_CATEGORY_ICON: Record<SubCategory, LucideIcon> = {
   COMMERCIAL_AGENCY: Building,
   PROPERTY_MANAGEMENT: KeySquare,
   VALUATION_SERVICE: Calculator,
+  FREIGHT_TRANSPORT: Truck,
+  COURIER_DELIVERY: Boxes,
+  CAR_RENTAL: Car,
+  LOGISTICS_WAREHOUSING: Warehouse,
+  MOVING_SERVICES: PackageOpen,
+  LAW_FIRM: Scale,
+  ACCOUNTING_FIRM: FileText,
+  BUSINESS_CONSULTING: Briefcase,
+  TAX_ADVISORY: Calculator,
+  NOTARY_SERVICES: Stamp,
+  HOME_APPLIANCE_STORE: Zap,
+  ELECTRONICS_RETAILER: Smartphone,
+  APPLIANCE_SERVICE_CENTER: Settings2,
+  EQUIPMENT_RENTAL: Wrench,
+  HVAC_EQUIPMENT_SUPPLIER: Wind,
+  HOTEL_OPERATOR: Building2,
+  GUESTHOUSE_OPERATOR: Home,
+  EVENT_VENUE: Sparkles,
+  CATERING_SERVICE: UtensilsCrossed,
+  TRAVEL_AGENCY: Compass,
 };
 
 /** Generic placeholder icon for a `BusinessProfile` card with no logo yet -- shared by every
@@ -373,6 +525,26 @@ export const SUB_CATEGORY_SLUG: Record<SubCategory, string> = {
   COMMERCIAL_AGENCY: "tijorat-mulk-agentligi",
   PROPERTY_MANAGEMENT: "mulkni-boshqarish",
   VALUATION_SERVICE: "baholash-xizmati",
+  FREIGHT_TRANSPORT: "yuk-tashish",
+  COURIER_DELIVERY: "kuryerlik-xizmati",
+  CAR_RENTAL: "avtomobil-ijarasi",
+  LOGISTICS_WAREHOUSING: "logistika-ombor",
+  MOVING_SERVICES: "kochirish-xizmati",
+  LAW_FIRM: "yuridik-firma",
+  ACCOUNTING_FIRM: "buxgalteriya-xizmati",
+  BUSINESS_CONSULTING: "biznes-konsalting",
+  TAX_ADVISORY: "soliq-maslahati",
+  NOTARY_SERVICES: "notarial-xizmatlar",
+  HOME_APPLIANCE_STORE: "maishiy-texnika-dokoni",
+  ELECTRONICS_RETAILER: "elektronika-dokoni",
+  APPLIANCE_SERVICE_CENTER: "texnika-xizmat-markazi",
+  EQUIPMENT_RENTAL: "uskunalar-ijarasi",
+  HVAC_EQUIPMENT_SUPPLIER: "klimat-texnikasi",
+  HOTEL_OPERATOR: "mehmonxona-operatori",
+  GUESTHOUSE_OPERATOR: "gostevoy-uy",
+  EVENT_VENUE: "tadbirlar-maskani",
+  CATERING_SERVICE: "ketering-xizmati",
+  TRAVEL_AGENCY: "sayohat-agentligi",
 };
 
 const SLUG_TO_SUB_CATEGORY: Record<string, SubCategory> = Object.fromEntries(
@@ -434,7 +606,10 @@ export interface BusinessProfile {
   contacts?: BusinessProfileContacts | null;
   address?: string | null;
   slug?: string;
-  status: "CREATED" | "ACTIVE" | "ARCHIVED";
+  /** ADR-0012: PENDING_REVIEW (default for a new company, awaiting a reviewer decision) and
+   * REJECTED (not terminal -- editing the profile resubmits it to PENDING_REVIEW) widen the
+   * original CREATED/ACTIVE/ARCHIVED set. */
+  status: "CREATED" | "PENDING_REVIEW" | "ACTIVE" | "REJECTED" | "ARCHIVED";
   badge?: BusinessProfileBadge | null;
   portfolio?: PortfolioItem[];
   logoMediaAssetId?: string | null;
@@ -454,6 +629,11 @@ export interface BusinessProfile {
   mainCategory?: MainCategory | null;
   /** Additive (Organizations Sub-Category task). Always optional -- null whenever not set. */
   subCategory?: SubCategory | null;
+  /** ADR-0012 ("Bank/Finans bloki"): free-text ipoteka/kredit terms -- only meaningful (and only
+   * rendered on the landing page) when `mainCategory === "FINANCE_MORTGAGE"`. */
+  financeOfferDetails?: LocalizedText | null;
+  /** ADR-0012: an external YouTube link, alongside (not replacing) `promoVideoMediaAssetIds`. */
+  promoVideoYoutubeUrl?: string | null;
   createdAt?: string;
 }
 
@@ -582,6 +762,24 @@ export const businessProfilesApi = {
     return http.patch<BusinessProfile>(`/business-profiles/${profileId}/branding`, input);
   },
 
+  /** PATCH /business-profiles/{id}/landing-extras — ADR-0012. Sets the finance-terms block and
+   * YouTube promo link in one call, both applied verbatim (`null` clears that one), mirroring
+   * `updateBranding`'s own shape. */
+  updateLandingExtras(
+    profileId: string,
+    input: { financeOfferDetails?: string | null; promoVideoYoutubeUrl?: string | null },
+  ): Promise<BusinessProfile> {
+    return http.patch<BusinessProfile>(`/business-profiles/${profileId}/landing-extras`, {
+      financeOfferDetails:
+        input.financeOfferDetails !== undefined
+          ? input.financeOfferDetails
+            ? { uz_latn: input.financeOfferDetails }
+            : null
+          : undefined,
+      promoVideoYoutubeUrl: input.promoVideoYoutubeUrl,
+    });
+  },
+
   listPortfolio(profileId: string): Promise<PortfolioItem[]> {
     return http.get<PortfolioItem[]>(`/business-profiles/${profileId}/portfolio`);
   },
@@ -661,7 +859,7 @@ export interface BusinessProfilePage {
  * anonymous visitors. */
 export const adminBusinessProfilesApi = {
   list(params?: {
-    status?: "CREATED" | "ACTIVE" | "ARCHIVED";
+    status?: BusinessProfile["status"];
     cursor?: string;
     limit?: number;
   }): Promise<BusinessProfilePage> {
@@ -674,6 +872,18 @@ export const adminBusinessProfilesApi = {
       {},
       { idempotent: true },
     );
+  },
+
+  /** POST /admin/business-profiles/{id}/decision — ADR-0012. The "Yangi arizalar" admin tab's
+   * approve/reject action on a PENDING_REVIEW company. Same profiles:profile:manage gate as
+   * `archive` above. */
+  decide(
+    profileId: string,
+    input: { outcome: "APPROVED" | "REJECTED"; reason?: string },
+  ): Promise<BusinessProfile> {
+    return http.post<BusinessProfile>(`/admin/business-profiles/${profileId}/decision`, input, {
+      idempotent: true,
+    });
   },
 };
 

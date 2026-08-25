@@ -638,6 +638,51 @@ export async function updateOwnerPanelSlug(newSlug: string): Promise<void> {
   await publishSolo("platform-settings", head.id, draft.id);
 }
 
+// -- B2B sector icons (ADR-0012, platform-settings' `b2b.sector_icons`) ------------------------
+//
+// Admin-editable overlay for `profiles.MainCategory`'s 10 sector codes -- a small
+// {iconUrl, accentColor} map per sector, reusing the exact same generic maker-checker
+// `platform-settings` flow `updateOwnerPanelSlug` above already established (read-forward the
+// current *definition*, patch one settings key, publish-solo) rather than a new config entity
+// type. `business-profiles-client.ts`'s hardcoded `MAIN_CATEGORY_IMAGE`/`MAIN_CATEGORY_ACCENT`
+// stay the fallback for any sector this map has no override for yet.
+
+const B2B_SECTOR_ICONS_KEY = "b2b.sector_icons";
+
+export interface B2bSectorIconOverride {
+  iconUrl?: string;
+  accentColor?: string;
+}
+
+export type B2bSectorIcons = Record<string, B2bSectorIconOverride>;
+
+export async function getB2bSectorIcons(): Promise<B2bSectorIcons> {
+  const head = await getPlatformSettingsHead();
+  if (!head?.currentVersionId) return {};
+  const version = await getVersion("platform-settings", head.id, head.currentVersionId);
+  const settings = (version.snapshot?.settings as Record<string, unknown> | undefined) ?? {};
+  const value = settings[B2B_SECTOR_ICONS_KEY];
+  return value && typeof value === "object" ? (value as B2bSectorIcons) : {};
+}
+
+/** Overwrites the WHOLE map (not a per-sector patch) -- the caller is expected to have read the
+ * current map first (`getB2bSectorIcons`) and spread it, same "read forward, patch, publish"
+ * discipline `updateOwnerPanelSlug` uses one key over. */
+export async function updateB2bSectorIcons(icons: B2bSectorIcons): Promise<void> {
+  const head = await getPlatformSettingsHead();
+  if (!head?.currentVersionId) {
+    throw new Error("Platform sozlamalari hali ishga tushirilmagan.");
+  }
+  const version = await getVersion("platform-settings", head.id, head.currentVersionId);
+  const definition = version.definition as Record<string, unknown>;
+  const settings = {
+    ...(definition.settings as Record<string, unknown> | undefined),
+    [B2B_SECTOR_ICONS_KEY]: icons,
+  };
+  const draft = await createVersionDraft("platform-settings", head.id, { ...definition, settings });
+  await publishSolo("platform-settings", head.id, draft.id);
+}
+
 /** Public, unauthenticated yes/no check backing the `/$ownerAdminSlug` route guard
  * (`require-auth.ts`'s `requireOwnerAdminSlug`) -- never learns or reveals the real slug, only
  * whether a given guess matches it, so the real value never has to sit in the client bundle. */

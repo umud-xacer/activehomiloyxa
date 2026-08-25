@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import {
   Building2,
   Clock,
+  Clock3,
   Gauge,
   Loader2,
   Save,
@@ -18,6 +19,9 @@ import {
   Wrench,
   ExternalLink,
   Plus,
+  Landmark,
+  Video,
+  XCircle,
 } from "lucide-react";
 import { TelegramIcon, InstagramIcon, FacebookIcon } from "@/components/site/SocialIcons";
 import { requireOnboardedLegalEntity } from "@/lib/require-auth";
@@ -201,6 +205,137 @@ function SubscriptionBanner({ profile }: { profile: BusinessProfile }) {
         </Link>
       )}
     </div>
+  );
+}
+
+/** ADR-0012: every new company starts PENDING_REVIEW (admin sign-off required before it's
+ * publicly visible) and can be REJECTED (not terminal -- saving the form above resubmits it
+ * automatically). Renders nothing for CREATED/ACTIVE/ARCHIVED. */
+function RegistrationStatusBanner({ profile }: { profile: BusinessProfile }) {
+  if (profile.status === "PENDING_REVIEW") {
+    return (
+      <div className="flex items-center gap-4 rounded-3xl border border-warning/30 bg-warning/5 p-6 shadow-soft">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-warning/15 text-warning">
+          <Clock3 className="size-5" />
+        </div>
+        <div>
+          <p className="font-display text-base font-semibold text-foreground">
+            Arizangiz ko'rib chiqilmoqda
+          </p>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Kompaniyangiz admin tomonidan tasdiqlangach, u ommaviy katalogda va o'z landing
+            sahifasida ko'rina boshlaydi.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  if (profile.status === "REJECTED") {
+    return (
+      <div className="flex items-center gap-4 rounded-3xl border border-destructive/30 bg-destructive/5 p-6 shadow-soft">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-destructive/15 text-destructive">
+          <XCircle className="size-5" />
+        </div>
+        <div>
+          <p className="font-display text-base font-semibold text-foreground">Ariza rad etildi</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Ma'lumotlaringizni to'g'rilab, quyidagi "Saqlash" tugmasini bosing — bu arizangizni
+            avtomatik ravishda qayta ko'rib chiqish uchun yuboradi.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
+/** ADR-0012: financeOfferDetails ("Bank/Finans bloki", FINANCE_MORTGAGE sector only) and
+ * promoVideoYoutubeUrl (every sector, alongside the uploaded promo videos above/below) --
+ * both saved together via `updateLandingExtras`, independent of the main "Kompaniya ma'lumotlari"
+ * form's own save button. */
+function LandingExtrasSection({ profile }: { profile: BusinessProfile }) {
+  const queryClient = useQueryClient();
+  const [financeText, setFinanceText] = useState(profile.financeOfferDetails?.uz_latn || "");
+  const [youtubeUrl, setYoutubeUrl] = useState(profile.promoVideoYoutubeUrl || "");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isFinanceSector = profile.mainCategory === "FINANCE_MORTGAGE";
+
+  const onSave = async () => {
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      await businessProfilesApi.updateLandingExtras(profile.id, {
+        financeOfferDetails: isFinanceSector ? financeText.trim() || null : undefined,
+        promoVideoYoutubeUrl: youtubeUrl.trim() || null,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["business-profiles"] });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Saqlab bo'lmadi.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <SectionCard
+      title="Qo'shimcha landing kontent"
+      icon={Landmark}
+      description="YouTube tanishtiruv videosi va (Finans/Ipoteka tashkilotlari uchun) bank taklifi bo'limi."
+      index={4}
+    >
+      <div className="space-y-5">
+        {isFinanceSector && (
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Landmark className="size-3.5" /> Bank/Finans bloki (ipoteka/kredit shartlari)
+            </label>
+            <textarea
+              value={financeText}
+              onChange={(e) => setFinanceText(e.target.value)}
+              rows={4}
+              placeholder="Masalan: Ipoteka stavkasi 18% dan, muddat 15 yilgacha, boshlang'ich to'lov 25%..."
+              className="mt-1 w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+        )}
+
+        <div>
+          <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Video className="size-3.5" /> YouTube video havolasi
+          </label>
+          <input
+            value={youtubeUrl}
+            onChange={(e) => setYoutubeUrl(e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=..."
+            className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-primary/30"
+          />
+          <p className="mt-1 text-[11px] text-muted-foreground/70">
+            Yuqoridagi yuklangan promo videolar bilan bir qatorda ko'rsatiladi.
+          </p>
+        </div>
+
+        {error && <p className="text-xs text-destructive">{error}</p>}
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving}
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow disabled:opacity-60"
+          >
+            {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+            Saqlash
+          </button>
+          {saved && <span className="text-xs font-medium text-success">Saqlandi.</span>}
+        </div>
+      </div>
+    </SectionCard>
   );
 }
 
@@ -573,11 +708,13 @@ function BusinessProfilePageContent({
               draft={draft}
               portfolioCount={portfolioItems.length}
             />
+            <RegistrationStatusBanner profile={profile} />
             <SubscriptionBanner profile={profile} />
             <ProfileForm profile={profile} draft={draft} onDraftChange={setDraft} />
             <BrandingSection profile={profile} />
             <PortfolioGallery profile={profile} onItemsChange={setPortfolioItems} />
             <PromoVideoSection profile={profile} />
+            <LandingExtrasSection profile={profile} />
             <ServicesSection profileId={profile.id} />
           </div>
           <div className="order-1 lg:sticky lg:top-24 lg:order-2">

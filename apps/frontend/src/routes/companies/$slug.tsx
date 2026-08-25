@@ -11,6 +11,7 @@ import {
   Clock,
   Film,
   Globe,
+  Landmark,
   Layers,
   Link2,
   Loader2,
@@ -95,6 +96,27 @@ function tenureLabel(createdAt: string | undefined): string | null {
   if (months < 12) return `${months} oy`;
   const years = Math.floor(months / 12);
   return `${years} yil`;
+}
+
+/** ADR-0012: extracts a video id from a `youtube.com/watch?v=ID` or `youtu.be/ID` URL for a
+ * responsive `/embed/ID` iframe -- returns `null` for anything else (e.g. a malformed or
+ * unrecognized host) rather than rendering a broken embed. */
+function youtubeEmbedUrl(rawUrl: string | null | undefined): string | null {
+  if (!rawUrl) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return null;
+  }
+  const host = parsed.hostname.replace(/^www\.|^m\./, "");
+  let videoId: string | null = null;
+  if (host === "youtu.be") {
+    videoId = parsed.pathname.slice(1);
+  } else if (host === "youtube.com") {
+    videoId = parsed.searchParams.get("v");
+  }
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
 }
 
 /** One tile in the "About & metrics" band. Every value here is a real, derivable number (tenure
@@ -594,6 +616,14 @@ function Page() {
 
   const description =
     profile.description?.uz_latn || profile.description?.ru || profile.description?.en;
+  const financeOfferText =
+    profile.mainCategory === "FINANCE_MORTGAGE"
+      ? profile.financeOfferDetails?.uz_latn ||
+        profile.financeOfferDetails?.ru ||
+        profile.financeOfferDetails?.en ||
+        profile.financeOfferDetails?.uz_cyrl
+      : undefined;
+  const youtubeEmbed = youtubeEmbedUrl(profile.promoVideoYoutubeUrl);
   const primaryPhone = profile.contacts?.phones?.[0];
   const primaryEmail = profile.contacts?.emails?.[0];
   const website = profile.contacts?.website;
@@ -772,8 +802,23 @@ function Page() {
         </div>
       </section>
 
+      {/* --- Bank/Finans bloki (ADR-0012, FINANCE_MORTGAGE sector only) ------------------------ */}
+      {financeOfferText && (
+        <section className="border-t border-border bg-card/40 py-12">
+          <div className="mx-auto max-w-6xl px-6">
+            <SectionEyebrow>Bank / Finans</SectionEyebrow>
+            <h2 className="mb-4 flex items-center gap-2 font-display text-xl font-semibold text-foreground sm:text-2xl">
+              <Landmark className="size-5 text-primary" /> Ipoteka va kredit takliflari
+            </h2>
+            <p className="max-w-2xl whitespace-pre-line text-sm leading-relaxed text-muted-foreground sm:text-base">
+              {financeOfferText}
+            </p>
+          </div>
+        </section>
+      )}
+
       {/* --- Promo video ---------------------------------------------------------------------- */}
-      {promoVideos.length > 0 && (
+      {(promoVideos.length > 0 || youtubeEmbed) && (
         <section className="relative border-t border-border bg-card/40 py-10">
           <div className="mx-auto max-w-6xl px-6">
             <SectionEyebrow>Tanishtiruv</SectionEyebrow>
@@ -794,6 +839,18 @@ function Page() {
                   }
                 />
               ))}
+              {youtubeEmbed && (
+                <div className="aspect-video w-full max-w-sm shrink-0 overflow-hidden rounded-2xl border border-border shadow-soft">
+                  <iframe
+                    src={youtubeEmbed}
+                    title="YouTube video"
+                    loading="lazy"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="size-full"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </section>
