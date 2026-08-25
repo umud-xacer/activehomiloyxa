@@ -194,7 +194,12 @@ export const billingApi = {
    * that listing VIP/TOP promotion instead (`/admin/listings`). */
   adminGrantCredits(
     profileId: string,
-    input: { productId: string; targetType?: "PROFILE" | "LISTING"; targetId?: string; note?: string },
+    input: {
+      productId: string;
+      targetType?: "PROFILE" | "LISTING";
+      targetId?: string;
+      note?: string;
+    },
   ): Promise<Invoice> {
     return http.post<Invoice>(`/admin/billing/profiles/${profileId}/grant-credits`, input);
   },
