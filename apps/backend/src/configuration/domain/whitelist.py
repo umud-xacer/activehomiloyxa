@@ -78,8 +78,9 @@ NOTIFICATION_CHANNELS: frozenset[str] = frozenset({"EMAIL", "WEB_PUSH", "SMS"})
 
 # DDD Sec 8.1: "the EventKey vocabulary for notification templates is a subset of [the domain
 # event catalogue]" -- no narrower subset is enumerated anywhere, so the v1 whitelist is the
-# full frozen catalogue (`contracts/events/*.py` `event_type` Literals; 56 events as of ADR-0005,
-# docs/adr/0005-analytics-missing-metric-events.md -- previously 53 as of ADR-0001,
+# full frozen catalogue (`contracts/events/*.py` `event_type` Literals; 57 events as of ADR-0011,
+# docs/adr/0011-mark-as-sold-listing-lifecycle-state.md -- previously 56 as of ADR-0005,
+# docs/adr/0005-analytics-missing-metric-events.md, and 53 as of ADR-0001,
 # docs/adr/0001-media-asset-status-events.md). `tests/configuration/test_whitelist.py` asserts
 # this set has zero drift against `contracts.events` by importing it at test scope.
 EVENT_KEYS: frozenset[str] = frozenset(
@@ -117,6 +118,7 @@ EVENT_KEYS: frozenset[str] = frozenset(
         "ListingFlagged",
         "ListingPublished",
         "ListingRenewed",
+        "ListingSold",
         "ListingSuspended",
         "ListingViewed",
         "MediaAssetAccepted",

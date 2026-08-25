@@ -85,6 +85,18 @@ are.
   wired -- `catalog`'s own use cases are untouched by this ADR; `analytics/infrastructure/
   event_projection.py`'s consumer for these three keys is built and tested against synthetic
   events only, mirroring ADR-0001's own media precedent.
+- **The "Mark as Sold" feature's `ListingSold` event was never registered in the frozen catalogue
+  -- resolved by ADR-0011.** Unlike the ADR-0001/ADR-0005 amendments above (both a previously-
+  published-but-omitted DDD Sec 6 row), this is a genuinely new BC-03 event for a genuinely new
+  capability with no DDD Sec 6 precedent at all: `catalog.domain.value_objects.LifecycleState`
+  gained an eighth value (`SOLD`) and `contracts/events/catalog.py` gained the `ListingSold` class
+  in the same feature change, and both `search`'s and `notifications`' own event-type sets were
+  correctly wired to it -- but `EVENT_CATALOGUE`, `configuration/domain/whitelist.py`'s
+  `EVENT_KEYS`, and `test_event_catalogue.py`'s `DDD_SEC_6_EVENT_NAMES` oracle were not, which left
+  every "no event missing" drift check silently passing (all three omitted the same name).
+  `docs/adr/0011-mark-as-sold-listing-lifecycle-state.md` (Proposed -- drafted by an agent, pending
+  human architect ratification per Playbook Sec 18) resolves this by registering `ListingSold` in
+  all three places (`EVENT_CATALOGUE`/oracle set 56 -> 57 entries) in the same change.
 - **`ads` had zero v1 REST endpoints -- resolved by ADR-0004.** Under Task P-01, `docs/Active-
   Home-OpenAPI-3.1-Specification-v1.0.yaml` had no banner/campaign path at all; ads' only v1
   traces were a Billing `Product` type (`BANNER_PLACEMENT`/`TOP_PLACEMENT`), a Billing

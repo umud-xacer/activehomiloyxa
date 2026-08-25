@@ -5,7 +5,11 @@ from __future__ import annotations
 
 import pytest
 
-from configuration.domain.whitelist import WhitelistRegistry, WhitelistViolationError
+from configuration.domain.whitelist import (
+    WhitelistRegistry,
+    WhitelistViolationError,
+    is_valid_owner_panel_slug,
+)
 
 
 @pytest.fixture
@@ -51,6 +55,31 @@ def test_I16_settings_key_enforces_declared_type(registry: WhitelistRegistry) ->
         registry.check_settings_key("not.a.real.key", 5)  # unknown key
 
 
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("owner-panel-2026", True),
+        ("MixedCase", True),  # lowercased before matching, per the function's own docstring
+        ("  padded  ", True),  # stripped before matching
+        ("settings", False),  # collides with a reserved route
+        ("", False),
+        (123, False),  # not a string at all
+        (None, False),
+        ("-leading-hyphen", False),  # pattern requires an alnum first character
+    ],
+)
+def test_is_valid_owner_panel_slug(value: object, expected: bool) -> None:
+    assert is_valid_owner_panel_slug(value) is expected
+
+
+def test_I16_settings_key_owner_panel_slug_rejects_reserved_route_collision(
+    registry: WhitelistRegistry,
+) -> None:
+    registry.check_settings_key("admin.owner_panel_slug", "my-owner-panel")  # does not raise
+    with pytest.raises(WhitelistViolationError):
+        registry.check_settings_key("admin.owner_panel_slug", "settings")  # reserved route
+
+
 def test_manage_and_approve_permission_key_format(registry: WhitelistRegistry) -> None:
     assert registry.manage_permission_key("category") == "config:category:manage"
     assert registry.approve_permission_key("category") == "config:category:approve"
@@ -58,9 +87,9 @@ def test_manage_and_approve_permission_key_format(registry: WhitelistRegistry) -
 
 def test_I16_event_key_whitelist_has_zero_drift_from_frozen_event_catalogue() -> None:
     """`domain/whitelist.py`'s own docstring commits to this check: EVENT_KEYS is "a literal,
-    hand-kept copy" of `contracts/events/*.py`'s 47-event catalogue (Task P-01), and any drift
-    between the two must be caught here, at test scope -- `domain/` itself may not import
-    `contracts` (Clean Architecture rule 1)."""
+    hand-kept copy" of `contracts/events/*.py`'s 57-event catalogue (Task P-01, as of ADR-0011),
+    and any drift between the two must be caught here, at test scope -- `domain/` itself may not
+    import `contracts` (Clean Architecture rule 1)."""
     from configuration.domain.whitelist import EVENT_KEYS
     from contracts.events import EVENT_CATALOGUE
 

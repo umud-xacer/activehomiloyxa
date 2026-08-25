@@ -13,6 +13,7 @@ from billing.application.entitlement_use_cases import EntitlementUseCases
 from billing.application.exceptions import EntitlementNotFoundError, OrderNotFoundError
 from billing.domain import (
     EntitlementFactory,
+    EntitlementType,
     Order,
     ProductSnapshot,
     ProductType,
@@ -51,6 +52,27 @@ def _paid_order(*, purchaser: BusinessProfileId | None = None) -> Order:
         purchaser_profile_id=purchaser or BusinessProfileId(value=uuid4()),
         product_snapshot=snapshot,
         target=TargetRef(target_type=TargetType.LISTING, target_id=uuid4(), booking_window=None),
+        now=_NOW,
+    )
+    return order.issue_invoice(now=_NOW).mark_paid(now=_NOW)
+
+
+def _paid_credit_pack_order(
+    *, purchaser: BusinessProfileId | None = None, quota: dict[str, object] | None
+) -> Order:
+    snapshot = ProductSnapshot(
+        product_definition_id=uuid4(),
+        product_definition_version_id=uuid4(),
+        product_type=ProductType.LISTING_CREDIT_PACK,
+        price=Money(amount=Decimal("60000.00"), currency="UZS"),
+        term_days=365,
+        quota=quota,
+    )
+    order = Order.create(
+        order_id=uuid4(),
+        purchaser_profile_id=purchaser or BusinessProfileId(value=uuid4()),
+        product_snapshot=snapshot,
+        target=TargetRef(target_type=TargetType.PROFILE, target_id=None, booking_window=None),
         now=_NOW,
     )
     return order.issue_invoice(now=_NOW).mark_paid(now=_NOW)
@@ -212,3 +234,130 @@ class TestRevoke:
 
         with pytest.raises(OrderNotFoundError):
             await use_cases.revoke(entitlement.id, now=_NOW)
+
+
+class TestConsumeListingCredit:
+    async def test_consumes_from_the_only_eligible_pack(
+        self,
+        use_cases: EntitlementUseCases,
+        fake_entitlements: FakeEntitlementRepository,
+        fake_orders: FakeOrderRepository,
+    ) -> None:
+        purchaser = BusinessProfileId(value=uuid4())
+        order = _paid_credit_pack_order(purchaser=purchaser, quota={"listing_publish_credits": 3})
+        await fake_orders.add(order)
+        entitlement = EntitlementFactory.activate_from_paid_order(
+            entitlement_id=uuid4(), order=order, now=_NOW
+        )
+        await fake_entitlements.add(entitlement)
+
+        consumed = await use_cases.consume_listing_credit(
+            purchaser_profile_id=purchaser, now=_NOW
+        )
+
+        assert consumed is not None
+        assert consumed.remaining_credits == 2
+        assert fake_entitlements.entitlements[entitlement.id].remaining_credits == 2
+
+    async def test_returns_none_when_no_eligible_entitlement_exists(
+        self, use_cases: EntitlementUseCases
+    ) -> None:
+        result = await use_cases.consume_listing_credit(
+            purchaser_profile_id=BusinessProfileId(value=uuid4()), now=_NOW
+        )
+        assert result is None
+
+    async def test_skips_an_exhausted_pack(
+        self,
+        use_cases: EntitlementUseCases,
+        fake_entitlements: FakeEntitlementRepository,
+        fake_orders: FakeOrderRepository,
+    ) -> None:
+        purchaser = BusinessProfileId(value=uuid4())
+        order = _paid_credit_pack_order(purchaser=purchaser, quota={"listing_publish_credits": 0})
+        await fake_orders.add(order)
+        entitlement = EntitlementFactory.activate_from_paid_order(
+            entitlement_id=uuid4(), order=order, now=_NOW
+        )
+        await fake_entitlements.add(entitlement)
+
+        result = await use_cases.consume_listing_credit(
+            purchaser_profile_id=purchaser, now=_NOW
+        )
+        assert result is None
+
+    async def test_unlimited_pack_is_always_eligible_and_stays_unlimited(
+        self,
+        use_cases: EntitlementUseCases,
+        fake_entitlements: FakeEntitlementRepository,
+        fake_orders: FakeOrderRepository,
+    ) -> None:
+        purchaser = BusinessProfileId(value=uuid4())
+        order = _paid_credit_pack_order(
+            purchaser=purchaser, quota={"unlimited_listing_publish": True}
+        )
+        await fake_orders.add(order)
+        entitlement = EntitlementFactory.activate_from_paid_order(
+            entitlement_id=uuid4(), order=order, now=_NOW
+        )
+        await fake_entitlements.add(entitlement)
+
+        consumed = await use_cases.consume_listing_credit(
+            purchaser_profile_id=purchaser, now=_NOW
+        )
+        assert consumed is not None
+        assert consumed.remaining_credits is None
+
+    async def test_ignores_entitlements_that_are_not_listing_credit_balances(
+        self,
+        use_cases: EntitlementUseCases,
+        fake_entitlements: FakeEntitlementRepository,
+        fake_orders: FakeOrderRepository,
+    ) -> None:
+        purchaser = BusinessProfileId(value=uuid4())
+        order = _paid_order(purchaser=purchaser)
+        await fake_orders.add(order)
+        entitlement = EntitlementFactory.activate_from_paid_order(
+            entitlement_id=uuid4(), order=order, now=_NOW
+        )
+        assert entitlement.entitlement_type is not EntitlementType.LISTING_CREDIT_BALANCE
+        await fake_entitlements.add(entitlement)
+
+        result = await use_cases.consume_listing_credit(
+            purchaser_profile_id=purchaser, now=_NOW
+        )
+        assert result is None
+
+    async def test_picks_the_earliest_expiring_pack_when_multiple_are_eligible(
+        self,
+        use_cases: EntitlementUseCases,
+        fake_entitlements: FakeEntitlementRepository,
+        fake_orders: FakeOrderRepository,
+    ) -> None:
+        purchaser = BusinessProfileId(value=uuid4())
+        sooner_order = _paid_credit_pack_order(
+            purchaser=purchaser, quota={"listing_publish_credits": 5}
+        )
+        await fake_orders.add(sooner_order)
+        sooner = EntitlementFactory.activate_from_paid_order(
+            entitlement_id=uuid4(), order=sooner_order, now=_NOW
+        )
+        await fake_entitlements.add(sooner)
+
+        later_order = _paid_credit_pack_order(
+            purchaser=purchaser, quota={"listing_publish_credits": 5}
+        )
+        await fake_orders.add(later_order)
+        later = EntitlementFactory.activate_from_paid_order(
+            entitlement_id=uuid4(), order=later_order, now=_NOW + timedelta(days=1)
+        )
+        await fake_entitlements.add(later)
+        assert sooner.valid_until < later.valid_until
+
+        consumed = await use_cases.consume_listing_credit(
+            purchaser_profile_id=purchaser, now=_NOW
+        )
+
+        assert consumed is not None
+        assert consumed.id == sooner.id
+        assert fake_entitlements.entitlements[later.id].remaining_credits == 5

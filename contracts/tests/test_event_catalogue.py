@@ -1,5 +1,6 @@
 """Proves contracts/events/ covers exactly the Domain Model Sec 6 event catalogue, as amended by
-ADR-0001 and ADR-0005 -- no event missing, no event invented (P-01 validation checklist).
+ADR-0001, ADR-0005, and ADR-0011 -- no event missing, no event invented (P-01 validation
+checklist).
 """
 
 from __future__ import annotations
@@ -41,6 +42,10 @@ DDD_SEC_6_EVENT_NAMES = {
     "ListingFlagged",
     "FavoriteAdded",
     "FavoriteRemoved",
+    # BC-03 (ADR-0011 -- "Mark as Sold" feature, no DDD Sec 6 precedent at all: not an
+    # already-published-but-omitted row like the ADR-0001/ADR-0005 amendments below, a genuinely
+    # new event for a genuinely new capability the repository owner asked for directly)
+    "ListingSold",
     # BC-03 (ADR-0005 -- absent from DDD Sec 6's published table despite Sec 5.13's own 8-key
     # closed metric vocabulary naming them; no real producer wired yet)
     "ListingViewed",
@@ -91,10 +96,10 @@ DDD_SEC_6_EVENT_NAMES = {
 
 
 def test_I01_event_catalogue_matches_ddd_sec_6_exactly() -> None:
-    """# enforces DDD Sec 6 "the authoritative v1 event catalogue", as amended by ADR-0001 and
-    ADR-0005."""
+    """# enforces DDD Sec 6 "the authoritative v1 event catalogue", as amended by ADR-0001,
+    ADR-0005, and ADR-0011."""
     assert set(EVENT_CATALOGUE.keys()) == DDD_SEC_6_EVENT_NAMES
-    assert len(DDD_SEC_6_EVENT_NAMES) == 56
+    assert len(DDD_SEC_6_EVENT_NAMES) == 57
 
 
 def test_I02_every_event_class_pins_its_own_event_type() -> None:
