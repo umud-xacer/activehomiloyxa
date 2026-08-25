@@ -20,7 +20,7 @@ from catalog.application import FavoriteUseCases, ListingNotFoundError, ListingU
 from catalog.domain.exceptions import NotListingOwnerError
 from catalog.domain.image_attachment import ImageAttachment as DomainImageAttachment
 from catalog.domain.listing import Listing as DomainListing
-from catalog.domain.value_objects import ListingType
+from catalog.domain.value_objects import LifecycleState, ListingType
 from catalog.interfaces.auth import ActingOperator, ActingUser
 from catalog.interfaces.di import (
     get_acting_operator,
@@ -130,8 +130,12 @@ async def get_listing(
 ) -> Listing:
     listing = await use_cases.get_listing(ListingId(value=listingId))
     is_owner = acting_user is not None and acting_user.account_id == listing.owner_user_id
-    if not is_owner and not listing.is_publicly_visible(now=datetime.now(UTC)):
-        # Non-owners never learn a non-visible listing exists (I-06's own visibility rule).
+    is_sold = listing.lifecycle_state is LifecycleState.SOLD
+    if not is_owner and not is_sold and not listing.is_publicly_visible(now=datetime.now(UTC)):
+        # Non-owners never learn a non-visible listing exists (I-06's own visibility rule) --
+        # except SOLD, a deliberate carve-out (2026-08-25): a SOLD listing stays excluded from
+        # search/catalog listing (`is_publicly_visible` still returns False for it) but a buyer
+        # following an old link should see "sotilgan" rather than a bare 404.
         raise ListingNotFoundError(listing.id)
     # UNF-015/FR-ADV-010: recorded only once visibility has already passed -- a blocked peek at
     # a non-visible listing never counts as a view.

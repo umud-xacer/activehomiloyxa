@@ -136,7 +136,7 @@ class Listing:
         """Always produces a `DRAFT` (DDD Sec 5.3 `ListingFactory`: "stamps ownership from the
         acting profile"). Immediate publication (`ListingCreateRequest.publish=true`) is the
         application layer composing `create` then `publish` as two recorded transitions, not a
-        third state -- `contracts/openapi.yaml`'s own CHECK constraint enumerates exactly seven
+        third state -- `contracts/openapi.yaml`'s own CHECK constraint enumerates a closed set of
         `lifecycle_state` values, none of them a combined "created-and-published" state."""
         transition = LifecycleTransitionRecord(
             id=record_id,
@@ -358,6 +358,37 @@ class Listing:
             updated_at=now,
         )
 
+    def mark_sold(
+        self, *, record_id: UUID, actor_user_id: UUID, reason: str | None, now: datetime
+    ) -> Listing:
+        """ "Mark as Sold" (2026-08-25, `ListingStatusChangeRequest.action="SOLD"`) -- only from
+        `PUBLISHED`/`EDITED` (`_VISIBLE_STATES`), same guard shape as `suspend`/`archive`: a
+        DRAFT/PENDING_VERIFICATION listing was never live to be sold, and an already-`SOLD`/
+        `ARCHIVED`/`SUSPENDED`/`DELETED` listing has nothing further to sell. Unlike `delete`,
+        `SOLD` is a real, owner-facing terminal-ish state (not a soft-delete): the listing stays
+        fully readable at its own detail URL (`is_publicly_visible` still returns `False` for it,
+        matching `ARCHIVED`'s "excluded from search/catalog listing" behavior, but
+        `interfaces/routers.get_listing` special-cases `SOLD` to resolve rather than 404 for
+        non-owners) and remains in the owner's own listings view (`GET /me/listings`) forever, the
+        "Sotilganlar" archive the feature spec calls for -- `restore()` is the one way back to
+        `PUBLISHED` (see its own docstring)."""
+        if self.lifecycle_state not in _VISIBLE_STATES:
+            raise IllegalListingStateTransitionError("sell", self.lifecycle_state.value)
+        record = self._record(
+            to_state=LifecycleState.SOLD,
+            kind=TransitionKind.SELL,
+            actor_user_id=actor_user_id,
+            reason=reason,
+            record_id=record_id,
+            now=now,
+        )
+        return replace(
+            self,
+            lifecycle_state=LifecycleState.SOLD,
+            transitions=(*self.transitions, record),
+            updated_at=now,
+        )
+
     def restore(
         self,
         *,
@@ -366,17 +397,21 @@ class Listing:
         reason: str | None,
         now: datetime,
     ) -> Listing:
-        """Brings a shelved listing (`SUSPENDED`/`ARCHIVED`) back to `PUBLISHED` -- the
-        `ListingStatusChangeRequest.action="RESTORE"` verb. No dedicated `ListingRestored` event
-        exists in the frozen `contracts/events/catalog.py` catalogue (12 events, all present
-        since Task P-01); `application/` republishes `ListingPublished` for this transition,
-        the closest semantic fit ("the listing becomes publicly visible again", exactly what
-        `ListingPublished`'s own consumers -- Search/Notifications/Analytics -- need to hear).
-        `actor_user_id` may be `None` for the same system-driven reason `suspend`'s own docstring
-        gives (a renewed business-profile subscription reactivating its listings in bulk)."""
+        """Brings a shelved listing (`SUSPENDED`/`ARCHIVED`/`SOLD`) back to `PUBLISHED` -- the
+        `ListingStatusChangeRequest.action="RESTORE"` verb, also reused as "unmark as sold" (a
+        seller who marked the wrong listing, or wants to relist) rather than inventing a fourth
+        verb -- `SOLD -> PUBLISHED` is exactly the same "becomes publicly visible again" shape as
+        `SUSPENDED`/`ARCHIVED -> PUBLISHED` already was. No dedicated `ListingRestored` event
+        exists in the frozen `contracts/events/catalog.py` catalogue; `application/` republishes
+        `ListingPublished` for this transition, the closest semantic fit ("the listing becomes
+        publicly visible again", exactly what `ListingPublished`'s own consumers -- Search/
+        Notifications/Analytics -- need to hear). `actor_user_id` may be `None` for the same
+        system-driven reason `suspend`'s own docstring gives (a renewed business-profile
+        subscription reactivating its listings in bulk)."""
         if self.lifecycle_state not in (
             LifecycleState.SUSPENDED,
             LifecycleState.ARCHIVED,
+            LifecycleState.SOLD,
         ):
             raise IllegalListingStateTransitionError("restore", self.lifecycle_state.value)
         record = self._record(

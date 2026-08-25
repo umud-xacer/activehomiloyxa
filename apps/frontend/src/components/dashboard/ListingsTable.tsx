@@ -10,8 +10,10 @@ import {
   Package,
   Loader2,
   CreditCard,
+  BadgeCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Table,
   TableBody,
@@ -25,7 +27,10 @@ import { PaywallModal } from "@/components/billing/PaywallModal";
 import { catalogClient, formatUzs, type CatalogListing } from "@/lib/catalog-client";
 import { ApiError } from "@/lib/http";
 
-const LIFECYCLE_LABEL: Record<string, { label: string; tone: "success" | "muted" | "warning" }> = {
+const LIFECYCLE_LABEL: Record<
+  string,
+  { label: string; tone: "success" | "muted" | "warning" | "sold" }
+> = {
   PUBLISHED: { label: "E'lon qilingan", tone: "success" },
   EDITED: { label: "Tahrirlangan", tone: "success" },
   DRAFT: { label: "Qoralama", tone: "muted" },
@@ -33,6 +38,7 @@ const LIFECYCLE_LABEL: Record<string, { label: string; tone: "success" | "muted"
   SUSPENDED: { label: "To'xtatilgan", tone: "warning" },
   ARCHIVED: { label: "Arxivlangan", tone: "muted" },
   DELETED: { label: "O'chirilgan", tone: "muted" },
+  SOLD: { label: "Sotildi", tone: "sold" },
 };
 
 export function LifecycleBadge({
@@ -56,7 +62,9 @@ export function LifecycleBadge({
           ? "bg-success/10 text-success"
           : info.tone === "warning"
             ? "bg-amber-500/10 text-amber-600"
-            : "bg-muted text-muted-foreground"
+            : info.tone === "sold"
+              ? "bg-blue-500/10 text-blue-600"
+              : "bg-muted text-muted-foreground"
       }
     >
       {info.label}
@@ -65,12 +73,13 @@ export function LifecycleBadge({
 }
 
 const ARCHIVABLE_STATES = new Set(["PUBLISHED", "EDITED", "PENDING_VERIFICATION"]);
-const RESTORABLE_STATES = new Set(["ARCHIVED", "SUSPENDED"]);
+const SELLABLE_STATES = new Set(["PUBLISHED", "EDITED"]);
+const RESTORABLE_STATES = new Set(["ARCHIVED", "SUSPENDED", "SOLD"]);
 
 function RowActions({ listing }: { listing: CatalogListing }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [busy, setBusy] = useState<"archive" | "restore" | "delete" | null>(null);
+  const [busy, setBusy] = useState<"archive" | "restore" | "delete" | "sold" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
 
@@ -92,8 +101,20 @@ function RowActions({ listing }: { listing: CatalogListing }) {
     }
   };
 
+  const markSold = async () => {
+    setError(null);
+    setBusy("sold");
+    try {
+      await catalogClient.changeListingStatus(listing.id, "SOLD");
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Sotildi deb belgilab bo'lmadi.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const remove = async () => {
-    if (!window.confirm(`"${listing.title}" e'lonini o'chirmoqchimisiz?`)) return;
     setError(null);
     setBusy("delete");
     try {
@@ -108,6 +129,7 @@ function RowActions({ listing }: { listing: CatalogListing }) {
   const canToggle =
     ARCHIVABLE_STATES.has(listing.lifecycleState ?? "") ||
     RESTORABLE_STATES.has(listing.lifecycleState ?? "");
+  const canMarkSold = SELLABLE_STATES.has(listing.lifecycleState ?? "");
 
   return (
     <div className="flex items-center justify-end gap-1">
@@ -147,6 +169,22 @@ function RowActions({ listing }: { listing: CatalogListing }) {
       >
         <Pencil className="size-3.5" />
       </Link>
+      {canMarkSold && (
+        <button
+          type="button"
+          onClick={markSold}
+          disabled={busy !== null}
+          aria-label="Sotildi deb belgilash"
+          title="Sotildi deb belgilash"
+          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-blue-500/10 hover:text-blue-600 disabled:opacity-50"
+        >
+          {busy === "sold" ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <BadgeCheck className="size-3.5" />
+          )}
+        </button>
+      )}
       {canToggle && (
         <button
           type="button"
@@ -169,42 +207,32 @@ function RowActions({ listing }: { listing: CatalogListing }) {
           )}
         </button>
       )}
-      <button
-        type="button"
-        onClick={remove}
-        disabled={busy !== null}
-        aria-label="O'chirish"
-        title="O'chirish"
-        className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-      >
-        {busy === "delete" ? (
-          <Loader2 className="size-3.5 animate-spin" />
-        ) : (
-          <Trash2 className="size-3.5" />
-        )}
-      </button>
+      <ConfirmDialog
+        trigger={
+          <button
+            type="button"
+            disabled={busy !== null}
+            aria-label="O'chirish"
+            title="O'chirish"
+            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+          >
+            {busy === "delete" ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="size-3.5" />
+            )}
+          </button>
+        }
+        title="E'lonni o'chirish"
+        description={`"${listing.title}" e'lonini o'chirmoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi.`}
+        confirmLabel="O'chirish"
+        onConfirm={remove}
+      />
     </div>
   );
 }
 
-export function ListingsTable({ listings }: { listings: CatalogListing[] }) {
-  if (listings.length === 0) {
-    return (
-      <EmptyState
-        icon={Package}
-        title="Hali e'lon joylanmagan"
-        description="Birinchi e'loningizni qo'shib, mijozlarga ko'rinishni boshlang."
-        action={
-          <Link
-            to="/list"
-            className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-soft hover:shadow-glow"
-          >
-            <Plus className="size-3.5" /> E'lon joylash
-          </Link>
-        }
-      />
-    );
-  }
+function ListingsGrid({ listings }: { listings: CatalogListing[] }) {
   return (
     <Table>
       <TableHeader>
@@ -234,5 +262,47 @@ export function ListingsTable({ listings }: { listings: CatalogListing[] }) {
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+export function ListingsTable({ listings }: { listings: CatalogListing[] }) {
+  if (listings.length === 0) {
+    return (
+      <EmptyState
+        icon={Package}
+        title="Hali e'lon joylanmagan"
+        description="Birinchi e'loningizni qo'shib, mijozlarga ko'rinishni boshlang."
+        action={
+          <Link
+            to="/list"
+            className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-soft hover:shadow-glow"
+          >
+            <Plus className="size-3.5" /> E'lon joylash
+          </Link>
+        }
+      />
+    );
+  }
+  // "Mark as Sold" (2026-08-25): a SOLD listing drops out of the public catalog/search but stays
+  // in the owner's own cabinet forever -- split into a distinct "Sotilganlar" section below the
+  // active table rather than a separate route/tab, so all 4 existing `ListingsTable` call sites
+  // (seller dashboard, /list, /dashboard, /favorites) get this for free with no prop plumbing;
+  // a caller with no SOLD listings renders identically to before this change.
+  const active = listings.filter((l) => l.lifecycleState !== "SOLD");
+  const sold = listings.filter((l) => l.lifecycleState === "SOLD");
+  return (
+    <div className="space-y-8">
+      {active.length > 0 ? (
+        <ListingsGrid listings={active} />
+      ) : (
+        <p className="py-4 text-sm text-muted-foreground">Faol e'lonlar yo'q.</p>
+      )}
+      {sold.length > 0 && (
+        <div>
+          <h3 className="font-display mb-3 text-sm font-semibold text-foreground">Sotilganlar</h3>
+          <ListingsGrid listings={sold} />
+        </div>
+      )}
+    </div>
   );
 }

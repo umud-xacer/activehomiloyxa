@@ -56,7 +56,8 @@ export interface CatalogListing {
     | "EDITED"
     | "SUSPENDED"
     | "ARCHIVED"
-    | "DELETED";
+    | "DELETED"
+    | "SOLD";
   /** Listing paywall (2026-08-23): true for a DRAFT listing whose publish is held pending
    * payment -- `createListing`'s response is the one place a caller learns this immediately
    * (the Paywall Modal opens off this field, not off `lifecycleState` alone). */
@@ -138,7 +139,7 @@ export interface ListingUpdateInput {
 }
 
 export type ListingStatusAction =
-  "PUBLISH" | "ARCHIVE" | "SUSPEND" | "RENEW" | "RESTORE" | "DELETE";
+  "PUBLISH" | "ARCHIVE" | "SUSPEND" | "RENEW" | "RESTORE" | "DELETE" | "SOLD";
 
 export interface MediaUploadTicket {
   mediaAssetId: string;

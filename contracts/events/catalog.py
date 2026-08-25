@@ -77,6 +77,21 @@ class ListingDeleted(EventEnvelope):
     event_type: Literal["ListingDeleted"] = "ListingDeleted"
 
 
+class ListingSold(EventEnvelope):
+    """Emitted when: Lifecycle transition ("Mark as Sold").
+
+    Added 2026-08-25, a deliberate, documented extension of this catalogue for a real product
+    need -- the same precedent `ListingViewed`/`ContactButtonClicked`/`PremiumListingStat` below
+    already set for ADR-0005 (do not reuse `ListingArchived` for this: notifications' own
+    `queue_for_event` looks up a template by `event_type` literally, so reusing another event's
+    name would render that event's own message text for a "sold" transition).
+
+    Principal consumers: Search (index update), Notifications.
+    """
+
+    event_type: Literal["ListingSold"] = "ListingSold"
+
+
 class ListingExpired(EventEnvelope):
     """Emitted when: Lifecycle transition.
 

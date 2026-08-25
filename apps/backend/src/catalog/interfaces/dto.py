@@ -54,7 +54,7 @@ class ListingImage(CamelModel):
 class ListingStatusChangeRequest(CamelModel):
     """OpenAPI `ListingStatusChangeRequest`."""
 
-    action: Literal["PUBLISH", "ARCHIVE", "SUSPEND", "RENEW", "RESTORE", "DELETE"]
+    action: Literal["PUBLISH", "ARCHIVE", "SUSPEND", "RENEW", "RESTORE", "DELETE", "SOLD"]
     """Owner-permitted lifecycle transitions (I-05); illegal transitions return 409."""
     reason: str | None = None
 
@@ -84,6 +84,7 @@ class Listing(CamelModel):
         "SUSPENDED",
         "ARCHIVED",
         "DELETED",
+        "SOLD",
     ]
     is_flagged: bool | None = None
     expires_at: datetime | None = None

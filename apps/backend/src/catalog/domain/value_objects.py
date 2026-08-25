@@ -20,14 +20,22 @@ class ListingType(StrEnum):
 
 
 class LifecycleState(StrEnum):
-    """DDD Sec 5.3 VO `LifecycleState [P]` -- the fixed seven-state machine (DEC-14).
-    `PENDING_VERIFICATION` is part of the frozen schema's CHECK constraint but is not entered by
-    any transition this task implements: BRULE-17 ("moderation is post-publication in v1")
-    confirms v1 has no pre-publication verification gate -- reserved for a future task, the same
-    class of dormant-but-frozen enum value as `identity.domain.AccountStatus` having no
-    `PENDING` in P-05. `EXPIRED`/`RENEWED` are deliberately NOT states here -- FR-ADV-006/DDD Sec
-    5.3 calls them "RECORDED transitions": expiry/renewal only move `Listing.expires_at`,
-    recorded via a `LifecycleTransitionRecord` and an event, while `lifecycle_state` itself stays
+    """DDD Sec 5.3 VO `LifecycleState [P]` -- originally the fixed seven-state machine (DEC-14),
+    widened to eight 2026-08-25 for the "Mark as Sold" feature (real product request, not a
+    reinterpretation of DEC-14 -- the same class of deliberate, documented extension
+    `contracts/events/catalog.py`'s own ADR-0005 note already established for that "frozen"
+    catalogue). `SOLD` behaves like `ARCHIVED` for visibility (excluded from `_VISIBLE_STATES`,
+    so it drops out of search/catalog listing) but is reachable only from `PUBLISHED`/`EDITED`
+    (`Listing.mark_sold`) and, unlike every other non-visible state, is still resolvable at its
+    own public detail URL (`catalog.interfaces.routers.get_listing`'s explicit carve-out) so a
+    buyer following an old link sees "sotilgan" rather than a 404. `PENDING_VERIFICATION` is part
+    of the frozen schema's CHECK constraint but is not entered by any transition this task
+    implements: BRULE-17 ("moderation is post-publication in v1") confirms v1 has no
+    pre-publication verification gate -- reserved for a future task, the same class of
+    dormant-but-frozen enum value as `identity.domain.AccountStatus` having no `PENDING` in P-05.
+    `EXPIRED`/`RENEWED` are deliberately NOT states here -- FR-ADV-006/DDD Sec 5.3 calls them
+    "RECORDED transitions": expiry/renewal only move `Listing.expires_at`, recorded via a
+    `LifecycleTransitionRecord` and an event, while `lifecycle_state` itself stays
     `PUBLISHED`/`EDITED` (I-06's visibility rule already accounts for expiry via `expires_at`,
     independently of `lifecycle_state`)."""
 
@@ -38,6 +46,7 @@ class LifecycleState(StrEnum):
     SUSPENDED = "SUSPENDED"
     ARCHIVED = "ARCHIVED"
     DELETED = "DELETED"
+    SOLD = "SOLD"
 
 
 class ImageStatus(StrEnum):
@@ -60,10 +69,10 @@ class PromotionKind(StrEnum):
 
 class TransitionKind(StrEnum):
     """Physical DB `catalog.listing_transition.transition_kind` CHECK -- the complete, closed set
-    of eleven recordable transition kinds (the authoritative list; NOT 1:1 with
-    `ListingStatusChangeRequest.action`'s six API-facing verbs -- `CREATE`/`EDIT`/`EXPIRE`/`FLAG`/
-    `UNFLAG` have no API action of their own, see `listing.py`'s per-method docstrings for which
-    caller triggers each)."""
+    of twelve recordable transition kinds (the authoritative list; NOT 1:1 with
+    `ListingStatusChangeRequest.action`'s seven API-facing verbs -- `CREATE`/`EDIT`/`EXPIRE`/
+    `FLAG`/`UNFLAG` have no API action of their own, see `listing.py`'s per-method docstrings for
+    which caller triggers each). `SELL` added 2026-08-25 alongside `LifecycleState.SOLD`."""
 
     CREATE = "CREATE"
     PUBLISH = "PUBLISH"
@@ -76,6 +85,7 @@ class TransitionKind(StrEnum):
     FLAG = "FLAG"
     UNFLAG = "UNFLAG"
     RESTORE = "RESTORE"
+    SELL = "SELL"
 
 
 ValidatorType = Literal[

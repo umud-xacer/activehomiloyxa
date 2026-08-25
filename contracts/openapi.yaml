@@ -5297,6 +5297,7 @@ components:
           - SUSPENDED
           - ARCHIVED
           - DELETED
+          - SOLD
           readOnly: true
         isFlagged:
           type: boolean
@@ -5458,6 +5459,7 @@ components:
           - RENEW
           - RESTORE
           - DELETE
+          - SOLD
           description: Owner-permitted lifecycle transitions (I-05); illegal transitions return 409.
         reason:
           type: string

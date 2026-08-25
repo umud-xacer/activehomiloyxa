@@ -344,6 +344,58 @@ def test_archive_from_draft_raises() -> None:
         _new_listing().archive(record_id=uuid4(), actor_user_id=uuid4(), reason=None, now=NOW)
 
 
+# --- mark as sold (2026-08-25) ---------------------------------------------------------------
+
+
+def test_mark_sold_from_published_and_edited_both_succeed() -> None:
+    published = _new_listing().publish(
+        record_id=uuid4(), actor_user_id=uuid4(), expires_at=NOW, now=NOW
+    )
+    sold = published.mark_sold(record_id=uuid4(), actor_user_id=uuid4(), reason=None, now=NOW)
+    assert sold.lifecycle_state is LifecycleState.SOLD
+    assert sold.transitions[-1].transition_kind is TransitionKind.SELL
+    assert sold.is_publicly_visible(now=NOW) is False
+
+    edited = published.edit_content(
+        record_id=uuid4(),
+        actor_user_id=uuid4(),
+        now=NOW,
+        form_definition_id=uuid4(),
+        form_definition_version_id=uuid4(),
+        title="edited title",
+    )
+    sold_from_edited = edited.mark_sold(
+        record_id=uuid4(), actor_user_id=uuid4(), reason=None, now=NOW
+    )
+    assert sold_from_edited.lifecycle_state is LifecycleState.SOLD
+
+
+def test_mark_sold_from_draft_raises() -> None:
+    with pytest.raises(IllegalListingStateTransitionError):
+        _new_listing().mark_sold(record_id=uuid4(), actor_user_id=uuid4(), reason=None, now=NOW)
+
+
+def test_mark_sold_twice_raises() -> None:
+    sold = (
+        _new_listing()
+        .publish(record_id=uuid4(), actor_user_id=uuid4(), expires_at=NOW, now=NOW)
+        .mark_sold(record_id=uuid4(), actor_user_id=uuid4(), reason=None, now=NOW)
+    )
+    with pytest.raises(IllegalListingStateTransitionError):
+        sold.mark_sold(record_id=uuid4(), actor_user_id=uuid4(), reason=None, now=NOW)
+
+
+def test_restore_from_sold_returns_to_published() -> None:
+    sold = (
+        _new_listing()
+        .publish(record_id=uuid4(), actor_user_id=uuid4(), expires_at=NOW, now=NOW)
+        .mark_sold(record_id=uuid4(), actor_user_id=uuid4(), reason=None, now=NOW)
+    )
+    restored = sold.restore(record_id=uuid4(), actor_user_id=uuid4(), reason=None, now=NOW)
+    assert restored.lifecycle_state is LifecycleState.PUBLISHED
+    assert restored.transitions[-1].transition_kind is TransitionKind.RESTORE
+
+
 # --- images: reorder / detach / status update edge cases ------------------------------------------
 
 

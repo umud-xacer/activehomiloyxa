@@ -12,7 +12,15 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Loader2, MapPin, MessageCircle, Phone, ImageOff, ChevronRight } from "lucide-react";
+import {
+  Loader2,
+  MapPin,
+  MessageCircle,
+  Phone,
+  ImageOff,
+  ChevronRight,
+  BadgeCheck,
+} from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { ErrorState } from "@/components/state/ErrorState";
 import type { MapMarker } from "@/components/map/YandexMapView";
@@ -285,12 +293,20 @@ function Page() {
               transition={{ duration: 0.5 }}
               className="mt-8"
             >
-              {category && (
-                <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground/70">
-                  <KindIcon className="size-3.5" />
-                  {KIND_EYEBROW[catalogKind]}
-                </div>
-              )}
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                {category && (
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-foreground/70">
+                    <KindIcon className="size-3.5" />
+                    {KIND_EYEBROW[catalogKind]}
+                  </div>
+                )}
+                {listing.lifecycleState === "SOLD" && (
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-600">
+                    <BadgeCheck className="size-3.5" />
+                    Bu mahsulot sotilgan
+                  </div>
+                )}
+              </div>
               <div className="flex items-start justify-between gap-4">
                 <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
                   {listing.title}
@@ -332,7 +348,20 @@ function Page() {
           </div>
 
           {/* Contact sidebar */}
-          {!isOwnListing && (
+          {!isOwnListing && listing.lifecycleState === "SOLD" && (
+            <div>
+              <div className="sticky top-28 rounded-3xl border border-border bg-card p-6 shadow-soft">
+                <div className="flex items-center gap-2 text-sm font-semibold text-blue-600">
+                  <BadgeCheck className="size-4" />
+                  Bu mahsulot sotilgan
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Ushbu e'lon endi faol emas. Pastdagi o'xshash e'lonlarni ko'rib chiqing.
+                </p>
+              </div>
+            </div>
+          )}
+          {!isOwnListing && listing.lifecycleState !== "SOLD" && (
             <div>
               <div className="sticky top-28 rounded-3xl border border-border bg-card p-6 shadow-soft">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">

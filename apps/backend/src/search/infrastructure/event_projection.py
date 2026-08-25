@@ -193,10 +193,10 @@ async def _upsert_content_from_payload(
 async def handle_listing_visibility_event(
     session: AsyncSession, envelope: EventEnvelope, use_cases: IndexingUseCases
 ) -> None:
-    """`ListingSuspended`/`ListingArchived`/`ListingDeleted`/`ListingExpired`/`ListingRenewed` --
-    visibility-only (X-02). Never raises `MalformedEventPayloadError`: these events only ever
-    needed `listingId` + the visibility-deriving fields, all of which catalog's current payload
-    already sends."""
+    """`ListingSuspended`/`ListingArchived`/`ListingDeleted`/`ListingExpired`/`ListingRenewed`/
+    `ListingSold` -- visibility-only (X-02). Never raises `MalformedEventPayloadError`: these
+    events only ever needed `listingId` + the visibility-deriving fields, all of which catalog's
+    current payload already sends."""
     async with idempotent_consume(
         session, ProcessedEventRow, event_id=envelope.event_id, handler=_LISTING_HANDLER
     ) as is_fresh:
@@ -298,6 +298,7 @@ _VISIBILITY_EVENT_TYPES = {
     "ListingDeleted",
     "ListingExpired",
     "ListingRenewed",
+    "ListingSold",
 }
 _ENTITLEMENT_ACTIVATED_EVENT_TYPES = {"EntitlementActivated"}
 _ENTITLEMENT_CLEARED_EVENT_TYPES = {"EntitlementExpired", "EntitlementRevoked"}

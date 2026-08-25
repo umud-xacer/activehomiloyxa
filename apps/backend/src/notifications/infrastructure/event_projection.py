@@ -60,6 +60,7 @@ _CATALOG_EVENT_TYPES = {
     "ListingDeleted",
     "ListingExpired",
     "ListingRenewed",
+    "ListingSold",
 }
 _BILLING_PROFILE_EVENT_TYPES = {
     "OrderPlaced",
@@ -132,8 +133,8 @@ async def handle_catalog_event(
     use_cases: NotificationDispatchUseCases,
     recipients: RecipientDirectoryPort,
 ) -> list[QueuedDispatch]:
-    """`ListingPublished`/`Suspended`/`Archived`/`Deleted`/`Expired`/`Renewed` -- catalog's own
-    `_listing_payload` already carries `ownerUserId` directly."""
+    """`ListingPublished`/`Suspended`/`Archived`/`Deleted`/`Expired`/`Renewed`/`Sold` -- catalog's
+    own `_listing_payload` already carries `ownerUserId` directly."""
     async with idempotent_consume(
         session, ProcessedEventRow, event_id=envelope.event_id, handler=_CATALOG_HANDLER
     ) as is_fresh:

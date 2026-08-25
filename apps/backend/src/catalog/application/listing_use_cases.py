@@ -52,6 +52,7 @@ from contracts.events.catalog import (
     ListingFlagged,
     ListingPublished,
     ListingRenewed,
+    ListingSold,
     ListingSuspended,
     ListingViewed,
 )
@@ -440,6 +441,25 @@ class ListingUseCases:
             listing = await self._listings.save(listing)
             await self._publish(
                 ListingArchived(
+                    event_id=uuid4(),
+                    occurred_at=now,
+                    actor=actor_user_id.value,
+                    aggregate_type="Listing",
+                    aggregate_id=listing.id.value,
+                    payload=await self._listing_payload(listing, reason=reason),
+                )
+            )
+            return listing
+        if action == "SOLD":
+            listing = listing.mark_sold(
+                record_id=uuid4(),
+                actor_user_id=actor_user_id.value,
+                reason=reason,
+                now=now,
+            )
+            listing = await self._listings.save(listing)
+            await self._publish(
+                ListingSold(
                     event_id=uuid4(),
                     occurred_at=now,
                     actor=actor_user_id.value,

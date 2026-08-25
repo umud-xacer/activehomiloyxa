@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Play,
   Sparkles,
+  BadgeCheck,
   X,
 } from "lucide-react";
 import { requireAdmin } from "@/lib/require-auth";
@@ -19,6 +20,7 @@ import { DashboardShell } from "@/components/layout/DashboardShell";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { StatCard } from "@/components/dashboard/StatCard";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   adminCatalogApi,
   formatUzs,
@@ -44,6 +46,7 @@ const STATE_LABEL: Record<string, string> = {
   SUSPENDED: "To'xtatilgan",
   ARCHIVED: "Arxivlangan",
   DELETED: "O'chirilgan",
+  SOLD: "Sotildi",
 };
 
 const STATE_CLASS: Record<string, string> = {
@@ -54,6 +57,7 @@ const STATE_CLASS: Record<string, string> = {
   SUSPENDED: "bg-destructive/10 text-destructive",
   ARCHIVED: "bg-muted text-muted-foreground",
   DELETED: "bg-destructive/10 text-destructive",
+  SOLD: "bg-blue-500/10 text-blue-600",
 };
 
 const STATES = [
@@ -64,6 +68,7 @@ const STATES = [
   "SUSPENDED",
   "ARCHIVED",
   "DELETED",
+  "SOLD",
 ];
 
 function promotionLabel(product: Product): string {
@@ -186,9 +191,6 @@ function ListingRow({ listing, index }: { listing: CatalogListing; index: number
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["admin", "listings"] });
 
   const apply = async (action: ListingStatusAction) => {
-    if (action === "DELETE" && !window.confirm(`"${listing.title}" e'lonini o'chirmoqchimisiz?`)) {
-      return;
-    }
     setBusy(action);
     setError(null);
     try {
@@ -235,7 +237,7 @@ function ListingRow({ listing, index }: { listing: CatalogListing; index: number
           <PromotionGrantPanel listing={listing} />
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-          {state !== "PUBLISHED" && state !== "DELETED" && (
+          {state !== "PUBLISHED" && state !== "DELETED" && state !== "SOLD" && (
             <button
               type="button"
               disabled={busy !== null}
@@ -265,7 +267,7 @@ function ListingRow({ listing, index }: { listing: CatalogListing; index: number
               To'xtatish
             </button>
           )}
-          {(state === "SUSPENDED" || state === "ARCHIVED") && (
+          {(state === "SUSPENDED" || state === "ARCHIVED" || state === "SOLD") && (
             <button
               type="button"
               disabled={busy !== null}
@@ -284,6 +286,21 @@ function ListingRow({ listing, index }: { listing: CatalogListing; index: number
             <button
               type="button"
               disabled={busy !== null}
+              onClick={() => apply("SOLD")}
+              className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-500/20 disabled:opacity-50"
+            >
+              {busy === "SOLD" ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <BadgeCheck className="size-3.5" />
+              )}
+              Sotildi deb belgilash
+            </button>
+          )}
+          {(state === "PUBLISHED" || state === "EDITED") && (
+            <button
+              type="button"
+              disabled={busy !== null}
               onClick={() => apply("ARCHIVE")}
               className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted/70 disabled:opacity-50"
             >
@@ -296,20 +313,27 @@ function ListingRow({ listing, index }: { listing: CatalogListing; index: number
             </button>
           )}
           {state !== "DELETED" && (
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={() => apply("DELETE")}
-              title="O'chirish — qaytarib bo'lmaydi"
-              className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1.5 text-xs font-semibold text-destructive-foreground transition hover:opacity-90 disabled:opacity-50"
-            >
-              {busy === "DELETE" ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Trash2 className="size-3.5" />
-              )}
-              O'chirish
-            </button>
+            <ConfirmDialog
+              trigger={
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  title="O'chirish — qaytarib bo'lmaydi"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1.5 text-xs font-semibold text-destructive-foreground transition hover:opacity-90 disabled:opacity-50"
+                >
+                  {busy === "DELETE" ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="size-3.5" />
+                  )}
+                  O'chirish
+                </button>
+              }
+              title="E'lonni o'chirish"
+              description={`"${listing.title}" e'lonini o'chirmoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi.`}
+              confirmLabel="O'chirish"
+              onConfirm={() => apply("DELETE")}
+            />
           )}
         </div>
       </div>
