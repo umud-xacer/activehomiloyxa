@@ -683,6 +683,39 @@ export async function updateB2bSectorIcons(icons: B2bSectorIcons): Promise<void>
   await publishSolo("platform-settings", head.id, draft.id);
 }
 
+// -- Skyscraper sidebar ads feature flag (`feature_flag.skyscraper_ads_enabled`) ----------------
+//
+// Same generic maker-checker `platform-settings` flow as `updateOwnerPanelSlug`/
+// `updateB2bSectorIcons` above -- one boolean key, default-off (site owner's explicit call that
+// the left/right sidebar ad columns break the platform's modern layout). Publicly readable via
+// `GET /public/feature-flags` (`getFeatureFlags` in `feature-flags-client.ts`) for the actual
+// homepage/AppShell gate; this admin-side pair is only for the toggle in `/$ownerAdminSlug/banners`.
+
+const SKYSCRAPER_ADS_ENABLED_KEY = "feature_flag.skyscraper_ads_enabled";
+
+export async function getSkyscraperAdsEnabled(): Promise<boolean> {
+  const head = await getPlatformSettingsHead();
+  if (!head?.currentVersionId) return false;
+  const version = await getVersion("platform-settings", head.id, head.currentVersionId);
+  const settings = (version.snapshot?.settings as Record<string, unknown> | undefined) ?? {};
+  return settings[SKYSCRAPER_ADS_ENABLED_KEY] === true;
+}
+
+export async function updateSkyscraperAdsEnabled(enabled: boolean): Promise<void> {
+  const head = await getPlatformSettingsHead();
+  if (!head?.currentVersionId) {
+    throw new Error("Platform sozlamalari hali ishga tushirilmagan.");
+  }
+  const version = await getVersion("platform-settings", head.id, head.currentVersionId);
+  const definition = version.definition as Record<string, unknown>;
+  const settings = {
+    ...(definition.settings as Record<string, unknown> | undefined),
+    [SKYSCRAPER_ADS_ENABLED_KEY]: enabled,
+  };
+  const draft = await createVersionDraft("platform-settings", head.id, { ...definition, settings });
+  await publishSolo("platform-settings", head.id, draft.id);
+}
+
 /** Public, unauthenticated yes/no check backing the `/$ownerAdminSlug` route guard
  * (`require-auth.ts`'s `requireOwnerAdminSlug`) -- never learns or reveals the real slug, only
  * whether a given guess matches it, so the real value never has to sit in the client bundle. */

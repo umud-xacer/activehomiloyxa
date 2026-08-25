@@ -2734,6 +2734,56 @@ paths:
                 $ref: '#/components/schemas/BannerServeView'
         '204':
           description: No eligible campaign for this slot/context right now.
+  /banners/serve-many:
+    get:
+      tags:
+      - Ads
+      operationId: serveBannersMany
+      summary: Select and serve every eligible banner for a slot, up to a limit (public)
+      description: 'Carousel/native-variant sibling of serveBanner -- same I-21/I-20 eligibility
+        gate and the same priority order, but returns every eligible campaign up to `limit`
+        instead of only the single highest-priority one. No session required.
+
+        '
+      security: []
+      parameters:
+      - name: slotKey
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: categoryId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: geo
+        in: query
+        schema:
+          type: string
+      - name: language
+        in: query
+        schema:
+          type: string
+          enum:
+          - uz_latn
+          - uz_cyrl
+          - ru
+          - en
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 6
+          minimum: 1
+          maximum: 12
+      responses:
+        '200':
+          description: Eligible banners for this slot/context (possibly empty).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BannerServeManyResult'
   /banners/{campaignId}/impressions:
     post:
       tags:
@@ -2788,6 +2838,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlatformStatsResult'
+  /public/feature-flags:
+    get:
+      tags:
+      - Platform
+      operationId: getFeatureFlags
+      summary: Public feature-flag read (skyscraper sidebar ads)
+      description: Third deliberate exception to "no public read of platform-settings" -- exposes
+        only the one named feature_flag.skyscraper_ads_enabled key, never the settings blob
+        wholesale. Defaults to false when unset, matching the site owner's explicit default-off
+        requirement for the left/right skyscraper ad sidebars.
+      security: []
+      responses:
+        '200':
+          description: Feature flags.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlagsResult'
   /public/owner-admin-access/verify:
     post:
       tags:
@@ -6975,6 +7043,18 @@ components:
           - 'null'
           description: Additive. Optional click-through destination for the served creative.
       additionalProperties: false
+    BannerServeManyResult:
+      type: object
+      description: Every eligible campaign for a slot/context, up to the requested limit, in the
+        same priority order serveBanner itself picks its single winner from.
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BannerServeView'
+      additionalProperties: false
     ConfigurationHead:
       type: object
       description: The head record of a configuration entity (uniform Head+Version pattern, DM-03).
@@ -7138,6 +7218,16 @@ components:
           type: integer
         satisfactionPercent:
           type: integer
+      additionalProperties: false
+    FeatureFlagsResult:
+      type: object
+      description: Exposes only the one named feature_flag.skyscraper_ads_enabled settings key,
+        never the platform-settings-global blob wholesale.
+      required:
+      - skyscraperAdsEnabled
+      properties:
+        skyscraperAdsEnabled:
+          type: boolean
       additionalProperties: false
     OwnerAdminSlugCheckRequest:
       type: object

@@ -163,6 +163,75 @@ async def test_serve_banner_returns_none_for_a_different_slot(
 
 
 @pytest.mark.asyncio
+async def test_serve_banners_returns_all_eligible_candidates_priority_ordered(
+    fake_campaigns: FakeBannerCampaignRepository,
+    fake_entitlement_projection: FakeEntitlementProjectionRepository,
+    fake_outbox: FakeOutbox,
+) -> None:
+    low = await _running_campaign(fake_campaigns, fake_entitlement_projection, priority=1)
+    high = await _running_campaign(fake_campaigns, fake_entitlement_projection, priority=5)
+    use_cases = BannerServingUseCases(
+        campaigns=fake_campaigns, entitlements=fake_entitlement_projection, outbox=fake_outbox
+    )
+    served = await use_cases.serve_banners(
+        slot_key="HOMEPAGE_TOP", category_id=None, geo=None, language=None, limit=6, now=_NOW
+    )
+    assert [c.id for c in served] == [high.id, low.id]
+
+
+@pytest.mark.asyncio
+async def test_serve_banners_stops_at_limit(
+    fake_campaigns: FakeBannerCampaignRepository,
+    fake_entitlement_projection: FakeEntitlementProjectionRepository,
+    fake_outbox: FakeOutbox,
+) -> None:
+    for i in range(3):
+        await _running_campaign(fake_campaigns, fake_entitlement_projection, priority=i)
+    use_cases = BannerServingUseCases(
+        campaigns=fake_campaigns, entitlements=fake_entitlement_projection, outbox=fake_outbox
+    )
+    served = await use_cases.serve_banners(
+        slot_key="HOMEPAGE_TOP", category_id=None, geo=None, language=None, limit=2, now=_NOW
+    )
+    assert len(served) == 2
+
+
+@pytest.mark.asyncio
+async def test_serve_banners_excludes_ineligible_candidates(
+    fake_campaigns: FakeBannerCampaignRepository,
+    fake_entitlement_projection: FakeEntitlementProjectionRepository,
+    fake_outbox: FakeOutbox,
+) -> None:
+    eligible = await _running_campaign(fake_campaigns, fake_entitlement_projection)
+    await _running_campaign(fake_campaigns, fake_entitlement_projection, entitlement_active=False)
+    await _running_campaign(
+        fake_campaigns, fake_entitlement_projection, creative_status=CreativeStatus.QUARANTINED
+    )
+    use_cases = BannerServingUseCases(
+        campaigns=fake_campaigns, entitlements=fake_entitlement_projection, outbox=fake_outbox
+    )
+    served = await use_cases.serve_banners(
+        slot_key="HOMEPAGE_TOP", category_id=None, geo=None, language=None, limit=6, now=_NOW
+    )
+    assert [c.id for c in served] == [eligible.id]
+
+
+@pytest.mark.asyncio
+async def test_serve_banners_returns_empty_list_when_none_eligible(
+    fake_campaigns: FakeBannerCampaignRepository,
+    fake_entitlement_projection: FakeEntitlementProjectionRepository,
+    fake_outbox: FakeOutbox,
+) -> None:
+    use_cases = BannerServingUseCases(
+        campaigns=fake_campaigns, entitlements=fake_entitlement_projection, outbox=fake_outbox
+    )
+    served = await use_cases.serve_banners(
+        slot_key="HOMEPAGE_TOP", category_id=None, geo=None, language=None, limit=6, now=_NOW
+    )
+    assert served == []
+
+
+@pytest.mark.asyncio
 async def test_record_impression_appends_a_metric_event_and_no_counter_mutation(
     fake_campaigns: FakeBannerCampaignRepository,
     fake_entitlement_projection: FakeEntitlementProjectionRepository,

@@ -17,6 +17,7 @@ from ads.interfaces.dto import (
     BannerCampaignCreateRequest,
     BannerCampaignPage,
     BannerCampaignUpdateRequest,
+    BannerServeManyResult,
     BannerServeView,
 )
 
@@ -67,8 +68,8 @@ class CampaignCommandPort(Protocol):
 
 
 class BannerServingQueryPort(Protocol):
-    """Derived from OpenAPI operations: `serveBanner`, `recordBannerImpression`,
-    `recordBannerClick`."""
+    """Derived from OpenAPI operations: `serveBanner`, `serveBannersMany`,
+    `recordBannerImpression`, `recordBannerClick`."""
 
     async def serve_banner(
         self,
@@ -78,6 +79,18 @@ class BannerServingQueryPort(Protocol):
         language: Literal["uz_latn", "uz_cyrl", "ru", "en"] | None = None,
     ) -> BannerServeView | None:
         """`GET /banners/serve` (operationId `serveBanner`). Select and serve an eligible banner (public)"""
+        ...
+
+    async def serve_banners_many(
+        self,
+        slot_key: str,
+        category_id: UUID | None = None,
+        geo: str | None = None,
+        language: Literal["uz_latn", "uz_cyrl", "ru", "en"] | None = None,
+        limit: int | None = 6,
+    ) -> BannerServeManyResult:
+        """`GET /banners/serve-many` (operationId `serveBannersMany`). Select and serve every
+        eligible banner for a slot, up to a limit (public)"""
         ...
 
     async def record_banner_impression(self, campaign_id: UUID) -> None:

@@ -242,6 +242,16 @@ class PlatformStatsResult(CamelModel):
     satisfaction_percent: int
 
 
+class FeatureFlagsResult(CamelModel):
+    """Additive, outside the frozen OpenAPI contract (same escape-hatch precedent as
+    `PlatformStatsResult` above) -- exposes only this one named `feature_flag.*` settings key,
+    never the `platform-settings-global` blob wholesale. Defaults to `False` (skyscraper sidebar
+    ads hidden) when the key has never been published, matching the site owner's explicit
+    default-off requirement rather than 500ing on a fresh DB."""
+
+    skyscraper_ads_enabled: bool
+
+
 class ConfigValidationResult(CamelModel):
     """Result of the pre-activation validation gate (dry-run or on publish)."""
 

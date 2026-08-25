@@ -94,3 +94,11 @@ class BannerServeView(CamelModel):
     creative_media_asset_id: UUID
     target_url: str | None = None
     """Additive: optional click-through destination for the served creative."""
+
+
+class BannerServeManyResult(CamelModel):
+    """Carousel/native-variant sibling of `BannerServeView` -- every eligible campaign for a
+    slot/context, up to the requested limit, in the same priority order `serveBanner` itself
+    picks its single winner from."""
+
+    items: list[BannerServeView]

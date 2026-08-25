@@ -390,3 +390,14 @@ def test_verify_owner_admin_slug_correct_guess_resets_the_lockout_counter(
     client.post("/api/v1/public/owner-admin-access/verify", json={"slug": "not-it"})
     client.post("/api/v1/public/owner-admin-access/verify", json={"slug": "owner-admin"})
     assert fake_owner_admin_lockout.counts == {}
+
+
+# --- getFeatureFlags ---------------------------------------------------------------------------
+
+
+def test_get_feature_flags_defaults_skyscraper_ads_to_false(client: TestClient) -> None:
+    """No `platform-settings-global` head exists in `fake_repo` by default, so the key is unset
+    -- must default to `False` (site owner's explicit default-off requirement), never 500."""
+    response = client.get("/api/v1/public/feature-flags")
+    assert response.status_code == 200
+    assert response.json() == {"skyscraperAdsEnabled": False}

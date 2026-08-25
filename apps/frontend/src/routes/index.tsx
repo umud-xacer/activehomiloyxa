@@ -54,15 +54,19 @@ export const Route = createFileRoute("/")({
 function Index() {
   // Order: Navbar -> Hero (search + Categories both live inside Hero's own dark band now, so
   // there's no separate white "categories" section handing off from the search box) ->
-  // AudienceSplit -> the promo carousel -> Organizations -> Map -> the 12-process ecosystem ->
-  // MissionBand -> the stats "proof strip" (its own section, below MissionBand) -> CTA/Footer.
-  // An AdSlot sits between later sections. The two sidebar ad slots
-  // (HOMEPAGE_SIDEBAR_LEFT/RIGHT) live INSIDE Hero itself now, not here -- see Hero.tsx. They
-  // used to be a page-spanning sticky overlay (`GlobalAdSidebars`), but that meant reserving a
-  // column for them across the ENTIRE page, which shrank every section's own full-bleed
-  // background (Hero's navy band included) to make room. Scoping them to Hero keeps Hero's
-  // background a true `w-full` edge-to-edge section while still making overlap with its content
-  // impossible (real flex-reserved width, not an overlay) -- see Hero.tsx's own comment.
+  // AudienceSplit -> the promo carousel -> Organizations -> the ad carousel -> Map -> the
+  // 12-process ecosystem -> MissionBand -> the stats "proof strip" (its own section, below
+  // MissionBand) -> CTA/Footer. The two sidebar ad slots (HOMEPAGE_SIDEBAR_LEFT/RIGHT) live
+  // INSIDE Hero itself now, not here -- see Hero.tsx. They used to be a page-spanning sticky
+  // overlay (`GlobalAdSidebars`), but that meant reserving a column for them across the ENTIRE
+  // page, which shrank every section's own full-bleed background (Hero's navy band included) to
+  // make room. Scoping them to Hero keeps Hero's background a true `w-full` edge-to-edge section
+  // while still making overlap with its content impossible (real flex-reserved width, not an
+  // overlay) -- see Hero.tsx's own comment.
+  //
+  // The three previously-separate stacked `HOMEPAGE_BANNER_1/2/3` static slots are consolidated
+  // into one `variant="carousel"` `AdSlot` on `HOMEPAGE_BANNER_CAROUSEL` -- a genuine rotating
+  // set of creatives styled exactly like `PromoCarousel` above it, rather than three flat blocks.
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="relative">
@@ -72,11 +76,9 @@ function Index() {
         <AudienceSplit />
         <PromoCarousel slides={PROMO_SLIDES} />
         <OrganizationsCarousel />
-        <AdSlot slotKey="HOMEPAGE_BANNER_1" />
+        <AdSlot slotKey="HOMEPAGE_BANNER_CAROUSEL" variant="carousel" />
         <MapPreview />
-        <AdSlot slotKey="HOMEPAGE_BANNER_2" />
         <EcosystemGrid />
-        <AdSlot slotKey="HOMEPAGE_BANNER_3" />
         <MissionBand />
         <PlatformStatsBand />
       </div>

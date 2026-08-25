@@ -1,7 +1,8 @@
-"""FastAPI routers implementing exactly the nine `Ads`-tagged OpenAPI operations
-(`contracts/openapi.yaml`, ADR-0004). Thin translation only: path/body -> use case call -> domain
-object -> already-frozen `interfaces/dto.py` DTO. All business logic lives in
-`application`/`domain`; this module owns none.
+"""FastAPI routers implementing the `Ads`-tagged OpenAPI operations (`contracts/openapi.yaml`,
+ADR-0004's original nine, plus `serveBannersMany` added for the carousel/native `AdSlot`
+variants). Thin translation only: path/body -> use case call -> domain object -> already-frozen
+`interfaces/dto.py` DTO. All business logic lives in `application`/`domain`; this module owns
+none.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from ads.interfaces.dto import (
     BannerCampaignCreateRequest,
     BannerCampaignPage,
     BannerCampaignUpdateRequest,
+    BannerServeManyResult,
     BannerServeView,
     PageInfo,
     Targeting,
@@ -215,6 +217,36 @@ async def serve_banner(
         slot_key=campaign.slot_key,
         creative_media_asset_id=campaign.creative_media_asset_id,
         target_url=campaign.target_url,
+    )
+
+
+@ads_public_router.get("/banners/serve-many", operation_id="serveBannersMany")
+async def serve_banners_many(
+    slotKey: str,
+    categoryId: UUID | None = None,
+    geo: str | None = None,
+    language: Literal["uz_latn", "uz_cyrl", "ru", "en"] | None = None,
+    limit: int | None = Query(default=6),
+    use_cases: BannerServingUseCases = Depends(get_serving_use_cases),
+) -> BannerServeManyResult:
+    campaigns = await use_cases.serve_banners(
+        slot_key=slotKey,
+        category_id=categoryId,
+        geo=geo,
+        language=language,
+        limit=min(max(limit or 6, 1), 12),
+        now=datetime.now(UTC),
+    )
+    return BannerServeManyResult(
+        items=[
+            BannerServeView(
+                campaign_id=c.id,
+                slot_key=c.slot_key,
+                creative_media_asset_id=c.creative_media_asset_id,
+                target_url=c.target_url,
+            )
+            for c in campaigns
+        ]
     )
 
 

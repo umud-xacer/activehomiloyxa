@@ -8,6 +8,7 @@ import { CategoryCarousel } from "./CategoryCarousel";
 import { Container } from "@/components/layout/Container";
 import { SearchResultsPanel } from "@/components/search/SearchResultsPanel";
 import { AdSlot } from "./AdSlot";
+import { useSkyscraperAdsEnabled } from "@/lib/use-skyscraper-ads-enabled";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -23,6 +24,7 @@ export function Hero() {
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const skyscraperAdsEnabled = useSkyscraperAdsEnabled();
 
   function submitFullSearch() {
     const trimmed = query.trim();
@@ -49,11 +51,15 @@ export function Hero() {
           flush against its own left/right edges -- reserving their own width so the centered
           content can never collide with them, while the navy background above stays a true
           `w-full` edge-to-edge section (this row is the only thing that's width-constrained, not
-          the section itself, so the background never shrinks to make room). */}
+          the section itself, so the background never shrinks to make room). Default OFF -- see
+          `useSkyscraperAdsEnabled`'s own docstring; when disabled these two columns don't render
+          at all, so the row collapses to a single centered column with no reserved gutter. */}
       <div className="relative flex items-start justify-center gap-4 px-3 sm:px-4">
-        <div className="hidden w-[160px] shrink-0 pt-24 xl:block">
-          <AdSlot slotKey="HOMEPAGE_SIDEBAR_LEFT" variant="sidebar" />
-        </div>
+        {skyscraperAdsEnabled && (
+          <div className="hidden w-[160px] shrink-0 pt-24 xl:block">
+            <AdSlot slotKey="HOMEPAGE_SIDEBAR_LEFT" variant="sidebar" />
+          </div>
+        )}
 
         <div className="min-w-0 flex-1">
           <Container>
@@ -143,9 +149,11 @@ export function Hero() {
           <CategoryCarousel />
         </div>
 
-        <div className="hidden w-[160px] shrink-0 pt-24 xl:block">
-          <AdSlot slotKey="HOMEPAGE_SIDEBAR_RIGHT" variant="sidebar" />
-        </div>
+        {skyscraperAdsEnabled && (
+          <div className="hidden w-[160px] shrink-0 pt-24 xl:block">
+            <AdSlot slotKey="HOMEPAGE_SIDEBAR_RIGHT" variant="sidebar" />
+          </div>
+        )}
       </div>
     </section>
   );

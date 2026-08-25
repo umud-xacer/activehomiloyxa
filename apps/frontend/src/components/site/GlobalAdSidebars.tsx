@@ -29,8 +29,19 @@
  * underlying CSS mechanism, see git history).
  */
 import { AdSlot } from "./AdSlot";
+import { useSkyscraperAdsEnabled } from "@/lib/use-skyscraper-ads-enabled";
 
+/**
+ * Default OFF -- the site owner's explicit call that these edge-anchored columns break the
+ * platform's modern layout. Renders nothing at all (not even the reserved grid gutter -- see
+ * `AppShell.tsx`, which only switches to the 3-column template once this returns `true`) unless a
+ * super-admin has explicitly re-enabled `feature_flag.skyscraper_ads_enabled` from
+ * `/$ownerAdminSlug/banners`.
+ */
 export function GlobalAdSidebars() {
+  const enabled = useSkyscraperAdsEnabled();
+  if (!enabled) return null;
+
   return (
     <>
       <div className="z-20 col-start-1 row-start-1 hidden w-[200px] items-start justify-center pt-32 2xl:flex">

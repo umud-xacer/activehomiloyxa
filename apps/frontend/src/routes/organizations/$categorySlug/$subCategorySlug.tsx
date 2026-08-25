@@ -16,6 +16,9 @@ import { Container } from "@/components/layout/Container";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/state/EmptyState";
+import { NativeAdCard } from "@/components/site/NativeAdCard";
+import { useInFeedAds } from "@/lib/use-in-feed-ads";
+import { interleaveAds } from "@/lib/interleave-ads";
 import { useMediaAsset } from "@/lib/use-media-asset";
 import {
   businessProfilesApi,
@@ -30,6 +33,8 @@ import {
   VERIFIED_BADGE_ICON,
   type BusinessProfile,
 } from "@/lib/business-profiles-client";
+
+const IN_FEED_AD_EVERY = 7;
 
 export const Route = createFileRoute("/organizations/$categorySlug/$subCategorySlug")({
   head: ({ params }) => {
@@ -172,6 +177,11 @@ function Page() {
     return activeProfiles.filter((p) => profileName(p).toLowerCase().includes(q));
   }, [activeProfiles, query]);
 
+  // One in-feed ad card after every 7 real organizations (the site owner's requested 6-8 range).
+  const inFeedAdCount = Math.floor(filteredProfiles.length / IN_FEED_AD_EVERY);
+  const inFeedAds = useInFeedAds("ORGANIZATIONS_INFEED_NATIVE", inFeedAdCount);
+  const feed = interleaveAds(filteredProfiles, IN_FEED_AD_EVERY, inFeedAds.length, (p) => p.id);
+
   if (!category || !subCategory) {
     return (
       <AppShell>
@@ -249,9 +259,13 @@ function Page() {
               />
             ) : (
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredProfiles.map((profile, i) => (
-                  <OrganizationCard key={profile.id} profile={profile} index={i} />
-                ))}
+                {feed.map((entry, i) =>
+                  entry.kind === "item" ? (
+                    <OrganizationCard key={entry.key} profile={entry.item} index={i} />
+                  ) : (
+                    <NativeAdCard key={entry.key} banner={inFeedAds[entry.adIndex]} index={i} />
+                  ),
+                )}
               </div>
             )}
           </>

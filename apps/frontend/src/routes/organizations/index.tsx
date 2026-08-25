@@ -11,6 +11,7 @@ import { ArrowUpRight } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Container } from "@/components/layout/Container";
+import { AdSlot } from "@/components/site/AdSlot";
 import {
   MAIN_CATEGORIES,
   MAIN_CATEGORY_LABEL,
@@ -103,6 +104,10 @@ function Page() {
           ))}
         </div>
       </Container>
+
+      <div className="pb-10">
+        <AdSlot slotKey="ORGANIZATIONS_BANNER_CAROUSEL" variant="carousel" />
+      </div>
     </AppShell>
   );
 }

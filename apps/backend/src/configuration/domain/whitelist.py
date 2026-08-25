@@ -305,6 +305,13 @@ SETTINGS_SCHEMA: dict[str, type] = {
     "listing.default_expiry_days": int,
     "feature_flag.banners_enabled": bool,
     "feature_flag.messaging_enabled": bool,
+    # Left/right "skyscraper" sidebar ad columns (`GlobalAdSidebars`, homepage `Hero`'s own inline
+    # copy) -- site owner's explicit call that these break the platform's modern layout, so they
+    # default OFF and only render when a super-admin explicitly re-enables them here. Distinct from
+    # the (unrelated, dead) `feature_flag.banners_enabled` above -- this one gates specifically the
+    # two edge-anchored sidebar slots, not banners in general (the homepage carousel and in-feed ad
+    # cards stay visible regardless of this flag). Read publicly via `GET /public/feature-flags`.
+    "feature_flag.skyscraper_ads_enabled": bool,
     "otp.expiry_minutes": int,
     "session.expiry_hours": int,
     "search.default_page_size": int,

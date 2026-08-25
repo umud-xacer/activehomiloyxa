@@ -8,12 +8,17 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PropertyCard } from "@/components/data/PropertyCard";
 import { PropertyGridSkeleton } from "@/components/data/PropertyCardSkeleton";
+import { NativeAdCard } from "@/components/site/NativeAdCard";
+import { useInFeedAds } from "@/lib/use-in-feed-ads";
+import { interleaveAds } from "@/lib/interleave-ads";
 import { EmptyState } from "@/components/state/EmptyState";
 import { ErrorState } from "@/components/state/ErrorState";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { propertyListOptions } from "@/features/properties/queries";
 import type { PropertyQuery } from "@/features/properties/types";
 import { Container } from "@/components/layout/Container";
+
+const IN_FEED_AD_EVERY = 7;
 
 const searchSchema = z.object({
   q: fallback(z.string(), "").default(""),
@@ -88,6 +93,10 @@ function PropertiesPage() {
     max_price: search.maxPrice,
   };
   const { data } = useSuspenseQuery(propertyListOptions(query));
+  // One in-feed ad card after every 7 real listings (the site owner's requested 6-8 range).
+  const inFeedAdCount = Math.floor(data.items.length / IN_FEED_AD_EVERY);
+  const inFeedAds = useInFeedAds("LISTINGS_INFEED_NATIVE", inFeedAdCount);
+  const feed = interleaveAds(data.items, IN_FEED_AD_EVERY, inFeedAds.length, (p) => p.id);
   const activeFilterCount = [search.minPrice, search.maxPrice].filter(
     (v) => v !== undefined,
   ).length;
@@ -245,9 +254,13 @@ function PropertiesPage() {
           <EmptyState title="No matching properties" description="Try widening your filters." />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-            {data.items.map((p, i) => (
-              <PropertyCard key={p.id} property={p} index={i} />
-            ))}
+            {feed.map((entry, i) =>
+              entry.kind === "item" ? (
+                <PropertyCard key={entry.key} property={entry.item} index={i} />
+              ) : (
+                <NativeAdCard key={entry.key} banner={inFeedAds[entry.adIndex]} index={i} />
+              ),
+            )}
           </div>
         )}
       </Container>

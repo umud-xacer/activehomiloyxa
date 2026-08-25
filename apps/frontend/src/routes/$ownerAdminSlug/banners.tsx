@@ -16,12 +16,14 @@ import {
   X,
   ImagePlus,
   ArrowLeft,
+  Columns3,
 } from "lucide-react";
 import { requireOwnerAdminSlug } from "@/lib/require-auth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { EmptyState } from "@/components/dashboard/EmptyState";
+import { Switch } from "@/components/ui/switch";
 import { useMe } from "@/features/auth/useAuth";
 import { ApiError } from "@/lib/http";
 import { uploadMedia } from "@/lib/media-client";
@@ -30,6 +32,8 @@ import {
   listAllPlacementSlotVersions,
   publishNewPlacementSlot,
   publishPlacementSlotUpdate,
+  getSkyscraperAdsEnabled,
+  updateSkyscraperAdsEnabled,
   type PlacementSlotDraftInput,
   type ConfigHeadDto,
   type ConfigVersionDto,
@@ -195,6 +199,63 @@ function SlotFormRow({
   );
 }
 
+/** Toggle for `feature_flag.skyscraper_ads_enabled` -- default OFF (site owner's explicit call
+ * that the left/right sidebar ad columns break the platform's modern layout). Flipping this on
+ * only makes `HOMEPAGE_SIDEBAR_LEFT/RIGHT` render again; it does not affect the carousel or
+ * in-feed native ad slots, which stay visible regardless. */
+function SkyscraperAdsSection() {
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: enabled = false, isLoading } = useQuery({
+    queryKey: ["owner-admin", "skyscraper-ads-enabled"],
+    queryFn: getSkyscraperAdsEnabled,
+  });
+
+  const toggle = async (next: boolean) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await updateSkyscraperAdsEnabled(next);
+      queryClient.invalidateQueries({ queryKey: ["owner-admin", "skyscraper-ads-enabled"] });
+      queryClient.invalidateQueries({ queryKey: ["public", "feature-flags"] });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Saqlab bo'lmadi. Qayta urinib ko'ring.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <SectionCard
+      title="Yon panel bannerlari (Skyscraper Ads)"
+      icon={Columns3}
+      description="Ekran ikki chetidagi vertikal reklama bloklari — sukut bo'yicha o'chirilgan."
+      index={0}
+    >
+      <div className="flex items-center justify-between gap-4 p-6">
+        <div>
+          <p className="text-sm font-medium text-foreground">
+            {enabled ? "Yoqilgan" : "O'chirilgan"}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Yoqilganda HOMEPAGE_SIDEBAR_LEFT/RIGHT joylariga bog'langan kampaniyalar qayta ko'rina
+            boshlaydi.
+          </p>
+          {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+        </div>
+        <Switch
+          checked={enabled}
+          disabled={isLoading || busy}
+          onCheckedChange={toggle}
+          aria-label="Yon panel bannerlarini yoqish/o'chirish"
+        />
+      </div>
+    </SectionCard>
+  );
+}
+
 function PlacementSlotsSection() {
   const queryClient = useQueryClient();
   const [adding, setAdding] = useState(false);
@@ -236,7 +297,7 @@ function PlacementSlotsSection() {
       title="Banner joylari (Placement Slots)"
       icon={LayoutTemplate}
       description="Kampaniyalar shu joylarga bog'lanadi — sahifa, hudud va o'lchamini shu yerda belgilang."
-      index={0}
+      index={1}
       action={
         !adding && (
           <button
@@ -350,16 +411,27 @@ function fromLocalInputValue(value: string): string {
 
 // -- campaign create/edit panel ------------------------------------------------------------------
 
-/** The 5 slotKeys `routes/index.tsx`'s `AdSlot` placements actually query -- picking one of
- * these means "put it live on the homepage" with zero manual code/pageZone/width/height typing.
- * A placement slot for the chosen key is auto-created behind the scenes on submit if it doesn't
- * exist yet (see `ensureSlotExists` in `CampaignFormPanel`). An admin who needs a non-homepage
- * placement (category page, search results, etc.) still uses the "Banner joylari" section above
- * to hand-create a custom slot, then it appears in the "Boshqa joy" group of the dropdown below. */
+/** The slotKeys the site's own `AdSlot` placements actually query -- picking one of these means
+ * "put it live" with zero manual code/pageZone/width/height typing. A placement slot for the
+ * chosen key is auto-created behind the scenes on submit if it doesn't exist yet (see
+ * `ensureSlotExists` in `CampaignFormPanel`). An admin who needs a different placement (category
+ * page, search results, etc.) still uses the "Banner joylari" section above to hand-create a
+ * custom slot, then it appears in the "Boshqa joy" group of the dropdown below.
+ *
+ * `HOMEPAGE_BANNER_CAROUSEL`/`ORGANIZATIONS_BANNER_CAROUSEL` are `variant="carousel"` slots --
+ * every campaign scheduled against the same key becomes one slide, so multiple campaigns here
+ * form a real rotating carousel rather than one static image. `HOMEPAGE_SIDEBAR_LEFT/RIGHT` only
+ * render at all once the "Yon panel bannerlari" toggle below is switched on (default off).
+ * `LISTINGS_INFEED_NATIVE`/`ORGANIZATIONS_INFEED_NATIVE` render as small in-grid cards, one after
+ * every 7 real listings/organizations. */
 const KNOWN_HOMEPAGE_SLOTS: { slotKey: string; label: string }[] = [
-  { slotKey: "HOMEPAGE_BANNER_1", label: "Bosh sahifa banner 1 (kategoriyalardan keyin)" },
-  { slotKey: "HOMEPAGE_BANNER_2", label: "Bosh sahifa banner 2 (xarita oldidan)" },
-  { slotKey: "HOMEPAGE_BANNER_3", label: "Bosh sahifa banner 3 (ekotizimdan keyin)" },
+  { slotKey: "HOMEPAGE_BANNER_CAROUSEL", label: "Bosh sahifa reklama karuseli" },
+  { slotKey: "ORGANIZATIONS_BANNER_CAROUSEL", label: "Tashkilotlar bo'limi reklama karuseli" },
+  { slotKey: "LISTINGS_INFEED_NATIVE", label: "E'lonlar ro'yxati ichidagi reklama kartochkasi" },
+  {
+    slotKey: "ORGANIZATIONS_INFEED_NATIVE",
+    label: "Tashkilotlar ro'yxati ichidagi reklama kartochkasi",
+  },
   { slotKey: "HOMEPAGE_SIDEBAR_LEFT", label: "Chap yon panel (katta ekranlarda)" },
   { slotKey: "HOMEPAGE_SIDEBAR_RIGHT", label: "O'ng yon panel (katta ekranlarda)" },
 ];
@@ -815,7 +887,7 @@ function CampaignsSection({ slots }: { slots: SlotRow[] }) {
         title="Banner kampaniyalari"
         icon={Megaphone}
         description="Kreativ, jadval va ustuvorlikni sozlab, kampaniyani rejalashtiring."
-        index={1}
+        index={2}
         action={
           <button
             type="button"
@@ -963,6 +1035,7 @@ function Page() {
           />
         </section>
 
+        <SkyscraperAdsSection />
         <PlacementSlotsSection />
         <CampaignsSection slots={slotRows} />
       </div>

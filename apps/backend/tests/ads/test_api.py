@@ -1,8 +1,9 @@
 """API-shape tests against the real FastAPI app (`main.create_app`), with the composition root's
 real Postgres/identity/configuration providers swapped for in-memory fakes (`conftest.py`) via
-`app.dependency_overrides` -- same router/error-handler wiring as production. Covers all nine
-Ads-tagged operations (seven operator, two public -- `serveBanner` folds in as a third public
-GET). Mirrors `apps/backend/tests/billing/test_api.py`'s pattern exactly.
+`app.dependency_overrides` -- same router/error-handler wiring as production. Covers all
+Ads-tagged operations: ADR-0004's original nine (seven operator, two public), plus
+`serveBannersMany` added for the carousel/native `AdSlot` variants. Mirrors
+`apps/backend/tests/billing/test_api.py`'s pattern exactly.
 """
 
 from __future__ import annotations
@@ -234,6 +235,19 @@ class TestServeBanner:
     def test_serve_banner_returns_204_when_nothing_is_eligible(self, client: TestClient) -> None:
         response = client.get("/api/v1/banners/serve", params={"slotKey": "HOMEPAGE_TOP"})
         assert response.status_code == 204
+
+
+class TestServeBannersMany:
+    def test_serve_banners_many_needs_no_authentication(self, client: TestClient) -> None:
+        response = client.get("/api/v1/banners/serve-many", params={"slotKey": "HOMEPAGE_TOP"})
+        assert response.status_code == 200
+
+    def test_serve_banners_many_returns_empty_items_when_nothing_is_eligible(
+        self, client: TestClient
+    ) -> None:
+        response = client.get("/api/v1/banners/serve-many", params={"slotKey": "HOMEPAGE_TOP"})
+        assert response.status_code == 200
+        assert response.json() == {"items": []}
 
 
 class TestImpressionAndClickCapture:

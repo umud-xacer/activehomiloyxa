@@ -129,6 +129,27 @@ export async function serveBanner(slotKey: string): Promise<BannerServeView | nu
   }
 }
 
+/** `GET /banners/serve-many` -- carousel/native-variant sibling of `serveBanner`: every eligible
+ * campaign for the slot, up to `limit`, in the same priority order `serveBanner` itself picks its
+ * single winner from. Never a `null`/204 case -- an empty result is just `{ items: [] }`. Same
+ * 503-retry discipline as `serveBanner` (see its own docstring for why). */
+export async function serveBanners(
+  slotKey: string,
+  limit = 6,
+): Promise<{ items: BannerServeView[] }> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await http.get<{ items: BannerServeView[] }>("/banners/serve-many", {
+        params: { slotKey, limit },
+      });
+    } catch (err) {
+      const delay = RETRY_DELAYS_MS[attempt];
+      if (!(err instanceof ApiError) || err.status !== 503 || delay === undefined) throw err;
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+}
+
 /** Fire-and-forget engagement capture -- failures are swallowed so a metrics hiccup never breaks
  * the ad surface itself. */
 export function recordBannerImpression(campaignId: string): void {

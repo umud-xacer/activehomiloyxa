@@ -53,6 +53,7 @@ from configuration.interfaces.dto import (
     ConfigurationHeadPage,
     ConfigurationVersion,
     ConfigValidationResult,
+    FeatureFlagsResult,
     FormDefinition,
     FormField,
     FormSection,
@@ -393,6 +394,24 @@ async def get_platform_stats(
         cities=int(settings.get(_STATS_CITIES_KEY) or 0),
         partners=int(settings.get(_STATS_PARTNERS_KEY) or 0),
         satisfaction_percent=int(settings.get(_STATS_SATISFACTION_KEY) or 0),
+    )
+
+
+_SKYSCRAPER_ADS_ENABLED_KEY = "feature_flag.skyscraper_ads_enabled"
+
+
+@owner_admin_access_router.get("/public/feature-flags", operation_id="getFeatureFlags")
+async def get_feature_flags(
+    use_cases: ConfigurationUseCases = Depends(get_configuration_use_cases),
+) -> FeatureFlagsResult:
+    """Third deliberate exception to "no public read of `platform-settings`" -- exposes only the
+    one named `feature_flag.skyscraper_ads_enabled` key (same narrow shape as `get_platform_stats`
+    above), so `GlobalAdSidebars`/`Hero`'s own sidebar `AdSlot`s can stay hidden by default and
+    only render once a super-admin explicitly flips this on. Defaults to `False` (never `True`)
+    when unset, matching the site owner's explicit default-off requirement."""
+    settings = await _current_platform_settings(use_cases)
+    return FeatureFlagsResult(
+        skyscraper_ads_enabled=bool(settings.get(_SKYSCRAPER_ADS_ENABLED_KEY) or False),
     )
 
 

@@ -207,6 +207,7 @@ async def _seed_platform_settings(use_cases: ConfigurationUseCases, *, now: date
             "listing.default_expiry_days": 30,
             "feature_flag.banners_enabled": True,
             "feature_flag.messaging_enabled": True,
+            "feature_flag.skyscraper_ads_enabled": False,
             "otp.expiry_minutes": 5,
             "session.expiry_hours": 720,
             "search.default_page_size": 20,

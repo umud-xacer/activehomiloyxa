@@ -61,6 +61,40 @@ class BannerServingUseCases:
                 return campaign
         return None
 
+    async def serve_banners(
+        self,
+        *,
+        slot_key: str,
+        category_id: UUID | None,
+        geo: str | None,
+        language: str | None,
+        limit: int,
+        now: datetime,
+    ) -> list[BannerCampaign]:
+        """Carousel/native-variant sibling of `serve_banner` -- same candidate list (already
+        priority-ordered) and the same I-21/I-20 eligibility gate, but collects every servable
+        campaign up to `limit` instead of returning only the first. Powers `AdSlot`'s
+        `variant="carousel"`/`"native"` (a real rotating set of creatives, not a single static
+        pick restyled)."""
+        candidates = await self._campaigns.list_candidates_for_serve(slot_key=slot_key)
+        served: list[BannerCampaign] = []
+        for campaign in candidates:
+            if len(served) >= limit:
+                break
+            entitlement = await self._entitlements.get_by_id(campaign.entitlement_id)
+            entitlement_active = entitlement is not None and entitlement.is_active(now=now)
+            if CampaignEligibilityPolicy.is_servable(
+                campaign,
+                requested_slot_key=slot_key,
+                requested_category_id=category_id,
+                requested_geo=geo,
+                requested_language=language,
+                entitlement_active=entitlement_active,
+                now=now,
+            ):
+                served.append(campaign)
+        return served
+
     async def record_impression(self, campaign_id: UUID, *, now: datetime) -> None:
         """FR-BANNER-005/I-23: a metric event only -- no counter mutation on `BannerCampaign`
         (Database Architecture's counters-correction note)."""
