@@ -17,6 +17,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { propertyListOptions } from "@/features/properties/queries";
 import type { PropertyQuery } from "@/features/properties/types";
 import { Container } from "@/components/layout/Container";
+import { CurrencySwitcher } from "@/components/catalog/CurrencySwitcher";
+import { useDisplayCurrency, useUsdUzsRate, convertMoney } from "@/lib/currency";
+import { getCurrencyRate } from "@/lib/currency-client";
+
+const CURRENCY_RATE_QUERY = {
+  queryKey: ["public", "currency-rate"] as const,
+  queryFn: getCurrencyRate,
+  staleTime: 5 * 60 * 1000,
+};
 
 const IN_FEED_AD_EVERY = 7;
 
@@ -42,7 +51,13 @@ export const Route = createFileRoute("/properties/")({
     minPrice: search.minPrice,
     maxPrice: search.maxPrice,
   }),
-  loader: ({ context, deps }) => {
+  loader: async ({ context, deps }) => {
+    // `minPrice`/`maxPrice` are already UZS-canonical by the time they reach the URL (converted
+    // client-side in `applyFilters` below before navigating) -- `fxUsdToUzs` is still threaded
+    // through so the backend can correctly match a USD-priced listing against a UZS-typed bound
+    // too (see `search/domain/query.py`'s doc comment: the multi-currency matching happens on the
+    // listing's own currency, not the buyer's typed-input currency).
+    const rate = await context.queryClient.ensureQueryData(CURRENCY_RATE_QUERY);
     const query: PropertyQuery = {
       q: deps.q || undefined,
       listing_type: deps.listing === "any" ? undefined : deps.listing,
@@ -51,6 +66,7 @@ export const Route = createFileRoute("/properties/")({
       page_size: 24,
       min_price: deps.minPrice,
       max_price: deps.maxPrice,
+      fx_usd_to_uzs: rate.usdUzsRate,
     };
     return context.queryClient.ensureQueryData(propertyListOptions(query));
   },
@@ -83,6 +99,8 @@ function PropertiesPending() {
 function PropertiesPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const [displayCurrency] = useDisplayCurrency();
+  const usdUzsRate = useUsdUzsRate();
   const query: PropertyQuery = {
     q: search.q || undefined,
     listing_type: search.listing === "any" ? undefined : search.listing,
@@ -91,6 +109,7 @@ function PropertiesPage() {
     page_size: 24,
     min_price: search.minPrice,
     max_price: search.maxPrice,
+    fx_usd_to_uzs: usdUzsRate,
   };
   const { data } = useSuspenseQuery(propertyListOptions(query));
   // One in-feed ad card after every 7 real listings (the site owner's requested 6-8 range).
@@ -106,12 +125,18 @@ function PropertiesPage() {
 
   const applyFilters = () => {
     setFiltersOpen(false);
+    // Typed in whatever currency is currently selected -- converted to UZS before it ever
+    // reaches the URL/backend, which are always UZS-canonical (see the loader's own comment).
     navigate({
       search: (prev: typeof search) => ({
         ...prev,
         page: 1,
-        minPrice: draftMinPrice ? Number(draftMinPrice) : undefined,
-        maxPrice: draftMaxPrice ? Number(draftMaxPrice) : undefined,
+        minPrice: draftMinPrice
+          ? convertMoney(Number(draftMinPrice), displayCurrency, "UZS", usdUzsRate)
+          : undefined,
+        maxPrice: draftMaxPrice
+          ? convertMoney(Number(draftMaxPrice), displayCurrency, "UZS", usdUzsRate)
+          : undefined,
       }),
     });
   };
@@ -145,6 +170,7 @@ function PropertiesPage() {
         description={`${data.total.toLocaleString()} verified listings across ${"10+"} countries.`}
         actions={
           <>
+            <CurrencySwitcher />
             <Link
               to="/map"
               className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted"
@@ -165,7 +191,7 @@ function PropertiesPage() {
               <PopoverContent align="end" className="w-80 space-y-4">
                 <div>
                   <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Price range
+                    Price range ({displayCurrency === "USD" ? "y.e." : "so'm"})
                   </div>
                   <div className="flex items-center gap-2">
                     <input

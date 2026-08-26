@@ -10,8 +10,19 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Sofa, Wrench, Building2, Clock, MapPin } from "lucide-react";
 import { http } from "@/lib/http";
-import { formatUzs, type CatalogListing } from "@/lib/catalog-client";
+import { type CatalogListing } from "@/lib/catalog-client";
 import { FavoriteButton } from "@/components/data/FavoriteButton";
+import { useDisplayPrice, formatDisplayPrice } from "@/lib/currency";
+
+/** Converts+formats a listing's own price into the buyer's chosen display currency -- replaces
+ * the old `formatUzs(listing.price?.amount)` call, which always labeled the amount "so'm"
+ * regardless of the listing's actual `price.currency` (a real pre-existing bug for any
+ * USD-priced catalog listing). */
+function CardPrice({ listing }: { listing: CatalogListing }) {
+  const { amount, currency } = useDisplayPrice(listing.price?.amount, listing.price?.currency);
+  if (amount == null) return null;
+  return <>{formatDisplayPrice(amount, currency)}</>;
+}
 
 function listingHref(listing: CatalogListing) {
   return { to: "/listing/$listingId" as const, params: { listingId: listing.id } };
@@ -77,7 +88,7 @@ export function GoodsCard({ listing }: { listing: CatalogListing }) {
         )}
         <div className="mt-3 flex items-center justify-between">
           <span className="font-display text-lg font-semibold text-foreground">
-            {formatUzs(listing.price?.amount)}
+            <CardPrice listing={listing} />
           </span>
           {listing.attributes.condition != null && (
             <span className="text-xs text-muted-foreground">
@@ -176,7 +187,7 @@ export function ServiceCard({ listing }: { listing: CatalogListing }) {
 
       <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3">
         <span className="font-display text-lg font-semibold text-foreground">
-          {formatUzs(listing.price?.amount)}
+          <CardPrice listing={listing} />
           <span className="text-xs font-normal text-muted-foreground">{rateLabel}</span>
         </span>
       </div>
@@ -209,7 +220,7 @@ export function VenueCard({ listing }: { listing: CatalogListing }) {
         )}
         <div className="mt-3 flex items-center justify-between">
           <span className="font-display text-lg font-semibold text-foreground">
-            {formatUzs(listing.price?.amount)}
+            <CardPrice listing={listing} />
             {priceUnitLabel && (
               <span className="text-xs font-normal text-muted-foreground"> / {priceUnitLabel}</span>
             )}

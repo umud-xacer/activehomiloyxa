@@ -19,6 +19,7 @@ import {
   ChevronDown,
   Megaphone,
   KeyRound,
+  Banknote,
 } from "lucide-react";
 import { requireOwnerAdminSlug } from "@/lib/require-auth";
 import { DashboardShell } from "@/components/layout/DashboardShell";
@@ -41,6 +42,8 @@ import {
   updateOwnerPanelSlug,
   isValidOwnerPanelSlug,
   OWNER_PANEL_RESERVED_SLUGS,
+  getUsdUzsRate,
+  updateUsdUzsRate,
   type ConfigHeadDto,
   type ConfigVersionDto,
   type DynamicFieldDraft,
@@ -1400,6 +1403,73 @@ function OwnerPanelSlugCard({ currentSlug }: { currentSlug: string }) {
   );
 }
 
+/** Manual USD/UZS rate entry (`currency.usd_uzs_rate` platform setting) -- backs the buyer-facing
+ * so'm/y.e. switcher (`lib/currency.ts`) and the `/search` price filter's currency-aware range.
+ * A manual figure is the reliable baseline (this platform's own request explicitly allows "CBU
+ * yoki o'rtacha ko'rsatkich" -- a real live CBU auto-fetch is a possible future convenience, not
+ * required). Same read-then-save shape as `OwnerPanelSlugCard` above. */
+function CurrencyRateCard() {
+  const queryClient = useQueryClient();
+  const { data: currentRate } = useQuery({
+    queryKey: ["owner-admin", "usd-uzs-rate"],
+    queryFn: getUsdUzsRate,
+  });
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (currentRate != null) setValue(String(currentRate));
+  }, [currentRate]);
+
+  const parsed = Number(value);
+  const canSave = !saving && Number.isFinite(parsed) && parsed > 0 && parsed !== currentRate;
+
+  const save = async () => {
+    if (!canSave) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await updateUsdUzsRate(parsed);
+      await queryClient.invalidateQueries({ queryKey: ["owner-admin", "usd-uzs-rate"] });
+      await queryClient.invalidateQueries({ queryKey: ["public", "currency-rate"] });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Saqlashda xatolik yuz berdi.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <SectionCard
+      title="Valyuta kursi (USD/UZS)"
+      icon={Banknote}
+      description="1 dollar necha so'm — sayt bo'ylab so'm/y.e. o'girgichi va narx filtri shu kursdan foydalanadi."
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-muted-foreground">1 $ =</span>
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value.replace(/[^0-9]/g, ""))}
+          inputMode="numeric"
+          className="w-40 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+        />
+        <span className="text-sm text-muted-foreground">so'm</span>
+        <button
+          type="button"
+          onClick={save}
+          disabled={!canSave}
+          className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {saving && <Loader2 className="size-4 animate-spin" />}
+          Saqlash
+        </button>
+      </div>
+      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+    </SectionCard>
+  );
+}
+
 function Page() {
   const { data: account } = useMe();
   const { ownerAdminSlug } = Route.useParams();
@@ -1505,6 +1575,7 @@ function Page() {
         </motion.div>
 
         <OwnerPanelSlugCard currentSlug={ownerAdminSlug} />
+        <CurrencyRateCard />
 
         <section className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <StatCard

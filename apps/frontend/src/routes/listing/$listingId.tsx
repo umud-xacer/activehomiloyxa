@@ -27,12 +27,8 @@ import type { MapMarker } from "@/components/map/YandexMapView";
 import { ListingLocationSection } from "@/components/listing/ListingLocationSection";
 import { AdSlot } from "@/components/site/AdSlot";
 import { GoodsCard, ServiceCard, VenueCard } from "@/components/catalog/ListingCards";
-import {
-  catalogClient,
-  formatUzs,
-  type CatalogListing,
-  type FormField,
-} from "@/lib/catalog-client";
+import { catalogClient, type CatalogListing, type FormField } from "@/lib/catalog-client";
+import { useDisplayPrice, formatDisplayPrice } from "@/lib/currency";
 import { getMediaAssetUrl } from "@/lib/media-client";
 import { messagingApi, ensureConversationForListing } from "@/lib/messaging-client";
 import { useMe } from "@/features/auth/useAuth";
@@ -168,6 +164,13 @@ function Page() {
     account && listing?.ownerUserId && account.id === listing.ownerUserId,
   );
 
+  const { amount: displayPriceAmount, currency: displayPriceCurrency } = useDisplayPrice(
+    listing?.price?.amount,
+    listing?.price?.currency,
+  );
+  const displayPrice =
+    displayPriceAmount != null ? formatDisplayPrice(displayPriceAmount, displayPriceCurrency) : "";
+
   const contactSeller = async () => {
     if (!listing) return;
     if (!account) {
@@ -236,7 +239,7 @@ function Page() {
         id: listing.id,
         lat: listing.location.latitude,
         lng: listing.location.longitude,
-        label: formatUzs(listing.price?.amount) || listing.title,
+        label: displayPrice || listing.title,
         title: listing.title,
         subtitle: address,
       }
@@ -322,7 +325,7 @@ function Page() {
                 </div>
               </div>
               <div className="mt-3 font-display text-2xl font-semibold text-primary">
-                {formatUzs(listing.price?.amount) || "Narx kelishiladi"}
+                {displayPrice || "Narx kelishiladi"}
               </div>
               {listing.description && (
                 <p className="mt-5 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">

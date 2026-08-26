@@ -96,6 +96,10 @@ export interface PropertyQuery {
   listing_type?: ListingType;
   min_price?: number;
   max_price?: number;
+  /** UZS-per-USD rate to thread through to `/search`'s `fxUsdToUzs` param, so `min_price`/
+   * `max_price` (always interpreted as UZS by the backend) are matched against both a UZS-priced
+   * and a USD-priced listing correctly. Omit to get the old currency-blind behavior. */
+  fx_usd_to_uzs?: number;
   min_bedrooms?: number;
   max_bedrooms?: number;
   min_area?: number;

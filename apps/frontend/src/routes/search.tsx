@@ -9,7 +9,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { searchApi, type SearchHit } from "@/lib/search-client";
-import { formatUzs } from "@/lib/catalog-client";
+import { useDisplayPrice, formatDisplayPrice } from "@/lib/currency";
 
 const searchSchema = z.object({
   q: z.string().optional().catch(undefined),
@@ -30,6 +30,7 @@ export const Route = createFileRoute("/search")({
 });
 
 function ResultCard({ hit, index }: { hit: SearchHit; index: number }) {
+  const { amount, currency } = useDisplayPrice(hit.price?.amount, hit.price?.currency);
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -64,9 +65,9 @@ function ResultCard({ hit, index }: { hit: SearchHit; index: number }) {
             {hit.title}
           </p>
           <div className="mt-auto flex items-center justify-between pt-1">
-            {hit.price ? (
+            {amount != null ? (
               <span className="text-sm font-semibold text-primary">
-                {formatUzs(hit.price.amount)}
+                {formatDisplayPrice(amount, currency)}
               </span>
             ) : (
               <span />

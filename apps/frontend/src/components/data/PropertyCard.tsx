@@ -2,7 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Bath, BedDouble, MapPin, Maximize2, Sparkles, ShieldCheck } from "lucide-react";
 import type { Property } from "@/features/properties/types";
-import { formatArea, formatPriceWithUnit } from "@/lib/format";
+import { formatArea } from "@/lib/format";
+import { useDisplayPrice, formatDisplayPrice } from "@/lib/currency";
 import { FavoriteButton } from "@/components/data/FavoriteButton";
 
 interface Props {
@@ -10,8 +11,20 @@ interface Props {
   index?: number;
 }
 
+/** Converts+formats `property.price` into the buyer's chosen display currency, preserving the
+ * old `formatPriceWithUnit`'s "/mo"/"/night" suffix for rent/short_stay listings. */
+function priceUnitSuffix(listingType: Property["listing_type"]): string {
+  if (listingType === "rent") return " / mo";
+  if (listingType === "short_stay") return " / night";
+  return "";
+}
+
 export function PropertyCard({ property, index = 0 }: Props) {
   const cover = property.media[0]?.url;
+  const { amount: displayAmount, currency: displayCurrency } = useDisplayPrice(
+    property.price,
+    property.currency,
+  );
 
   return (
     <motion.div
@@ -58,7 +71,8 @@ export function PropertyCard({ property, index = 0 }: Props) {
           <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-2">
             <div>
               <div className="font-display text-lg font-semibold text-white drop-shadow">
-                {formatPriceWithUnit(property.price, property.currency, property.listing_type)}
+                {displayAmount != null && formatDisplayPrice(displayAmount, displayCurrency)}
+                {priceUnitSuffix(property.listing_type)}
               </div>
               {(property.city || property.country) && (
                 <div className="flex items-center gap-1 text-[11px] text-white/80">

@@ -10,6 +10,7 @@
  * one place to swap for a server round trip; the UI (`CategoryFilterPanel.tsx`) doesn't need to change.
  */
 import type { CatalogListing } from "@/lib/catalog-client";
+import { convertMoney, type DisplayCurrency } from "@/lib/currency";
 
 /** "business" = posted under a company (`ownerProfileId` set), "individual" = posted directly by
  * a personal account (`ownerProfileId` null) -- a real, already-on-the-wire distinction (see
@@ -32,20 +33,42 @@ function toNumber(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Entirely client-side (no backend round trip for this direction, see the module docstring), so
+ * currency-aware comparison has to happen here too: `state.priceMin`/`priceMax` are typed in
+ * whatever currency the buyer currently has selected (`currency.displayCurrency`), while each
+ * listing carries its own native `price.currency` -- both are converted to UZS (matching the
+ * server-side `/search` path's own canonical-UZS convention, see `search/domain/query.py`'s
+ * `fx_usd_to_uzs` doc comment) before comparing, so a typed bound in either display currency
+ * correctly includes/excludes listings priced in either currency. */
 export function applyListingFilters(
   listings: CatalogListing[],
   state: ListingFilterState,
+  currency: { displayCurrency: DisplayCurrency; usdUzsRate: number },
 ): CatalogListing[] {
-  const min = state.priceMin ? Number(state.priceMin) : null;
-  const max = state.priceMax ? Number(state.priceMax) : null;
+  const minTyped = state.priceMin ? Number(state.priceMin) : null;
+  const maxTyped = state.priceMax ? Number(state.priceMax) : null;
+  const min =
+    minTyped != null
+      ? convertMoney(minTyped, currency.displayCurrency, "UZS", currency.usdUzsRate)
+      : null;
+  const max =
+    maxTyped != null
+      ? convertMoney(maxTyped, currency.displayCurrency, "UZS", currency.usdUzsRate)
+      : null;
   const activeAttrEntries = Object.entries(state.attrs).filter(([, v]) => v.length > 0);
 
   return listings.filter((listing) => {
     if (state.sellerKind === "business" && !listing.ownerProfileId) return false;
     if (state.sellerKind === "individual" && listing.ownerProfileId) return false;
     if (min != null || max != null) {
-      const price = toNumber(listing.price?.amount);
-      if (price == null) return false;
+      const rawPrice = toNumber(listing.price?.amount);
+      if (rawPrice == null) return false;
+      const price = convertMoney(
+        rawPrice,
+        listing.price?.currency ?? "UZS",
+        "UZS",
+        currency.usdUzsRate,
+      );
       if (min != null && price < min) return false;
       if (max != null && price > max) return false;
     }

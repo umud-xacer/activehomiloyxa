@@ -716,6 +716,41 @@ export async function updateSkyscraperAdsEnabled(enabled: boolean): Promise<void
   await publishSolo("platform-settings", head.id, draft.id);
 }
 
+// -- USD/UZS exchange rate (`currency.usd_uzs_rate`) --------------------------------------------
+//
+// Same generic maker-checker `platform-settings` flow as `updateOwnerPanelSlug`/
+// `updateSkyscraperAdsEnabled` above -- one integer key (whole UZS per 1 USD), seeded to 12700.
+// Publicly readable via `GET /public/currency-rate` (`getCurrencyRate` in `currency-client.ts`)
+// for the buyer-facing so'm/y.e. switcher and the /search price filter; this admin-side pair is
+// only for the manual rate-entry settings card in `/$ownerAdminSlug`.
+
+const USD_UZS_RATE_KEY = "currency.usd_uzs_rate";
+const USD_UZS_RATE_DEFAULT = 12700;
+
+export async function getUsdUzsRate(): Promise<number> {
+  const head = await getPlatformSettingsHead();
+  if (!head?.currentVersionId) return USD_UZS_RATE_DEFAULT;
+  const version = await getVersion("platform-settings", head.id, head.currentVersionId);
+  const settings = (version.snapshot?.settings as Record<string, unknown> | undefined) ?? {};
+  const value = settings[USD_UZS_RATE_KEY];
+  return typeof value === "number" && value > 0 ? value : USD_UZS_RATE_DEFAULT;
+}
+
+export async function updateUsdUzsRate(rate: number): Promise<void> {
+  const head = await getPlatformSettingsHead();
+  if (!head?.currentVersionId) {
+    throw new Error("Platform sozlamalari hali ishga tushirilmagan.");
+  }
+  const version = await getVersion("platform-settings", head.id, head.currentVersionId);
+  const definition = version.definition as Record<string, unknown>;
+  const settings = {
+    ...(definition.settings as Record<string, unknown> | undefined),
+    [USD_UZS_RATE_KEY]: Math.round(rate),
+  };
+  const draft = await createVersionDraft("platform-settings", head.id, { ...definition, settings });
+  await publishSolo("platform-settings", head.id, draft.id);
+}
+
 /** Public, unauthenticated yes/no check backing the `/$ownerAdminSlug` route guard
  * (`require-auth.ts`'s `requireOwnerAdminSlug`) -- never learns or reveals the real slug, only
  * whether a given guess matches it, so the real value never has to sit in the client bundle. */

@@ -32,6 +32,8 @@ import {
   type ListingFilterState,
 } from "@/components/catalog/CategoryFilters";
 import { CategoryFilterPanel } from "@/components/catalog/CategoryFilterPanel";
+import { CurrencySwitcher } from "@/components/catalog/CurrencySwitcher";
+import { useDisplayCurrency, useUsdUzsRate, convertMoney } from "@/lib/currency";
 import { TopCompanies, useTopCompanies } from "@/components/catalog/TopCompanies";
 import { AdSlot } from "@/components/site/AdSlot";
 import { Container } from "@/components/layout/Container";
@@ -257,6 +259,8 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
     const t = setTimeout(() => setFilterCommitted(filterDraft), 500);
     return () => clearTimeout(t);
   }, [filterDraft]);
+  const [displayCurrency] = useDisplayCurrency();
+  const usdUzsRate = useUsdUzsRate();
   const hero = resolveHeroImage(category, byId);
   // A leaf category (no children of its own) falls back to showing its siblings, current one
   // highlighted, so lateral navigation never disappears just because a subcategory has no
@@ -272,13 +276,24 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
     navigate,
   });
 
+  // `priceMin`/`priceMax` are typed in whatever currency the buyer currently has selected
+  // (`displayCurrency`) -- converted to UZS here since `/search`'s `priceMin`/`priceMax` are
+  // always interpreted as UZS (see `search/domain/query.py`'s `fx_usd_to_uzs` doc comment).
+  // `fx_usd_to_uzs` is threaded through unconditionally (harmless when no price bound is set --
+  // the backend only uses it alongside an actual bound) so a UZS-typed bound still correctly
+  // matches a USD-priced listing and vice versa.
   const query: PropertyQuery = {
     category_id: category.id,
     sort: search.sort,
     page: search.page,
     page_size: 24,
-    min_price: filterCommitted.priceMin ? Number(filterCommitted.priceMin) : undefined,
-    max_price: filterCommitted.priceMax ? Number(filterCommitted.priceMax) : undefined,
+    min_price: filterCommitted.priceMin
+      ? convertMoney(Number(filterCommitted.priceMin), displayCurrency, "UZS", usdUzsRate)
+      : undefined,
+    max_price: filterCommitted.priceMax
+      ? convertMoney(Number(filterCommitted.priceMax), displayCurrency, "UZS", usdUzsRate)
+      : undefined,
+    fx_usd_to_uzs: usdUzsRate,
     filters: Object.fromEntries(
       Object.entries(filterCommitted.attrs)
         .filter(([, v]) => v.length > 0)
@@ -327,19 +342,22 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
             {name}
             <span className="opacity-70">· {items.length} ta e'lon</span>
           </div>
-          <SortMenu
-            options={PROPERTY_HUB_OPTIONS}
-            value={search.sort}
-            onChange={(sort) =>
-              navigate({ search: (prev: typeof search) => ({ ...prev, sort, page: 1 }) })
-            }
-            extra={{
-              label: "Chegirmadagilar",
-              icon: BadgePercent,
-              active: featuredOnly,
-              onToggle: () => setFeaturedOnly((v) => !v),
-            }}
-          />
+          <div className="flex items-center gap-2">
+            <CurrencySwitcher />
+            <SortMenu
+              options={PROPERTY_HUB_OPTIONS}
+              value={search.sort}
+              onChange={(sort) =>
+                navigate({ search: (prev: typeof search) => ({ ...prev, sort, page: 1 }) })
+              }
+              extra={{
+                label: "Chegirmadagilar",
+                icon: BadgePercent,
+                active: featuredOnly,
+                onToggle: () => setFeaturedOnly((v) => !v),
+              }}
+            />
+          </div>
         </div>
       </Container>
 
@@ -554,6 +572,8 @@ function CatalogDirectionView({
   const theme = KIND_THEME[kind];
   const [filters, setFilters] = useState<ListingFilterState>(emptyFilterState());
   const [sort, setSort] = useState<CatalogSort>("newest");
+  const [displayCurrency] = useDisplayCurrency();
+  const usdUzsRate = useUsdUzsRate();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
@@ -578,7 +598,10 @@ function CatalogDirectionView({
     queryFn: () => catalogClient.getCategoryForm(category.id),
   });
 
-  const filtered = useMemo(() => applyListingFilters(listings, filters), [listings, filters]);
+  const filtered = useMemo(
+    () => applyListingFilters(listings, filters, { displayCurrency, usdUzsRate }),
+    [listings, filters, displayCurrency, usdUzsRate],
+  );
   const byCompany = useMemo(
     () =>
       selectedCompanyId ? filtered.filter((l) => l.ownerProfileId === selectedCompanyId) : filtered,
@@ -688,6 +711,7 @@ function CatalogDirectionView({
                 className="absolute right-0 top-full z-50 mt-2 w-[calc(100vw-2rem)] max-w-md overflow-hidden rounded-2xl border border-slate-100 bg-card shadow-xl sm:w-[420px]"
               />
             </motion.div>
+            <CurrencySwitcher />
             <SortMenu options={CATALOG_HUB_OPTIONS} value={sort} onChange={setSort} />
           </div>
         </div>

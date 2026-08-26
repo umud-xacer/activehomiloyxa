@@ -264,6 +264,7 @@ export const apiClient = {
           : undefined,
         priceMin: query.min_price != null ? String(query.min_price) : undefined,
         priceMax: query.max_price != null ? String(query.max_price) : undefined,
+        fxUsdToUzs: query.fx_usd_to_uzs != null ? String(query.fx_usd_to_uzs) : undefined,
         sort: query.sort
           ? query.sort === "price_asc"
             ? "PRICE_ASC"
