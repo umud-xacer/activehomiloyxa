@@ -5,9 +5,9 @@
  * "Tashkilotlar" nav item (`Navbar`, `MobileMenu`, `AudienceSplit`).
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, ChevronDown } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Container } from "@/components/layout/Container";
@@ -90,11 +90,12 @@ function CategoryCard({ category, index }: { category: MainCategory; index: numb
 
 /** Mobile-only (`sm:hidden`) compact tile for the same 10 sectors -- a full-width vertical stack
  * of `CategoryCard`s (each ~250px tall with its photo) made the page scroll for several thousand
- * pixels just to see every sector, confirmed as a real complaint from a live mobile screenshot.
- * Reuses `CategoryCarousel.tsx`'s own established "circular photo + short label" rail pattern
- * (same site already has that exact interaction for regular categories) rather than inventing a
- * new one, just with a round avatar instead of that component's rounded-square tile per this
- * task's own ask. */
+ * pixels just to see every sector, confirmed as a real complaint from a live mobile screenshot. A
+ * first pass (2026-08-26) tried a 2-row horizontal snap-scroll rail reusing `CategoryCarousel.tsx`'s
+ * own established pattern; the user tried it live and still found the mobile page too long, so it
+ * was replaced same-day with `MobileSectorGrid`'s truncate-then-expand list below -- this tile
+ * component (round avatar + `line-clamp-2` label) is reused unchanged by both, only the container
+ * around it changed. */
 function CompactCategoryTile({ category, index }: { category: MainCategory; index: number }) {
   const [imgFailed, setImgFailed] = useState(false);
   const accent = MAIN_CATEGORY_ACCENT[category];
@@ -136,6 +137,59 @@ function CompactCategoryTile({ category, index }: { category: MainCategory; inde
   );
 }
 
+const MOBILE_PRIMARY_COUNT = 4;
+
+/** Mobile-only (`sm:hidden`) replacement for the horizontal-scroll rail `CompactCategoryTile`
+ * was originally built for (2026-08-26) -- shows only the first 4 sectors, the rest behind a real
+ * expand/collapse toggle with a smooth height animation, rather than relying on the user
+ * discovering a horizontal-scroll affordance. `AnimatePresence` + `height: "auto"` only wraps the
+ * REST grid (not the first 4), so the always-visible tiles never re-render/re-animate on toggle. */
+function MobileSectorGrid() {
+  const [expanded, setExpanded] = useState(false);
+  const primary = MAIN_CATEGORIES.slice(0, MOBILE_PRIMARY_COUNT);
+  const rest = MAIN_CATEGORIES.slice(MOBILE_PRIMARY_COUNT);
+
+  return (
+    <div className="sm:hidden">
+      <div className="grid grid-cols-4 gap-x-2 gap-y-4">
+        {primary.map((category, i) => (
+          <CompactCategoryTile key={category} category={category} index={i} />
+        ))}
+      </div>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="rest"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="grid grid-cols-4 gap-x-2 gap-y-4 pt-4">
+              {rest.map((category, i) => (
+                <CompactCategoryTile key={category} category={category} index={i} />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-full border border-border bg-card py-2.5 text-sm font-semibold text-foreground transition hover:bg-secondary"
+      >
+        {expanded
+          ? "Kamroq ko'rsatish"
+          : `Barcha tashkilotlarni ko'rish (${MAIN_CATEGORIES.length})`}
+        <ChevronDown
+          className={`size-4 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+        />
+      </button>
+    </div>
+  );
+}
+
 function Page() {
   return (
     <AppShell>
@@ -146,15 +200,9 @@ function Page() {
         crumbs={[{ label: "Bosh sahifa", to: "/" }, { label: "Tashkilotlar" }]}
       />
       <Container wide className="py-8 sm:py-10">
-        {/* Below `sm:` a 2-row horizontal snap carousel (OLX/Instagram-highlights style) instead
-            of the vertical photo-card stack -- see `CompactCategoryTile`'s own doc comment. */}
-        <div className="-mx-4 overflow-x-auto px-4 pb-1 scrollbar-none sm:hidden">
-          <div className="grid auto-cols-max grid-flow-col grid-rows-2 gap-x-3 gap-y-3 snap-x snap-mandatory">
-            {MAIN_CATEGORIES.map((category, i) => (
-              <CompactCategoryTile key={category} category={category} index={i} />
-            ))}
-          </div>
-        </div>
+        {/* Below `sm:` -- truncate to the first 4 sectors + a real expand/collapse toggle for the
+            rest, see `MobileSectorGrid`'s own doc comment. */}
+        <MobileSectorGrid />
         <div className="hidden gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-3">
           {MAIN_CATEGORIES.map((category, i) => (
             <CategoryCard key={category} category={category} index={i} />
