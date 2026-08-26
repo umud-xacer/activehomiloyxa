@@ -26,7 +26,7 @@
  * "Filtrlar" trigger that opens the exact same field set in a bottom sheet (`components/ui/
  * sheet.tsx`), with its own local draft so filters only actually apply when "Natijalarni
  * ko'rsatish" is tapped (clearing/discarding without touching results is `Filtrlarni tozalash`/
- * closing the sheet). `PanelBody` below is the one render path both containers use -- no
+ * closing the sheet). `renderPanelBody` below is the one render path both containers use -- no
  * duplicated field-rendering logic between them.
  */
 import { useEffect, useMemo, useState } from "react";
@@ -218,7 +218,16 @@ export function CategoryFilterPanel({
   const primaryFieldsAfterPrice = fieldsAfterPrice.slice(0, remainingPrimarySlots);
   const accordionFields = fieldsAfterPrice.slice(remainingPrimarySlots);
 
-  function PanelBody({
+  // A plain function returning JSX, deliberately NOT a nested component (`<PanelBody />`) --
+  // defining a component inside another component's render body gives it a brand-new identity on
+  // every re-render, which makes React treat the returned tree as a different element type and
+  // remount it wholesale, including every `<input>` inside -- confirmed live as the ROOT CAUSE of
+  // a real bug: typing into the mobile sheet's price field only ever kept the first 1-2
+  // characters (each keystroke's `setMobileDraft` re-render remounted the input, dropping focus
+  // immediately after). Calling this as a plain function (`{renderPanelBody({...})}`) instead of
+  // JSX (`<PanelBody ... />`) makes React reconcile the returned elements directly against the
+  // previous render's, exactly like any other conditional JSX in this component -- no remount.
+  function renderPanelBody({
     fieldState,
     fieldOnChange,
     showInlineReset,
@@ -345,7 +354,7 @@ export function CategoryFilterPanel({
           Filtrlar
         </div>
         <div className="mt-5">
-          <PanelBody fieldState={state} fieldOnChange={onChange} showInlineReset />
+          {renderPanelBody({ fieldState: state, fieldOnChange: onChange, showInlineReset: true })}
         </div>
       </div>
 
@@ -377,11 +386,11 @@ export function CategoryFilterPanel({
             <SheetTitle>Filtrlar</SheetTitle>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto pb-2">
-            <PanelBody
-              fieldState={mobileDraft}
-              fieldOnChange={setMobileDraft}
-              showInlineReset={false}
-            />
+            {renderPanelBody({
+              fieldState: mobileDraft,
+              fieldOnChange: setMobileDraft,
+              showInlineReset: false,
+            })}
           </div>
           <div className="sticky bottom-0 mt-4 flex gap-3 border-t border-border bg-background pt-4">
             <button
