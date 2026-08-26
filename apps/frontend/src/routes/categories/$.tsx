@@ -101,13 +101,27 @@ export const Route = createFileRoute("/categories/$")({
     }
     return { category, kind };
   },
-  head: ({ loaderData }) => {
-    const name = loaderData?.category.name.uz_latn ?? "Kategoriya";
+  head: ({ loaderData, params }) => {
+    const category = loaderData?.category;
+    const name = category?.name.uz_latn ?? "Kategoriya";
+    const title = `${name} — ActiveHome`;
+    const description = category?.heroTagline
+      ? `${category.heroTagline} — ${name} bo'yicha barcha e'lonlar, ActiveHome'da.`
+      : `${name} bo'yicha barcha e'lonlar — tasdiqlangan sotuvchilar, qulay narx va filtrlar bilan ActiveHome'da.`;
+    const url = `https://activehome.uz/categories/${params._splat}`;
     return {
       meta: [
-        { title: `${name} — ActiveHome` },
-        { name: "description", content: `${name} bo'yicha barcha e'lonlar — ActiveHome.` },
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { property: "og:url", content: url },
+        ...(category?.heroImageUrl
+          ? [{ property: "og:image", content: category.heroImageUrl }]
+          : []),
       ],
+      links: [{ rel: "canonical", href: url }],
     };
   },
   component: CategoryPage,
@@ -379,8 +393,17 @@ function PropertyDirectionView({ category }: { category: CategorySummary }) {
           />
         ) : items.length === 0 ? (
           <EmptyState
-            title="Filtrga mos e'lon topilmadi"
-            description="Boshqa sahifada yoki filtrsiz qidirib ko'ring."
+            title="Afsuski, mos e'lon topilmadi"
+            description="Tanlagan filtrlaringizga mos e'lon yo'q. Filtrlarni tozalab yoki o'zgartirib qayta urinib ko'ring."
+            action={
+              <button
+                type="button"
+                onClick={() => setFilterDraft(emptyFilterState())}
+                className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-soft hover:shadow-glow"
+              >
+                Filtrlarni tozalash
+              </button>
+            }
           />
         ) : (
           <>
@@ -737,12 +760,12 @@ function CatalogDirectionView({
           <EmptyState
             title={
               listings.length > 0
-                ? "Filtrga mos e'lon topilmadi"
+                ? "Afsuski, mos e'lon topilmadi"
                 : "Bu kategoriyada to'g'ridan-to'g'ri e'lon yo'q"
             }
             description={
               listings.length > 0
-                ? "Filtrlarni o'zgartirib qayta urinib ko'ring."
+                ? "Tanlagan filtrlaringizga mos e'lon yo'q. Filtrlarni tozalab yoki o'zgartirib qayta urinib ko'ring."
                 : markers.length > 0
                   ? // Contradicts a populated map otherwise: `markers` is a subtree search
                     // (categoryPathPrefix) while `listings`/`sorted` are exact-category-only, so
@@ -752,6 +775,17 @@ function CatalogDirectionView({
                   : kind === "SERVICE"
                     ? "Tez orada bu yo'nalishda xizmat ko'rsatuvchilar ro'yxatdan o'tadi."
                     : "Tez orada shu kategoriyaga tegishli yangi e'lonlar paydo bo'ladi."
+            }
+            action={
+              listings.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setFilters(emptyFilterState())}
+                  className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-soft hover:shadow-glow"
+                >
+                  Filtrlarni tozalash
+                </button>
+              ) : undefined
             }
           />
         )}

@@ -23,7 +23,17 @@ import { ErrorState } from "@/components/state/ErrorState";
 import type { MapMarker } from "@/components/map/YandexMapView";
 import { ListingLocationSection } from "@/components/listing/ListingLocationSection";
 import { nearbyPropertiesOptions, propertyOptions } from "@/features/properties/queries";
-import { formatArea, formatCurrency, formatPriceWithUnit } from "@/lib/format";
+import { formatArea, formatCurrency } from "@/lib/format";
+import { useDisplayPrice, formatDisplayPrice } from "@/lib/currency";
+
+/** Converts+formats `property.price` into the buyer's chosen display currency, preserving the
+ * old `formatPriceWithUnit`'s "/mo"/"/night" suffix for rent/short_stay listings -- same helper
+ * as `PropertyCard.tsx`'s own. */
+function priceUnitSuffix(listingType: "sale" | "rent" | "short_stay"): string {
+  if (listingType === "rent") return " / mo";
+  if (listingType === "short_stay") return " / night";
+  return "";
+}
 import { useMe } from "@/features/auth/useAuth";
 import { messagingApi, ensureConversationForListing } from "@/lib/messaging-client";
 import { ApiError } from "@/lib/http";
@@ -120,10 +130,16 @@ function PropertyDetail() {
     enabled: Boolean(property?.id),
   });
   const [activeImage, setActiveImage] = useState(0);
+  const { amount: displayPriceAmount, currency: displayPriceCurrency } = useDisplayPrice(
+    property?.price,
+    property?.currency,
+  );
 
   if (!property) return null;
   const images = property.media;
   const activeUrl = images[activeImage]?.url ?? images[0]?.url;
+  const displayPrice =
+    displayPriceAmount != null ? formatDisplayPrice(displayPriceAmount, displayPriceCurrency) : "";
 
   return (
     <AppShell>
@@ -214,7 +230,7 @@ function PropertyDetail() {
                 <FavoriteButton listingId={property.id} variant="outline" className="size-10" />
                 <ShareButton
                   url={`https://activehome.uz/properties/${property.id}`}
-                  title={property.title}
+                  title={displayPrice ? `${property.title} — ${displayPrice}` : property.title}
                   variant="outline"
                   className="size-10"
                 />
@@ -281,11 +297,7 @@ function PropertyDetail() {
                   id: property.id,
                   lat: property.location.lat,
                   lng: property.location.lng,
-                  label: formatPriceWithUnit(
-                    property.price,
-                    property.currency,
-                    property.listing_type,
-                  ),
+                  label: displayPrice + priceUnitSuffix(property.listing_type),
                   title: property.title,
                   subtitle: [property.city, property.country].filter(Boolean).join(", "),
                   image: property.media[0]?.url,
@@ -308,7 +320,8 @@ function PropertyDetail() {
                       : "Per night"}
                 </div>
                 <div className="font-display mt-1 text-3xl font-semibold text-foreground">
-                  {formatPriceWithUnit(property.price, property.currency, property.listing_type)}
+                  {displayPrice}
+                  {priceUnitSuffix(property.listing_type)}
                 </div>
                 {property.price_per_m2 && (
                   <div className="mt-1 text-xs text-muted-foreground">

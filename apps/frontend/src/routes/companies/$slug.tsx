@@ -49,8 +49,48 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/state/EmptyState";
 import { TelegramIcon, InstagramIcon, FacebookIcon } from "@/components/site/SocialIcons";
 
+const COMPANY_PROFILE_QUERY_KEY = (slug: string) => ["business-profiles", "slug", slug] as const;
+
 export const Route = createFileRoute("/companies/$slug")({
-  head: () => ({ meta: [{ title: "Tashkilot — ActiveHome" }] }),
+  loader: async ({ context, params }) => {
+    try {
+      return await context.queryClient.ensureQueryData({
+        queryKey: COMPANY_PROFILE_QUERY_KEY(params.slug),
+        queryFn: () => businessProfilesApi.getBySlug(params.slug),
+      });
+    } catch {
+      // 404/pending/rejected companies fall through to the component's own `useQuery`, which
+      // already handles the not-found/empty state -- the loader only exists to seed OG meta.
+      return null;
+    }
+  },
+  head: ({ loaderData, params }) => {
+    const url = `https://activehome.uz/companies/${params.slug}`;
+    if (!loaderData) {
+      return { meta: [{ title: "Tashkilot — ActiveHome" }] };
+    }
+    const name = loaderData.name.uz_latn || loaderData.name.ru || loaderData.name.en || "Tashkilot";
+    const title = `${name} — ActiveHome`;
+    const rawDescription =
+      loaderData.description?.uz_latn ||
+      loaderData.description?.ru ||
+      loaderData.description?.en ||
+      "";
+    const description =
+      rawDescription.slice(0, 155) ||
+      `${name} — ActiveHome'dagi tasdiqlangan biznes profili. Portfolio, aloqa ma'lumotlari va e'lonlar bilan tanishing.`;
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { property: "og:url", content: url },
+      ],
+      links: [{ rel: "canonical", href: url }],
+    };
+  },
   component: Page,
 });
 

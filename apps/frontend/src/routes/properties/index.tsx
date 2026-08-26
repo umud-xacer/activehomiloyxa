@@ -70,12 +70,23 @@ export const Route = createFileRoute("/properties/")({
     };
     return context.queryClient.ensureQueryData(propertyListOptions(query));
   },
-  head: () => ({
-    meta: [
-      { title: "Properties — ActiveHome" },
-      { name: "description", content: "Browse verified properties across the world." },
-    ],
-  }),
+  head: () => {
+    const title = "Ko'chmas mulk e'lonlari — ActiveHome";
+    const description =
+      "O'zbekiston bo'ylab tekshirilgan ko'chmas mulk e'lonlari: kvartira, uy, tijorat obyektlari. Narx va joylashuv bo'yicha qulay filtrlar bilan qidiring.";
+    const url = "https://activehome.uz/properties";
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { property: "og:url", content: url },
+      ],
+      links: [{ rel: "canonical", href: url }],
+    };
+  },
   component: PropertiesPage,
   pendingComponent: PropertiesPending,
   errorComponent: ({ error, reset }) => <ErrorState error={error} reset={reset} />,
@@ -277,7 +288,21 @@ function PropertiesPage() {
         </div>
 
         {data.items.length === 0 ? (
-          <EmptyState title="No matching properties" description="Try widening your filters." />
+          <EmptyState
+            title="Afsuski, mos e'lon topilmadi"
+            description="Tanlangan narx oralig'ida yoki filtrlar bo'yicha hech narsa chiqmadi. Filtrlarni o'zgartirib yoki tozalab qayta urinib ko'ring."
+            action={
+              activeFilterCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-soft hover:shadow-glow"
+                >
+                  Filtrlarni tozalash
+                </button>
+              ) : undefined
+            }
+          />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {feed.map((entry, i) =>
