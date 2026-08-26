@@ -16,7 +16,7 @@ export function Logo({ className = "h-9 w-auto" }: { className?: string }) {
         className="h-full w-auto shrink-0 rounded-[7px]"
         draggable={false}
       />
-      <span className="font-display text-[0.95rem] font-bold leading-none tracking-tight text-foreground">
+      <span className="font-display text-[0.8rem] font-bold leading-none tracking-tight text-foreground sm:text-[0.95rem]">
         ActiveHome
       </span>
     </div>

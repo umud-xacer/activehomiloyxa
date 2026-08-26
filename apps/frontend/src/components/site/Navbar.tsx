@@ -104,28 +104,30 @@ export function Navbar() {
         initial={{ y: -24, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.7, ease: EASE }}
-        className={`fixed inset-x-0 top-0 z-50 px-4 transition-[padding] duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        className={`fixed inset-x-0 top-0 z-50 px-3 transition-[padding] duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)] sm:px-4 ${
           scrolled ? "pt-2.5" : "pt-4"
         }`}
       >
         <div
           className={`glass mx-auto flex max-w-7xl items-center justify-between rounded-full transition-all duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
-            scrolled ? "gap-1 px-3.5 py-2 shadow-elevated" : "gap-1.5 px-4 py-2.5 shadow-soft"
+            scrolled
+              ? "h-12 gap-0.5 px-2.5 py-2 shadow-elevated sm:h-14 sm:gap-1 sm:px-3.5"
+              : "h-14 gap-1 px-3 py-2.5 shadow-soft sm:h-16 sm:gap-1.5 sm:px-4"
           }`}
         >
-          <div className="flex shrink-0 items-center gap-0.5">
+          <div className="flex shrink-0 items-center gap-0 sm:gap-0.5">
             <MobileMenu account={account} onLogout={onLogout} />
             <Link
               to="/"
-              className="flex shrink-0 items-center gap-2 pl-1 transition-transform duration-300 hover:scale-[1.03] active:scale-[0.98]"
+              className="flex shrink-0 items-center gap-1.5 pl-0.5 transition-transform duration-300 hover:scale-[1.03] active:scale-[0.98] sm:gap-2 sm:pl-1"
             >
               <Logo
-                className={`w-auto transition-all duration-[400ms] ${scrolled ? "h-7" : "h-8"}`}
+                className={`w-auto transition-all duration-[400ms] ${scrolled ? "h-6 sm:h-7" : "h-7 sm:h-8"}`}
               />
             </Link>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1">
             <SocialIconsRow className="hidden xl:flex" />
             <Divider className="hidden xl:block" />
 
@@ -176,9 +178,9 @@ export function Navbar() {
                   type="button"
                   onClick={() => setSearchOpen(true)}
                   aria-label={t("nav.search", "Qidiruv")}
-                  className="flex size-9 shrink-0 items-center justify-center rounded-full text-foreground/75 transition hover:bg-secondary hover:text-foreground"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full text-foreground/75 transition hover:bg-secondary hover:text-foreground sm:size-9"
                 >
-                  <Search className="size-4.5" />
+                  <Search className="size-4 sm:size-4.5" />
                 </button>
               )}
               {/* Controlled mode -- the inline input above IS the search box; this renders
@@ -193,10 +195,15 @@ export function Navbar() {
               />
             </motion.div>
 
+            {/* Hidden below `sm:` (not just its text) -- on a narrow phone this pill plus the
+                search button plus the avatar no longer fit the floating header alongside the
+                logo/menu button (confirmed live: the avatar was pushed past the viewport edge).
+                `MobileMenu.tsx` renders the same "E'lon joylash" action as a real primary CTA at
+                the top of its drawer for exactly this range, so posting stays reachable. */}
             {!isLegalEntity && (
               <Link
                 to="/list"
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow sm:px-3.5"
+                className="hidden shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow sm:inline-flex sm:px-3.5"
               >
                 <Plus className="size-3.5" />
                 <span className="hidden sm:inline">{t("nav.postAd", "E'lon joylash")}</span>
@@ -208,9 +215,9 @@ export function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <button
                     aria-label={t("nav.account", "Mening hisobim")}
-                    className="ml-0.5 flex items-center justify-center rounded-full transition hover:scale-[1.05] active:scale-[0.97]"
+                    className="flex items-center justify-center rounded-full transition hover:scale-[1.05] active:scale-[0.97] sm:ml-0.5"
                   >
-                    <Avatar className="size-9 ring-2 ring-transparent transition hover:ring-primary/40">
+                    <Avatar className="size-8 ring-2 ring-transparent transition hover:ring-primary/40 sm:size-9">
                       <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
                         {initials}
                       </AvatarFallback>

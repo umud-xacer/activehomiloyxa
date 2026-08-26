@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import {
   Menu,
+  Plus,
   Home,
   Building2,
   LayoutGrid,
@@ -48,6 +49,10 @@ const PRIMARY_LINKS = [
  */
 export function MobileMenu({ account, onLogout }: Props) {
   const [open, setOpen] = useState(false);
+  // Same ADR-0007 rule Navbar.tsx applies to its own standalone "E'lon joylash" pill -- a
+  // LEGAL_ENTITY account edits its company profile instead of posting individual listings, so it
+  // gets no post-ad entry point here either (it already has one in the profile dropdown).
+  const isLegalEntity = account?.accountKind === "LEGAL_ENTITY";
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -55,10 +60,10 @@ export function MobileMenu({ account, onLogout }: Props) {
         type="button"
         aria-label="Menyu"
         onClick={() => setOpen(true)}
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium text-foreground/75 transition hover:bg-secondary hover:text-foreground active:scale-[0.97] lg:hidden"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1.5 text-sm font-medium text-foreground/75 transition hover:bg-secondary hover:text-foreground active:scale-[0.97] sm:px-2.5 lg:hidden"
       >
         <Menu className="size-4.5" />
-        <span className="text-xs font-semibold">Menyu</span>
+        <span className="hidden text-xs font-semibold sm:inline">Menyu</span>
       </button>
       <SheetContent side="left" className="flex w-[85vw] max-w-xs flex-col gap-0 p-0">
         <SheetHeader className="shrink-0 border-b border-border px-5 py-4 text-left">
@@ -68,6 +73,21 @@ export function MobileMenu({ account, onLogout }: Props) {
         </SheetHeader>
 
         <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+          {/* The standalone "E'lon joylash" pill in `Navbar.tsx` hides below `sm:` to keep the
+              floating header from overflowing on narrow phones -- this is its replacement entry
+              point there, kept as a real primary-styled CTA (not just another list row) since
+              posting stays the single highest-value action on the site. */}
+          {!isLegalEntity && (
+            <SheetClose asChild>
+              <Link
+                to="/list"
+                className="mb-2 flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-3 text-[15px] font-semibold text-primary-foreground shadow-soft transition hover:shadow-glow sm:hidden"
+              >
+                <Plus className="size-5 shrink-0" />
+                E'lon joylash
+              </Link>
+            </SheetClose>
+          )}
           <ul className="flex flex-col gap-1">
             {PRIMARY_LINKS.map(({ to, label, icon: Icon }) => (
               <li key={to}>
