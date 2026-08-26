@@ -9,7 +9,7 @@
  * `price_min`/`price_max` sent to the backend, and every listing's own stored `price.currency`,
  * are the *source* currency -- this module only concerns the *display* choice layered on top.
  */
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrencyRate } from "@/lib/currency-client";
 
@@ -62,14 +62,33 @@ export function setDisplayCurrency(currency: DisplayCurrency): void {
   for (const listener of listeners) listener();
 }
 
+/** Client-only-value guard: forces `"UZS"`/the SSR fallback for every render up to and including
+ * the very first one after hydration commits, only switching to the real (possibly
+ * localStorage/query-cache-derived) value on a SECOND render triggered by this effect. This app's
+ * router has no SSR/client query-cache dehydration wiring (see `categories/$.tsx`'s loader
+ * comment) and, it turns out, `useSyncExternalStore`'s own `getServerSnapshot` "first hydration
+ * render matches the server" contract alone was NOT enough to avoid a real, reproduced React #418
+ * hydration-mismatch crash here (confirmed live on both `/properties` and any `/categories/$`
+ * property page) -- an explicit post-mount flip sidesteps the question of why and guarantees the
+ * first client render is textually identical to SSR by construction. */
+function useMounted(): boolean {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted;
+}
+
 /** The buyer's chosen display currency, persisted across visits. */
 export function useDisplayCurrency(): [DisplayCurrency, (currency: DisplayCurrency) => void] {
   const currency = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  return [currency, setDisplayCurrency];
+  const mounted = useMounted();
+  return [mounted ? currency : "UZS", setDisplayCurrency];
 }
 
 /** Live UZS-per-USD rate from `GET /public/currency-rate`, falling back to a sane default while
- * loading or on a failed fetch -- never blocks price display/filtering on the network round trip. */
+ * loading or on a failed fetch -- never blocks price display/filtering on the network round trip.
+ * Also gated by `useMounted` -- see its own doc comment -- since a route whose loader prefetches
+ * this query (`/properties`) would otherwise render the real (possibly non-default) rate in SSR
+ * HTML while the client's first hydration render, with no seeded cache, uses the fallback. */
 export function useUsdUzsRate(): number {
   const { data } = useQuery({
     queryKey: ["public", "currency-rate"],
@@ -77,6 +96,8 @@ export function useUsdUzsRate(): number {
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+  const mounted = useMounted();
+  if (!mounted) return FALLBACK_USD_UZS_RATE;
   return data && data.usdUzsRate > 0 ? data.usdUzsRate : FALLBACK_USD_UZS_RATE;
 }
 
