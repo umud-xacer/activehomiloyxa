@@ -146,5 +146,12 @@ export function formatDisplayPrice(amount: number, currency: DisplayCurrency): s
       maximumFractionDigits: fractionDigits,
     })} y.e.`;
   }
-  return `${Math.round(amount).toLocaleString("uz-UZ")} so'm`;
+  // "en-US" deliberately, not "uz-UZ" -- see `lib/format.ts`'s own `formatCurrency` doc comment:
+  // the "uz-UZ" locale's grouping separator isn't guaranteed to match between Node's SSR-side ICU
+  // build (renders "318 000", a space) and the browser's own bundled ICU doing hydration (renders
+  // "318,000", a comma) -- confirmed live as a real React #418 hydration-mismatch crash on every
+  // SSR'd price using it (e.g. PropertyCard on /properties and any /categories/$ property page).
+  // "en-US" needs no currency-symbol CLDR data for a plain grouped integer, so it round-trips
+  // identically everywhere; the "so'm" label itself is a literal string, not locale-derived.
+  return `${Math.round(amount).toLocaleString("en-US")} so'm`;
 }

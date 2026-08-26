@@ -328,5 +328,9 @@ export async function uploadMediaFile(ticket: MediaUploadTicket, file: File): Pr
 export function formatUzs(amount: string | undefined): string {
   if (!amount) return "";
   const n = Math.round(Number(amount));
-  return `${n.toLocaleString("uz-UZ")} so'm`;
+  // "en-US" deliberately, not "uz-UZ" -- see `lib/format.ts`'s own `formatCurrency` doc comment
+  // and `lib/currency.ts`'s `formatDisplayPrice`: "uz-UZ"'s grouping separator isn't guaranteed to
+  // match between Node's SSR-side ICU build and the browser's own bundled ICU doing hydration,
+  // confirmed live as a real React #418 hydration-mismatch crash wherever this renders server-side.
+  return `${n.toLocaleString("en-US")} so'm`;
 }
