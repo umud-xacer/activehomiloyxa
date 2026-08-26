@@ -252,6 +252,15 @@ class FeatureFlagsResult(CamelModel):
     skyscraper_ads_enabled: bool
 
 
+class CurrencyRateResult(CamelModel):
+    """Additive, outside the frozen OpenAPI contract (same escape-hatch precedent as
+    `FeatureFlagsResult` above) -- exposes only the one named `currency.usd_uzs_rate` settings
+    key, never the `platform-settings-global` blob wholesale. Backs the buyer-facing so'm/y.e.
+    display-currency switcher and the `/search` price filter's currency-aware range."""
+
+    usd_uzs_rate: int
+
+
 class ConfigValidationResult(CamelModel):
     """Result of the pre-activation validation gate (dry-run or on publish)."""
 

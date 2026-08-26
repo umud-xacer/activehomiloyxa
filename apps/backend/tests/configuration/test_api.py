@@ -401,3 +401,16 @@ def test_get_feature_flags_defaults_skyscraper_ads_to_false(client: TestClient) 
     response = client.get("/api/v1/public/feature-flags")
     assert response.status_code == 200
     assert response.json() == {"skyscraperAdsEnabled": False}
+
+
+# --- getCurrencyRate ----------------------------------------------------------------------------
+
+
+def test_get_currency_rate_defaults_to_a_nonzero_rate(client: TestClient) -> None:
+    """No `platform-settings-global` head exists in `fake_repo` by default, so the key is unset
+    -- must default to a real nonzero rate (never 0, which would break client-side division),
+    never 500."""
+    response = client.get("/api/v1/public/currency-rate")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["usdUzsRate"] > 0

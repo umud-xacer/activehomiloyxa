@@ -53,6 +53,7 @@ from configuration.interfaces.dto import (
     ConfigurationHeadPage,
     ConfigurationVersion,
     ConfigValidationResult,
+    CurrencyRateResult,
     FeatureFlagsResult,
     FormDefinition,
     FormField,
@@ -413,6 +414,23 @@ async def get_feature_flags(
     return FeatureFlagsResult(
         skyscraper_ads_enabled=bool(settings.get(_SKYSCRAPER_ADS_ENABLED_KEY) or False),
     )
+
+
+_USD_UZS_RATE_KEY = "currency.usd_uzs_rate"
+_USD_UZS_RATE_DEFAULT = 12700
+
+
+@owner_admin_access_router.get("/public/currency-rate", operation_id="getCurrencyRate")
+async def get_currency_rate(
+    use_cases: ConfigurationUseCases = Depends(get_configuration_use_cases),
+) -> CurrencyRateResult:
+    """Fourth deliberate exception to "no public read of `platform-settings`" -- exposes only the
+    one named `currency.usd_uzs_rate` key (same narrow shape as `get_feature_flags` above).
+    Defaults to `_USD_UZS_RATE_DEFAULT` (never 0, which would break client-side division) when
+    unset."""
+    settings = await _current_platform_settings(use_cases)
+    rate = settings.get(_USD_UZS_RATE_KEY)
+    return CurrencyRateResult(usd_uzs_rate=int(rate) if rate else _USD_UZS_RATE_DEFAULT)
 
 
 # -- admin: Configuration (Admin) ------------------------------------------------------------------

@@ -132,6 +132,7 @@ async def search_listings_get(
     listingType: Literal["ADVERTISEMENT", "PRODUCT", "SERVICE"] | None = None,
     priceMin: str | None = None,
     priceMax: str | None = None,
+    fxUsdToUzs: str | None = None,
     verifiedOnly: bool | None = None,
     lat: float | None = None,
     lng: float | None = None,
@@ -161,6 +162,7 @@ async def search_listings_get(
         cursor=cursor,
         limit=page_limit,
         category_path_prefix=categoryPathPrefix,
+        fx_usd_to_uzs=_parse_decimal(fxUsdToUzs),
     )
     outcome = await use_cases.search(query)
     return _to_search_result(outcome, limit=page_limit)

@@ -208,6 +208,7 @@ async def _seed_platform_settings(use_cases: ConfigurationUseCases, *, now: date
             "feature_flag.banners_enabled": True,
             "feature_flag.messaging_enabled": True,
             "feature_flag.skyscraper_ads_enabled": False,
+            "currency.usd_uzs_rate": 12700,
             "otp.expiry_minutes": 5,
             "session.expiry_hours": 720,
             "search.default_page_size": 20,

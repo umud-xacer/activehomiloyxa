@@ -1749,10 +1749,21 @@ paths:
           additionalProperties: true
       - name: priceMin
         in: query
+        description: Always interpreted as UZS, regardless of the buyer's display-currency
+          choice -- convert client-side before sending.
         schema:
           type: string
       - name: priceMax
         in: query
+        description: Always interpreted as UZS, regardless of the buyer's display-currency
+          choice -- convert client-side before sending.
+        schema:
+          type: string
+      - name: fxUsdToUzs
+        in: query
+        description: UZS per 1 USD (from GET /public/currency-rate). When supplied alongside
+          priceMin/priceMax, a USD-priced listing's price is compared against those bounds after
+          converting by this rate, instead of comparing raw amounts across mismatched currencies.
         schema:
           type: string
       - name: verifiedOnly
@@ -2856,6 +2867,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FeatureFlagsResult'
+  /public/currency-rate:
+    get:
+      tags:
+      - Platform
+      operationId: getCurrencyRate
+      summary: Public USD/UZS exchange rate read
+      description: Fourth deliberate exception to "no public read of platform-settings" -- exposes
+        only the one named currency.usd_uzs_rate key, never the settings blob wholesale. Backs the
+        buyer-facing so'm/y.e. display-currency switcher and the /search price filter's
+        currency-aware range.
+      security: []
+      responses:
+        '200':
+          description: Currency rate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrencyRateResult'
   /public/owner-admin-access/verify:
     post:
       tags:
@@ -7228,6 +7257,16 @@ components:
       properties:
         skyscraperAdsEnabled:
           type: boolean
+      additionalProperties: false
+    CurrencyRateResult:
+      type: object
+      description: Exposes only the one named currency.usd_uzs_rate settings key, never the
+        platform-settings-global blob wholesale.
+      required:
+      - usdUzsRate
+      properties:
+        usdUzsRate:
+          type: integer
       additionalProperties: false
     OwnerAdminSlugCheckRequest:
       type: object

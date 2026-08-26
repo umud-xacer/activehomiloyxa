@@ -124,6 +124,57 @@ _SORT_FIELD_BY_OPTION: dict[SortOption, list[dict[str, Any]]] = {
 }
 
 
+def _price_filter(query: SearchQuery) -> dict[str, Any] | None:
+    """`price_min`/`price_max` are always UZS (the query object's own doc comment). Without a rate,
+    every listing's raw `price_amount` is compared as-is regardless of its own `price_currency` --
+    preserved exactly for a caller that never supplies `fx_usd_to_uzs`. With a rate, this instead
+    matches a UZS-priced listing directly against the UZS bounds OR a USD-priced listing against
+    the same bounds divided by the rate, so a listing priced in the "other" currency is neither
+    wrongly excluded nor wrongly included."""
+    if query.price_min is None and query.price_max is None:
+        return None
+    if query.fx_usd_to_uzs is None or query.fx_usd_to_uzs <= 0:
+        range_clause: dict[str, float] = {}
+        if query.price_min is not None:
+            range_clause["gte"] = float(query.price_min)
+        if query.price_max is not None:
+            range_clause["lte"] = float(query.price_max)
+        return {"range": {"price_amount": range_clause}}
+
+    rate = query.fx_usd_to_uzs
+    uzs_range: dict[str, float] = {}
+    usd_range: dict[str, float] = {}
+    if query.price_min is not None:
+        uzs_range["gte"] = float(query.price_min)
+        usd_range["gte"] = float(query.price_min / rate)
+    if query.price_max is not None:
+        uzs_range["lte"] = float(query.price_max)
+        usd_range["lte"] = float(query.price_max / rate)
+    return {
+        "bool": {
+            "should": [
+                {
+                    "bool": {
+                        "filter": [
+                            {"term": {"price_currency": "UZS"}},
+                            {"range": {"price_amount": uzs_range}},
+                        ]
+                    }
+                },
+                {
+                    "bool": {
+                        "filter": [
+                            {"term": {"price_currency": "USD"}},
+                            {"range": {"price_amount": usd_range}},
+                        ]
+                    }
+                },
+            ],
+            "minimum_should_match": 1,
+        }
+    }
+
+
 def _build_query_body(query: SearchQuery, *, facet_specs: tuple[FacetSpec, ...]) -> dict[str, Any]:
     """FR-SRCH-001 (full-text) + FR-SRCH-002 (facet filters) + FR-SRCH-004 (cross-script) +
     FR-MAP-003 (radius) + FR-SRCH-003 (sort), blended into one query. Relevance/recency/promotion
@@ -196,10 +247,9 @@ def _build_query_body(query: SearchQuery, *, facet_specs: tuple[FacetSpec, ...])
     for field_code, value in query.filters.items():
         if any(spec.field_code == field_code for spec in facet_specs):
             filters.append({"term": {f"attributes.{field_code}": value}})
-    if query.price_min is not None:
-        filters.append({"range": {"price_amount": {"gte": float(query.price_min)}}})
-    if query.price_max is not None:
-        filters.append({"range": {"price_amount": {"lte": float(query.price_max)}}})
+    price_filter = _price_filter(query)
+    if price_filter is not None:
+        filters.append(price_filter)
     if query.verified_only:
         filters.append({"term": {"verified_badge": True}})
     if query.geo is not None:

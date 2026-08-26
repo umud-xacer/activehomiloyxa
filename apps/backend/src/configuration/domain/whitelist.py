@@ -312,6 +312,15 @@ SETTINGS_SCHEMA: dict[str, type] = {
     # two edge-anchored sidebar slots, not banners in general (the homepage carousel and in-feed ad
     # cards stay visible regardless of this flag). Read publicly via `GET /public/feature-flags`.
     "feature_flag.skyscraper_ads_enabled": bool,
+    # UZS per 1 USD, whole-number (sub-tiyin precision isn't meaningful) -- powers the buyer-facing
+    # so'm/y.e. display-currency switcher and the `/search` price filter's currency-aware range
+    # (both read this rate; the filter receives it explicitly as a request parameter rather than
+    # `search` importing `configuration` itself, to respect the module boundary). Admin-editable
+    # (manual figure or a CBU-sourced one) via `/$ownerAdminSlug`; read publicly via
+    # `GET /public/currency-rate`. `int`, not `float`: a JSON payload for a whole number like
+    # `12700` deserializes to Python `int`, and `check_settings_key`'s `isinstance` check would
+    # reject that against a declared `float` type.
+    "currency.usd_uzs_rate": int,
     "otp.expiry_minutes": int,
     "session.expiry_hours": int,
     "search.default_page_size": int,

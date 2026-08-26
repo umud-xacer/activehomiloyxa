@@ -54,3 +54,11 @@ class SearchQuery:
     listings too (map + listing feed). Ignored by adapters when `category_id` is also set.
     Defaulted (and appended last) so every existing `SearchQuery(...)` construction keeps
     working unchanged."""
+    fx_usd_to_uzs: Decimal | None = None
+    """UZS per 1 USD, supplied by the caller (never fetched by `search` itself -- `search` has no
+    dependency on `configuration`, respecting the module boundary). `price_min`/`price_max` are
+    always interpreted as UZS; when this is set, adapters build a currency-aware range covering
+    both a UZS-priced listing (compared directly) and a USD-priced listing (bounds divided by this
+    rate first) instead of comparing every listing's raw `price_amount` regardless of its own
+    currency. `None` preserves the exact old (currency-blind) behavior for a caller that never
+    passes it."""

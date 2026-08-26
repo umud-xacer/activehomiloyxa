@@ -9,7 +9,7 @@ import math
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, delete, func, or_, select
+from sqlalchemy import ColumnElement, and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from search.application.ports import SearchHitResult, SearchResultPage
@@ -162,10 +162,9 @@ class SqlalchemyFallbackIndexRepository:
                     func.similarity(ListingFallbackDocumentRow.title, query.q) > 0.1,
                 )
             )
-        if query.price_min is not None:
-            stmt = stmt.where(ListingFallbackDocumentRow.price_amount >= query.price_min)
-        if query.price_max is not None:
-            stmt = stmt.where(ListingFallbackDocumentRow.price_amount <= query.price_max)
+        price_filter = _price_filter(query)
+        if price_filter is not None:
+            stmt = stmt.where(price_filter)
         if query.verified_only:
             stmt = stmt.where(ListingFallbackDocumentRow.verified_badge.is_(True))
         if query.geo is not None:
@@ -180,6 +179,32 @@ class SqlalchemyFallbackIndexRepository:
             next_cursor = str(rows[-1].listing_id)
         hits = tuple(SearchHitResult(document=_row_to_document(row)) for row in rows)
         return SearchResultPage(hits=hits, next_cursor=next_cursor, total=None)
+
+
+def _price_filter(query: SearchQuery) -> ColumnElement[bool] | None:
+    """Fallback-adapter sibling of `opensearch_index._price_filter` -- same currency-aware
+    reasoning (see its docstring), expressed as a SQLAlchemy predicate instead of an OpenSearch
+    query-body fragment."""
+    if query.price_min is None and query.price_max is None:
+        return None
+    if query.fx_usd_to_uzs is None or query.fx_usd_to_uzs <= 0:
+        conditions = []
+        if query.price_min is not None:
+            conditions.append(ListingFallbackDocumentRow.price_amount >= query.price_min)
+        if query.price_max is not None:
+            conditions.append(ListingFallbackDocumentRow.price_amount <= query.price_max)
+        return and_(*conditions)
+
+    rate = query.fx_usd_to_uzs
+    uzs_conditions: list[ColumnElement[bool]] = [ListingFallbackDocumentRow.price_currency == "UZS"]
+    usd_conditions: list[ColumnElement[bool]] = [ListingFallbackDocumentRow.price_currency == "USD"]
+    if query.price_min is not None:
+        uzs_conditions.append(ListingFallbackDocumentRow.price_amount >= query.price_min)
+        usd_conditions.append(ListingFallbackDocumentRow.price_amount >= query.price_min / rate)
+    if query.price_max is not None:
+        uzs_conditions.append(ListingFallbackDocumentRow.price_amount <= query.price_max)
+        usd_conditions.append(ListingFallbackDocumentRow.price_amount <= query.price_max / rate)
+    return or_(and_(*uzs_conditions), and_(*usd_conditions))
 
 
 def _geo_bounding_box(geo: GeoFilter) -> ColumnElement[bool]:
