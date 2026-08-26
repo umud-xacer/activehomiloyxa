@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from sqlalchemy import ColumnElement
+
 from search.domain import SearchQuery, SortOption
 from search.infrastructure.persistence.repository import _price_filter
 
@@ -31,8 +33,8 @@ def _query(**overrides: object) -> SearchQuery:
     return SearchQuery(**kwargs)  # type: ignore[arg-type]
 
 
-def _compiled(clause: object) -> str:
-    return str(clause.compile(compile_kwargs={"literal_binds": True}))  # type: ignore[union-attr]
+def _compiled(clause: ColumnElement[bool]) -> str:
+    return str(clause.compile(compile_kwargs={"literal_binds": True}))
 
 
 class TestPriceFilter:
@@ -41,6 +43,7 @@ class TestPriceFilter:
 
     def test_without_a_rate_builds_the_old_flat_currency_blind_range(self) -> None:
         clause = _price_filter(_query(price_min=Decimal("1000"), price_max=Decimal("5000")))
+        assert clause is not None
         sql = _compiled(clause)
         assert "price_currency" not in sql
         assert "price_amount >= 1000" in sql
@@ -54,6 +57,7 @@ class TestPriceFilter:
                 fx_usd_to_uzs=Decimal("12500"),
             )
         )
+        assert clause is not None
         sql = _compiled(clause)
         assert "price_currency = 'UZS'" in sql
         assert "price_currency = 'USD'" in sql
@@ -70,6 +74,7 @@ class TestPriceFilter:
         clause = _price_filter(
             _query(price_min=Decimal("1000"), price_max=None, fx_usd_to_uzs=Decimal("0"))
         )
+        assert clause is not None
         sql = _compiled(clause)
         assert "price_currency" not in sql
         assert "price_amount >= 1000" in sql
