@@ -5,7 +5,7 @@
  * "Tashkilotlar" nav item (`Navbar`, `MobileMenu`, `AudienceSplit`).
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useState } from "react";
 import { ArrowUpRight, ChevronDown } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
@@ -142,8 +142,18 @@ const MOBILE_PRIMARY_COUNT = 4;
 /** Mobile-only (`sm:hidden`) replacement for the horizontal-scroll rail `CompactCategoryTile`
  * was originally built for (2026-08-26) -- shows only the first 4 sectors, the rest behind a real
  * expand/collapse toggle with a smooth height animation, rather than relying on the user
- * discovering a horizontal-scroll affordance. `AnimatePresence` + `height: "auto"` only wraps the
- * REST grid (not the first 4), so the always-visible tiles never re-render/re-animate on toggle. */
+ * discovering a horizontal-scroll affordance.
+ *
+ * Deliberately NOT `AnimatePresence` + `motion.div` animating `height: "auto"` -- tried that
+ * first, confirmed live (via a scripted click, not just eyeballing it) that the COLLAPSE
+ * direction gets stuck partway (framer-motion resolves "auto" to a real pixel value for the
+ * enter transition, but exiting back through that same resolved value isn't reliable here).
+ * Pure CSS `grid-template-rows: 0fr -> 1fr` is the standard robust fix for animating an unknown
+ * content height in both directions with no JS measurement -- `rest` always stays mounted (never
+ * removed from the DOM), so `CompactCategoryTile`'s own `whileInView` entrance animation doesn't
+ * re-fire on every toggle either, which is a nice side effect. The `min-h-0` on the inner div is
+ * required for the `0fr` row to actually reach zero height -- a bare grid item defaults to
+ * min-content sizing, which would otherwise floor the collapse at the content's own height. */
 function MobileSectorGrid() {
   const [expanded, setExpanded] = useState(false);
   const primary = MAIN_CATEGORIES.slice(0, MOBILE_PRIMARY_COUNT);
@@ -156,24 +166,19 @@ function MobileSectorGrid() {
           <CompactCategoryTile key={category} category={category} index={i} />
         ))}
       </div>
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            key="rest"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="grid grid-cols-4 gap-x-2 gap-y-4 pt-4">
-              {rest.map((category, i) => (
-                <CompactCategoryTile key={category} category={category} index={i} />
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div
+        className={`grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        }`}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="grid grid-cols-4 gap-x-2 gap-y-4 pt-4">
+            {rest.map((category, i) => (
+              <CompactCategoryTile key={category} category={category} index={i} />
+            ))}
+          </div>
+        </div>
+      </div>
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
